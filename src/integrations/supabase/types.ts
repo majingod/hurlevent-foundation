@@ -660,27 +660,39 @@ export type Database = {
       personnage_prieres: {
         Row: {
           date_acquisition: string
+          duree_choisie: string | null
           id: string
           niveau_priere: number
+          nom_personnalise: string | null
           personnage_id: string
+          portee_choisie: string | null
           priere_id: string
           xp_depense: number
+          zone_choisie: string | null
         }
         Insert: {
           date_acquisition?: string
+          duree_choisie?: string | null
           id?: string
           niveau_priere?: number
+          nom_personnalise?: string | null
           personnage_id: string
+          portee_choisie?: string | null
           priere_id: string
           xp_depense?: number
+          zone_choisie?: string | null
         }
         Update: {
           date_acquisition?: string
+          duree_choisie?: string | null
           id?: string
           niveau_priere?: number
+          nom_personnalise?: string | null
           personnage_id?: string
+          portee_choisie?: string | null
           priere_id?: string
           xp_depense?: number
+          zone_choisie?: string | null
         }
         Relationships: [
           {
@@ -769,27 +781,39 @@ export type Database = {
       personnage_sorts: {
         Row: {
           date_acquisition: string
+          duree_choisie: string | null
           id: string
           niveau_sort: number
+          nom_personnalise: string | null
           personnage_id: string
+          portee_choisie: string | null
           sort_id: string
           xp_depense: number
+          zone_choisie: string | null
         }
         Insert: {
           date_acquisition?: string
+          duree_choisie?: string | null
           id?: string
           niveau_sort?: number
+          nom_personnalise?: string | null
           personnage_id: string
+          portee_choisie?: string | null
           sort_id: string
           xp_depense?: number
+          zone_choisie?: string | null
         }
         Update: {
           date_acquisition?: string
+          duree_choisie?: string | null
           id?: string
           niveau_sort?: number
+          nom_personnalise?: string | null
           personnage_id?: string
+          portee_choisie?: string | null
           sort_id?: string
           xp_depense?: number
+          zone_choisie?: string | null
         }
         Relationships: [
           {
