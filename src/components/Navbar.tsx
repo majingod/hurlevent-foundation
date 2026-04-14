@@ -28,6 +28,9 @@ const Navbar = () => {
             <Link to="/regles">Règles</Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
+            <Link to="/encyclopedie">Encyclopédie</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
             <Link to="/evenements">Événements</Link>
           </Button>
 
