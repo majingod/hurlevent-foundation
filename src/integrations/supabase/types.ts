@@ -16,31 +16,85 @@ export type Database = {
     Tables: {
       assemblages_runes: {
         Row: {
+          cible: string | null
+          cout_ps: number | null
+          cout_ps_maitrise: number | null
           cout_xp: number | null
           description: string | null
+          description_longue: string | null
           effet: string | null
+          effet_maitrise: string | null
           est_actif: boolean | null
           id: string
           nom: string | null
           runes_requises: string[] | null
         }
         Insert: {
+          cible?: string | null
+          cout_ps?: number | null
+          cout_ps_maitrise?: number | null
           cout_xp?: number | null
           description?: string | null
+          description_longue?: string | null
           effet?: string | null
+          effet_maitrise?: string | null
           est_actif?: boolean | null
           id?: string
           nom?: string | null
           runes_requises?: string[] | null
         }
         Update: {
+          cible?: string | null
+          cout_ps?: number | null
+          cout_ps_maitrise?: number | null
           cout_xp?: number | null
           description?: string | null
+          description_longue?: string | null
           effet?: string | null
+          effet_maitrise?: string | null
           est_actif?: boolean | null
           id?: string
           nom?: string | null
           runes_requises?: string[] | null
+        }
+        Relationships: []
+      }
+      bestiaire: {
+        Row: {
+          capacites_speciales: string | null
+          categorie: string
+          created_at: string | null
+          description: string
+          est_actif: boolean | null
+          id: string
+          immunites: string | null
+          nom: string
+          pv_formule: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          capacites_speciales?: string | null
+          categorie: string
+          created_at?: string | null
+          description: string
+          est_actif?: boolean | null
+          id?: string
+          immunites?: string | null
+          nom: string
+          pv_formule?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          capacites_speciales?: string | null
+          categorie?: string
+          created_at?: string | null
+          description?: string
+          est_actif?: boolean | null
+          id?: string
+          immunites?: string | null
+          nom?: string
+          pv_formule?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -221,6 +275,7 @@ export type Database = {
         Row: {
           avantages: string | null
           description: string | null
+          description_longue: string | null
           est_actif: boolean | null
           id: string
           nom: string | null
@@ -228,6 +283,7 @@ export type Database = {
         Insert: {
           avantages?: string | null
           description?: string | null
+          description_longue?: string | null
           est_actif?: boolean | null
           id?: string
           nom?: string | null
@@ -235,6 +291,7 @@ export type Database = {
         Update: {
           avantages?: string | null
           description?: string | null
+          description_longue?: string | null
           est_actif?: boolean | null
           id?: string
           nom?: string | null
@@ -340,6 +397,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lore: {
+        Row: {
+          categorie: string
+          created_at: string | null
+          description: string
+          embleme: string | null
+          est_actif: boolean | null
+          id: string
+          nom: string
+          ordre: number | null
+          sous_titre: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          categorie: string
+          created_at?: string | null
+          description: string
+          embleme?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom: string
+          ordre?: number | null
+          sous_titre?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          categorie?: string
+          created_at?: string | null
+          description?: string
+          embleme?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string
+          ordre?: number | null
+          sous_titre?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1163,6 +1259,7 @@ export type Database = {
           ingredients: Json | null
           niveau_requis: number | null
           nom: string | null
+          type: string | null
         }
         Insert: {
           cout_xp?: number | null
@@ -1174,6 +1271,7 @@ export type Database = {
           ingredients?: Json | null
           niveau_requis?: number | null
           nom?: string | null
+          type?: string | null
         }
         Update: {
           cout_xp?: number | null
@@ -1185,12 +1283,14 @@ export type Database = {
           ingredients?: Json | null
           niveau_requis?: number | null
           nom?: string | null
+          type?: string | null
         }
         Relationships: []
       }
       religions: {
         Row: {
           description: string | null
+          description_longue: string | null
           dirigeant: string | null
           domaines_principaux: string[] | null
           domaines_proscrits: string[] | null
@@ -1203,6 +1303,7 @@ export type Database = {
         }
         Insert: {
           description?: string | null
+          description_longue?: string | null
           dirigeant?: string | null
           domaines_principaux?: string[] | null
           domaines_proscrits?: string[] | null
@@ -1215,6 +1316,7 @@ export type Database = {
         }
         Update: {
           description?: string | null
+          description_longue?: string | null
           dirigeant?: string | null
           domaines_principaux?: string[] | null
           domaines_proscrits?: string[] | null
@@ -1224,6 +1326,39 @@ export type Database = {
           nom?: string | null
           pouvoir_symbole?: string | null
           symbole_sacre?: string | null
+        }
+        Relationships: []
+      }
+      sections_regles: {
+        Row: {
+          categorie: string
+          contenu: string
+          created_at: string | null
+          est_actif: boolean | null
+          id: string
+          ordre: number
+          titre: string
+          updated_at: string | null
+        }
+        Insert: {
+          categorie: string
+          contenu: string
+          created_at?: string | null
+          est_actif?: boolean | null
+          id?: string
+          ordre?: number
+          titre: string
+          updated_at?: string | null
+        }
+        Update: {
+          categorie?: string
+          contenu?: string
+          created_at?: string | null
+          est_actif?: boolean | null
+          id?: string
+          ordre?: number
+          titre?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

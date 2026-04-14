@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, MapPin, Users, Swords, Shield, Star, Sparkles } from "lucide-react";
+import { CalendarDays, MapPin, Users, Swords, Shield, Star, Sparkles, ChevronDown } from "lucide-react";
 
 /* ---------- types ---------- */
 interface ProchainEvenement {
