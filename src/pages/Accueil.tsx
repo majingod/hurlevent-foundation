@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, MapPin, Users, Swords, Shield, Star, Sparkles } from "lucide-react";
+import { CalendarDays, MapPin, Users, Swords, Shield, Star, Sparkles, ChevronDown } from "lucide-react";
 
 /* ---------- types ---------- */
 interface ProchainEvenement {
@@ -66,6 +66,7 @@ const Accueil = () => {
   const [races, setRaces] = useState<Race[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedRace, setExpandedRace] = useState<string | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -174,7 +175,8 @@ const Accueil = () => {
           {races.map((r) => (
             <Card
               key={r.id}
-              className="border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
+              className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
+              onClick={() => setExpandedRace(expandedRace === r.id ? null : r.id)}
             >
               <CardHeader className="pb-2">
                 <CardTitle className="font-heading text-xl">{r.nom}</CardTitle>
@@ -185,6 +187,24 @@ const Accueil = () => {
               <CardContent className="space-y-1 text-sm text-muted-foreground">
                 {r.esperance_vie && <p>Espérance de vie : {r.esperance_vie}</p>}
                 <p>XP de départ : {r.xp_depart}</p>
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{
+                    maxHeight: expandedRace === r.id ? "500px" : "0",
+                    opacity: expandedRace === r.id ? 1 : 0,
+                  }}
+                >
+                  {r.description && (
+                    <p className="mt-3 border-t border-primary/10 pt-3 text-muted-foreground">
+                      {r.description}
+                    </p>
+                  )}
+                </div>
+                <div className="flex justify-end pt-1">
+                  <ChevronDown
+                    className={`h-4 w-4 text-primary/40 transition-transform duration-300 ${expandedRace === r.id ? "rotate-180" : ""}`}
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}
