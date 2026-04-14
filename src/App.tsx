@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 import Accueil from "@/pages/Accueil";
 import Regles from "@/pages/Regles";
+import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
 import Connexion from "@/pages/Connexion";
 import TableauDeBord from "@/pages/TableauDeBord";
@@ -31,6 +32,7 @@ const App = () => (
             <Route element={<Layout />}>
               <Route path="/" element={<Accueil />} />
               <Route path="/regles" element={<Regles />} />
+              <Route path="/encyclopedie" element={<Encyclopedie />} />
               <Route path="/evenements" element={<Evenements />} />
               <Route path="/connexion" element={<Connexion />} />
 
