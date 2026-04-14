@@ -50,9 +50,9 @@ const formatDate = (d: string | null) => {
 
 const typeLabel = (t: string | null) => {
   switch (t) {
-    case "gn_complet": return "GN Complet";
-    case "mini_gn": return "Mini-GN";
-    case "special": return "Spécial";
+    case "mini_gn": return "Mini GN";
+    case "gn_regulier": return "GN Régulier";
+    case "entretien_terrain": return "Entretien du Terrain";
     default: return t ?? "";
   }
 };
