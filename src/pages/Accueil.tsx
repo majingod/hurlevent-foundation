@@ -66,6 +66,7 @@ const Accueil = () => {
   const [races, setRaces] = useState<Race[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedRace, setExpandedRace] = useState<string | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
