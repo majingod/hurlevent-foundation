@@ -48,12 +48,12 @@ const formatDate = (d: string | null) => {
 
 const typeBadge = (t: string | null) => {
   switch (t) {
-    case "gn_complet":
-      return <Badge className="bg-green-700 text-foreground hover:bg-green-700">GN Complet</Badge>;
     case "mini_gn":
-      return <Badge className="bg-blue-700 text-foreground hover:bg-blue-700">Mini-GN</Badge>;
-    case "special":
-      return <Badge className="bg-primary text-primary-foreground hover:bg-primary">Spécial</Badge>;
+      return <Badge className="bg-blue-700 text-foreground hover:bg-blue-700">Mini GN</Badge>;
+    case "gn_regulier":
+      return <Badge className="bg-green-700 text-foreground hover:bg-green-700">GN Régulier</Badge>;
+    case "entretien_terrain":
+      return <Badge className="bg-primary text-primary-foreground hover:bg-primary">Entretien du Terrain</Badge>;
     default:
       return null;
   }
@@ -61,7 +61,7 @@ const typeBadge = (t: string | null) => {
 
 const xpLabel = (ev: Evenement) => {
   const xp = ev.xp_recompense ?? 0;
-  if (ev.type_evenement === "gn_complet") return `${xp} XP + 1 niveau`;
+  if (ev.type_evenement === "gn_regulier") return `${xp} XP + 1 niveau`;
   return `${xp} XP`;
 };
 
