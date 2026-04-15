@@ -15,6 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ChevronLeft, ChevronRight, Shield, Sparkles } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
+import Step3Classe from "@/components/creation/Step3Classe";
+import Step4Competences from "@/components/creation/Step4Competences";
 
 const TOTAL_STEPS = 10;
 const CHIMERIDE_NOM = "Chiméride";
