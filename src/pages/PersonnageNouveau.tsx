@@ -250,6 +250,32 @@ const PersonnageNouveau = () => {
           })
           .eq("id", personnageId);
         if (error) throw error;
+      } else if (step === 3) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            classe_id: classeId,
+            religion_id: religionId,
+            pv_max: pvMax,
+            ps_max: psMax,
+            etape_creation: 3,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
+      } else if (step === 4) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            xp_depense: xpDepense,
+            ps_max: psMax,
+            famille_criminelle_id: familleCriminelleId,
+            religion_id: religionId,
+            etape_creation: 4,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
       }
 
       setEtape(step + 1);
