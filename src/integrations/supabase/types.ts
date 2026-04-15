@@ -591,29 +591,38 @@ export type Database = {
       personnage_competences: {
         Row: {
           appris_via_maitre: boolean
+          choix_achat: string | null
           competence_id: string
           date_acquisition: string
           id: string
           niveau_acquis: number
+          nom_maitre: string | null
           personnage_id: string
+          statut_maitre: string | null
           xp_depense: number
         }
         Insert: {
           appris_via_maitre?: boolean
+          choix_achat?: string | null
           competence_id: string
           date_acquisition?: string
           id?: string
           niveau_acquis?: number
+          nom_maitre?: string | null
           personnage_id: string
+          statut_maitre?: string | null
           xp_depense?: number
         }
         Update: {
           appris_via_maitre?: boolean
+          choix_achat?: string | null
           competence_id?: string
           date_acquisition?: string
           id?: string
           niveau_acquis?: number
+          nom_maitre?: string | null
           personnage_id?: string
+          statut_maitre?: string | null
           xp_depense?: number
         }
         Relationships: [
