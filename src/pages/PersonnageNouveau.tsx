@@ -50,6 +50,15 @@ const PersonnageNouveau = () => {
   const [traitObligatoireId, setTraitObligatoireId] = useState<string | null>(null);
   const [traitsOptionnels, setTraitsOptionnels] = useState<string[]>([]);
 
+  // Step 3 fields
+  const [classeId, setClasseId] = useState<string | null>(null);
+  const [pvMax, setPvMax] = useState(4);
+  const [psMax, setPsMax] = useState(5);
+  const [familleCriminelleId, setFamilleCriminelleId] = useState<string | null>(null);
+
+  // Step 4 XP tracking
+  const [step4XpSpent, setStep4XpSpent] = useState(0);
+
   // Profile
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
