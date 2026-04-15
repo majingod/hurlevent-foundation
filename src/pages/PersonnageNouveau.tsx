@@ -158,14 +158,33 @@ const PersonnageNouveau = () => {
   const xpDepart = selectedRace?.xp_depart ?? 0;
   const xpTotal = etape >= 2 && raceId ? xpDepart + xpFromExperience : 0;
   const xpTraitsOptionnels = traitsOptionnels.length * 10;
-  const xpDepense = xpTraitsOptionnels;
+  const xpDepense = xpTraitsOptionnels + step4XpSpent;
   const xpDisponible = xpTotal - xpDepense;
+
+  // Selected class info
+  const selectedClasse = classes?.find((c) => c.id === classeId);
+  const classeNom = selectedClasse?.nom ?? "";
+  const competencesGratuites: string[] = selectedClasse?.competences_gratuites
+    ? (Array.isArray(selectedClasse.competences_gratuites)
+      ? selectedClasse.competences_gratuites.map(String)
+      : [])
+    : [];
+
+  // Update PV/PS when class changes
+  useEffect(() => {
+    if (selectedClasse) {
+      setPvMax(selectedClasse.pv_depart ?? 4);
+      setPsMax(selectedClasse.ps_depart ?? 5);
+    }
+  }, [classeId, selectedClasse]);
 
   // Validation
   const isStep1Valid = nomPersonnage.trim().length >= 2 && nomPersonnage.trim().length <= 50 && (!estCroyant || religionId);
   const isStep2Valid = raceId && (!isChimeride || sousTypeChimeride) && traitObligatoireId && selectedRace?.est_jouable !== false;
+  const isStep3Valid = !!classeId && (classeNom !== "Prêtre" || !!religionId);
+  const isStep4Valid = true; // Purchases are optional
 
-  const canGoNext = etape === 1 ? isStep1Valid : etape === 2 ? isStep2Valid : false;
+  const canGoNext = etape === 1 ? isStep1Valid : etape === 2 ? isStep2Valid : etape === 3 ? isStep3Valid : etape === 4 ? isStep4Valid : false;
 
   const buildTraitsJson = (): TraitChoisi[] => {
     const result: TraitChoisi[] = [];
