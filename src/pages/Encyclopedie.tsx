@@ -5,8 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ChevronDown, Shield, Swords, BookOpen, Sparkles, Church, Users } from "lucide-react";
+import { ChevronDown, Shield, Swords, BookOpen, Sparkles, Church, Users, FlaskConical, Gem, Hammer, Skull, Globe } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
+import AlchimieSection from "@/components/encyclopedie/AlchimieSection";
+import AssemblagesSection from "@/components/encyclopedie/AssemblagesSection";
+import ForgeJoaillerieSection from "@/components/encyclopedie/ForgeJoaillerieSection";
+import BestiaireSection from "@/components/encyclopedie/BestiaireSection";
+import LoreSection from "@/components/encyclopedie/LoreSection";
 
 /* ── types ── */
 
@@ -77,7 +82,7 @@ interface Religion {
   fondateur: string | null;
 }
 
-type SectionKey = "races" | "classes" | "competences" | "magie" | "prieres" | "religions";
+type SectionKey = "races" | "classes" | "competences" | "magie" | "prieres" | "religions" | "alchimie" | "assemblages" | "forge" | "bestiaire" | "lore";
 
 const sections: { key: SectionKey; label: string; icon: React.ElementType }[] = [
   { key: "races", label: "Les Races", icon: Users },
@@ -86,6 +91,11 @@ const sections: { key: SectionKey; label: string; icon: React.ElementType }[] = 
   { key: "magie", label: "Magie", icon: Sparkles },
   { key: "prieres", label: "Prières", icon: Church },
   { key: "religions", label: "Religions", icon: BookOpen },
+  { key: "alchimie", label: "Alchimie", icon: FlaskConical },
+  { key: "assemblages", label: "Runes", icon: Gem },
+  { key: "forge", label: "Forge & Joaillerie", icon: Hammer },
+  { key: "bestiaire", label: "Bestiaire", icon: Skull },
+  { key: "lore", label: "Monde de Destéa", icon: Globe },
 ];
 
 /* ── helpers ── */
@@ -116,17 +126,33 @@ const Encyclopedie = () => {
   const [sorts, setSorts] = useState<Sort[]>([]);
   const [prieres, setPrieres] = useState<Priere[]>([]);
   const [religions, setReligions] = useState<Religion[]>([]);
+  const [recettes, setRecettes] = useState<any[]>([]);
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [assemblages, setAssemblages] = useState<any[]>([]);
+  const [forge, setForge] = useState<any[]>([]);
+  const [joaillerie, setJoaillerie] = useState<any[]>([]);
+  const [creatures, setCreatures] = useState<any[]>([]);
+  const [regions, setRegions] = useState<any[]>([]);
+  const [cites, setCites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [racesRes, classesRes, compRes, sortsRes, prieresRes, relRes] = await Promise.all([
+      const [racesRes, classesRes, compRes, sortsRes, prieresRes, relRes, recettesRes, ingsRes, assRes, forgeRes, joailRes, bestRes, regionsRes, citesRes] = await Promise.all([
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
         supabase.from("classes").select("*").eq("est_actif", true).order("nom"),
         supabase.from("competences").select("*").eq("est_actif", true).order("categorie").order("nom"),
         supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
         supabase.from("prieres").select("*").eq("est_actif", true).order("domaine").order("niveau").order("nom"),
         supabase.from("religions").select("*").eq("est_actif", true).order("nom"),
+        supabase.from("recettes_alchimie").select("*").eq("est_actif", true).order("niveau_requis").order("type").order("nom"),
+        supabase.from("ingredients_alchimiques").select("*").order("niveau").order("nom"),
+        supabase.from("assemblages_runes").select("*").eq("est_actif", true).order("nom"),
+        supabase.from("objets_forge").select("*").eq("est_actif", true).order("difficulte").order("nom"),
+        supabase.from("objets_joaillerie").select("*").eq("est_actif", true).order("difficulte").order("nom"),
+        supabase.from("bestiaire").select("*").eq("est_actif", true).order("categorie").order("nom"),
+        supabase.from("lore").select("*").eq("categorie", "region").eq("est_actif", true).order("ordre"),
+        supabase.from("lore").select("*").eq("categorie", "cite").eq("est_actif", true).order("ordre"),
       ]);
       setRaces((racesRes.data ?? []) as Race[]);
       setClasses((classesRes.data ?? []) as Classe[]);
@@ -134,6 +160,14 @@ const Encyclopedie = () => {
       setSorts((sortsRes.data ?? []) as Sort[]);
       setPrieres((prieresRes.data ?? []) as Priere[]);
       setReligions((relRes.data ?? []) as Religion[]);
+      setRecettes(recettesRes.data ?? []);
+      setIngredients(ingsRes.data ?? []);
+      setAssemblages(assRes.data ?? []);
+      setForge(forgeRes.data ?? []);
+      setJoaillerie(joailRes.data ?? []);
+      setCreatures(bestRes.data ?? []);
+      setRegions(regionsRes.data ?? []);
+      setCites(citesRes.data ?? []);
       setLoading(false);
     };
     fetchAll();
@@ -186,13 +220,18 @@ const Encyclopedie = () => {
           {active === "magie" && <MagieSection sorts={sorts} />}
           {active === "prieres" && <PrieresSection prieres={prieres} />}
           {active === "religions" && <ReligionsSection religions={religions} />}
+          {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} />}
+          {active === "assemblages" && <AssemblagesSection assemblages={assemblages} />}
+          {active === "forge" && <ForgeJoaillerieSection forge={forge} joaillerie={joaillerie} />}
+          {active === "bestiaire" && <BestiaireSection creatures={creatures} />}
+          {active === "lore" && <LoreSection regions={regions} cites={cites} />}
         </main>
       </div>
     </div>
   );
 };
 
-/* ── Section components ── */
+/* ── Section components (existing) ── */
 
 const RacesSection = ({ races }: { races: Race[] }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
