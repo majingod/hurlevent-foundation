@@ -370,10 +370,41 @@ const PersonnageNouveau = () => {
         />
       )}
 
-      {etape >= 3 && (
+      {etape === 3 && (
+        <Step3Classe
+          classes={classes ?? []}
+          classeId={classeId}
+          setClasseId={setClasseId}
+          religions={religions ?? []}
+          religionId={religionId}
+          setReligionId={setReligionId}
+          estCroyant={estCroyant}
+        />
+      )}
+
+      {etape === 4 && personnageId && classeId && (
+        <Step4Competences
+          personnageId={personnageId}
+          classeNom={classeNom}
+          classeId={classeId}
+          religionId={religionId}
+          setReligionId={setReligionId}
+          familleCriminelleId={familleCriminelleId}
+          setFamilleCriminelleId={setFamilleCriminelleId}
+          xpDisponible={xpDisponible}
+          xpDepense={xpDepense}
+          onXpSpent={(amount) => setStep4XpSpent((prev) => prev + amount)}
+          psMax={psMax}
+          onPsMaxChange={setPsMax}
+          competencesGratuites={competencesGratuites}
+          religions={religions ?? []}
+        />
+      )}
+
+      {etape >= 5 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Les étapes 3 à 10 seront disponibles prochainement.
+            Les étapes 5 à 10 seront disponibles prochainement.
           </CardContent>
         </Card>
       )}
