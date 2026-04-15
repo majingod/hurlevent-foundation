@@ -86,6 +86,19 @@ const PersonnageNouveau = () => {
     },
   });
 
+  // Classes
+  const { data: classes } = useQuery({
+    queryKey: ["classes-actives"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("classes")
+        .select("*")
+        .eq("est_actif", true)
+        .order("nom");
+      return data ?? [];
+    },
+  });
+
   // Races
   const { data: races } = useQuery({
     queryKey: ["races-actives"],
