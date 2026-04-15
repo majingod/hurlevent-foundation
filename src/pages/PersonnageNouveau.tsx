@@ -15,6 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ChevronLeft, ChevronRight, Shield, Sparkles } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
+import Step3Classe from "@/components/creation/Step3Classe";
+import Step4Competences from "@/components/creation/Step4Competences";
 
 const TOTAL_STEPS = 10;
 const CHIMERIDE_NOM = "Chiméride";
@@ -48,6 +50,15 @@ const PersonnageNouveau = () => {
   const [traitObligatoireId, setTraitObligatoireId] = useState<string | null>(null);
   const [traitsOptionnels, setTraitsOptionnels] = useState<string[]>([]);
 
+  // Step 3 fields
+  const [classeId, setClasseId] = useState<string | null>(null);
+  const [pvMax, setPvMax] = useState(4);
+  const [psMax, setPsMax] = useState(5);
+  const [familleCriminelleId, setFamilleCriminelleId] = useState<string | null>(null);
+
+  // Step 4 XP tracking
+  const [step4XpSpent, setStep4XpSpent] = useState(0);
+
   // Profile
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -68,6 +79,19 @@ const PersonnageNouveau = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("religions")
+        .select("*")
+        .eq("est_actif", true)
+        .order("nom");
+      return data ?? [];
+    },
+  });
+
+  // Classes
+  const { data: classes } = useQuery({
+    queryKey: ["classes-actives"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("classes")
         .select("*")
         .eq("est_actif", true)
         .order("nom");
@@ -134,14 +158,33 @@ const PersonnageNouveau = () => {
   const xpDepart = selectedRace?.xp_depart ?? 0;
   const xpTotal = etape >= 2 && raceId ? xpDepart + xpFromExperience : 0;
   const xpTraitsOptionnels = traitsOptionnels.length * 10;
-  const xpDepense = xpTraitsOptionnels;
+  const xpDepense = xpTraitsOptionnels + step4XpSpent;
   const xpDisponible = xpTotal - xpDepense;
+
+  // Selected class info
+  const selectedClasse = classes?.find((c) => c.id === classeId);
+  const classeNom = selectedClasse?.nom ?? "";
+  const competencesGratuites: string[] = selectedClasse?.competences_gratuites
+    ? (Array.isArray(selectedClasse.competences_gratuites)
+      ? selectedClasse.competences_gratuites.map(String)
+      : [])
+    : [];
+
+  // Update PV/PS when class changes
+  useEffect(() => {
+    if (selectedClasse) {
+      setPvMax(selectedClasse.pv_depart ?? 4);
+      setPsMax(selectedClasse.ps_depart ?? 5);
+    }
+  }, [classeId, selectedClasse]);
 
   // Validation
   const isStep1Valid = nomPersonnage.trim().length >= 2 && nomPersonnage.trim().length <= 50 && (!estCroyant || religionId);
   const isStep2Valid = raceId && (!isChimeride || sousTypeChimeride) && traitObligatoireId && selectedRace?.est_jouable !== false;
+  const isStep3Valid = !!classeId && (classeNom !== "Prêtre" || !!religionId);
+  const isStep4Valid = true; // Purchases are optional
 
-  const canGoNext = etape === 1 ? isStep1Valid : etape === 2 ? isStep2Valid : false;
+  const canGoNext = etape === 1 ? isStep1Valid : etape === 2 ? isStep2Valid : etape === 3 ? isStep3Valid : etape === 4 ? isStep4Valid : false;
 
   const buildTraitsJson = (): TraitChoisi[] => {
     const result: TraitChoisi[] = [];
@@ -204,6 +247,32 @@ const PersonnageNouveau = () => {
             xp_total: xpTotal,
             xp_depense: xpDepense,
             etape_creation: 2,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
+      } else if (step === 3) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            classe_id: classeId,
+            religion_id: religionId,
+            pv_max: pvMax,
+            ps_max: psMax,
+            etape_creation: 3,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
+      } else if (step === 4) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            xp_depense: xpDepense,
+            ps_max: psMax,
+            famille_criminelle_id: familleCriminelleId,
+            religion_id: religionId,
+            etape_creation: 4,
           })
           .eq("id", personnageId);
         if (error) throw error;
@@ -301,10 +370,41 @@ const PersonnageNouveau = () => {
         />
       )}
 
-      {etape >= 3 && (
+      {etape === 3 && (
+        <Step3Classe
+          classes={classes ?? []}
+          classeId={classeId}
+          setClasseId={setClasseId}
+          religions={religions ?? []}
+          religionId={religionId}
+          setReligionId={setReligionId}
+          estCroyant={estCroyant}
+        />
+      )}
+
+      {etape === 4 && personnageId && classeId && (
+        <Step4Competences
+          personnageId={personnageId}
+          classeNom={classeNom}
+          classeId={classeId}
+          religionId={religionId}
+          setReligionId={setReligionId}
+          familleCriminelleId={familleCriminelleId}
+          setFamilleCriminelleId={setFamilleCriminelleId}
+          xpDisponible={xpDisponible}
+          xpDepense={xpDepense}
+          onXpSpent={(amount) => setStep4XpSpent((prev) => prev + amount)}
+          psMax={psMax}
+          onPsMaxChange={setPsMax}
+          competencesGratuites={competencesGratuites}
+          religions={religions ?? []}
+        />
+      )}
+
+      {etape >= 5 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Les étapes 3 à 10 seront disponibles prochainement.
+            Les étapes 5 à 10 seront disponibles prochainement.
           </CardContent>
         </Card>
       )}
