@@ -386,6 +386,13 @@ export type Database = {
             foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnage_etat"
             referencedColumns: ["personnage_id"]
           },
@@ -576,6 +583,13 @@ export type Database = {
             foreignKeyName: "personnage_assemblages_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnage_etat"
             referencedColumns: ["personnage_id"]
           },
@@ -644,6 +658,13 @@ export type Database = {
             foreignKeyName: "personnage_competences_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnage_etat"
             referencedColumns: ["personnage_id"]
           },
@@ -697,6 +718,13 @@ export type Database = {
             foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnage_etat"
             referencedColumns: ["personnage_id"]
           },
@@ -745,6 +773,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "personnages"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
           },
           {
             foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
@@ -811,6 +846,13 @@ export type Database = {
             foreignKeyName: "personnage_prieres_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnage_etat"
             referencedColumns: ["personnage_id"]
           },
@@ -859,6 +901,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "personnages"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
           },
           {
             foreignKeyName: "personnage_recettes_personnage_id_fkey"
@@ -932,6 +981,13 @@ export type Database = {
             foreignKeyName: "personnage_sorts_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnage_etat"
             referencedColumns: ["personnage_id"]
           },
@@ -953,6 +1009,8 @@ export type Database = {
       }
       personnages: {
         Row: {
+          a_forge_legendaire: boolean
+          a_joaillerie_legendaire: boolean
           ame_personnage: string | null
           classe_id: string | null
           classe_secondaire_id: string | null
@@ -982,6 +1040,8 @@ export type Database = {
           xp_total: number | null
         }
         Insert: {
+          a_forge_legendaire?: boolean
+          a_joaillerie_legendaire?: boolean
           ame_personnage?: string | null
           classe_id?: string | null
           classe_secondaire_id?: string | null
@@ -1011,6 +1071,8 @@ export type Database = {
           xp_total?: number | null
         }
         Update: {
+          a_forge_legendaire?: boolean
+          a_joaillerie_legendaire?: boolean
           ame_personnage?: string | null
           classe_id?: string | null
           classe_secondaire_id?: string | null
@@ -1083,6 +1145,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pieges: {
+        Row: {
+          cible: string
+          cout_xp: number
+          created_at: string
+          duree: string
+          effets: string
+          est_actif: boolean
+          id: string
+          niveau: number
+          niveau_effet: number | null
+          nom: string
+          type_piege: string
+          updated_at: string
+        }
+        Insert: {
+          cible: string
+          cout_xp: number
+          created_at?: string
+          duree: string
+          effets: string
+          est_actif?: boolean
+          id?: string
+          niveau: number
+          niveau_effet?: number | null
+          nom: string
+          type_piege?: string
+          updated_at?: string
+        }
+        Update: {
+          cible?: string
+          cout_xp?: number
+          created_at?: string
+          duree?: string
+          effets?: string
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          niveau_effet?: number | null
+          nom?: string
+          type_piege?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       prieres: {
         Row: {
@@ -1338,6 +1445,48 @@ export type Database = {
         }
         Relationships: []
       }
+      reparations_forge: {
+        Row: {
+          categorie: string
+          created_at: string
+          est_actif: boolean
+          id: string
+          materiaux: string
+          materiaux_rares: string
+          nom_affichage: string
+          notes: string | null
+          temps_minutes: number
+          temps_rare_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          categorie: string
+          created_at?: string
+          est_actif?: boolean
+          id?: string
+          materiaux: string
+          materiaux_rares: string
+          nom_affichage: string
+          notes?: string | null
+          temps_minutes: number
+          temps_rare_minutes: number
+          updated_at?: string
+        }
+        Update: {
+          categorie?: string
+          created_at?: string
+          est_actif?: boolean
+          id?: string
+          materiaux?: string
+          materiaux_rares?: string
+          nom_affichage?: string
+          notes?: string | null
+          temps_minutes?: number
+          temps_rare_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sections_regles: {
         Row: {
           categorie: string
@@ -1445,6 +1594,92 @@ export type Database = {
       }
     }
     Views: {
+      vue_artisanat_etat: {
+        Row: {
+          a_forge_legendaire: boolean | null
+          a_joaillerie_legendaire: boolean | null
+          niveau_alchimie: number | null
+          niveau_forge: number | null
+          niveau_joaillerie: number | null
+          niveau_runes: number | null
+          personnage_id: string | null
+        }
+        Relationships: []
+      }
+      vue_cercles_disponibles: {
+        Row: {
+          cercle: string | null
+          niveau_max_sorts: number | null
+          personnage_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_domaines_disponibles: {
+        Row: {
+          domaine: string | null
+          niveau_max_prieres: number | null
+          personnage_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vue_inscriptions_resumees: {
         Row: {
           date_evenement: string | null
@@ -1498,6 +1733,13 @@ export type Database = {
             foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnage_etat"
             referencedColumns: ["personnage_id"]
           },
@@ -1539,7 +1781,6 @@ export type Database = {
       }
       vue_prochain_evenement: {
         Row: {
-          created_at: string | null
           created_by: string | null
           date_evenement: string | null
           date_fin: string | null
@@ -1552,7 +1793,6 @@ export type Database = {
           places_restantes: number | null
           titre: string | null
           type_evenement: string | null
-          updated_at: string | null
           xp_recompense: number | null
         }
         Relationships: [
