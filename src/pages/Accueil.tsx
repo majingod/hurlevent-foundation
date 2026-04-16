@@ -127,12 +127,18 @@ const Accueil = () => {
       setInscribing(false);
       return;
     }
-    const { error } = await supabase.from("inscriptions_evenements").insert({
-      evenement_id: evenement.id,
-      personnage_id: selectedPerso,
-      joueur_id: joueurId,
-      statut: "en_attente",
-    });
+    const { error } = await supabase.from("inscriptions_evenements").upsert(
+      {
+        evenement_id: evenement.id,
+        personnage_id: selectedPerso,
+        joueur_id: joueurId,
+        statut: "en_attente",
+      },
+      {
+        onConflict: "evenement_id,personnage_id",
+        ignoreDuplicates: true,
+      }
+    );
     setInscribing(false);
     if (error) {
       if (error.code === "23505") {
@@ -389,3 +395,4 @@ const InscriptionBlock = ({
 };
 
 export default Accueil;
+
