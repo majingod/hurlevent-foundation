@@ -88,10 +88,7 @@ const Accueil = () => {
   const creerLink = user ? "/personnage/nouveau" : "/connexion";
 
   const [evenement, setEvenement] = useState<ProchainEvenement | null>(null);
-  const [races, setRaces] = useState<Race[]>([]);
-  const [classes, setClasses] = useState<Classe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedRace, setExpandedRace] = useState<string | null>(null);
 
   // inscription state
   const [personnages, setPersonnages] = useState<Personnage[]>([]);
@@ -102,14 +99,8 @@ const Accueil = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [evRes, racesRes, classesRes] = await Promise.all([
-        supabase.from("vue_prochain_evenement").select("*").maybeSingle(),
-        supabase.from("races").select("*").eq("est_jouable", true).eq("est_actif", true),
-        supabase.from("classes").select("*").eq("est_actif", true),
-      ]);
+      const evRes = await supabase.from("vue_prochain_evenement").select("*").maybeSingle();
       setEvenement(evRes.data as ProchainEvenement | null);
-      setRaces((racesRes.data ?? []) as Race[]);
-      setClasses((classesRes.data ?? []) as Classe[]);
       setLoading(false);
     };
     fetchData();
@@ -145,10 +136,17 @@ const Accueil = () => {
   const handleInscription = async () => {
     if (!user || !evenement?.id || !selectedPerso) return;
     setInscribing(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const joueurId = session?.user?.id;
+    if (!joueurId) {
+      toast.error("Session expirée, veuillez vous reconnecter.");
+      setInscribing(false);
+      return;
+    }
     const { error } = await supabase.from("inscriptions_evenements").insert({
       evenement_id: evenement.id,
       personnage_id: selectedPerso,
-      joueur_id: user.id,
+      joueur_id: joueurId,
       statut: "en_attente",
     });
     setInscribing(false);
@@ -282,78 +280,6 @@ const Accueil = () => {
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">{c.desc}</p>
             </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ── RACES ── */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="mb-8 text-center font-heading text-3xl font-bold text-primary">
-          Les races de Destéa
-        </h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {races.map((r) => (
-            <Card
-              key={r.id}
-              className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
-              onClick={() => setExpandedRace(expandedRace === r.id ? null : r.id)}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="font-heading text-xl">{r.nom}</CardTitle>
-                {r.nom_latin && (
-                  <p className="text-sm italic text-muted-foreground">{r.nom_latin}</p>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
-                {r.esperance_vie && <p>Espérance de vie : {r.esperance_vie}</p>}
-                <p>XP de départ : {r.xp_depart}</p>
-                <div
-                  className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{
-                    maxHeight: expandedRace === r.id ? "500px" : "0",
-                    opacity: expandedRace === r.id ? 1 : 0,
-                  }}
-                >
-                  {r.description && (
-                    <p className="mt-3 border-t border-primary/10 pt-3 text-muted-foreground">
-                      {r.description}
-                    </p>
-                  )}
-                </div>
-                <div className="flex justify-end pt-1">
-                  <ChevronDown
-                    className={`h-4 w-4 text-primary/40 transition-transform duration-300 ${expandedRace === r.id ? "rotate-180" : ""}`}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* ── CLASSES ── */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-16">
-        <h2 className="mb-8 text-center font-heading text-3xl font-bold text-primary">
-          Les classes de Destéa
-        </h2>
-        <div className="grid gap-6 sm:grid-cols-2">
-          {classes.map((c) => (
-            <Card key={c.id} className="border-primary/10">
-              <CardHeader className="pb-2">
-                <CardTitle className="font-heading text-xl">{c.nom}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
-                {c.description && <p>{c.description}</p>}
-                <div className="flex gap-4 pt-2 text-xs">
-                  <span className="flex items-center gap-1">
-                    <Shield className="h-3.5 w-3.5 text-primary/60" /> PV de départ : {c.pv_depart ?? "—"}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Swords className="h-3.5 w-3.5 text-primary/60" /> PS de départ : {c.ps_depart ?? "—"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
           ))}
         </div>
       </section>
