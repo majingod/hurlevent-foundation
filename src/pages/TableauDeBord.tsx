@@ -192,16 +192,27 @@ const TableauDeBord = () => {
   const confirmerInscription = async () => {
     if (!evenement?.id || !user) return;
     setSubmitting(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const joueurId = session?.user?.id;
+    if (!joueurId) {
+      toast.error("Session expirée, veuillez vous reconnecter.");
+      setSubmitting(false);
+      return;
+    }
     const { error } = await supabase.from("inscriptions_evenements").insert({
       evenement_id: evenement.id,
       personnage_id: selectedPersonnage,
-      joueur_id: user.id,
+      joueur_id: joueurId,
       statut: "en_attente",
-      date_inscription: new Date().toISOString(),
     });
     setSubmitting(false);
     if (error) {
-      toast.error("Erreur lors de l'inscription.");
+      if (error.code === "23505") {
+        setInscriptionIds((prev) => new Set(prev).add(evenement.id!));
+        setModalOpen(false);
+      } else {
+        toast.error("Erreur lors de l'inscription.");
+      }
     } else {
       toast.success("Inscription envoyée ! En attente de confirmation.");
       setInscriptionIds((prev) => new Set(prev).add(evenement.id!));
