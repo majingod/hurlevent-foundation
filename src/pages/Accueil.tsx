@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, MapPin, Users, Swords, Shield, Sparkles, ChevronDown } from "lucide-react";
+import { CalendarDays, MapPin, Users, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   Select,
@@ -28,22 +28,6 @@ interface ProchainEvenement {
   description: string | null;
 }
 
-interface Race {
-  id: string;
-  nom: string | null;
-  nom_latin: string | null;
-  esperance_vie: string | null;
-  xp_depart: number;
-  description: string | null;
-}
-
-interface Classe {
-  id: string;
-  nom: string | null;
-  description: string | null;
-  pv_depart: number | null;
-  ps_depart: number | null;
-}
 
 interface Personnage {
   id: string;
