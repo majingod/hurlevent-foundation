@@ -801,6 +801,7 @@ export type Database = {
         Row: {
           date_acquisition: string
           duree_choisie: string | null
+          duree_incantation_calculee: number | null
           id: string
           niveau_priere: number
           nom_personnalise: string | null
@@ -813,6 +814,7 @@ export type Database = {
         Insert: {
           date_acquisition?: string
           duree_choisie?: string | null
+          duree_incantation_calculee?: number | null
           id?: string
           niveau_priere?: number
           nom_personnalise?: string | null
@@ -825,6 +827,7 @@ export type Database = {
         Update: {
           date_acquisition?: string
           duree_choisie?: string | null
+          duree_incantation_calculee?: number | null
           id?: string
           niveau_priere?: number
           nom_personnalise?: string | null
@@ -936,6 +939,7 @@ export type Database = {
         Row: {
           date_acquisition: string
           duree_choisie: string | null
+          formule_magique: string | null
           id: string
           niveau_sort: number
           nom_personnalise: string | null
@@ -948,6 +952,7 @@ export type Database = {
         Insert: {
           date_acquisition?: string
           duree_choisie?: string | null
+          formule_magique?: string | null
           id?: string
           niveau_sort?: number
           nom_personnalise?: string | null
@@ -960,6 +965,7 @@ export type Database = {
         Update: {
           date_acquisition?: string
           duree_choisie?: string | null
+          formule_magique?: string | null
           id?: string
           niveau_sort?: number
           nom_personnalise?: string | null
