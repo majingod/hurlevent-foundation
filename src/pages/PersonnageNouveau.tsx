@@ -451,10 +451,29 @@ const PersonnageNouveau = () => {
         />
       )}
 
-      {etape >= 5 && (
+      {etape === 5 && personnageId && aCercle && (
+        <Step5Sorts
+          personnageId={personnageId}
+          niveauPersonnage={niveau}
+          xpDisponible={xpDisponible}
+          onXpSpent={(amount) => setStep5XpSpent((prev) => prev + amount)}
+        />
+      )}
+
+      {etape === 6 && personnageId && aDomaine && (
+        <Step6Prieres
+          personnageId={personnageId}
+          niveauPersonnage={niveau}
+          xpDisponible={xpDisponible}
+          religionId={religionId}
+          onXpSpent={(amount) => setStep6XpSpent((prev) => prev + amount)}
+        />
+      )}
+
+      {etape >= 7 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Les étapes 5 à 10 seront disponibles prochainement.
+            Les étapes 7 à 10 seront disponibles prochainement.
           </CardContent>
         </Card>
       )}
