@@ -182,13 +182,49 @@ const PersonnageNouveau = () => {
     }
   }, [classeId, selectedClasse]);
 
+  // État magie/divin du personnage (pour conditionner étapes 5 et 6)
+  const { data: etatPersonnage } = useQuery({
+    queryKey: ["etat-personnage-magie", personnageId, etape],
+    queryFn: async () => {
+      if (!personnageId) return null;
+      const { data } = await supabase
+        .from("vue_personnage_etat")
+        .select("niveau_cercle, niveau_domaine")
+        .eq("personnage_id", personnageId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!personnageId && etape >= 4,
+  });
+
+  const aCercle = (etatPersonnage?.niveau_cercle ?? 0) >= 1;
+  const aDomaine = (etatPersonnage?.niveau_domaine ?? 0) >= 1;
+
   // Validation
   const isStep1Valid = nomPersonnage.trim().length >= 2 && nomPersonnage.trim().length <= 50 && (!estCroyant || religionId);
   const isStep2Valid = raceId && (!isChimeride || sousTypeChimeride) && traitObligatoireId && selectedRace?.est_jouable !== false;
   const isStep3Valid = !!classeId && (classeNom !== "Prêtre" || !!religionId);
   const isStep4Valid = true; // Purchases are optional
+  const isStep5Valid = true;
+  const isStep6Valid = true;
 
-  const canGoNext = etape === 1 ? isStep1Valid : etape === 2 ? isStep2Valid : etape === 3 ? isStep3Valid : etape === 4 ? isStep4Valid : false;
+  const canGoNext =
+    etape === 1 ? isStep1Valid :
+    etape === 2 ? isStep2Valid :
+    etape === 3 ? isStep3Valid :
+    etape === 4 ? isStep4Valid :
+    etape === 5 ? isStep5Valid :
+    etape === 6 ? isStep6Valid :
+    false;
+
+  // Auto-skip étape 5 si pas de cercle, étape 6 si pas de domaine
+  useEffect(() => {
+    if (etape === 5 && etatPersonnage && !aCercle) {
+      setEtape(aDomaine ? 6 : 7);
+    } else if (etape === 6 && etatPersonnage && !aDomaine) {
+      setEtape(7);
+    }
+  }, [etape, etatPersonnage, aCercle, aDomaine]);
 
   const buildTraitsJson = (): TraitChoisi[] => {
     const result: TraitChoisi[] = [];
