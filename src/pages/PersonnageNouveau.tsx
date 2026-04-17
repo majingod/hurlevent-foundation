@@ -17,6 +17,8 @@ import { AlertTriangle, ChevronLeft, ChevronRight, Shield, Sparkles } from "luci
 import type { Json } from "@/integrations/supabase/types";
 import Step3Classe from "@/components/creation/Step3Classe";
 import Step4Competences from "@/components/creation/Step4Competences";
+import Step5Sorts from "@/components/creation/Step5Sorts";
+import Step6Prieres from "@/components/creation/Step6Prieres";
 
 const TOTAL_STEPS = 10;
 const CHIMERIDE_NOM = "Chiméride";
@@ -56,8 +58,10 @@ const PersonnageNouveau = () => {
   const [psMax, setPsMax] = useState(5);
   const [familleCriminelleId, setFamilleCriminelleId] = useState<string | null>(null);
 
-  // Step 4 XP tracking
+  // Step 4-6 XP tracking
   const [step4XpSpent, setStep4XpSpent] = useState(0);
+  const [step5XpSpent, setStep5XpSpent] = useState(0);
+  const [step6XpSpent, setStep6XpSpent] = useState(0);
 
   // Profile
   const { data: profile } = useQuery({
