@@ -316,6 +316,16 @@ const PersonnageNouveau = () => {
           })
           .eq("id", personnageId);
         if (error) throw error;
+      } else if (step === 5 || step === 6) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            xp_depense: xpDepense,
+            etape_creation: step,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
       }
 
       setEtape(step + 1);
