@@ -17,6 +17,8 @@ import { AlertTriangle, ChevronLeft, ChevronRight, Shield, Sparkles } from "luci
 import type { Json } from "@/integrations/supabase/types";
 import Step3Classe from "@/components/creation/Step3Classe";
 import Step4Competences from "@/components/creation/Step4Competences";
+import Step5Sorts from "@/components/creation/Step5Sorts";
+import Step6Prieres from "@/components/creation/Step6Prieres";
 
 const TOTAL_STEPS = 10;
 const CHIMERIDE_NOM = "Chiméride";
@@ -56,8 +58,10 @@ const PersonnageNouveau = () => {
   const [psMax, setPsMax] = useState(5);
   const [familleCriminelleId, setFamilleCriminelleId] = useState<string | null>(null);
 
-  // Step 4 XP tracking
+  // Step 4-6 XP tracking
   const [step4XpSpent, setStep4XpSpent] = useState(0);
+  const [step5XpSpent, setStep5XpSpent] = useState(0);
+  const [step6XpSpent, setStep6XpSpent] = useState(0);
 
   // Profile
   const { data: profile } = useQuery({
@@ -158,7 +162,7 @@ const PersonnageNouveau = () => {
   const xpDepart = selectedRace?.xp_depart ?? 0;
   const xpTotal = etape >= 2 && raceId ? xpDepart + xpFromExperience : 0;
   const xpTraitsOptionnels = traitsOptionnels.length * 10;
-  const xpDepense = xpTraitsOptionnels + step4XpSpent;
+  const xpDepense = xpTraitsOptionnels + step4XpSpent + step5XpSpent + step6XpSpent;
   const xpDisponible = xpTotal - xpDepense;
 
   // Selected class info
@@ -178,13 +182,49 @@ const PersonnageNouveau = () => {
     }
   }, [classeId, selectedClasse]);
 
+  // État magie/divin du personnage (pour conditionner étapes 5 et 6)
+  const { data: etatPersonnage } = useQuery({
+    queryKey: ["etat-personnage-magie", personnageId, etape],
+    queryFn: async () => {
+      if (!personnageId) return null;
+      const { data } = await supabase
+        .from("vue_personnage_etat")
+        .select("niveau_cercle, niveau_domaine")
+        .eq("personnage_id", personnageId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!personnageId && etape >= 4,
+  });
+
+  const aCercle = (etatPersonnage?.niveau_cercle ?? 0) >= 1;
+  const aDomaine = (etatPersonnage?.niveau_domaine ?? 0) >= 1;
+
   // Validation
   const isStep1Valid = nomPersonnage.trim().length >= 2 && nomPersonnage.trim().length <= 50 && (!estCroyant || religionId);
   const isStep2Valid = raceId && (!isChimeride || sousTypeChimeride) && traitObligatoireId && selectedRace?.est_jouable !== false;
   const isStep3Valid = !!classeId && (classeNom !== "Prêtre" || !!religionId);
   const isStep4Valid = true; // Purchases are optional
+  const isStep5Valid = true;
+  const isStep6Valid = true;
 
-  const canGoNext = etape === 1 ? isStep1Valid : etape === 2 ? isStep2Valid : etape === 3 ? isStep3Valid : etape === 4 ? isStep4Valid : false;
+  const canGoNext =
+    etape === 1 ? isStep1Valid :
+    etape === 2 ? isStep2Valid :
+    etape === 3 ? isStep3Valid :
+    etape === 4 ? isStep4Valid :
+    etape === 5 ? isStep5Valid :
+    etape === 6 ? isStep6Valid :
+    false;
+
+  // Auto-skip étape 5 si pas de cercle, étape 6 si pas de domaine
+  useEffect(() => {
+    if (etape === 5 && etatPersonnage && !aCercle) {
+      setEtape(aDomaine ? 6 : 7);
+    } else if (etape === 6 && etatPersonnage && !aDomaine) {
+      setEtape(7);
+    }
+  }, [etape, etatPersonnage, aCercle, aDomaine]);
 
   const buildTraitsJson = (): TraitChoisi[] => {
     const result: TraitChoisi[] = [];
@@ -273,6 +313,16 @@ const PersonnageNouveau = () => {
             famille_criminelle_id: familleCriminelleId,
             religion_id: religionId,
             etape_creation: 4,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
+      } else if (step === 5 || step === 6) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            xp_depense: xpDepense,
+            etape_creation: step,
           })
           .eq("id", personnageId);
         if (error) throw error;
@@ -401,10 +451,29 @@ const PersonnageNouveau = () => {
         />
       )}
 
-      {etape >= 5 && (
+      {etape === 5 && personnageId && aCercle && (
+        <Step5Sorts
+          personnageId={personnageId}
+          niveauPersonnage={niveau}
+          xpDisponible={xpDisponible}
+          onXpSpent={(amount) => setStep5XpSpent((prev) => prev + amount)}
+        />
+      )}
+
+      {etape === 6 && personnageId && aDomaine && (
+        <Step6Prieres
+          personnageId={personnageId}
+          niveauPersonnage={niveau}
+          xpDisponible={xpDisponible}
+          religionId={religionId}
+          onXpSpent={(amount) => setStep6XpSpent((prev) => prev + amount)}
+        />
+      )}
+
+      {etape >= 7 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Les étapes 5 à 10 seront disponibles prochainement.
+            Les étapes 7 à 10 seront disponibles prochainement.
           </CardContent>
         </Card>
       )}
