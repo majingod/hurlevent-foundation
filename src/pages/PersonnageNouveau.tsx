@@ -162,7 +162,7 @@ const PersonnageNouveau = () => {
   const xpDepart = selectedRace?.xp_depart ?? 0;
   const xpTotal = etape >= 2 && raceId ? xpDepart + xpFromExperience : 0;
   const xpTraitsOptionnels = traitsOptionnels.length * 10;
-  const xpDepense = xpTraitsOptionnels + step4XpSpent;
+  const xpDepense = xpTraitsOptionnels + step4XpSpent + step5XpSpent + step6XpSpent;
   const xpDisponible = xpTotal - xpDepense;
 
   // Selected class info
