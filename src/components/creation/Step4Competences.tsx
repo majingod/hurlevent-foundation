@@ -16,6 +16,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Lock, ShieldAlert, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { useCategoriesCreatures } from "@/hooks/useCategoriesCreatures";
+import { useLangues } from "@/hooks/useLangues";
 
 // ---- Types ----
 interface NiveauInfo {
@@ -47,9 +49,6 @@ interface PurchasedComp {
 
 // ---- Constants ----
 const CROSS_LOCK_SKILLS = ["Assemblage de Runes", "Développement Spirituel", "Développement Spirituel Supérieur"];
-const CC_CATEGORIES = ["Nature", "Artificielles", "Montagnes", "Rêves", "Mythiques", "Profondeurs", "Tombes", "Mers", "Cauchemars", "Rakashans", "Déserts", "Néant"];
-const LANGUES = ["Le Démoniaque", "Le Drow", "L'Elfique", "Le Nain", "L'Orc", "L'Ancien"];
-const LANGUES_ANCIENNES = ["L'Ancien Commun", "L'Ancien Démoniaque", "L'Ancien Drow", "L'Ancien Elfique", "L'Ancien Nain"];
 const CERCLES = ["Air", "Altération", "Charmes", "Combat", "Divination", "Eau", "Feu", "Illusion", "Magie Pure", "Magie Noire", "Nécromancie", "Protection", "Terre"];
 const DOMAINES = ["Bénédiction", "Chaos", "Connaissance", "Éléments", "Guerre", "Nature", "Nécromancie", "Ordre"];
 
@@ -150,6 +149,23 @@ const Step4Competences = ({
     },
     enabled: !!religionId,
   });
+
+  const { data: categoriesCreaturesData } = useCategoriesCreatures();
+  const { data: languesModernesData } = useLangues(false);
+  const { data: languesAnciennesData } = useLangues(true);
+
+  const ccCategories = useMemo(
+    () => categoriesCreaturesData?.map((c) => c.nom) ?? [],
+    [categoriesCreaturesData],
+  );
+  const langues = useMemo(
+    () => languesModernesData?.map((l) => l.nom) ?? [],
+    [languesModernesData],
+  );
+  const languesAnciennes = useMemo(
+    () => languesAnciennesData?.map((l) => l.nom) ?? [],
+    [languesAnciennesData],
+  );
 
   // Purchased competences (local + DB)
   const [purchased, setPurchased] = useState<PurchasedComp[]>([]);
@@ -342,7 +358,7 @@ const Step4Competences = ({
     const requiresMaster = needsMaster(comp, niveau, tabCategory);
     if (comp.nom === "Connaissance des Créatures") {
       const existingChoices = getChoices(comp.id, niveau);
-      const allCats = niveau === 1 ? CC_CATEGORIES : getChoices(comp.id, 1);
+      const allCats = niveau === 1 ? ccCategories : getChoices(comp.id, 1);
       const available = allCats.filter((c) => !existingChoices.includes(c));
       if (available.length === 0) { toast.error("Toutes les catégories ont déjà été choisies."); return; }
       setChoiceModal({ competence: comp, niveau, coutXp, needsMaster: requiresMaster, options: available.map((v) => ({ value: v, label: v })), title: `Choisir une catégorie de créatures (niveau ${niveau})` });
@@ -350,14 +366,14 @@ const Step4Competences = ({
     }
     if (comp.nom === "Langue supplémentaire") {
       const existingChoices = getChoices(comp.id);
-      const available = LANGUES.filter((l) => !existingChoices.includes(l));
+      const available = langues.filter((l) => !existingChoices.includes(l));
       if (available.length === 0) { toast.error("Toutes les langues ont déjà été choisies."); return; }
       setChoiceModal({ competence: comp, niveau, coutXp, needsMaster: requiresMaster, options: available.map((v) => ({ value: v, label: v })), title: "Choisir une langue" });
       setChoiceValue(""); return;
     }
     if (comp.nom === "Décryptage") {
       const existingChoices = getChoices(comp.id);
-      const available = LANGUES_ANCIENNES.filter((l) => !existingChoices.includes(l));
+      const available = languesAnciennes.filter((l) => !existingChoices.includes(l));
       if (available.length === 0) { toast.error("Toutes les langues anciennes ont déjà été choisies."); return; }
       setChoiceModal({ competence: comp, niveau, coutXp, needsMaster: requiresMaster, options: available.map((v) => ({ value: v, label: v })), title: "Choisir une langue ancienne" });
       setChoiceValue(""); return;
