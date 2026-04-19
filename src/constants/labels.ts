@@ -1,7 +1,6 @@
 // ============================================================
 // MAPPINGS LABELS — Hurlevent
 // Valeurs brutes DB → labels affichés dans l'interface
-// Utilisé par : A2, A3, 08, 09, 10, 11a, 11b
 // ============================================================
 
 // --- Événements ---
@@ -38,10 +37,10 @@ export const TYPE_RECETTE_LABELS: Record<string, string> = {
 // --- Compétences (statut maître) ---
 
 export const STATUT_MAITRE_LABELS: Record<string, string> = {
-  non_requis: "Aucun maître requis",
+  non_requis: "Sans maître",
   en_attente: "En attente d'approbation",
   approuve:   "Approuvé",
-  refuse:     "Refusé — contacter l'organisation",
+  refuse:     "Refusé",
 };
 
 // --- Bestiaire ---
@@ -68,12 +67,26 @@ export const TYPE_PIEGE_LABELS: Record<string, string> = {
   magique:  "Magique",
 };
 
+export const NIVEAU_PIEGE_LABELS: Record<number, string> = {
+  1: "Niveau 1",
+  2: "Niveau 2",
+  3: "Niveau 3",
+};
+
 // --- Réparations forge ---
 
 export const CATEGORIE_REPARATION_LABELS: Record<string, string> = {
-  arme:    "Armes",
-  armure:  "Armures",
-  bouclier:"Boucliers",
+  arme:     "Armes",
+  armure:   "Armures",
+  bouclier: "Boucliers",
+};
+
+// --- Lore ---
+
+export const CATEGORIE_LORE_LABELS: Record<string, string> = {
+  region:   "Région",
+  cite:     "Cité",
+  histoire: "Histoire",
 };
 
 // --- Statut personnage ---
@@ -83,76 +96,3 @@ export const STATUT_PERSONNAGE_LABELS = {
   inactif: "Inactif",
   decede:  "Décédé",
 } as const;
-
-// ============================================================
-// AJOUTS 2026-04-17
-// ============================================================
-
-// ------------------------------------------------------------
-// STATUT MAÎTRE — personnage_competences.statut_maitre
-// ------------------------------------------------------------
-
-export const STATUT_MAITRE_LABELS: Record<string, string> = {
-  non_requis:  "Sans maître",
-  en_attente:  "En attente d'approbation",
-  approuve:    "Approuvé",
-  refuse:      "Refusé",
-};
-
-// ------------------------------------------------------------
-// STATUT INSCRIPTION — inscriptions_evenements.statut
-// ------------------------------------------------------------
-
-export const STATUT_INSCRIPTION_LABELS: Record<string, string> = {
-  en_attente:  "En attente",
-  present:     "Présence confirmée",
-  absent:      "Absent",
-  annule:      "Annulée",
-};
-
-// ------------------------------------------------------------
-// CATÉGORIE RÉPARATION — reparations_forge.categorie
-// ------------------------------------------------------------
-
-export const CATEGORIE_REPARATION_LABELS: Record<string, string> = {
-  arme:     "Armes",
-  armure:   "Armures",
-  bouclier: "Boucliers",
-};
-
-// ------------------------------------------------------------
-// CATÉGORIE BESTIAIRE — bestiaire.categorie
-// ------------------------------------------------------------
-
-export const CATEGORIE_BESTIAIRE_LABELS: Record<string, string> = {
-  mort_vivant: "Mort-Vivant",
-};
-
-// ------------------------------------------------------------
-// CATÉGORIE LORE — lore.categorie
-// ------------------------------------------------------------
-
-export const CATEGORIE_LORE_LABELS: Record<string, string> = {
-  region:   "Région",
-  cite:     "Cité",
-  histoire: "Histoire",
-};
-
-// ------------------------------------------------------------
-// NIVEAU PIÈGE — pieges.niveau
-// ------------------------------------------------------------
-
-export const NIVEAU_PIEGE_LABELS: Record<number, string> = {
-  1: "Niveau 1",
-  2: "Niveau 2",
-  3: "Niveau 3",
-};
-
-// ------------------------------------------------------------
-// TYPE PIÈGE — pieges.type_piege
-// ------------------------------------------------------------
-
-export const TYPE_PIEGE_LABELS: Record<string, string> = {
-  physique: "Physique",
-  magique:  "Magique",
-};
