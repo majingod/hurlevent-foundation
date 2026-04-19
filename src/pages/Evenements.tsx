@@ -95,7 +95,7 @@ const Evenements = () => {
           .from("inscriptions_evenements")
           .select("*", { count: "exact", head: true })
           .eq("evenement_id", ev.id)
-          .in("statut", ["confirme", "present"]);
+          .eq("statut", "present");
         events.push({ ...ev, nb_inscrits: count ?? 0 });
       }
       setEvenements(events);
