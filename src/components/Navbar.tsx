@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMenuNavigation } from "@/hooks/useMenuNavigation";
 import { Menu } from "lucide-react";
 import {
   Sheet,
@@ -14,14 +15,13 @@ const Navbar = () => {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { data: menuItems } = useMenuNavigation(role);
 
   const handleSignOut = async () => {
     setOpen(false);
     await signOut();
     navigate("/");
   };
-
-  const isAdmin = role === "admin" || role === "animateur";
 
   const close = () => setOpen(false);
 
@@ -50,19 +50,9 @@ const Navbar = () => {
             </SheetHeader>
 
             <nav className="flex flex-1 flex-col gap-1 px-4">
-              <NavItem to="/" label="Accueil" onClick={close} />
-              <NavItem to="/regles" label="Règles" onClick={close} />
-              <NavItem to="/encyclopedie" label="Encyclopédie" onClick={close} />
-              <NavItem to="/evenements" label="Événements" onClick={close} />
-
-              {user && (
-                <>
-                  <NavItem to="/tableau-de-bord" label="Tableau de bord" onClick={close} />
-                  {isAdmin && (
-                    <NavItem to="/administration" label="Administration" onClick={close} />
-                  )}
-                </>
-              )}
+              {menuItems?.filter(item => item.afficher_navbar).map(item => (
+                <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
+              ))}
 
               <div className="mt-auto pt-8">
                 {user ? (
