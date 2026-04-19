@@ -94,14 +94,12 @@ const statutBadge = (s: string | null) => {
   switch (s) {
     case "en_attente":
       return <Badge className="bg-yellow-600 hover:bg-yellow-600 text-foreground">En attente</Badge>;
-    case "confirme":
-      return <Badge className="bg-green-700 hover:bg-green-700 text-foreground">Confirmé</Badge>;
     case "present":
       return <Badge className="bg-blue-700 hover:bg-blue-700 text-foreground">Présent</Badge>;
-    case "annule":
-      return <Badge variant="destructive">Annulé</Badge>;
     case "absent":
       return <Badge variant="secondary">Absent</Badge>;
+    case "annule":
+      return <Badge variant="destructive">Annulé</Badge>;
     default:
       return <Badge variant="outline">{s}</Badge>;
   }
