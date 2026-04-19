@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -99,21 +100,10 @@ type SectionKey =
   | "races" | "traits" | "classes" | "competences" | "magie" | "prieres" | "religions"
   | "alchimie" | "assemblages" | "forge" | "bestiaire" | "lore" | "pieges";
 
-const sections: { key: SectionKey; label: string; icon: React.ElementType }[] = [
-  { key: "races", label: "Races", icon: Users },
-  { key: "traits", label: "Traits Raciaux", icon: Sparkle },
-  { key: "classes", label: "Classes", icon: Shield },
-  { key: "competences", label: "Compétences", icon: Swords },
-  { key: "magie", label: "Sorts (Mage)", icon: Sparkles },
-  { key: "prieres", label: "Prières (Prêtre)", icon: Church },
-  { key: "religions", label: "Religions", icon: BookOpen },
-  { key: "alchimie", label: "Alchimie", icon: FlaskConical },
-  { key: "assemblages", label: "Runes", icon: Gem },
-  { key: "forge", label: "Forge & Joaillerie", icon: Hammer },
-  { key: "pieges", label: "Pièges", icon: Bomb },
-  { key: "bestiaire", label: "Bestiaire", icon: Skull },
-  { key: "lore", label: "Monde de Destéa", icon: Globe },
-];
+const LUCIDE_ICON_MAP: Record<string, React.ElementType> = {
+  Users, Sparkle, Shield, Swords, Sparkles, Church,
+  BookOpen, FlaskConical, Gem, Hammer, Bomb, Skull, Globe,
+};
 
 const URL_TO_KEY: Record<string, SectionKey> = {
   "races": "races",
@@ -158,6 +148,7 @@ function filterByText<T>(arr: T[], q: string, fields: (item: T) => string[]): T[
 /* ── component ── */
 
 const Encyclopedie = () => {
+  const { data: sectionData } = useSectionsEncyclopedie();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (URL_TO_KEY[searchParams.get("tab") ?? ""] ?? "races") as SectionKey;
   const [active, setActive] = useState<SectionKey>(initialTab);
@@ -269,13 +260,17 @@ const Encyclopedie = () => {
         {/* ── Sidebar nav ── */}
         <nav className="md:w-56 flex-shrink-0">
           <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible md:sticky md:top-24">
-            {sections.map((s) => {
-              const Icon = s.icon;
-              const isActive = active === s.key;
+            {/* joaillerie filtré : pas de composant de rendu séparé (ForgeJoaillerieSection couvre les deux).
+                TODO: retirer ce filtre lors du refactor complet (Option B) qui séparera les deux sections. */}
+            {sectionData?.filter(s => s.cle !== "joaillerie").map(s => {
+              const Icon = LUCIDE_ICON_MAP[s.icon_nom] ?? Globe;
+              const isActive = active === s.cle;
               return (
                 <button
-                  key={s.key}
-                  onClick={() => handleTabClick(s.key)}
+                  // TODO: le cast as SectionKey est fragile — acceptable tant que joaillerie est filtré.
+                  // À supprimer lors du refactor complet (Option B).
+                  key={s.cle}
+                  onClick={() => handleTabClick(s.cle as SectionKey)}
                   className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-primary text-primary-foreground"
