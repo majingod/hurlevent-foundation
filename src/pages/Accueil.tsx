@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useCartesAccueil } from "@/hooks/useCartesAccueil";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,22 +55,12 @@ const typeLabel = (t: string | null) => {
   }
 };
 
-/* ---------- feature cards ---------- */
-const featureCards = [
-  { emoji: "👥", title: "Races jouables", desc: "Découvrez les races de Destéa, leurs traits uniques, leur espérance de vie et leurs XP de départ.", tab: "races" },
-  { emoji: "✦", title: "Traits raciaux", desc: "Chaque race possède des traits uniques achetables avec vos XP pour personnaliser votre personnage.", tab: "traits-raciaux" },
-  { emoji: "⚔️", title: "Classes de combat", desc: "Guerrier, Voleur, Mage ou Prêtre — choisissez votre voie et vos compétences de classe.", tab: "classes" },
-  { emoji: "📜", title: "Compétences", desc: "Des dizaines de compétences à débloquer avec vos XP, réparties par classe et par niveau de maîtrise.", tab: "competences" },
-  { emoji: "🔮", title: "Magie arcanique", desc: "11 cercles de magie, 135 sorts à personnaliser — zone, portée, durée et niveau sont tous modulables.", tab: "magie" },
-  { emoji: "🙏", title: "Magie divine", desc: "8 domaines de prières pour les prêtres, liés aux religions et cultes du monde de Destéa.", tab: "prieres" },
-  { emoji: "✝", title: "Religions & Cultes", desc: "Rejoignez l'un des cultes de Destéa, obtenez le pouvoir de votre symbole sacré et accédez à des domaines exclusifs.", tab: "religions" },
-  { emoji: "🌍", title: "Régions & Cités", desc: "Explorez la géographie du monde de Destéa — royaumes, empires et cités qui forment l'univers d'Hurlevent.", tab: "monde" },
-];
-
 /* ---------- component ---------- */
 const Accueil = () => {
   const { user } = useAuth();
   const creerLink = user ? "/personnage/nouveau" : "/connexion";
+
+  const { data: cartes, loading: cartesLoading } = useCartesAccueil();
 
   const [evenement, setEvenement] = useState<ProchainEvenement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -257,18 +248,20 @@ const Accueil = () => {
           La plateforme Hurlevent centralise tout ce qu'il vous faut pour préparer votre aventure dans le monde de Destéa.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {featureCards.map((c) => (
+          {cartesLoading ? (
+            <p className="col-span-full text-center text-muted-foreground">Chargement…</p>
+          ) : cartes?.map(c => (
             <Link
-              key={c.tab}
-              to={`/encyclopedie?tab=${c.tab}`}
+              key={c.id}
+              to={`/encyclopedie?tab=${c.tab_cible}`}
               className="group rounded-lg border p-5 transition-colors hover:border-primary/60"
               style={{ background: "#111111", borderColor: "#c9a84c33" }}
             >
               <span className="text-2xl">{c.emoji}</span>
               <h3 className="mt-2 font-heading text-base font-semibold text-foreground group-hover:text-primary">
-                {c.title}
+                {c.titre}
               </h3>
-              <p className="mt-1 text-xs text-muted-foreground">{c.desc}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{c.description}</p>
             </Link>
           ))}
         </div>
