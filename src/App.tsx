@@ -18,6 +18,12 @@ import PersonnageNouveau from "@/pages/PersonnageNouveau";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 import Administration from "@/pages/Administration";
 import AdministrationEvenements from "@/pages/AdministrationEvenements";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminJoueurs from "@/pages/admin/AdminJoueurs";
+import AdminPersonnages from "@/pages/admin/AdminPersonnages";
+import AdminEvenements from "@/pages/admin/AdminEvenements";
+import AdminCompetencesMaitre from "@/pages/admin/AdminCompetencesMaitre";
+import AdminDonnees from "@/pages/admin/AdminDonnees";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +76,38 @@ const App = () => (
               <Route path="/administration/evenements" element={
                 <ProtectedRoute allowedRoles={["animateur", "admin"]}>
                   <AdministrationEvenements />
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Panel Routes */}
+              <Route path="/administration/tableau-de-bord" element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/administration/joueurs" element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminJoueurs />
+                </ProtectedRoute>
+              } />
+              <Route path="/administration/personnages" element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminPersonnages />
+                </ProtectedRoute>
+              } />
+              <Route path="/administration/evenements-admin" element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminEvenements />
+                </ProtectedRoute>
+              } />
+              <Route path="/administration/competences-maitre" element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminCompetencesMaitre />
+                </ProtectedRoute>
+              } />
+              <Route path="/administration/donnees" element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDonnees />
                 </ProtectedRoute>
               } />
 
