@@ -164,10 +164,10 @@ function toast({ ...props }: Toast) {
 }
 
 toast.success = (title: React.ReactNode, description?: React.ReactNode) =>
-  toast({ title, description, variant: "default" });
+  toast({ title: String(title), description, variant: "default" });
 
 toast.error = (title: React.ReactNode, description?: React.ReactNode) =>
-  toast({ title, description, variant: "destructive" });
+  toast({ title: String(title), description, variant: "destructive" });
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);

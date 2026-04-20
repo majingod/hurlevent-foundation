@@ -17,7 +17,7 @@ interface Assemblage {
   description_longue: string | null;
   effet: string | null;
   cible: string | null;
-  runes_requises: string | null;
+  runes_requises: string[] | null;
   cout_ps: number | null;
 }
 

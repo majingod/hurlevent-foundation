@@ -204,7 +204,7 @@ const PersonnageNouveau = () => {
       if (!personnageId) return null;
       const { data } = await supabase
         .from("vue_personnage_etat")
-        .select("niveau_cercle, niveau_domaine, niveau_runes")
+        .select("niveau_cercle, niveau_domaine, niveau_runes, quota_assemblages_total")
         .eq("personnage_id", personnageId)
         .maybeSingle();
       return data;
