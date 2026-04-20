@@ -236,15 +236,30 @@ const Step10Recapitulatif = ({
     fetchData();
   }, [personnageId, toast]);
 
+  const escapeHtml = (value: unknown) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    const safeNomPersonnage = escapeHtml(nomPersonnage);
+    const safeRaceNom = escapeHtml(raceNom);
+    const safeRaceNomLatin = raceNomLatin ? escapeHtml(raceNomLatin) : "";
+    const safeClasseNom = escapeHtml(classeNom);
+    const safeReligionNom = religionNom ? escapeHtml(religionNom) : "";
+    const safeFamilleCriminelleNom = familleCriminelleNom ? escapeHtml(familleCriminelleNom) : "";
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Fiche de ${nomPersonnage}</title>
+        <title>Fiche de ${safeNomPersonnage}</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; }
           h1 { font-size: 24px; margin-bottom: 10px; }
@@ -259,26 +274,26 @@ const Step10Recapitulatif = ({
         </style>
       </head>
       <body>
-        <h1>Fiche de ${nomPersonnage}</h1>
+        <h1>Fiche de ${safeNomPersonnage}</h1>
         
         <h2>Informations générales</h2>
         <div class="grid">
-          <div class="item"><span class="label">Race :</span> ${raceNom}${raceNomLatin ? ` (${raceNomLatin})` : ""}</div>
-          <div class="item"><span class="label">Classe :</span> ${classeNom}</div>
+          <div class="item"><span class="label">Race :</span> ${safeRaceNom}${safeRaceNomLatin ? ` (${safeRaceNomLatin})` : ""}</div>
+          <div class="item"><span class="label">Classe :</span> ${safeClasseNom}</div>
           <div class="item"><span class="label">Niveau :</span> ${niveau}</div>
           <div class="item"><span class="label">XP Total :</span> ${xpTotal}</div>
           <div class="item"><span class="label">PV Max :</span> ${pvMax}</div>
           <div class="item"><span class="label">PS Max :</span> ${psMax}</div>
-          ${religionNom ? `<div class="item"><span class="label">Religion :</span> ${religionNom}</div>` : ""}
-          ${familleCriminelleNom ? `<div class="item"><span class="label">Famille criminelle :</span> ${familleCriminelleNom}</div>` : ""}
+          ${safeReligionNom ? `<div class="item"><span class="label">Religion :</span> ${safeReligionNom}</div>` : ""}
+          ${safeFamilleCriminelleNom ? `<div class="item"><span class="label">Famille criminelle :</span> ${safeFamilleCriminelleNom}</div>` : ""}
         </div>
 
         <h2>Historique et âme</h2>
         <div class="section">
           <h3>Historique</h3>
-          <p>${historique || "(Non renseigné)"}</p>
+          <p>${escapeHtml(historique || "(Non renseigné)")}</p>
           <h3>Âme</h3>
-          <p>${amePersonnage || "(Non renseigné)"}</p>
+          <p>${escapeHtml(amePersonnage || "(Non renseigné)")}</p>
         </div>
 
         <h2>Compétences</h2>
@@ -286,10 +301,10 @@ const Step10Recapitulatif = ({
           <tr><th>Compétence</th><th>Niveau</th><th>XP</th><th>Statut</th></tr>
           ${competences.map((c) => `
             <tr>
-              <td>${c.competence_nom}</td>
+              <td>${escapeHtml(c.competence_nom)}</td>
               <td>${c.niveau_acquis}</td>
               <td>${c.xp_depense === 0 ? "Gratuit" : c.xp_depense}</td>
-              <td>${c.statut_maitre !== "non_requis" ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre : "—"}</td>
+              <td>${escapeHtml(c.statut_maitre !== "non_requis" ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre : "—")}</td>
             </tr>
           `).join("")}
         </table>
