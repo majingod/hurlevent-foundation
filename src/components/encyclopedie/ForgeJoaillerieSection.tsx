@@ -3,8 +3,14 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, Clock } from "lucide-react";
+import { ChevronDown, Clock, Info } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
+import { 
+  TYPE_OBJET_FORGE_LABELS, 
+  STATS_FORGE_LABELS,
+  NOTE_FORGE,
+  NOTE_JOAILLERIE
+} from "@/constants/artisanat";
 
 interface ObjetForge {
   id: string;
@@ -49,13 +55,15 @@ const labelReparation: Record<string, string> = {
 };
 
 const ForgeJoaillerieSection = ({
-  forge,
-  joaillerie,
+  mode,
+  forge = [],
+  joaillerie = [],
   reparations = [],
   searchQuery = "",
 }: {
-  forge: ObjetForge[];
-  joaillerie: ObjetJoaillerie[];
+  mode: "forge" | "joaillerie";
+  forge?: ObjetForge[];
+  joaillerie?: ObjetJoaillerie[];
   reparations?: Reparation[];
   searchQuery?: string;
 }) => {
@@ -93,20 +101,31 @@ const ForgeJoaillerieSection = ({
     ...Object.keys(repsByCat).filter((k) => !repCatOrder.includes(k)),
   ];
 
-  const noResults = fForge.length === 0 && fJoail.length === 0 && fReps.length === 0;
+  const noResults = mode === "forge" ? (fForge.length === 0 && fReps.length === 0) : (fJoail.length === 0);
 
   return (
     <div className="space-y-8">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Forge et Joaillerie</h2>
+      <h2 className="font-heading text-2xl font-bold text-primary mb-4">
+        {mode === "forge" ? "Forge" : "Joaillerie"}
+      </h2>
 
       {noResults && q && (
         <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
       )}
 
       {/* Forge */}
-      {fForge.length > 0 && (
-        <section>
-          <h3 className="font-heading text-lg font-semibold text-primary mb-3">Forge</h3>
+      {mode === "forge" && fForge.length > 0 && (
+        <section className="space-y-6">
+          <div className="rounded-md border border-primary/30 bg-[#111111] p-4 text-sm text-muted-foreground space-y-2">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p><span className="font-medium text-foreground">Niveau 1 :</span> {NOTE_FORGE[1]}</p>
+                <p><span className="font-medium text-foreground">Niveau 2+ :</span> {NOTE_FORGE[2]}</p>
+              </div>
+            </div>
+          </div>
+
           {forgeKeys.map((diff) => (
             <div key={diff} className="mb-4">
               <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
@@ -115,12 +134,13 @@ const ForgeJoaillerieSection = ({
               <Accordion type="multiple" className="w-full">
                 {forgeByDiff[diff].map((o) => {
                   const stats = o.stats && typeof o.stats === "object" && !Array.isArray(o.stats) ? o.stats as Record<string, any> : null;
+                  const typeLabel = o.type ? (TYPE_OBJET_FORGE_LABELS[o.type] || o.type) : null;
                   return (
                     <AccordionItem key={o.id} value={o.id}>
                       <AccordionTrigger className="font-heading text-base hover:no-underline">
                         <span className="flex items-center gap-2">
                           {o.nom}
-                          {o.type && <span className="text-xs text-muted-foreground">({o.type})</span>}
+                          {typeLabel && <span className="text-xs text-muted-foreground">({typeLabel})</span>}
                         </span>
                       </AccordionTrigger>
                       <AccordionContent className="text-sm text-muted-foreground space-y-2">
@@ -128,7 +148,7 @@ const ForgeJoaillerieSection = ({
                         {stats && (
                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
                             {Object.entries(stats).map(([k, v]) => (
-                              <span key={k}><span className="font-medium text-foreground">{k} :</span> {String(v)}</span>
+                              <span key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</span>
                             ))}
                           </div>
                         )}
@@ -143,9 +163,18 @@ const ForgeJoaillerieSection = ({
       )}
 
       {/* Joaillerie */}
-      {fJoail.length > 0 && (
-        <section>
-          <h3 className="font-heading text-lg font-semibold text-primary mb-3">Joaillerie</h3>
+      {mode === "joaillerie" && fJoail.length > 0 && (
+        <section className="space-y-6">
+          <div className="rounded-md border border-primary/30 bg-[#111111] p-4 text-sm text-muted-foreground space-y-2">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p><span className="font-medium text-foreground">Niveau 1 :</span> {NOTE_JOAILLERIE[1]}</p>
+                <p><span className="font-medium text-foreground">Niveau 2+ :</span> {NOTE_JOAILLERIE[2]}</p>
+              </div>
+            </div>
+          </div>
+
           {joailKeys.map((diff) => (
             <div key={diff} className="mb-4">
               <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">

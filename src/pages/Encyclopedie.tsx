@@ -98,7 +98,7 @@ interface TraitRacial {
 
 type SectionKey =
   | "races" | "traits" | "classes" | "competences" | "magie" | "prieres" | "religions"
-  | "alchimie" | "assemblages" | "forge" | "bestiaire" | "lore" | "pieges";
+  | "alchimie" | "assemblages" | "forge" | "joaillerie" | "bestiaire" | "lore" | "pieges";
 
 const LUCIDE_ICON_MAP: Record<string, React.ElementType> = {
   Users, Sparkle, Shield, Swords, Sparkles, Church,
@@ -118,6 +118,7 @@ const URL_TO_KEY: Record<string, SectionKey> = {
   "alchimie": "alchimie",
   "runes": "assemblages",
   "forge": "forge",
+  "joaillerie": "joaillerie",
   "bestiaire": "bestiaire",
 };
 
@@ -260,15 +261,11 @@ const Encyclopedie = () => {
         {/* ── Sidebar nav ── */}
         <nav className="md:w-56 flex-shrink-0">
           <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible md:sticky md:top-24">
-            {/* joaillerie filtré : pas de composant de rendu séparé (ForgeJoaillerieSection couvre les deux).
-                TODO: retirer ce filtre lors du refactor complet (Option B) qui séparera les deux sections. */}
-            {sectionData?.filter(s => s.cle !== "joaillerie").map(s => {
+            {sectionData?.map(s => {
               const Icon = LUCIDE_ICON_MAP[s.icon_nom] ?? Globe;
               const isActive = active === s.cle;
               return (
                 <button
-                  // TODO: le cast as SectionKey est fragile — acceptable tant que joaillerie est filtré.
-                  // À supprimer lors du refactor complet (Option B).
                   key={s.cle}
                   onClick={() => handleTabClick(s.cle as SectionKey)}
                   className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
@@ -307,7 +304,21 @@ const Encyclopedie = () => {
           {active === "religions" && <ReligionsSection religions={religions} searchQuery={search} />}
           {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} />}
           {active === "assemblages" && <AssemblagesSection assemblages={assemblages} />}
-          {active === "forge" && <ForgeJoaillerieSection forge={forge} joaillerie={joaillerie} reparations={reparations} searchQuery={search} />}
+          {active === "forge" && (
+            <ForgeJoaillerieSection
+              mode="forge"
+              forge={forge}
+              reparations={reparations}
+              searchQuery={search}
+            />
+          )}
+          {active === "joaillerie" && (
+            <ForgeJoaillerieSection
+              mode="joaillerie"
+              joaillerie={joaillerie}
+              searchQuery={search}
+            />
+          )}
           {active === "pieges" && <PiegesSection pieges={pieges} searchQuery={search} />}
           {active === "bestiaire" && <BestiaireSection creatures={creatures} searchQuery={search} />}
           {active === "lore" && <LoreSection regions={regions} cites={cites} />}

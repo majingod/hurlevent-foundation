@@ -35,6 +35,7 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: "magie", label: "Règles de magie" },
   { key: "creation_sorts", label: "Construction des sorts" },
   { key: "artisanat", label: "Artisanat & Créations" },
+  { key: "lexique", label: "Lexique des effets de combat" },
 ];
 
 const typesEffet = ["debuff", "controle", "degats", "utilitaire", "mort"] as const;
@@ -138,7 +139,7 @@ const Regles = () => {
       {/* En-tête */}
       <div className="mb-6">
         <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-2">
-          Règles & Encyclopédie
+          Règles et Lexique
         </h1>
         <p className="text-muted-foreground italic">
           Manuel officiel du GN Hurlevent — Monde de Destéa
@@ -173,131 +174,127 @@ const Regles = () => {
 
         {CATEGORIES.map((c) => (
           <TabsContent key={c.key} value={c.key} className="mt-0 space-y-4">
-            {loading ? (
-              <p className="text-muted-foreground text-center py-8">Chargement…</p>
-            ) : sectionsFiltrees.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                {recherche ? "Aucune règle trouvée pour cette recherche." : "Aucune règle disponible."}
-              </p>
-            ) : (
-              sectionsFiltrees.map((s) => (
-                <article
-                  key={s.id}
-                  className="rounded-md bg-[#111111] border-l-[3px] border-primary p-5 shadow-sm"
-                >
-                  <h2 className="font-heading text-xl text-primary mb-3">{s.titre}</h2>
-                  <div className="text-[#f5f0e8] text-sm">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                      {s.contenu ?? ""}
-                    </ReactMarkdown>
+            {c.key === "lexique" ? (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher un effet…"
+                      value={rechercheLex}
+                      onChange={(e) => setRechercheLex(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
-                </article>
-              ))
+
+                  {hasTypes && (
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-sm text-muted-foreground mr-1 self-center">Type :</span>
+                      {typesEffet.map((t) => (
+                        <Badge
+                          key={t}
+                          variant={filtreType === t ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => setFiltreType(filtreType === t ? null : t)}
+                        >
+                          {labelType[t]}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {hasSources && (
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-sm text-muted-foreground mr-1 self-center">Source :</span>
+                      {sourcesEffet.map((s) => (
+                        <Badge
+                          key={s}
+                          variant={filtreSource === s ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => setFiltreSource(filtreSource === s ? null : s)}
+                        >
+                          {labelSource[s]}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {loading ? (
+                  <p className="text-muted-foreground text-center py-8">Chargement…</p>
+                ) : effetsFiltres.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    Aucun effet trouvé pour cette recherche.
+                  </p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {effetsFiltres.map((e) => (
+                      <Card key={e.id} className="border-border hover:border-primary/40 transition-colors">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="font-heading text-lg">{e.nom}</CardTitle>
+                            <div className="flex gap-1 flex-shrink-0">
+                              {e.type && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {labelType[e.type] ?? e.type}
+                                </Badge>
+                              )}
+                              {e.source && (
+                                <Badge variant="outline" className="text-xs">
+                                  {labelSource[e.source] ?? e.source}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          {e.description && <p className="text-muted-foreground">{e.description}</p>}
+                          {e.duree && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>Durée : {e.duree}</span>
+                            </div>
+                          )}
+                          {e.conditions && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              <span>Conditions : {e.conditions}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {loading ? (
+                  <p className="text-muted-foreground text-center py-8">Chargement…</p>
+                ) : sectionsFiltrees.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    {recherche ? "Aucune règle trouvée pour cette recherche." : "Aucune règle disponible."}
+                  </p>
+                ) : (
+                  sectionsFiltrees.map((s) => (
+                    <article
+                      key={s.id}
+                      className="rounded-md bg-[#111111] border-l-[3px] border-primary p-5 shadow-sm"
+                    >
+                      <h2 className="font-heading text-xl text-primary mb-3">{s.titre}</h2>
+                      <div className="text-[#f5f0e8] text-sm">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                          {s.contenu ?? ""}
+                        </ReactMarkdown>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </>
             )}
           </TabsContent>
         ))}
       </Tabs>
-
-      {/* Lexique des effets */}
-      <section className="mt-12 pt-8 border-t border-border">
-        <h2 className="font-heading text-2xl md:text-3xl font-bold text-primary mb-2">
-          Lexique des effets de combat
-        </h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Tous les effets pouvant affecter un personnage en jeu.
-        </p>
-
-        <div className="space-y-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un effet…"
-              value={rechercheLex}
-              onChange={(e) => setRechercheLex(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {hasTypes && (
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-muted-foreground mr-1 self-center">Type :</span>
-              {typesEffet.map((t) => (
-                <Badge
-                  key={t}
-                  variant={filtreType === t ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setFiltreType(filtreType === t ? null : t)}
-                >
-                  {labelType[t]}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {hasSources && (
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-muted-foreground mr-1 self-center">Source :</span>
-              {sourcesEffet.map((s) => (
-                <Badge
-                  key={s}
-                  variant={filtreSource === s ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setFiltreSource(filtreSource === s ? null : s)}
-                >
-                  {labelSource[s]}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {loading ? (
-          <p className="text-muted-foreground text-center py-8">Chargement…</p>
-        ) : effetsFiltres.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">
-            Aucun effet trouvé pour cette recherche.
-          </p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {effetsFiltres.map((e) => (
-              <Card key={e.id} className="border-border hover:border-primary/40 transition-colors">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="font-heading text-lg">{e.nom}</CardTitle>
-                    <div className="flex gap-1 flex-shrink-0">
-                      {e.type && (
-                        <Badge variant="secondary" className="text-xs">
-                          {labelType[e.type] ?? e.type}
-                        </Badge>
-                      )}
-                      {e.source && (
-                        <Badge variant="outline" className="text-xs">
-                          {labelSource[e.source] ?? e.source}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {e.description && <p className="text-muted-foreground">{e.description}</p>}
-                  {e.duree && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>Durée : {e.duree}</span>
-                    </div>
-                  )}
-                  {e.conditions && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      <span>Conditions : {e.conditions}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 };

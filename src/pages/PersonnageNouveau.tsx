@@ -19,6 +19,10 @@ import Step3Classe from "@/components/creation/Step3Classe";
 import Step4Competences from "@/components/creation/Step4Competences";
 import Step5Sorts from "@/components/creation/Step5Sorts";
 import Step6Prieres from "@/components/creation/Step6Prieres";
+import Step7Artisanat from "@/components/creation/Step7Artisanat";
+import Step8Runes from "@/components/creation/Step8Runes";
+import Step9Historique from "@/components/creation/Step9Historique";
+import Step10Recapitulatif from "@/components/creation/Step10Recapitulatif";
 
 const TOTAL_STEPS = 10;
 const CHIMERIDE_NOM = "Chiméride";
@@ -62,6 +66,17 @@ const PersonnageNouveau = () => {
   const [step4XpSpent, setStep4XpSpent] = useState(0);
   const [step5XpSpent, setStep5XpSpent] = useState(0);
   const [step6XpSpent, setStep6XpSpent] = useState(0);
+
+  // Step 7-8 XP tracking
+  const [step7XpSpent, setStep7XpSpent] = useState(0);
+  const [step8XpSpent, setStep8XpSpent] = useState(0);
+
+  // Step 9 fields (Historique et Âme)
+  const [historique, setHistorique] = useState("");
+  const [amePersonnage, setAmePersonnage] = useState("");
+
+  // Step 10 fields (loaded from DB)
+  const [step10Data, setStep10Data] = useState<any>(null);
 
   // Profile
   const { data: profile } = useQuery({
@@ -162,7 +177,7 @@ const PersonnageNouveau = () => {
   const xpDepart = selectedRace?.xp_depart ?? 0;
   const xpTotal = etape >= 2 && raceId ? xpDepart + xpFromExperience : 0;
   const xpTraitsOptionnels = traitsOptionnels.length * 10;
-  const xpDepense = xpTraitsOptionnels + step4XpSpent + step5XpSpent + step6XpSpent;
+  const xpDepense = xpTraitsOptionnels + step4XpSpent + step5XpSpent + step6XpSpent + step7XpSpent + step8XpSpent;
   const xpDisponible = xpTotal - xpDepense;
 
   // Selected class info
@@ -182,14 +197,14 @@ const PersonnageNouveau = () => {
     }
   }, [classeId, selectedClasse]);
 
-  // État magie/divin du personnage (pour conditionner étapes 5 et 6)
+  // État magie/divin du personnage (pour conditionner étapes 5, 6 et 8)
   const { data: etatPersonnage } = useQuery({
     queryKey: ["etat-personnage-magie", personnageId, etape],
     queryFn: async () => {
       if (!personnageId) return null;
       const { data } = await supabase
         .from("vue_personnage_etat")
-        .select("niveau_cercle, niveau_domaine")
+        .select("niveau_cercle, niveau_domaine, niveau_runes")
         .eq("personnage_id", personnageId)
         .maybeSingle();
       return data;
@@ -199,6 +214,7 @@ const PersonnageNouveau = () => {
 
   const aCercle = (etatPersonnage?.niveau_cercle ?? 0) >= 1;
   const aDomaine = (etatPersonnage?.niveau_domaine ?? 0) >= 1;
+  const niveauRunes = (etatPersonnage?.niveau_runes ?? 0) >= 1;
 
   // Validation
   const isStep1Valid = nomPersonnage.trim().length >= 2 && nomPersonnage.trim().length <= 50 && (!estCroyant || religionId);
@@ -207,6 +223,10 @@ const PersonnageNouveau = () => {
   const isStep4Valid = true; // Purchases are optional
   const isStep5Valid = true;
   const isStep6Valid = true;
+  const isStep7Valid = true; // Artisanat is optional
+  const isStep8Valid = true; // Runes are optional
+  const isStep9Valid = true; // Historique is optional
+  const isStep10Valid = true; // Recap is always valid
 
   const canGoNext =
     etape === 1 ? isStep1Valid :
@@ -215,16 +235,22 @@ const PersonnageNouveau = () => {
     etape === 4 ? isStep4Valid :
     etape === 5 ? isStep5Valid :
     etape === 6 ? isStep6Valid :
+    etape === 7 ? isStep7Valid :
+    etape === 8 ? isStep8Valid :
+    etape === 9 ? isStep9Valid :
+    etape === 10 ? isStep10Valid :
     false;
 
-  // Auto-skip étape 5 si pas de cercle, étape 6 si pas de domaine
+  // Auto-skip étape 5 si pas de cercle, étape 6 si pas de domaine, étape 8 si pas de runes
   useEffect(() => {
     if (etape === 5 && etatPersonnage && !aCercle) {
       setEtape(aDomaine ? 6 : 7);
     } else if (etape === 6 && etatPersonnage && !aDomaine) {
       setEtape(7);
+    } else if (etape === 8 && etatPersonnage && !niveauRunes) {
+      setEtape(9);
     }
-  }, [etape, etatPersonnage, aCercle, aDomaine]);
+  }, [etape, etatPersonnage, aCercle, aDomaine, niveauRunes]);
 
   const buildTraitsJson = (): TraitChoisi[] => {
     const result: TraitChoisi[] = [];
@@ -326,6 +352,40 @@ const PersonnageNouveau = () => {
           })
           .eq("id", personnageId);
         if (error) throw error;
+      } else if (step === 7 || step === 8) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            xp_depense: xpDepense,
+            etape_creation: step,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
+      } else if (step === 9) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            historique: historique.trim(),
+            ame_personnage: amePersonnage.trim(),
+            etape_creation: 9,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
+      } else if (step === 10) {
+        if (!personnageId) throw new Error("Personnage non créé");
+        const { error } = await supabase
+          .from("personnages")
+          .update({
+            est_actif: true,
+            etape_creation: 10,
+          })
+          .eq("id", personnageId);
+        if (error) throw error;
+        toast.success("Personnage créé avec succès !");
+        setTimeout(() => navigate(`/personnage/${personnageId}`), 1500);
+        return;
       }
 
       setEtape(step + 1);
@@ -470,12 +530,57 @@ const PersonnageNouveau = () => {
         />
       )}
 
-      {etape >= 7 && (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Les étapes 7 à 10 seront disponibles prochainement.
-          </CardContent>
-        </Card>
+      {etape === 7 && personnageId && etatPersonnage && (
+        <Step7Artisanat
+          personnageId={personnageId}
+          xpDisponible={xpDisponible}
+          xpDepense={xpDepense}
+          onXpSpent={(amount) => setStep7XpSpent((prev) => prev + amount)}
+        />
+      )}
+
+      {etape === 8 && personnageId && niveauRunes && etatPersonnage && (
+        <Step8Runes
+          personnageId={personnageId}
+          niveauRunes={etatPersonnage.niveau_runes ?? 0}
+          quotaAssemblages={etatPersonnage.quota_assemblages_total ?? 0}
+          xpDisponible={xpDisponible}
+          xpDepense={xpDepense}
+          onXpSpent={(amount) => setStep8XpSpent((prev) => prev + amount)}
+        />
+      )}
+
+      {etape === 9 && (
+        <Step9Historique
+          historique={historique}
+          setHistorique={setHistorique}
+          amePersonnage={amePersonnage}
+          setAmePersonnage={setAmePersonnage}
+        />
+      )}
+
+      {etape === 10 && personnageId && selectedRace && selectedClasse && (
+        <Step10Recapitulatif
+          personnageId={personnageId}
+          nomPersonnage={nomPersonnage}
+          raceNom={selectedRace.nom ?? ""}
+          raceNomLatin={selectedRace.nom_latin ?? null}
+          classeNom={classeNom}
+          niveau={niveau}
+          xpTotal={xpTotal}
+          xpDepense={xpDepense}
+          religionNom={religions?.find((r) => r.id === religionId)?.nom ?? null}
+          familleCriminelleNom={null}
+          gnCompletes={gnCompletes}
+          miniGnCompletes={miniGnCompletes}
+          ouverturesTerrain={ouverturesTerrain}
+          pvMax={pvMax}
+          psMax={psMax}
+          historique={historique}
+          amePersonnage={amePersonnage}
+          traitObligatoire={traitsRaciaux?.find((t) => t.trait_id === traitObligatoireId)}
+          traitsOptionnels={traitsOptionnels.map((tid) => traitsRaciaux?.find((t) => t.trait_id === tid)).filter(Boolean)}
+        />
       )}
 
       {/* Navigation */}

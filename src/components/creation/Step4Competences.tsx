@@ -484,9 +484,15 @@ const Step4Competences = ({
                 }
                 if (comp.nom === "Acquisition de Domaine" && !hasSkill("Connaissances des Religions")) { multiBuyBlocked = true; multiBuyMessage = "Nécessite Connaissances des Religions"; }
                 if (multi && (comp.nom === "Acquisition de Cercle" || comp.nom === "Acquisition de Domaine" || comp.nom === "Assemblage de Runes" || comp.nom === "Alchimie") && niv.niveau > 1 && getMaxLevel(comp.id) < niv.niveau - 1) sequentialBlocked = true;
-                const disabled = impossible || sequentialBlocked || multiBuyBlocked || xpDisponible < niv.cout_xp || isFree || !!crossLock;
                 const alreadyBought = !multi && getPurchases(comp.id).some((p) => p.niveau_acquis === niv.niveau);
                 const pendingApproval = getPurchases(comp.id).some((p) => p.niveau_acquis === niv.niveau && p.statut_maitre === "en_attente");
+                
+                // Special case: if it's a free skill but requires a choice and no choice has been made yet, 
+                // we allow the "purchase" (which will just be a choice selection with 0 XP cost).
+                const needsChoice = multi || comp.nom === "Connaissances des Religions" || (comp.nom.toLowerCase().includes("connaissance criminelle") && niv.niveau === 2);
+                const isFreeButNeedsChoice = isFree && !multi && getPurchases(comp.id).length === 0;
+                
+                const disabled = impossible || sequentialBlocked || multiBuyBlocked || (xpDisponible < niv.cout_xp && !isFreeButNeedsChoice) || (isFree && !isFreeButNeedsChoice) || !!crossLock;
                 return (
                   <div key={levelKey} className="flex items-center justify-between gap-2 rounded border border-border p-2">
                     <div className="flex-1 min-w-0">
@@ -502,7 +508,28 @@ const Step4Competences = ({
                     {impossible ? (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild><span><Button size="sm" variant="outline" disabled className="text-xs"><Lock className="h-3 w-3 mr-1" /> Impossible</Button></span></TooltipTrigger><TooltipContent>Inaccessible hors de votre classe</TooltipContent></Tooltip></TooltipProvider>
                     ) : alreadyBought && !multi ? null : (
-                      <TooltipProvider><Tooltip><TooltipTrigger asChild><span><Button size="sm" variant="outline" disabled={disabled} onClick={() => handleBuy(comp, niv.niveau, niv.cout_xp, tabCategory)} className="text-xs whitespace-nowrap">Acheter ({niv.cout_xp} XP)</Button></span></TooltipTrigger>{disabled && <TooltipContent>{xpDisponible < niv.cout_xp ? "XP insuffisant" : sequentialBlocked ? `Niveau ${niv.niveau - 1} requis` : multiBuyMessage || "Indisponible"}</TooltipContent>}</Tooltip></TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button 
+                                size="sm" 
+                                variant={isFreeButNeedsChoice ? "default" : "outline"}
+                                disabled={disabled} 
+                                onClick={() => handleBuy(comp, niv.niveau, isFreeButNeedsChoice ? 0 : niv.cout_xp, tabCategory)} 
+                                className="text-xs whitespace-nowrap"
+                              >
+                                {isFreeButNeedsChoice ? "Choisir (Gratuit)" : `Acheter (${niv.cout_xp} XP)`}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {disabled && (
+                            <TooltipContent>
+                              {xpDisponible < niv.cout_xp && !isFreeButNeedsChoice ? "XP insuffisant" : sequentialBlocked ? `Niveau ${niv.niveau - 1} requis` : multiBuyMessage || "Indisponible"}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 );

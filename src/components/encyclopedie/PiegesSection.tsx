@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
+import { LEGENDE_CONSTRUCTION_PIEGES } from "@/constants/artisanat";
 
 interface Piege {
   id: string;
@@ -13,6 +14,7 @@ interface Piege {
   effets: string;
   niveau_effet: number | null;
   type_piege: string;
+  construction: string | null;
 }
 
 function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
@@ -47,9 +49,15 @@ const PiegesSection = ({
     <div className="space-y-6">
       <h2 className="font-heading text-2xl font-bold text-primary mb-2">Pièges</h2>
 
-      <div className="rounded-md border border-primary/30 bg-[#111111] p-4 text-sm text-muted-foreground">
-        Les pièges magiques (compétence Piège Magique + Canalisation) permettent d'emprisonner un sort dans un piège.
-        Ils ne sont pas listés ici car leur effet dépend du sort choisi lors de la création. Maximum 1 piège par coffre.
+      <div className="rounded-md border border-primary/30 bg-[#111111] p-4 text-sm text-muted-foreground space-y-3">
+        <p>
+          Les pièges magiques (compétence Piège Magique + Canalisation) permettent d'emprisonner un sort dans un piège.
+          Ils ne sont pas listés ici car leur effet dépend du sort choisi lors de la création. Maximum 1 piège par coffre.
+        </p>
+        <div className="flex items-center gap-2 text-xs border-t border-primary/10 pt-2">
+          <Info className="h-3.5 w-3.5 text-primary" />
+          <span>{LEGENDE_CONSTRUCTION_PIEGES}</span>
+        </div>
       </div>
 
       {keys.length === 0 ? (
@@ -106,6 +114,11 @@ const PiegesSection = ({
                           <p><span className="font-medium text-foreground">Effets :</span> {n.effets}</p>
                           {n.niveau_effet != null && (
                             <p><span className="font-medium text-foreground">Niveau de résistance requis :</span> {n.niveau_effet}</p>
+                          )}
+                          {n.construction && (
+                            <p className="mt-1 pt-1 border-t border-border/40">
+                              <span className="font-medium text-foreground">Construction :</span> {n.construction}
+                            </p>
                           )}
                         </div>
                       ))}

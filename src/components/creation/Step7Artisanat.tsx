@@ -1,0 +1,454 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertTriangle, Sparkles, Hammer, Gem } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  QUOTA_RECETTES_TOTAL,
+  QUOTA_ASSEMBLAGES_TOTAL,
+  COUT_RECETTE_SUPPLEMENTAIRE,
+  COUT_ASSEMBLAGE_SUPPLEMENTAIRE,
+  NOTE_FORGE,
+  NOTE_JOAILLERIE,
+  LEGENDE_FORGE_DISPO,
+  LEGENDE_FORGE_UTILISE,
+  LEGENDE_JOAILLERIE_DISPO,
+  LEGENDE_JOAILLERIE_UTILISE,
+  CONFIRM_LEGENDE_FORGE,
+  CONFIRM_LEGENDE_JOAILLERIE,
+} from "@/constants/artisanat";
+import { NIVEAU_ALCHIMIE_LABELS, TYPE_RECETTE_LABELS } from "@/constants/labels";
+
+interface ArtisanatState {
+  niveau_alchimie: number;
+  niveau_forge: number;
+  niveau_joaillerie: number;
+  niveau_runes: number;
+  a_forge_legendaire: boolean;
+  a_joaillerie_legendaire: boolean;
+  quota_recettes_total: number;
+  quota_assemblages_total: number;
+}
+
+interface Recette {
+  id: string;
+  nom: string;
+  effet: string | null;
+  type: string;
+  niveau_requis: number;
+}
+
+interface ObjetForge {
+  id: string;
+  nom: string | null;
+  description: string | null;
+  type: string | null;
+  stats: any;
+  difficulte: number | null;
+}
+
+interface ObjetJoaillerie {
+  id: string;
+  nom: string | null;
+  description: string | null;
+  effet: string | null;
+  difficulte: number | null;
+}
+
+interface Step7Props {
+  personnageId: string;
+  xpDisponible: number;
+  xpDepense: number;
+  onXpSpent: (amount: number) => void;
+}
+
+const Step7Artisanat = ({
+  personnageId,
+  xpDisponible,
+  xpDepense,
+  onXpSpent,
+}: Step7Props) => {
+  const { toast } = useToast();
+  const [artisanat, setArtisanat] = useState<ArtisanatState | null>(null);
+  const [recettes, setRecettes] = useState<Recette[]>([]);
+  const [forge, setForge] = useState<ObjetForge[]>([]);
+  const [joaillerie, setJoaillerie] = useState<ObjetJoaillerie[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [recettesGratuites, setRecettesGratuites] = useState<Set<string>>(new Set());
+  const [recettesAchetees, setRecettesAchetees] = useState<Set<string>>(new Set());
+  const [showLegendForgeModal, setShowLegendForgeModal] = useState(false);
+  const [showLegendJoaillerieModal, setShowLegendJoaillerieModal] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Récupérer l'état artisanat complet
+        const { data: artisanatData, error: artisanatError } = await supabase
+          .from("vue_artisanat_quotas")
+          .select("*")
+          .eq("personnage_id", personnageId)
+          .maybeSingle();
+
+        if (artisanatError) throw artisanatError;
+        if (artisanatData) setArtisanat(artisanatData as ArtisanatState);
+
+        // Récupérer les recettes d'alchimie
+        const { data: recettesData, error: recettesError } = await supabase
+          .from("recettes_alchimie")
+          .select("*")
+          .eq("est_actif", true)
+          .order("niveau_requis")
+          .order("nom");
+
+        if (recettesError) throw recettesError;
+        setRecettes((recettesData ?? []) as Recette[]);
+
+        // Récupérer les objets de forge
+        const { data: forgeData, error: forgeError } = await supabase
+          .from("objets_forge")
+          .select("*")
+          .eq("est_actif", true)
+          .order("difficulte")
+          .order("nom");
+
+        if (forgeError) throw forgeError;
+        setForge((forgeData ?? []) as ObjetForge[]);
+
+        // Récupérer les objets de joaillerie
+        const { data: joaillerieData, error: joaillerieError } = await supabase
+          .from("objets_joaillerie")
+          .select("*")
+          .eq("est_actif", true)
+          .order("difficulte")
+          .order("nom");
+
+        if (joaillerieError) throw joaillerieError;
+        setJoaillerie((joaillerieData ?? []) as ObjetJoaillerie[]);
+
+        setLoading(false);
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Erreur lors du chargement des données d'artisanat.");
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [personnageId, toast]);
+
+  if (loading || !artisanat) {
+    return <p className="text-muted-foreground text-center py-8">Chargement…</p>;
+  }
+
+  const hasAlchimie = artisanat.niveau_alchimie >= 1;
+  const hasForge = artisanat.niveau_forge >= 1;
+  const hasJoaillerie = artisanat.niveau_joaillerie >= 1;
+
+  if (!hasAlchimie && !hasForge && !hasJoaillerie) {
+    return (
+      <div className="space-y-6">
+        <h2 className="font-heading text-xl font-semibold text-foreground">
+          Étape 7 — Artisanat
+        </h2>
+        <Card className="border-border/50">
+          <CardContent className="py-6 text-center text-muted-foreground">
+            Vous n'avez acheté aucune compétence d'artisanat à l'étape 4. Vous pouvez passer à l'étape suivante.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-heading text-xl font-semibold text-foreground">
+        Étape 7 — Artisanat
+      </h2>
+
+      <Tabs defaultValue={hasAlchimie ? "alchimie" : hasForge ? "forge" : "joaillerie"} className="w-full">
+        <TabsList className="grid w-full gap-1" style={{ gridTemplateColumns: `repeat(${[hasAlchimie, hasForge, hasJoaillerie].filter(Boolean).length}, 1fr)` }}>
+          {hasAlchimie && <TabsTrigger value="alchimie" className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Alchimie</TabsTrigger>}
+          {hasForge && <TabsTrigger value="forge" className="flex items-center gap-2"><Hammer className="h-4 w-4" /> Forge</TabsTrigger>}
+          {hasJoaillerie && <TabsTrigger value="joaillerie" className="flex items-center gap-2"><Gem className="h-4 w-4" /> Joaillerie</TabsTrigger>}
+        </TabsList>
+
+        {/* Alchimie Tab */}
+        {hasAlchimie && (
+          <TabsContent value="alchimie" className="space-y-6 mt-6">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Niveau d'Alchimie : <strong className="text-primary">{artisanat.niveau_alchimie}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Quota gratuit : <strong className="text-primary">{recettesGratuites.size} / {artisanat.quota_recettes_total}</strong> recettes sélectionnées
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Choisissez vos recettes gratuites</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recettes
+                  .filter((r) => r.niveau_requis <= artisanat.niveau_alchimie)
+                  .map((recette) => (
+                    <div key={recette.id} className="flex items-start gap-3 p-2 rounded border border-border/50">
+                      <Checkbox
+                        id={`recette-${recette.id}`}
+                        checked={recettesGratuites.has(recette.id)}
+                        disabled={!recettesGratuites.has(recette.id) && recettesGratuites.size >= artisanat.quota_recettes_total}
+                        onCheckedChange={(checked) => {
+                          const newSet = new Set(recettesGratuites);
+                          if (checked) newSet.add(recette.id);
+                          else newSet.delete(recette.id);
+                          setRecettesGratuites(newSet);
+                        }}
+                      />
+                      <label htmlFor={`recette-${recette.id}`} className="flex-1 cursor-pointer text-sm">
+                        <div className="font-medium text-foreground">{recette.nom}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {recette.effet && <p>{recette.effet}</p>}
+                          <div className="flex gap-2 mt-1">
+                            {recette.type && <Badge variant="outline" className="text-xs">{TYPE_RECETTE_LABELS[recette.type] || recette.type}</Badge>}
+                            {recette.niveau_requis && <Badge variant="secondary" className="text-xs">{NIVEAU_ALCHIMIE_LABELS[recette.niveau_requis] || `Niveau ${recette.niveau_requis}`}</Badge>}
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Recettes supplémentaires ({COUT_RECETTE_SUPPLEMENTAIRE} XP chacune)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recettes
+                  .filter((r) => r.niveau_requis <= artisanat.niveau_alchimie)
+                  .map((recette) => {
+                    const isAchetee = recettesAchetees.has(recette.id);
+                    return (
+                      <div key={recette.id} className="flex items-center justify-between p-2 rounded border border-border/50">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm text-foreground">{recette.nom}</div>
+                          <div className="text-xs text-muted-foreground">{recette.effet}</div>
+                        </div>
+                        {isAchetee ? (
+                          <>
+                            <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">Acquise</Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="ml-2 text-xs"
+                              onClick={() => {
+                                setRecettesAchetees((prev) => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(recette.id);
+                                  return newSet;
+                                });
+                                onXpSpent(-COUT_RECETTE_SUPPLEMENTAIRE);
+                              }}
+                            >
+                              Retirer
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            disabled={xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE}
+                            onClick={() => {
+                              setRecettesAchetees((prev) => new Set(prev).add(recette.id));
+                              onXpSpent(COUT_RECETTE_SUPPLEMENTAIRE);
+                            }}
+                          >
+                            Acheter ({COUT_RECETTE_SUPPLEMENTAIRE} XP)
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Forge Tab */}
+        {hasForge && (
+          <TabsContent value="forge" className="space-y-6 mt-6">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Niveau de Forge : <strong className="text-primary">{artisanat.niveau_forge}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground italic">{NOTE_FORGE[artisanat.niveau_forge] || "Accès à tous les objets de forge."}</p>
+            </div>
+
+            {artisanat.niveau_forge === 3 && (
+              <Card className="border-[#c9a84c]/40 bg-[#c9a84c]/5">
+                <CardHeader>
+                  <CardTitle className="text-base text-[#c9a84c]">Droit légendaire</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {artisanat.a_forge_legendaire ? (
+                    <Badge className="bg-gray-600/20 text-gray-400 border-gray-600/30">{LEGENDE_FORGE_UTILISE}</Badge>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">{LEGENDE_FORGE_DISPO}</p>
+                      <Button
+                        onClick={() => setShowLegendForgeModal(true)}
+                        className="w-full"
+                      >
+                        Utiliser mon droit légendaire
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-4">
+              {forge.map((obj) => (
+                <Card key={obj.id} className="border-border/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">{obj.nom}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
+                    {obj.type && <p><span className="font-medium text-foreground">Type :</span> {obj.type}</p>}
+                    <p className="text-xs text-muted-foreground">Temps de fabrication : {obj.difficulte} min</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Joaillerie Tab */}
+        {hasJoaillerie && (
+          <TabsContent value="joaillerie" className="space-y-6 mt-6">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Niveau de Joaillerie : <strong className="text-primary">{artisanat.niveau_joaillerie}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground italic">{NOTE_JOAILLERIE[artisanat.niveau_joaillerie] || "Accès à tous les objets de joaillerie."}</p>
+            </div>
+
+            {artisanat.niveau_joaillerie === 3 && (
+              <Card className="border-[#c9a84c]/40 bg-[#c9a84c]/5">
+                <CardHeader>
+                  <CardTitle className="text-base text-[#c9a84c]">Droit légendaire</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {artisanat.a_joaillerie_legendaire ? (
+                    <Badge className="bg-gray-600/20 text-gray-400 border-gray-600/30">{LEGENDE_JOAILLERIE_UTILISE}</Badge>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">{LEGENDE_JOAILLERIE_DISPO}</p>
+                      <Button
+                        onClick={() => setShowLegendJoaillerieModal(true)}
+                        className="w-full"
+                      >
+                        Utiliser mon droit légendaire
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-4">
+              {joaillerie.map((obj) => (
+                <Card key={obj.id} className="border-border/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">{obj.nom}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
+                    {obj.effet && <p><span className="font-medium text-foreground">Effet :</span> {obj.effet}</p>}
+                    <p className="text-xs text-muted-foreground">Temps de fabrication : {obj.difficulte} min</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        )}
+      </Tabs>
+
+      {/* Modales de confirmation */}
+      {showLegendForgeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-96">
+            <CardHeader>
+              <CardTitle>Confirmation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">{CONFIRM_LEGENDE_FORGE}</p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowLegendForgeModal(false)}>Annuler</Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await supabase
+                        .from("personnages")
+                        .update({ a_forge_legendaire: true })
+                        .eq("id", personnageId);
+                      setArtisanat((prev) => prev ? { ...prev, a_forge_legendaire: true } : null);
+                      setShowLegendForgeModal(false);
+                      toast.success("Droit légendaire utilisé !");
+                    } catch (err) {
+                      toast.error("Erreur lors de la mise à jour.");
+                    }
+                  }}
+                >
+                  Confirmer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {showLegendJoaillerieModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-96">
+            <CardHeader>
+              <CardTitle>Confirmation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">{CONFIRM_LEGENDE_JOAILLERIE}</p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowLegendJoaillerieModal(false)}>Annuler</Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await supabase
+                        .from("personnages")
+                        .update({ a_joaillerie_legendaire: true })
+                        .eq("id", personnageId);
+                      setArtisanat((prev) => prev ? { ...prev, a_joaillerie_legendaire: true } : null);
+                      setShowLegendJoaillerieModal(false);
+                      toast.success("Droit légendaire utilisé !");
+                    } catch (err) {
+                      toast.error("Erreur lors de la mise à jour.");
+                    }
+                  }}
+                >
+                  Confirmer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Step7Artisanat;
