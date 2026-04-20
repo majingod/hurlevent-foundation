@@ -23,6 +23,7 @@ import Step7Artisanat from "@/components/creation/Step7Artisanat";
 import Step8Runes from "@/components/creation/Step8Runes";
 import Step9Historique from "@/components/creation/Step9Historique";
 import Step10Recapitulatif from "@/components/creation/Step10Recapitulatif";
+import { QUOTA_ASSEMBLAGES_TOTAL } from "@/constants/artisanat";
 
 const TOTAL_STEPS = 10;
 const CHIMERIDE_NOM = "Chiméride";
@@ -204,7 +205,7 @@ const PersonnageNouveau = () => {
       if (!personnageId) return null;
       const { data } = await supabase
         .from("vue_personnage_etat")
-        .select("niveau_cercle, niveau_domaine, niveau_runes, quota_assemblages_total")
+        .select("niveau_cercle, niveau_domaine, niveau_runes")
         .eq("personnage_id", personnageId)
         .maybeSingle();
       return data;
@@ -543,7 +544,7 @@ const PersonnageNouveau = () => {
         <Step8Runes
           personnageId={personnageId}
           niveauRunes={etatPersonnage.niveau_runes ?? 0}
-          quotaAssemblages={etatPersonnage.quota_assemblages_total ?? 0}
+          quotaAssemblages={QUOTA_ASSEMBLAGES_TOTAL[etatPersonnage.niveau_runes ?? 0] ?? 0}
           xpDisponible={xpDisponible}
           xpDepense={xpDepense}
           onXpSpent={(amount) => setStep8XpSpent((prev) => prev + amount)}
