@@ -2968,6 +2968,7 @@ export type Database = {
         Args: { p_personnage_competence_id: string; p_raison?: string }
         Returns: Json
       }
+      role_du_profil: { Args: { _user_id: string }; Returns: string }
       verrouiller_personnage: {
         Args: { p_personnage_id: string }
         Returns: Json
