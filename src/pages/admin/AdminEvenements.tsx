@@ -26,10 +26,10 @@ const AdminEvenements = () => {
     queryKey: ["admin-evenements"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vue_evenements_admin")
+        .from("vue_evenements_admin" as any)
         .select("*")
         .order("date_debut", { ascending: true });
-      return (data ?? []) as Evenement[];
+      return (data ?? []) as unknown as Evenement[];
     },
   });
 

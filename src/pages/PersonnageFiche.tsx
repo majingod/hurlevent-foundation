@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS } from "@/utils/calculsMagie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Personnage {
   id: string;
@@ -30,6 +31,7 @@ interface Personnage {
   gn_completes: number;
   mini_gn_completes: number;
   ouvertures_terrain: number;
+  traits_raciaux_choisis: Json | null;
 }
 
 interface Race {
@@ -161,18 +163,9 @@ const PersonnageFiche = () => {
     enabled: !!personnage?.religion_id,
   });
 
-  // Traits raciaux
-  const { data: traits } = useQuery({
-    queryKey: ["traits-personnage", personnage?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("personnage_traits")
-        .select("traits(id, nom, description)")
-        .eq("personnage_id", personnage!.id);
-      return (data ?? []).map((t: any) => t.traits) as Trait[];
-    },
-    enabled: !!personnage?.id,
-  });
+  const traits = Array.isArray(personnage?.traits_raciaux_choisis)
+    ? (personnage.traits_raciaux_choisis as unknown as Trait[])
+    : [];
 
   // Compétences
   const { data: competences } = useQuery({

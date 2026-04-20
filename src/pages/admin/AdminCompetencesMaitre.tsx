@@ -26,10 +26,10 @@ const AdminCompetencesMaitre = () => {
     queryKey: ["admin-competences-maitre"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vue_competences_maitre_admin")
+        .from("vue_competences_maitre_admin" as any)
         .select("*")
         .order("date_demande", { ascending: false });
-      return (data ?? []) as CompetenceMaitre[];
+      return (data ?? []) as unknown as CompetenceMaitre[];
     },
   });
 

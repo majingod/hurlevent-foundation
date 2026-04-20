@@ -29,8 +29,8 @@ const AdminJoueurs = () => {
   const { data: joueurs, isLoading, refetch } = useQuery({
     queryKey: ["admin-joueurs"],
     queryFn: async () => {
-      const { data } = await supabase.rpc("get_joueurs_avec_count");
-      return (data ?? []) as Joueur[];
+      const { data } = await supabase.rpc("get_joueurs_avec_count" as any);
+      return (data ?? []) as unknown as Joueur[];
     },
   });
 
