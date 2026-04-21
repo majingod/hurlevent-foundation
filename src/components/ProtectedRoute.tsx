@@ -21,7 +21,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/connexion" replace />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (allowedRoles && !allowedRoles.includes(role ?? "")) {
     return <Navigate to="/tableau-de-bord" replace />;
   }
 

@@ -28,10 +28,10 @@ const AdminPersonnages = () => {
     queryKey: ["admin-personnages"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vue_personnages_admin")
+        .from("vue_personnages_admin" as any)
         .select("*")
         .order("created_at", { ascending: false });
-      return (data ?? []) as Personnage[];
+      return (data ?? []) as unknown as Personnage[];
     },
   });
 

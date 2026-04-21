@@ -29,7 +29,7 @@ const AdminDonnees = () => {
 
       const results: DataCount[] = [];
       for (const table of tables) {
-        const { count } = await supabase.from(table).select("*", { count: "exact", head: true });
+        const { count } = await supabase.from(table as any).select("*", { count: "exact", head: true });
         results.push({ table_name: table, count: count ?? 0 });
       }
       return results;
