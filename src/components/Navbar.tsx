@@ -54,12 +54,13 @@ const Navbar = () => {
                 <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
               ))}
 
-              <div className="mt-auto pt-8">
+              <div className="mt-auto pt-8 border-t border-border/30">
                 {user ? (
                   <button
+                    type="button"
                     onClick={handleSignOut}
-                    className="w-full rounded-md px-4 py-2 text-left text-sm font-medium transition-colors hover:bg-muted/20"
-                    style={{ color: "#6b1f2a" }}
+                    className="w-full rounded-md px-4 py-2 text-left text-sm font-medium transition-colors hover:bg-muted/20 active:bg-muted/40"
+                    style={{ color: "#d9534f" }}
                   >
                     Déconnexion
                   </button>
