@@ -3,10 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: string[];
+  requiredRole?: string;
 }
 
-const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const { user, role, loading } = useAuth();
 
   if (loading) {
@@ -21,7 +21,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/connexion" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(role ?? "")) {
+  if (requiredRole && role !== requiredRole) {
     return <Navigate to="/tableau-de-bord" replace />;
   }
 
