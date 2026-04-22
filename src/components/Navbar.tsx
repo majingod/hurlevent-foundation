@@ -1,76 +1,27 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, User, LogOut, LayoutDashboard, ChevronDown, Settings, Users, Calendar, Sparkles, Database, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
-  const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState(null);
+  const { user, role, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Récupération des éléments du menu depuis Supabase
-  useEffect(() => {
-    const fetchMenu = async () => {
-      const { data, error } = await supabase
-        .from("menu_navigation")
-        .select("*")
-        .eq("est_actif", true)
-        .order("ordre", { ascending: true });
-
-      if (!error && data) {
-        setMenuItems(data);
-      }
-    };
-    fetchMenu();
-  }, []);
-
-  // Gestion de l'authentification
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", session.user.id)
-          .single()
-          .then(({ data }) => {
-            setUserRole(data?.role ?? null);
-          });
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single()
-            .then(({ data }) => {
-              setUserRole(data?.role ?? null);
-            });
-        } else {
-          setUserRole(null);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setUserRole(null);
+      await signOut();
       navigate('/');
     } catch (err) {
       console.error("Erreur lors de la déconnexion:", err);
@@ -80,12 +31,6 @@ const Navbar = () => {
   };
 
   const isActive = (path: string) => location.pathname === path;
-
-  // Filtre les éléments du menu en fonction du rôle de l'utilisateur
-  const filteredMenuItems = menuItems.filter((item) => {
-    if (!item.roles_autorises) return true;
-    return userRole && item.roles_autorises.includes(userRole);
-  });
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/90 backdrop-blur">
@@ -97,34 +42,135 @@ const Navbar = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          {filteredMenuItems.map((item) => (
-            <Link
-              key={item.id}
-              to={item.url}
-              className={`text-sm font-medium transition-colors hover:text-gold ${
-                isActive(item.url) ? "text-gold" : "text-white/80"
-              }`}
-            >
-              {item.libelle}
-            </Link>
-          ))}
+          <Link
+            to="/"
+            className={`text-sm font-medium transition-colors hover:text-gold ${
+              isActive("/") ? "text-gold" : "text-white/80"
+            }`}
+          >
+            Accueil
+          </Link>
+          <Link
+            to="/regles"
+            className={`text-sm font-medium transition-colors hover:text-gold ${
+              isActive("/regles") ? "text-gold" : "text-white/80"
+            }`}
+          >
+            Règles
+          </Link>
+          <Link
+            to="/encyclopedie"
+            className={`text-sm font-medium transition-colors hover:text-gold ${
+              isActive("/encyclopedie") ? "text-gold" : "text-white/80"
+            }`}
+          >
+            Encyclopédie
+          </Link>
+          <Link
+            to="/evenements"
+            className={`text-sm font-medium transition-colors hover:text-gold ${
+              isActive("/evenements") ? "text-gold" : "text-white/80"
+            }`}
+          >
+            Événements
+          </Link>
+
+          {user && (
+            <>
+              <Link
+                to="/tableau-de-bord"
+                className={`text-sm font-medium transition-colors hover:text-gold ${
+                  isActive("/tableau-de-bord") ? "text-gold" : "text-white/80"
+                }`}
+              >
+                Tableau de bord
+              </Link>
+
+              {/* Menu déroulant Administration */}
+              {(role === 'animateur' || role === 'admin') && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className={`flex items-center gap-1 text-sm font-medium transition-colors hover:text-gold ${
+                      location.pathname.startsWith('/administration') ? "text-gold" : "text-white/80"
+                    }`}>
+                      Administration
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-gray-900 border-gray-800 text-white min-w-[200px]">
+                    <DropdownMenuLabel className="text-gold">Gestion</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-gray-800" />
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/dashboard" className="flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Tableau de bord
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/joueurs" className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Joueurs
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/personnages" className="flex items-center gap-2">
+                        <UserRound className="h-4 w-4" />
+                        Personnages
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/evenements" className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Événements
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/competences-maitre" className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Compétences Maître
+                      </Link>
+                    </DropdownMenuItem>
+                    {role === 'admin' && (
+                      <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                        <Link to="/administration/donnees" className="flex items-center gap-2">
+                          <Database className="h-4 w-4" />
+                          Données de jeu
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </>
+          )}
         </nav>
 
         {/* User Menu - Desktop */}
         <div className="hidden md:flex items-center gap-2">
           {user ? (
-            <>
-              <Link to="/tableau-de-bord">
-                <Button variant="ghost" size="sm" className="text-white/80 hover:text-gold">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Tableau de bord
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-white/80 hover:text-gold gap-2">
+                  <User className="h-4 w-4" />
+                  {user.email?.split('@')[0] || "Compte"}
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
-              </Link>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white/80 hover:text-gold">
-                <LogOut className="mr-2 h-4 w-4" />
-                Déconnexion
-              </Button>
-            </>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-800 text-white">
+                <DropdownMenuLabel className="text-gold">{user.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-gray-800" />
+                <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                  <Link to="/tableau-de-bord" className="flex items-center gap-2">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Tableau de bord
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Déconnexion
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Link to="/connexion">
               <Button variant="ghost" size="sm" className="text-white/80 hover:text-gold">
@@ -135,7 +181,7 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* Mobile Menu */}
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild className="md:hidden">
             <Button variant="ghost" size="icon">
@@ -143,43 +189,38 @@ const Navbar = () => {
             </Button>
           </SheetTrigger>
           <SheetContent className="bg-black border-white/10">
-            <div className="flex flex-col gap-6 mt-8">
-              {filteredMenuItems.map((item) => (
-                <Link
-                  key={item.id}
-                  to={item.url}
-                  onClick={() => setIsOpen(false)}
-                  className={`text-lg font-medium transition-colors hover:text-gold ${
-                    isActive(item.url) ? "text-gold" : "text-white/80"
-                  }`}
-                >
-                  {item.libelle}
-                </Link>
-              ))}
-              {user ? (
+            <div className="flex flex-col gap-4 mt-8">
+              <Link to="/" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Accueil</Link>
+              <Link to="/regles" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Règles</Link>
+              <Link to="/encyclopedie" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Encyclopédie</Link>
+              <Link to="/evenements" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Événements</Link>
+              {user && (
                 <>
-                  <Link
-                    to="/tableau-de-bord"
-                    onClick={() => setIsOpen(false)}
-                    className={`text-lg font-medium transition-colors hover:text-gold ${
-                      isActive("/tableau-de-bord") ? "text-gold" : "text-white/80"
-                    }`}
-                  >
+                  <Link to="/tableau-de-bord" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">
                     Tableau de bord
                   </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="text-lg font-medium text-white/80 hover:text-gold text-left"
-                  >
+                  {(role === 'animateur' || role === 'admin') && (
+                    <div className="space-y-2">
+                      <p className="text-lg text-gold">Administration</p>
+                      <div className="pl-4 space-y-2 border-l border-white/20">
+                        <Link to="/administration/dashboard" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Dashboard</Link>
+                        <Link to="/administration/joueurs" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Joueurs</Link>
+                        <Link to="/administration/personnages" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Personnages</Link>
+                        <Link to="/administration/evenements" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Événements</Link>
+                        <Link to="/administration/competences-maitre" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Compétences Maître</Link>
+                        {role === 'admin' && (
+                          <Link to="/administration/donnees" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Données</Link>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={handleLogout} className="text-lg text-white/80 hover:text-gold text-left">
                     Déconnexion
                   </button>
                 </>
-              ) : (
-                <Link
-                  to="/connexion"
-                  onClick={() => setIsOpen(false)}
-                  className="text-lg font-medium text-white/80 hover:text-gold"
-                >
+              )}
+              {!user && (
+                <Link to="/connexion" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">
                   Connexion
                 </Link>
               )}
