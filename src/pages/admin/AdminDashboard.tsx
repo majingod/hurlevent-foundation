@@ -40,57 +40,57 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-gold" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="container py-8">
+      <h1 className="font-cinzel text-3xl mb-6">Tableau de bord administration</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <Link to={card.link} key={idx}>
-              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-white/70 flex items-center justify-between">
-                    {card.title}
-                    <Icon className={`h-4 w-4 text-${card.color}-400`} />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">{card.value}</div>
-                </CardContent>
-              </Card>
-            </Link>
+            <Card key={idx} className="bg-white/5 border-white/10">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-white/70">
+                  {card.title}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-gold" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <Link to={card.link}>
+                  <Button variant="link" className="mt-2 p-0 text-gold">
+                    Voir <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           );
         })}
       </div>
 
       {stats.prochainEvenement && (
-        <Card className="bg-white/5 border-white/10">
+        <Card className="mt-8 bg-white/5 border-white/10">
           <CardHeader>
-            <CardTitle>Prochain événement</CardTitle>
+            <CardTitle className="text-white">Prochain événement</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-white">{stats.prochainEvenement.titre}</p>
-              <p className="text-sm text-white/60">
-                {new Date(stats.prochainEvenement.date_evenement).toLocaleDateString("fr-FR", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
-            </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/evenements">
-                Voir <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
+          <CardContent>
+            <p className="text-lg font-medium">{stats.prochainEvenement.titre}</p>
+            <p className="text-white/60">
+              {new Date(stats.prochainEvenement.date_evenement).toLocaleDateString("fr-FR", {
+                weekday: "long", year: "numeric", month: "long", day: "numeric",
+              })}
+            </p>
+            <Link to="/administration/evenements">
+              <Button variant="outline" className="mt-4 border-gold text-gold hover:bg-gold/10">
+                Gérer les événements
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}
