@@ -16,11 +16,8 @@ import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
 import Connexion from "@/pages/Connexion";
 
-// Pages joueur
+// Pages joueur (seulement celles qui existent vraiment)
 import TableauDeBord from "@/pages/TableauDeBord";
-import FichePersonnage from "@/pages/personnage/FichePersonnage";
-import CreationPersonnage from "@/pages/personnage/CreationPersonnage";
-import ModificationPersonnage from "@/pages/personnage/ModificationPersonnage";
 
 // Pages admin (Manus AI)
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -70,30 +67,6 @@ const App = () => {
                   element={
                     <ProtectedRoute>
                       <TableauDeBord />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/personnage/nouveau"
-                  element={
-                    <ProtectedRoute>
-                      <CreationPersonnage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/personnage/:id"
-                  element={
-                    <ProtectedRoute>
-                      <FichePersonnage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/personnage/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <ModificationPersonnage />
                     </ProtectedRoute>
                   }
                 />
