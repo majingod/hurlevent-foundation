@@ -9,22 +9,22 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const { user, role, loading } = useAuth();
 
-  // Pendant le chargement, on n'affiche rien (ou un loader simple)
   if (loading) {
     return null;
   }
 
-  // Pas connecté → page de connexion
   if (!user) {
     return <Navigate to="/connexion" replace />;
   }
 
-  // Rôle requis et rôle insuffisant → tableau de bord joueur
-  if (requiredRole && role !== requiredRole) {
-    return <Navigate to="/tableau-de-bord" replace />;
+  // Si un rôle est requis, on vérifie que l'utilisateur a ce rôle OU est admin
+  if (requiredRole) {
+    const hasPermission = role === requiredRole || role === 'admin';
+    if (!hasPermission) {
+      return <Navigate to="/tableau-de-bord" replace />;
+    }
   }
 
-  // Tout est bon, on affiche les enfants
   return <>{children}</>;
 };
 
