@@ -17,7 +17,6 @@ const TableauDeBord = () => {
         setLoading(true);
         setError(null);
 
-        // Récupérer l'utilisateur connecté
         const { data: sessionData } = await supabase.auth.getSession();
         const user = sessionData.session?.user;
         setUserEmail(user?.email || null);
@@ -27,7 +26,6 @@ const TableauDeBord = () => {
           return;
         }
 
-        // Récupérer les personnages du joueur
         const { data: personnagesData, error: persoError } = await supabase
           .from("personnages")
           .select(`
@@ -69,7 +67,8 @@ const TableauDeBord = () => {
     return (
       <div className="container py-8">
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400">
-          Erreur : {error}
+          <h2 className="text-xl font-bold mb-2">Erreur de chargement</h2>
+          <p>{error}</p>
         </div>
       </div>
     );
