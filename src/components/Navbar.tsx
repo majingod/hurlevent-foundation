@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, User, LogOut, Home, BookOpen, Library, Calendar, LayoutDashboard, Settings } from "lucide-react";
+import { Menu, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,23 +52,14 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = async () => {
-    alert("Étape 1 : handleLogout appelé");
     try {
-      alert("Étape 2 : tentative de déconnexion Supabase...");
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        alert("Erreur Supabase : " + error.message);
-        throw error;
-      }
-      alert("Étape 3 : déconnexion réussie, mise à jour état local");
+      await supabase.auth.signOut();
       setUser(null);
       setUserRole(null);
-      alert("Étape 4 : redirection vers l'accueil");
       navigate('/');
-    } catch (err: any) {
-      alert("Erreur attrapée : " + (err.message || "inconnue"));
+    } catch (err) {
+      console.error("Erreur lors de la déconnexion:", err);
     } finally {
-      alert("Étape 5 : fermeture du menu");
       setIsOpen(false);
     }
   };
