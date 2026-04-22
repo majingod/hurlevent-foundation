@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { Search, Mail, User, Users, Loader2 } from "lucide-react";
+import { Search, User, Users, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -102,17 +102,29 @@ const AdminJoueurs = () => {
       {/* Onglets de filtre */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList className="bg-white/5 border border-white/10">
-          <TabsTrigger value="tous" className="data-[state=active]:bg-gold data-[state=active]:text-black">
+          <TabsTrigger
+            value="tous"
+            className="data-[state=active]:bg-gold data-[state=active]:text-black"
+          >
             Tous ({joueurs?.length ?? 0})
           </TabsTrigger>
-          <TabsTrigger value="joueurs" className="data-[state=active]:bg-gold data-[state=active]:text-black">
-            Joueurs ({joueurs?.filter(j => j.role === 'joueur').length ?? 0})
+          <TabsTrigger
+            value="joueurs"
+            className="data-[state=active]:bg-gold data-[state=active]:text-black"
+          >
+            Joueurs ({joueurs?.filter((j) => j.role === "joueur").length ?? 0})
           </TabsTrigger>
-          <TabsTrigger value="animateurs" className="data-[state=active]:bg-gold data-[state=active]:text-black">
-            Animateurs ({joueurs?.filter(j => j.role === 'animateur').length ?? 0})
+          <TabsTrigger
+            value="animateurs"
+            className="data-[state=active]:bg-gold data-[state=active]:text-black"
+          >
+            Animateurs ({joueurs?.filter((j) => j.role === "animateur").length ?? 0})
           </TabsTrigger>
-          <TabsTrigger value="admins" className="data-[state=active]:bg-gold data-[state=active]:text-black">
-            Administrateurs ({joueurs?.filter(j => j.role === 'admin').length ?? 0})
+          <TabsTrigger
+            value="admins"
+            className="data-[state=active]:bg-gold data-[state=active]:text-black"
+          >
+            Administrateurs ({joueurs?.filter((j) => j.role === "admin").length ?? 0})
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -128,76 +140,76 @@ const AdminJoueurs = () => {
         />
       </div>
 
-      <div className="grid gap-4">
+      {/* Liste des joueurs */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredJoueurs?.map((joueur) => (
-          <Card key={joueur.joueur_id} className="bg-white/5 border-white/10">
-            <CardHeader className="pb-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+          <Card
+            key={joueur.joueur_id}
+            className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors overflow-hidden"
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <User className="h-5 w-5 text-gold" />
-                  <CardTitle className="text-white text-lg">
-                    {joueur.nom_affichage || joueur.email || "Joueur inconnu"}
-                  </CardTitle>
+                  <div className="h-12 w-12 rounded-full bg-gold/20 flex items-center justify-center">
+                    <User className="h-6 w-6 text-gold" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-white text-lg leading-tight">
+                      {joueur.nom_affichage || joueur.email?.split("@")[0] || "Joueur inconnu"}
+                    </CardTitle>
+                    <p className="text-sm text-white/50 italic">
+                      {joueur.email || "Aucun email"}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    className={
-                      joueur.role === "admin"
-                        ? "bg-red-500"
-                        : joueur.role === "animateur"
-                        ? "bg-blue-500"
-                        : "bg-green-500"
-                    }
-                  >
-                    {joueur.role || "joueur"}
-                  </Badge>
-                  {/* Sélecteur de rôle */}
-                  {(currentUserRole === "admin" ||
-                    (currentUserRole === "animateur" && joueur.role !== "admin")) && (
-                    <Select
-                      value={joueur.role || "joueur"}
-                      onValueChange={(newRole) =>
-                        handleRoleChange(joueur.joueur_id, newRole)
-                      }
-                      disabled={updateRoleMutation.isPending}
-                    >
-                      <SelectTrigger className="w-[130px] bg-white/5 border-white/10 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                        <SelectItem value="joueur">Joueur</SelectItem>
-                        <SelectItem value="animateur">Animateur</SelectItem>
-                        {isAdmin && <SelectItem value="admin">Admin</SelectItem>}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+                <Badge
+                  className={
+                    joueur.role === "admin"
+                      ? "bg-red-500"
+                      : joueur.role === "animateur"
+                      ? "bg-blue-500"
+                      : "bg-green-500"
+                  }
+                >
+                  {joueur.role || "joueur"}
+                </Badge>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-white/70">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  {joueur.email || "Email non renseigné"}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span>
-                    {joueur.nb_personnages_actifs} actif
-                    {joueur.nb_personnages_actifs > 1 ? "s" : ""}
-                    {joueur.nb_personnages_morts > 0 &&
-                      ` • ${joueur.nb_personnages_morts} mort(s)`}
-                    {joueur.nb_personnages_archives > 0 &&
-                      ` • ${joueur.nb_personnages_archives} archivé(s)`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-white/40">Principal :</span>
-                  {joueur.personnage_actif_principal || "Aucun"}
-                </div>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-white/70">
+                <Users className="h-4 w-4 text-gold/70" />
+                <span>
+                  {joueur.nb_personnages_actifs} personnage(s) actif(s)
+                  {joueur.nb_personnages_morts > 0 && ` • ${joueur.nb_personnages_morts} mort(s)`}
+                  {joueur.nb_personnages_archives > 0 && ` • ${joueur.nb_personnages_archives} archivé(s)`}
+                </span>
               </div>
-              <div className="mt-4 text-xs text-white/40">
-                Inscrit le {new Date(joueur.compte_cree_le).toLocaleDateString("fr-FR")}
+              <div className="flex items-center gap-2 text-sm text-white/50">
+                <span className="text-white/40">Principal :</span>
+                {joueur.personnage_actif_principal || "Aucun"}
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                <span className="text-xs text-white/40">
+                  Inscrit le {new Date(joueur.compte_cree_le).toLocaleDateString("fr-FR")}
+                </span>
+                {/* Sélecteur de rôle */}
+                {(currentUserRole === "admin" ||
+                  (currentUserRole === "animateur" && joueur.role !== "admin")) && (
+                  <Select
+                    value={joueur.role || "joueur"}
+                    onValueChange={(newRole) => handleRoleChange(joueur.joueur_id, newRole)}
+                    disabled={updateRoleMutation.isPending}
+                  >
+                    <SelectTrigger className="w-[120px] h-8 bg-white/5 border-white/10 text-white text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                      <SelectItem value="joueur">Joueur</SelectItem>
+                      <SelectItem value="animateur">Animateur</SelectItem>
+                      {isAdmin && <SelectItem value="admin">Admin</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </CardContent>
           </Card>
