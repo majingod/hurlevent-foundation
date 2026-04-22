@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ interface Joueur {
 const AdminJoueurs = () => {
   const { role: currentUserRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("tous");
   const queryClient = useQueryClient();
   const isAdmin = currentUserRole === "admin";
 
@@ -40,7 +42,7 @@ const AdminJoueurs = () => {
     queryKey: ["admin-joueurs"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vue_joueurs_complete")
+        .from("vue_admin_joueurs")
         .select("*")
         .order("nom_affichage", { ascending: true });
       return (data ?? []) as Joueur[];
@@ -68,11 +70,22 @@ const AdminJoueurs = () => {
     updateRoleMutation.mutate({ userId, newRole });
   };
 
-  const filteredJoueurs = joueurs?.filter(
-    (j) =>
-      j.nom_affichage?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredJoueurs = joueurs?.filter((j) => {
+    // Filtre par rôle (onglet)
+    if (activeTab !== "tous") {
+      if (activeTab === "joueurs" && j.role !== "joueur") return false;
+      if (activeTab === "animateurs" && j.role !== "animateur") return false;
+      if (activeTab === "admins" && j.role !== "admin") return false;
+    }
+
+    // Filtre par texte (recherche)
+    if (!searchTerm.trim()) return true;
+    const lc = searchTerm.toLowerCase();
+    return (
+      j.nom_affichage?.toLowerCase().includes(lc) ||
+      j.email?.toLowerCase().includes(lc)
+    );
+  });
 
   if (isLoading) {
     return (
@@ -86,10 +99,25 @@ const AdminJoueurs = () => {
     <div className="container py-8">
       <h1 className="font-cinzel text-3xl mb-6">Gestion des joueurs</h1>
 
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-white/60">Total : {joueurs?.length ?? 0} joueurs</p>
-      </div>
+      {/* Onglets de filtre */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList className="bg-white/5 border border-white/10">
+          <TabsTrigger value="tous" className="data-[state=active]:bg-gold data-[state=active]:text-black">
+            Tous ({joueurs?.length ?? 0})
+          </TabsTrigger>
+          <TabsTrigger value="joueurs" className="data-[state=active]:bg-gold data-[state=active]:text-black">
+            Joueurs ({joueurs?.filter(j => j.role === 'joueur').length ?? 0})
+          </TabsTrigger>
+          <TabsTrigger value="animateurs" className="data-[state=active]:bg-gold data-[state=active]:text-black">
+            Animateurs ({joueurs?.filter(j => j.role === 'animateur').length ?? 0})
+          </TabsTrigger>
+          <TabsTrigger value="admins" className="data-[state=active]:bg-gold data-[state=active]:text-black">
+            Administrateurs ({joueurs?.filter(j => j.role === 'admin').length ?? 0})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
+      {/* Barre de recherche */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
         <Input
