@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import AdminLayout from "@/components/admin/AdminLayout";
 
 interface Joueur {
   id: string;
@@ -24,15 +25,22 @@ interface Joueur {
 
 const AdminJoueurs = () => {
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
   const { data: joueurs, isLoading, refetch } = useQuery({
     queryKey: ["admin-joueurs"],
     queryFn: async () => {
-      const { data } = await supabase.rpc("get_joueurs_avec_count" as any);
-      return (data ?? []) as unknown as Joueur[];
+      const { data } = await supabase.rpc("get_joueurs_avec_count");
+      return (data ?? []) as Joueur[];
     },
   });
+
+  const filteredJoueurs = joueurs?.filter(
+    (j) =>
+      j.nom_affichage.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      j.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleChangeRole = async (joueurId: string, newRole: string) => {
     setUpdatingRole(joueurId);
@@ -54,19 +62,30 @@ const AdminJoueurs = () => {
   };
 
   if (isLoading) {
-    return <p className="text-center py-12 text-muted-foreground">Chargement…</p>;
+    return (
+      <AdminLayout
+        title="Gestion des joueurs"
+        searchPlaceholder="Rechercher un joueur…"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      >
+        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="container max-w-6xl py-8 space-y-6">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-primary">Gestion des joueurs</h1>
-        <p className="text-muted-foreground mt-1">Total : {joueurs?.length ?? 0} joueurs</p>
-      </div>
-
+    <AdminLayout
+      title="Gestion des joueurs"
+      searchPlaceholder="Rechercher un joueur…"
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+    >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Liste des joueurs</CardTitle>
+          <CardTitle className="text-base">
+            Liste des joueurs ({filteredJoueurs?.length ?? 0})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -77,15 +96,14 @@ const AdminJoueurs = () => {
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Email</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rôle</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Personnages</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date inscription</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Inscription</th>
                 </tr>
               </thead>
               <tbody>
-                {joueurs?.map((joueur) => (
+                {filteredJoueurs?.map((joueur) => (
                   <tr key={joueur.id} className="border-b border-border/50 hover:bg-muted/50">
                     <td className="py-3 px-4 font-medium text-foreground">{joueur.nom_affichage}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{joueur.email}</td>
+                    <td className="py-3 px-4 text-muted-foreground text-sm">{joueur.email}</td>
                     <td className="py-3 px-4">
                       <Select
                         value={joueur.role}
@@ -108,11 +126,6 @@ const AdminJoueurs = () => {
                     <td className="py-3 px-4 text-muted-foreground text-xs">
                       {new Date(joueur.created_at).toLocaleDateString("fr-FR")}
                     </td>
-                    <td className="py-3 px-4">
-                      <Button size="sm" variant="outline">
-                        Voir personnages
-                      </Button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -120,7 +133,7 @@ const AdminJoueurs = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AdminLayout>
   );
 };
 

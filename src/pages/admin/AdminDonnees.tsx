@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { useState } from "react";
 
 interface DataCount {
   table_name: string;
@@ -11,25 +13,27 @@ interface DataCount {
 }
 
 const AdminDonnees = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+
   const { data: counts, isLoading } = useQuery({
     queryKey: ["admin-data-counts"],
     queryFn: async () => {
       const tables = [
         "races",
         "classes",
-        "traits",
+        "traits_raciaux",
         "competences",
         "sorts",
         "prieres",
         "religions",
         "recettes_alchimie",
         "assemblages_runes",
-        "pièges",
+        "pieges",
       ];
 
       const results: DataCount[] = [];
       for (const table of tables) {
-        const { count } = await supabase.from(table as any).select("*", { count: "exact", head: true });
+        const { count } = await supabase.from(table).select("*", { count: "exact", head: true });
         results.push({ table_name: table, count: count ?? 0 });
       }
       return results;
@@ -37,16 +41,25 @@ const AdminDonnees = () => {
   });
 
   if (isLoading) {
-    return <p className="text-center py-12 text-muted-foreground">Chargement…</p>;
+    return (
+      <AdminLayout
+        title="Gestion des données de jeu"
+        searchPlaceholder="Rechercher…"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      >
+        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="container max-w-6xl py-8 space-y-6">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-primary">Gestion des données de jeu</h1>
-        <p className="text-muted-foreground mt-1">Référentiels et données de base du LARP Hurlevent</p>
-      </div>
-
+    <AdminLayout
+      title="Gestion des données de jeu"
+      searchPlaceholder="Rechercher…"
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+    >
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
@@ -62,10 +75,14 @@ const AdminDonnees = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground capitalize">{item.table_name.replace(/_/g, " ")}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {item.table_name.replace(/_/g, " ")}
+                      </p>
                       <p className="text-2xl font-bold text-primary mt-1">{item.count}</p>
                     </div>
-                    <Badge variant="secondary" className="text-lg">{item.count}</Badge>
+                    <Badge variant="secondary" className="text-lg">
+                      {item.count}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -103,7 +120,7 @@ const AdminDonnees = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </AdminLayout>
   );
 };
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, MapPin, Users } from "lucide-react";
+import AdminLayout from "@/components/admin/AdminLayout";
 
 interface Evenement {
   id: string;
@@ -21,17 +22,24 @@ interface Evenement {
 const AdminEvenements = () => {
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: evenements, isLoading, refetch } = useQuery({
     queryKey: ["admin-evenements"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vue_evenements_admin" as any)
+        .from("vue_evenements_admin")
         .select("*")
         .order("date_debut", { ascending: true });
-      return (data ?? []) as unknown as Evenement[];
+      return (data ?? []) as Evenement[];
     },
   });
+
+  const filteredEvenements = evenements?.filter(
+    (e) =>
+      e.titre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (e.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
+  );
 
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
     setUpdatingId(id);
@@ -53,18 +61,27 @@ const AdminEvenements = () => {
   };
 
   if (isLoading) {
-    return <p className="text-center py-12 text-muted-foreground">Chargement…</p>;
+    return (
+      <AdminLayout
+        title="Gestion des événements"
+        searchPlaceholder="Rechercher un événement…"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      >
+        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="container max-w-6xl py-8 space-y-6">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-primary">Gestion des événements</h1>
-        <p className="text-muted-foreground mt-1">Total : {evenements?.length ?? 0} événements</p>
-      </div>
-
+    <AdminLayout
+      title="Gestion des événements"
+      searchPlaceholder="Rechercher un événement…"
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {evenements?.map((evt) => (
+        {filteredEvenements?.map((evt) => (
           <Card key={evt.id} className="flex flex-col">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -115,14 +132,14 @@ const AdminEvenements = () => {
         ))}
       </div>
 
-      {(!evenements || evenements.length === 0) && (
+      {(!filteredEvenements || filteredEvenements.length === 0) && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Aucun événement créé.
+            Aucun événement trouvé.
           </CardContent>
         </Card>
       )}
-    </div>
+    </AdminLayout>
   );
 };
 

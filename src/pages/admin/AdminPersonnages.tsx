@@ -3,10 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { useState } from "react";
 
 interface Personnage {
   id: string;
@@ -28,10 +27,10 @@ const AdminPersonnages = () => {
     queryKey: ["admin-personnages"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vue_personnages_admin" as any)
+        .from("vue_personnages_admin")
         .select("*")
         .order("created_at", { ascending: false });
-      return (data ?? []) as unknown as Personnage[];
+      return (data ?? []) as Personnage[];
     },
   });
 
@@ -44,36 +43,30 @@ const AdminPersonnages = () => {
   );
 
   if (isLoading) {
-    return <p className="text-center py-12 text-muted-foreground">Chargement…</p>;
+    return (
+      <AdminLayout
+        title="Gestion des personnages"
+        searchPlaceholder="Rechercher un personnage…"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+      >
+        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="container max-w-6xl py-8 space-y-6">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-primary">Gestion des personnages</h1>
-        <p className="text-muted-foreground mt-1">Total : {personnages?.length ?? 0} personnages</p>
-      </div>
-
+    <AdminLayout
+      title="Gestion des personnages"
+      searchPlaceholder="Rechercher un personnage…"
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+    >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Rechercher un personnage</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Nom du personnage, joueur, race, classe…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Liste des personnages</CardTitle>
+          <CardTitle className="text-base">
+            Liste des personnages ({filteredPersonnages?.length ?? 0})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -94,9 +87,9 @@ const AdminPersonnages = () => {
                 {filteredPersonnages?.map((perso) => (
                   <tr key={perso.id} className="border-b border-border/50 hover:bg-muted/50">
                     <td className="py-3 px-4 font-medium text-foreground">{perso.nom}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{perso.joueur_nom}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{perso.race_nom}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{perso.classe_nom}</td>
+                    <td className="py-3 px-4 text-muted-foreground text-sm">{perso.joueur_nom}</td>
+                    <td className="py-3 px-4 text-muted-foreground text-sm">{perso.race_nom}</td>
+                    <td className="py-3 px-4 text-muted-foreground text-sm">{perso.classe_nom}</td>
                     <td className="py-3 px-4">
                       <Badge variant="secondary">{perso.niveau}</Badge>
                     </td>
@@ -108,7 +101,7 @@ const AdminPersonnages = () => {
                       )}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground text-xs">
-                      Étape {perso.etape_creation}/10
+                      {perso.etape_creation}/10
                     </td>
                     <td className="py-3 px-4">
                       <Button
@@ -126,7 +119,7 @@ const AdminPersonnages = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </AdminLayout>
   );
 };
 
