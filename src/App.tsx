@@ -30,101 +30,95 @@ import AdminDonnees from "@/pages/admin/AdminDonnees";
 
 const queryClient = new QueryClient();
 
-const AppRoutes = () => {
-  return (
-    <Routes>
-      {/* Routes publiques */}
-      <Route path="/" element={<Accueil />} />
-      <Route path="/regles" element={<Regles />} />
-      <Route path="/encyclopedie" element={<Encyclopedie />} />
-      <Route path="/evenements" element={<Evenements />} />
-      <Route path="/connexion" element={<Connexion />} />
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<Accueil />} />
+    <Route path="/regles" element={<Regles />} />
+    <Route path="/encyclopedie" element={<Encyclopedie />} />
+    <Route path="/evenements" element={<Evenements />} />
+    <Route path="/connexion" element={<Connexion />} />
 
-      {/* Routes joueur */}
-      <Route
-        path="/tableau-de-bord"
-        element={
-          <ProtectedRoute>
-            <TableauDeBord />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/personnage/nouveau"
-        element={
-          <ProtectedRoute>
-            <PersonnageNouveau />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/personnage/:id"
-        element={
-          <ProtectedRoute>
-            <PersonnageFiche />
-          </ProtectedRoute>
-        }
-      />
+    <Route
+      path="/tableau-de-bord"
+      element={
+        <ProtectedRoute>
+          <TableauDeBord />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/personnage/nouveau"
+      element={
+        <ProtectedRoute>
+          <PersonnageNouveau />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/personnage/:id"
+      element={
+        <ProtectedRoute>
+          <PersonnageFiche />
+        </ProtectedRoute>
+      }
+    />
 
-      {/* Routes admin */}
-      <Route
-        path="/administration"
-        element={<Navigate to="/administration/dashboard" replace />}
-      />
-      <Route
-        path="/administration/dashboard"
-        element={
-          <ProtectedRoute requiredRole="animateur">
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/administration/joueurs"
-        element={
-          <ProtectedRoute requiredRole="animateur">
-            <AdminJoueurs />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/administration/personnages"
-        element={
-          <ProtectedRoute requiredRole="animateur">
-            <AdminPersonnages />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/administration/evenements"
-        element={
-          <ProtectedRoute requiredRole="animateur">
-            <AdminEvenements />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/administration/competences-maitre"
-        element={
-          <ProtectedRoute requiredRole="animateur">
-            <AdminCompetencesMaitre />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/administration/donnees"
-        element={
-          <ProtectedRoute requiredRole="admin">
-            <AdminDonnees />
-          </ProtectedRoute>
-        }
-      />
+    <Route
+      path="/administration"
+      element={<Navigate to="/administration/dashboard" replace />}
+    />
+    <Route
+      path="/administration/dashboard"
+      element={
+        <ProtectedRoute requiredRole="animateur">
+          <AdminDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/administration/joueurs"
+      element={
+        <ProtectedRoute requiredRole="animateur">
+          <AdminJoueurs />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/administration/personnages"
+      element={
+        <ProtectedRoute requiredRole="animateur">
+          <AdminPersonnages />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/administration/evenements"
+      element={
+        <ProtectedRoute requiredRole="animateur">
+          <AdminEvenements />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/administration/competences-maitre"
+      element={
+        <ProtectedRoute requiredRole="animateur">
+          <AdminCompetencesMaitre />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/administration/donnees"
+      element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminDonnees />
+        </ProtectedRoute>
+      }
+    />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
-};
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
 
 const App = () => {
   const { loading } = useAuth();
