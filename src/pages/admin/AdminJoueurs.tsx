@@ -1,19 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-
-// Mapping des rôles pour l'affichage
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Administrateur",
-  animateur: "Animateur",
-  joueur: "Joueur",
-};
 
 interface JoueurComplet {
   id: string;
@@ -64,6 +56,7 @@ export const AdminJoueurs = () => {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
+      // @ts-ignore - RPC non typée
       const { data, error } = await supabase.rpc("changer_role_utilisateur", {
         p_user_id: userId,
         p_nouveau_role: newRole,
@@ -71,12 +64,10 @@ export const AdminJoueurs = () => {
 
       if (error) throw error;
 
-      // Mise à jour locale
       setJoueurs(prev =>
         prev.map(j => (j.id === userId ? { ...j, role: newRole } : j))
       );
 
-      // Afficher un message de succès (optionnel)
       alert(data?.message || "Rôle mis à jour");
     } catch (err: any) {
       console.error("Erreur changement rôle:", err);
@@ -130,20 +121,16 @@ export const AdminJoueurs = () => {
                   </TableCell>
                   <TableCell className="text-white/70">{joueur.email}</TableCell>
                   <TableCell>
-                    <Select
+                    <select
                       value={joueur.role}
-                      onValueChange={(value) => handleRoleChange(joueur.id, value)}
-                      disabled={joueur.id === currentUserId} // Empêcher de changer son propre rôle
+                      onChange={(e) => handleRoleChange(joueur.id, e.target.value)}
+                      disabled={joueur.id === currentUserId}
+                      className="bg-white/5 border border-white/10 text-white rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-gold disabled:opacity-50"
                     >
-                      <SelectTrigger className="w-32 bg-white/5 border-white/10 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-black border-white/10">
-                        <SelectItem value="joueur">Joueur</SelectItem>
-                        <SelectItem value="animateur">Animateur</SelectItem>
-                        <SelectItem value="admin">Administrateur</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <option value="joueur" className="bg-black">Joueur</option>
+                      <option value="animateur" className="bg-black">Animateur</option>
+                      <option value="admin" className="bg-black">Administrateur</option>
+                    </select>
                   </TableCell>
                   <TableCell className="text-white/70">
                     {joueur.nb_personnages_actifs} actif(s)
