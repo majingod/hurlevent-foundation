@@ -16,7 +16,7 @@ import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
 import Connexion from "@/pages/Connexion";
 
-// Pages joueur (seulement celles qui existent vraiment)
+// Pages joueur (existantes)
 import TableauDeBord from "@/pages/TableauDeBord";
 
 // Pages admin (Manus AI)
