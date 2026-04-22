@@ -26,20 +26,10 @@ const TableauDeBord = () => {
           return;
         }
 
-        // ✅ Correction : jointure explicite vers classes!classe_id
+        // 🟢 Appel à la vue Supabase – plus aucune jointure à écrire côté React
         const { data: personnagesData, error: persoError } = await supabase
-          .from("personnages")
-          .select(`
-            id,
-            nom,
-            niveau,
-            xp_total,
-            xp_depense,
-            race:races(nom),
-            classe:classes!classe_id(nom),
-            est_mort,
-            est_actif
-          `)
+          .from("vue_tableau_de_bord")
+          .select("*")
           .eq("joueur_id", user.id)
           .order("date_creation", { ascending: false });
 
@@ -111,8 +101,8 @@ const TableauDeBord = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-1 text-sm text-white/70">
-                  <p>Race : {p.race?.nom || "Inconnue"}</p>
-                  <p>Classe : {p.classe?.nom || "Inconnue"}</p>
+                  <p>Race : {p.race_nom || "Inconnue"}</p>
+                  <p>Classe : {p.classe_nom || "Inconnue"}</p>
                   <p>Niveau {p.niveau} — XP : {p.xp_total} total / {p.xp_depense} dépensé</p>
                 </div>
                 <div className="mt-4">
