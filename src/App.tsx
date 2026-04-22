@@ -3,8 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -16,12 +15,12 @@ import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
 import Connexion from "@/pages/Connexion";
 
-// Pages joueur (noms réels)
+// Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
 import PersonnageNouveau from "@/pages/PersonnageNouveau";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 
-// Pages admin (Manus AI)
+// Pages administration
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminJoueurs from "@/pages/admin/AdminJoueurs";
 import AdminPersonnages from "@/pages/admin/AdminPersonnages";
@@ -32,13 +31,9 @@ import AdminDonnees from "@/pages/admin/AdminDonnees";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isLoading, setIsLoading] = useState(true);
+  const { loading } = useAuth();
 
-  useEffect(() => {
-    supabase.auth.getSession().finally(() => setIsLoading(false));
-  }, []);
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
@@ -63,7 +58,7 @@ const App = () => {
                 <Route path="/evenements" element={<Evenements />} />
                 <Route path="/connexion" element={<Connexion />} />
 
-                {/* Routes joueur connecté */}
+                {/* Routes joueur protégées */}
                 <Route
                   path="/tableau-de-bord"
                   element={
@@ -88,8 +83,6 @@ const App = () => {
                     </ProtectedRoute>
                   }
                 />
-                {/* Route d'édition temporairement commentée si ModificationPersonnage n'existe pas */}
-                {/* <Route path="/personnage/:id/edit" element={<ProtectedRoute><ModificationPersonnage /></ProtectedRoute>} /> */}
 
                 {/* Routes administration */}
                 <Route
