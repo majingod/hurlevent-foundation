@@ -1,89 +1,191 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { useMenuNavigation } from "@/hooks/useMenuNavigation";
-import { Menu } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Menu, User, LogOut, LayoutDashboard, ChevronDown, Users, Calendar, Sparkles, Database, UserRound, ScrollText, Swords } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
   const { user, role, signOut } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const { data: menuItems } = useMenuNavigation(role);
 
-  const handleSignOut = async () => {
-    setOpen(false);
-    await signOut();
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (err) {
+      console.error("Erreur lors de la déconnexion:", err);
+    } finally {
+      setIsOpen(false);
+    }
   };
 
-  const close = () => setOpen(false);
+  const isAdmin = role === 'admin' || role === 'animateur';
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/90 backdrop-blur">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="font-heading text-xl font-bold text-primary">Hurlevent</span>
+        {/* Logo */}
+        <Link to="/" className="font-cinzel text-2xl text-gold">
+          HURLEVENT
         </Link>
 
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <button aria-label="Menu" className="p-2">
-              <Menu className="h-6 w-6 text-primary" />
-            </button>
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-6">
+          <Link to="/" className="text-sm font-medium text-white/80 hover:text-gold transition-colors">Accueil</Link>
+          <Link to="/regles" className="text-sm font-medium text-white/80 hover:text-gold transition-colors">Règles</Link>
+          <Link to="/encyclopedie" className="text-sm font-medium text-white/80 hover:text-gold transition-colors">Encyclopédie</Link>
+          <Link to="/evenements" className="text-sm font-medium text-white/80 hover:text-gold transition-colors">Événements</Link>
+
+          {user && (
+            <>
+              <Link to="/tableau-de-bord" className="text-sm font-medium text-white/80 hover:text-gold transition-colors">
+                Tableau de bord
+              </Link>
+
+              {isAdmin && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1 text-sm font-medium text-gold hover:text-gold/80 transition-colors">
+                      Administration
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-gray-900 border-gray-800 text-white min-w-[220px]">
+                    <DropdownMenuLabel className="text-gold">Gestion</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-gray-800" />
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/dashboard" className="flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4" /> Tableau de bord
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/joueurs" className="flex items-center gap-2">
+                        <Users className="h-4 w-4" /> Joueurs
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/personnages" className="flex items-center gap-2">
+                        <UserRound className="h-4 w-4" /> Personnages
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/evenements" className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" /> Événements
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                      <Link to="/administration/competences-maitre" className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" /> Compétences Maître
+                      </Link>
+                    </DropdownMenuItem>
+                    {role === 'admin' && (
+                      <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                        <Link to="/administration/donnees" className="flex items-center gap-2">
+                          <Database className="h-4 w-4" /> Données de jeu
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </>
+          )}
+        </nav>
+
+        {/* User Menu - Desktop */}
+        <div className="hidden md:flex items-center gap-2">
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-white/80 hover:text-gold gap-2">
+                  <User className="h-4 w-4" />
+                  {user.email?.split('@')[0] || "Compte"}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-800 text-white">
+                <DropdownMenuLabel className="text-gold">{user.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-gray-800" />
+                <DropdownMenuItem asChild className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                  <Link to="/tableau-de-bord" className="flex items-center gap-2">
+                    <LayoutDashboard className="h-4 w-4" /> Tableau de bord
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer">
+                  <LogOut className="h-4 w-4 mr-2" /> Déconnexion
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/connexion">
+              <Button variant="ghost" size="sm" className="text-white/80 hover:text-gold">
+                <User className="mr-2 h-4 w-4" /> Connexion
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        {/* Mobile Menu Button */}
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild className="md:hidden">
+            <Button variant="ghost" size="icon">
+              <Menu className="h-5 w-5" />
+            </Button>
           </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="w-72 border-l bg-[#0a0a0a] p-0"
-            style={{ borderColor: "#c9a84c" }}
-          >
-            <SheetHeader className="px-6 pt-6 pb-4">
-              <SheetTitle className="font-heading text-xl font-bold" style={{ color: "#c9a84c" }}>
-                Hurlevent
-              </SheetTitle>
-            </SheetHeader>
-
-            <nav className="flex flex-1 flex-col gap-1 px-4">
-              {menuItems?.filter(item => item.afficher_navbar).map(item => (
-                <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
-              ))}
-
-              <div className="mt-auto pt-8 border-t border-border/30">
-                {user ? (
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="w-full rounded-md px-4 py-2 text-left text-sm font-medium transition-colors hover:bg-muted/20 active:bg-muted/40"
-                    style={{ color: "#d9534f" }}
-                  >
+          <SheetContent className="bg-black border-white/10 w-[280px]">
+            <div className="flex flex-col gap-4 mt-8">
+              <Link to="/" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Accueil</Link>
+              <Link to="/regles" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Règles</Link>
+              <Link to="/encyclopedie" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Encyclopédie</Link>
+              <Link to="/evenements" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">Événements</Link>
+              
+              {user ? (
+                <>
+                  <Link to="/tableau-de-bord" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">
+                    Tableau de bord
+                  </Link>
+                  
+                  {isAdmin && (
+                    <div className="space-y-2">
+                      <p className="text-lg text-gold font-medium">Administration</p>
+                      <div className="pl-4 space-y-2 border-l border-white/20">
+                        <Link to="/administration/dashboard" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Tableau de bord</Link>
+                        <Link to="/administration/joueurs" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Joueurs</Link>
+                        <Link to="/administration/personnages" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Personnages</Link>
+                        <Link to="/administration/evenements" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Événements</Link>
+                        <Link to="/administration/competences-maitre" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Compétences Maître</Link>
+                        {role === 'admin' && (
+                          <Link to="/administration/donnees" onClick={() => setIsOpen(false)} className="block text-white/80 hover:text-gold">Données de jeu</Link>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <button onClick={handleLogout} className="text-lg text-white/80 hover:text-gold text-left">
                     Déconnexion
                   </button>
-                ) : (
-                  <NavItem to="/connexion" label="Connexion" onClick={close} />
-                )}
-              </div>
-            </nav>
+                </>
+              ) : (
+                <Link to="/connexion" onClick={() => setIsOpen(false)} className="text-lg text-white/80 hover:text-gold">
+                  Connexion
+                </Link>
+              )}
+            </div>
           </SheetContent>
         </Sheet>
       </div>
     </header>
   );
 };
-
-const NavItem = ({ to, label, onClick }: { to: string; label: string; onClick: () => void }) => (
-  <Link
-    to={to}
-    onClick={onClick}
-    className="rounded-md px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/20 hover:text-primary"
-  >
-    {label}
-  </Link>
-);
 
 export default Navbar;
