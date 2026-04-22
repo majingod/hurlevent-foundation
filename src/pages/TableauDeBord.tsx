@@ -26,6 +26,7 @@ const TableauDeBord = () => {
           return;
         }
 
+        // ✅ Correction : jointure explicite vers classes!classe_id
         const { data: personnagesData, error: persoError } = await supabase
           .from("personnages")
           .select(`
@@ -35,7 +36,7 @@ const TableauDeBord = () => {
             xp_total,
             xp_depense,
             race:races(nom),
-            classe:classes(nom),
+            classe:classes!classe_id(nom),
             est_mort,
             est_actif
           `)
