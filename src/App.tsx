@@ -58,7 +58,7 @@ const App = () => {
                 <Route path="/evenements" element={<Evenements />} />
                 <Route path="/connexion" element={<Connexion />} />
 
-                {/* Routes joueur protégées */}
+                {/* Routes joueur */}
                 <Route
                   path="/tableau-de-bord"
                   element={
@@ -84,7 +84,7 @@ const App = () => {
                   }
                 />
 
-                {/* Routes administration */}
+                {/* Routes administration - IMPORTANT : /administration redirige vers dashboard */}
                 <Route
                   path="/administration"
                   element={<Navigate to="/administration/dashboard" replace />}
