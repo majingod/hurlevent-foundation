@@ -14,13 +14,11 @@ import Accueil from "@/pages/Accueil";
 import Regles from "@/pages/Regles";
 import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
-import Connexion from "@/pages/Connexion"; // Correction ici
+import Connexion from "@/pages/Connexion";
 
 // Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
-import CreationPersonnage from "@/pages/CreationPersonnage";
 import FichePersonnage from "@/pages/FichePersonnage";
-import ModificationPersonnage from "@/pages/ModificationPersonnage";
 
 // Pages admin (Manus AI)
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -74,26 +72,10 @@ const App = () => {
                   }
                 />
                 <Route
-                  path="/personnage/nouveau"
-                  element={
-                    <ProtectedRoute>
-                      <CreationPersonnage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/personnage/:id"
                   element={
                     <ProtectedRoute>
                       <FichePersonnage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/personnage/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <ModificationPersonnage />
                     </ProtectedRoute>
                   }
                 />
