@@ -1,10 +1,4 @@
-import { useEffect } from "react";
-
 const Administration = () => {
-  useEffect(() => {
-    alert("✅ La page Administration est bien chargée !");
-  }, []);
-
   return (
     <div className="container py-8">
       <h1 className="font-cinzel text-3xl mb-6">Administration</h1>
