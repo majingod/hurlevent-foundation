@@ -14,7 +14,7 @@ import Accueil from "@/pages/Accueil";
 import Regles from "@/pages/Regles";
 import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
-import Connexion from "@/pages/Auth";
+import Connexion from "@/pages/Connexion"; // Correction ici
 
 // Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
