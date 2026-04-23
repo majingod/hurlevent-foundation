@@ -39,7 +39,6 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     },
   });
 
-  // Toujours appeler les hooks, même si les données ne sont pas encore là
   const categories = useMemo(() => {
     if (!competences) return [];
     const cats = [...new Set(competences.map((c: any) => c.categorie))];
@@ -115,26 +114,46 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
                     )}
                     {comp.niveaux && Array.isArray(comp.niveaux) && comp.niveaux.length > 0 && (
                       <div className="space-y-3">
-                        {comp.niveaux.map((niv: any, i: number) => (
-                          <div key={i} className="border rounded-lg p-3 bg-muted/30">
-                            <p className="font-medium">
-                              Niveau {niv.niveau ?? i + 1}
-                              {niv.cout_xp != null && ` — ${niv.cout_xp} XP`}
-                            </p>
-                            {niv.description && (
-                              <p className="text-sm text-muted-foreground mt-1">{niv.description}</p>
-                            )}
-                            {/* TEST : affichage debug pour le prerequis */}
-                            {niv.prerequis !== undefined && niv.prerequis !== null ? (
-                              <p className="text-sm mt-2 font-medium">📋 {niv.prerequis}</p>
-                            ) : (
-                              <p className="text-sm mt-2 font-medium text-red-500">⚠ DEBUG : prerequis absent (type: {typeof niv.prerequis})</p>
-                            )}
-                            {niv.effet && (
-                              <p className="text-sm mt-1 italic">{niv.effet}</p>
-                            )}
-                          </div>
-                        ))}
+                        {comp.niveaux.map((niv: any, i: number) => {
+                          // Récupère le prérequis depuis l'une des deux clés possibles
+                          const prerequis =
+                            niv.prerequis !== undefined && niv.prerequis !== null
+                              ? niv.prerequis
+                              : niv.prerequisites !== undefined && niv.prerequisites !== null
+                              ? niv.prerequisites
+                              : null;
+
+                          // Formate l'affichage si c'est un objet
+                          const prerequisDisplay =
+                            typeof prerequis === "object"
+                              ? JSON.stringify(prerequis)
+                              : prerequis;
+
+                          return (
+                            <div key={i} className="border rounded-lg p-3 bg-muted/30">
+                              <p className="font-medium">
+                                Niveau {niv.niveau ?? i + 1}
+                                {niv.cout_xp != null && ` — ${niv.cout_xp} XP`}
+                              </p>
+                              {niv.description && (
+                                <p className="text-sm text-muted-foreground mt-1">{niv.description}</p>
+                              )}
+                              {prerequisDisplay ? (
+                                <p className="text-sm mt-2 font-medium">
+                                  📋 {typeof prerequis === "object" ? "(objet) " : ""}
+                                  {prerequisDisplay}
+                                </p>
+                              ) : (
+                                <p className="text-sm mt-2 font-medium text-red-500">
+                                  ⚠ DEBUG : prerequis absent (type: {typeof prerequis})
+                                </p>
+                              )}
+                              {niv.effet && (
+                                <p className="text-sm mt-1 italic">{niv.effet}</p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </AccordionContent>
@@ -146,4 +165,4 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
       })}
     </div>
   );
-                              }
+                    }
