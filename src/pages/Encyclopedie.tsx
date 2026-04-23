@@ -214,8 +214,11 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
                             {niv.description && (
                               <p className="text-sm text-muted-foreground mt-1">{niv.description}</p>
                             )}
-                            {niv.prerequis && (
+                            {/* 🔽 TEST : affichage debug pour le prerequis */}
+                            {niv.prerequis !== undefined && niv.prerequis !== null ? (
                               <p className="text-sm mt-2 font-medium">📋 {niv.prerequis}</p>
+                            ) : (
+                              <p className="text-sm mt-2 font-medium text-red-500">⚠ DEBUG : prerequis absent (type: {typeof niv.prerequis})</p>
                             )}
                             {niv.effet && (
                               <p className="text-sm mt-1 italic">{niv.effet}</p>
@@ -350,5 +353,4 @@ function TraitsRaciauxSection({ searchQuery }: { searchQuery: string }) {
       ))}
     </div>
   );
-          }
-
+              }
