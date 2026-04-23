@@ -9,25 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
 
-// Bannière de debug (peut être supprimée une fois tout fonctionnel)
-function DebugBanner({ sections, activeSection }: any) {
-  if (!sections) return null;
-  return (
-    <div className="bg-yellow-100 border border-yellow-300 p-3 mb-4 text-xs">
-      <p><strong>🔍 Debug Info</strong></p>
-      <p>Sections chargées : {sections.length}</p>
-      <p>Clés : {sections.map((s: any) => s.cle).join(", ")}</p>
-      <p>Onglet actif : "{activeSection}"</p>
-    </div>
-  );
-}
-
 export default function Encyclopedie() {
   const { data: sections, isLoading } = useSectionsEncyclopedie();
   const [activeSection, setActiveSection] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Sélectionne automatiquement le premier onglet si aucune valeur n'est définie
   useEffect(() => {
     if (sections && sections.length > 0 && !activeSection) {
       setActiveSection(sections[0].cle);
@@ -41,7 +27,6 @@ export default function Encyclopedie() {
   if (!sections || sections.length === 0) {
     return (
       <div className="p-8 text-center">
-        <DebugBanner sections={[]} activeSection="-" />
         <p>Aucune section trouvée dans l'encyclopédie.</p>
       </div>
     );
@@ -49,9 +34,7 @@ export default function Encyclopedie() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-4">Encyclopédie</h1>
-
-      <DebugBanner sections={sections} activeSection={activeSection} />
+      <h1 className="text-3xl font-bold mb-8">Encyclopédie</h1>
 
       <div className="relative mb-8">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
@@ -91,7 +74,7 @@ function SectionContent({ active, searchQuery }: { active: string; searchQuery: 
     case "races":
       return <RacesSection searchQuery={searchQuery} />;
     case "traits":
-      return <TraitsRaciauxSection searchQuery={searchQuery} />;
+      return <TraitsSection searchQuery={searchQuery} />;
     case "classes":
       return <ClassesSection searchQuery={searchQuery} />;
     case "competences":
@@ -100,6 +83,22 @@ function SectionContent({ active, searchQuery }: { active: string; searchQuery: 
       return <SortsSection searchQuery={searchQuery} />;
     case "prieres":
       return <PrièresSection searchQuery={searchQuery} />;
+    case "religions":
+      return <ReligionsSection searchQuery={searchQuery} />;
+    case "assemblages":
+      return <AssemblagesSection searchQuery={searchQuery} />;
+    case "alchimie":
+      return <AlchimieSection searchQuery={searchQuery} />;
+    case "pieges":
+      return <PiegesSection searchQuery={searchQuery} />;
+    case "forge":
+      return <ForgeSection searchQuery={searchQuery} />;
+    case "joaillerie":
+      return <JoaillerieSection searchQuery={searchQuery} />;
+    case "bestiaire":
+      return <BestiaireSection searchQuery={searchQuery} />;
+    case "lore":
+      return <LoreSection searchQuery={searchQuery} />;
     default:
       return <p className="text-muted-foreground">Cette section n'existe pas encore.</p>;
   }
@@ -134,6 +133,41 @@ function RacesSection({ searchQuery }: { searchQuery: string }) {
           </CardHeader>
           <CardContent>
             <p className="text-sm">{race.description}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function TraitsSection({ searchQuery }: { searchQuery: string }) {
+  const { data: traits } = useQuery({
+    queryKey: ["traits_raciaux"],
+    queryFn: async () => {
+      const { data } = await supabase.from("traits_raciaux").select("*").eq("est_actif", true);
+      return data ?? [];
+    },
+  });
+
+  const filtered = useMemo(
+    () =>
+      traits?.filter(
+        (t) =>
+          t.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [traits, searchQuery]
+  );
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {filtered?.map((trait) => (
+        <Card key={trait.id}>
+          <CardHeader>
+            <CardTitle>{trait.nom}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{trait.description}</p>
           </CardContent>
         </Card>
       ))}
@@ -214,13 +248,16 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
   if (error) return <p className="text-red-500">Erreur compétences : {error.message}</p>;
   if (!competences || competences.length === 0) return <p>Aucune compétence trouvée.</p>;
 
-  const getPrerequisText = (niv: any) => {
+  // Extrait proprement le prérequis, qu'il soit string ou objet
+  const getPrerequisText = (niv: any): string | null => {
     let raw = niv.prerequis ?? niv.prerequisites ?? null;
-    if (raw === null) return null;
+    if (!raw) return null;
+    if (typeof raw === "string") return raw;
+    // Si c'est un objet, cherche les clés habituelles
     if (typeof raw === "object") {
-      return raw.prerequisites || raw.prerequis || JSON.stringify(raw);
+      return raw.prerequisites || raw.prerequis || null;
     }
-    return raw;
+    return null;
   };
 
   return (
@@ -363,37 +400,28 @@ function PrièresSection({ searchQuery }: { searchQuery: string }) {
   );
 }
 
-function TraitsRaciauxSection({ searchQuery }: { searchQuery: string }) {
-  const { data: traits } = useQuery({
-    queryKey: ["traits_raciaux"],
-    queryFn: async () => {
-      const { data } = await supabase.from("traits_raciaux").select("*").eq("est_actif", true);
-      return data ?? [];
-    },
-  });
-
-  const filtered = useMemo(
-    () =>
-      traits?.filter(
-        (t) =>
-          t.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          t.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [traits, searchQuery]
-  );
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {filtered?.map((trait) => (
-        <Card key={trait.id}>
-          <CardHeader>
-            <CardTitle>{trait.nom}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">{trait.description}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-    }
+// Les sections supplémentaires (pour que le switch ne plante pas)
+function ReligionsSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section religions en construction.</p>;
+}
+function AssemblagesSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section assemblages en construction.</p>;
+}
+function AlchimieSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section alchimie en construction.</p>;
+}
+function PiegesSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section pièges en construction.</p>;
+}
+function ForgeSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section forge en construction.</p>;
+}
+function JoaillerieSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section joaillerie en construction.</p>;
+}
+function BestiaireSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section bestiaire en construction.</p>;
+}
+function LoreSection({ searchQuery }: { searchQuery: string }) {
+  return <p>Section lore en construction.</p>;
+}
