@@ -351,3 +351,4 @@ function TraitsRaciauxSection({ searchQuery }: { searchQuery: string }) {
     </div>
   );
           }
+
