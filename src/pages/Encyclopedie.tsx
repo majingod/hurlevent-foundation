@@ -33,36 +33,60 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
   const { data: competences, isLoading, error } = useQuery({
     queryKey: ["competences"],
     queryFn: async () => {
-      const { data } = await supabase.from("competences").select("*").eq("est_actif", true);
+      const { data, error } = await supabase.from("competences").select("*").eq("est_actif", true);
+      if (error) throw new Error(error.message);
       return data ?? [];
     },
   });
 
-  if (isLoading) return <p className="text-center py-12">Chargement des compétences...</p>;
-  if (error) return <p className="text-center py-12 text-red-500">Erreur : {error.message}</p>;
-
+  // Toujours appeler les hooks, même si les données ne sont pas encore là
   const categories = useMemo(() => {
-    const cats = [...new Set(competences?.map((c: any) => c.categorie))];
+    if (!competences) return [];
+    const cats = [...new Set(competences.map((c: any) => c.categorie))];
     return cats.sort((a: string, b: string) => a.localeCompare(b));
   }, [competences]);
 
-  const filtered = useMemo(
-    () =>
-      competences?.filter((comp: any) =>
-        comp.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        comp.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        comp.categorie?.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [competences, searchQuery]
-  );
+  const filtered = useMemo(() => {
+    if (!competences) return [];
+    return competences.filter((comp: any) =>
+      comp.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      comp.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      comp.categorie?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [competences, searchQuery]);
 
   const grouped = useMemo(() => {
+    if (!competences) return {};
     const groups: Record<string, any[]> = {};
     categories.forEach((cat: string) => {
-      groups[cat] = filtered?.filter((c: any) => c.categorie === cat) ?? [];
+      groups[cat] = filtered.filter((c: any) => c.categorie === cat);
     });
     return groups;
   }, [categories, filtered]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <p className="text-muted-foreground">Chargement des compétences...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center py-12">
+        <p className="text-red-500">Erreur lors du chargement : {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!competences || competences.length === 0) {
+    return (
+      <div className="flex justify-center py-12">
+        <p className="text-muted-foreground">Aucune compétence trouvée.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -122,4 +146,4 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
       })}
     </div>
   );
-}
+                              }
