@@ -9,44 +9,39 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
 
-// Petite bannière de debug qu'on peut retirer après
-function DebugBanner({ sections, activeSection, error }: any) {
-  if (!sections && !error) return null;
+// Bannière de debug (peut être supprimée une fois tout fonctionnel)
+function DebugBanner({ sections, activeSection }: any) {
+  if (!sections) return null;
   return (
     <div className="bg-yellow-100 border border-yellow-300 p-3 mb-4 text-xs">
       <p><strong>🔍 Debug Info</strong></p>
-      <p>Sections chargées : {sections ? sections.length : "aucune"}</p>
-      {sections && sections.length > 0 && (
-        <p>Clés : {sections.map((s: any) => s.cle).join(", ")}</p>
-      )}
+      <p>Sections chargées : {sections.length}</p>
+      <p>Clés : {sections.map((s: any) => s.cle).join(", ")}</p>
       <p>Onglet actif : "{activeSection}"</p>
-      {error && <p className="text-red-600">Erreur sections : {error.message}</p>}
     </div>
   );
 }
 
 export default function Encyclopedie() {
-  const { data: sections, isLoading, error } = useSectionsEncyclopedie();
+  const { data: sections, isLoading } = useSectionsEncyclopedie();
   const [activeSection, setActiveSection] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Sélectionne automatiquement le premier onglet si aucune valeur n'est définie
+  useEffect(() => {
+    if (sections && sections.length > 0 && !activeSection) {
+      setActiveSection(sections[0].cle);
+    }
+  }, [sections, activeSection]);
 
   if (isLoading) {
     return <div className="flex justify-center py-12">Chargement...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="p-8 text-center">
-        <DebugBanner sections={null} activeSection="-" error={error} />
-        <p className="text-red-500">Erreur lors du chargement des sections : {error.message}</p>
-      </div>
-    );
-  }
-
   if (!sections || sections.length === 0) {
     return (
       <div className="p-8 text-center">
-        <DebugBanner sections={[]} activeSection="-" error={null} />
+        <DebugBanner sections={[]} activeSection="-" />
         <p>Aucune section trouvée dans l'encyclopédie.</p>
       </div>
     );
@@ -56,7 +51,7 @@ export default function Encyclopedie() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Encyclopédie</h1>
 
-      <DebugBanner sections={sections} activeSection={activeSection} error={null} />
+      <DebugBanner sections={sections} activeSection={activeSection} />
 
       <div className="relative mb-8">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
@@ -95,16 +90,16 @@ function SectionContent({ active, searchQuery }: { active: string; searchQuery: 
   switch (active) {
     case "races":
       return <RacesSection searchQuery={searchQuery} />;
+    case "traits":
+      return <TraitsRaciauxSection searchQuery={searchQuery} />;
     case "classes":
       return <ClassesSection searchQuery={searchQuery} />;
     case "competences":
       return <CompetencesSection searchQuery={searchQuery} />;
-    case "sorts":
+    case "magie":
       return <SortsSection searchQuery={searchQuery} />;
     case "prieres":
       return <PrièresSection searchQuery={searchQuery} />;
-    case "traits_raciaux":
-      return <TraitsRaciauxSection searchQuery={searchQuery} />;
     default:
       return <p className="text-muted-foreground">Cette section n'existe pas encore.</p>;
   }
@@ -191,7 +186,6 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     },
   });
 
-  // hooks toujours en premier
   const categories = useMemo(() => {
     if (!competences) return [];
     const cats = [...new Set(competences.map((c: any) => c.categorie))];
