@@ -22,7 +22,6 @@ export default function Encyclopedie() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Encyclopédie</h1>
 
-      {/* Barre de recherche */}
       <div className="relative mb-8">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
         <Input
@@ -33,7 +32,6 @@ export default function Encyclopedie() {
         />
       </div>
 
-      {/* Tabs de sections */}
       <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
         <TabsList className="w-full overflow-x-auto flex flex-nowrap gap-1 pb-2 mb-6">
           {sections?.map((section) => (
@@ -57,10 +55,6 @@ export default function Encyclopedie() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Affichage dynamique selon la section active                               */
-/* -------------------------------------------------------------------------- */
-
 function SectionContent({ active, searchQuery }: { active: string; searchQuery: string }) {
   switch (active) {
     case "races":
@@ -79,10 +73,6 @@ function SectionContent({ active, searchQuery }: { active: string; searchQuery: 
       return <p className="text-muted-foreground">Cette section n'existe pas encore.</p>;
   }
 }
-
-/* -------------------------------------------------------------------------- */
-/*  RACES                                                                     */
-/* -------------------------------------------------------------------------- */
 
 function RacesSection({ searchQuery }: { searchQuery: string }) {
   const { data: races } = useQuery({
@@ -120,10 +110,6 @@ function RacesSection({ searchQuery }: { searchQuery: string }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  CLASSES                                                                   */
-/* -------------------------------------------------------------------------- */
-
 function ClassesSection({ searchQuery }: { searchQuery: string }) {
   const { data: classes } = useQuery({
     queryKey: ["classes"],
@@ -158,10 +144,6 @@ function ClassesSection({ searchQuery }: { searchQuery: string }) {
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*  COMPÉTENCES (modifié pour afficher prérequis)                             */
-/* -------------------------------------------------------------------------- */
 
 function CompetencesSection({ searchQuery }: { searchQuery: string }) {
   const { data: competences } = useQuery({
@@ -218,11 +200,9 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    {/* Description sommaire */}
                     {comp.description && (
                       <p className="text-sm text-muted-foreground mb-4">{comp.description}</p>
                     )}
-                    {/* Liste des niveaux */}
                     {comp.niveaux && Array.isArray(comp.niveaux) && comp.niveaux.length > 0 && (
                       <div className="space-y-3">
                         {comp.niveaux.map((niv: any, i: number) => (
@@ -234,7 +214,6 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
                             {niv.description && (
                               <p className="text-sm text-muted-foreground mt-1">{niv.description}</p>
                             )}
-                            {/* 🔽 Ajout de l'affichage du prérequis */}
                             {niv.prerequis && (
                               <p className="text-sm mt-2 font-medium">📋 {niv.prerequis}</p>
                             )}
@@ -255,10 +234,6 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*  SORTS                                                                     */
-/* -------------------------------------------------------------------------- */
 
 function SortsSection({ searchQuery }: { searchQuery: string }) {
   const { data: sorts } = useQuery({
@@ -301,10 +276,6 @@ function SortsSection({ searchQuery }: { searchQuery: string }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  PRIÈRES                                                                   */
-/* -------------------------------------------------------------------------- */
-
 function PrièresSection({ searchQuery }: { searchQuery: string }) {
   const { data: prieres } = useQuery({
     queryKey: ["prieres"],
@@ -346,10 +317,6 @@ function PrièresSection({ searchQuery }: { searchQuery: string }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  TRAITS RACIAUX                                                            */
-/* -------------------------------------------------------------------------- */
-
 function TraitsRaciauxSection({ searchQuery }: { searchQuery: string }) {
   const { data: traits } = useQuery({
     queryKey: ["traits_raciaux"],
@@ -383,4 +350,4 @@ function TraitsRaciauxSection({ searchQuery }: { searchQuery: string }) {
       ))}
     </div>
   );
-}
+          }
