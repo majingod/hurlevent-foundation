@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,8 +9,24 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
 
+// Petite bannière de debug qu'on peut retirer après
+function DebugBanner({ sections, activeSection, error }: any) {
+  if (!sections && !error) return null;
+  return (
+    <div className="bg-yellow-100 border border-yellow-300 p-3 mb-4 text-xs">
+      <p><strong>🔍 Debug Info</strong></p>
+      <p>Sections chargées : {sections ? sections.length : "aucune"}</p>
+      {sections && sections.length > 0 && (
+        <p>Clés : {sections.map((s: any) => s.cle).join(", ")}</p>
+      )}
+      <p>Onglet actif : "{activeSection}"</p>
+      {error && <p className="text-red-600">Erreur sections : {error.message}</p>}
+    </div>
+  );
+}
+
 export default function Encyclopedie() {
-  const { data: sections, isLoading } = useSectionsEncyclopedie();
+  const { data: sections, isLoading, error } = useSectionsEncyclopedie();
   const [activeSection, setActiveSection] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -18,9 +34,29 @@ export default function Encyclopedie() {
     return <div className="flex justify-center py-12">Chargement...</div>;
   }
 
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <DebugBanner sections={null} activeSection="-" error={error} />
+        <p className="text-red-500">Erreur lors du chargement des sections : {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!sections || sections.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <DebugBanner sections={[]} activeSection="-" error={null} />
+        <p>Aucune section trouvée dans l'encyclopédie.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Encyclopédie</h1>
+      <h1 className="text-3xl font-bold mb-4">Encyclopédie</h1>
+
+      <DebugBanner sections={sections} activeSection={activeSection} error={null} />
 
       <div className="relative mb-8">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
@@ -34,7 +70,7 @@ export default function Encyclopedie() {
 
       <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
         <TabsList className="w-full overflow-x-auto flex flex-nowrap gap-1 pb-2 mb-6">
-          {sections?.map((section) => (
+          {sections.map((section) => (
             <TabsTrigger
               key={section.id}
               value={section.cle}
@@ -45,7 +81,7 @@ export default function Encyclopedie() {
           ))}
         </TabsList>
 
-        {sections?.map((section) => (
+        {sections.map((section) => (
           <TabsContent key={section.id} value={section.cle}>
             <SectionContent active={section.cle} searchQuery={searchTerm} />
           </TabsContent>
@@ -155,7 +191,7 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     },
   });
 
-  // Toujours déclarer tous les hooks avant le moindre return
+  // hooks toujours en premier
   const categories = useMemo(() => {
     if (!competences) return [];
     const cats = [...new Set(competences.map((c: any) => c.categorie))];
@@ -180,32 +216,10 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     return groups;
   }, [categories, filtered]);
 
-  // Maintenant on peut gérer les retours conditionnels
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <p className="text-muted-foreground">Chargement des compétences...</p>
-      </div>
-    );
-  }
+  if (isLoading) return <p>Chargement compétences...</p>;
+  if (error) return <p className="text-red-500">Erreur compétences : {error.message}</p>;
+  if (!competences || competences.length === 0) return <p>Aucune compétence trouvée.</p>;
 
-  if (error) {
-    return (
-      <div className="flex justify-center py-12">
-        <p className="text-red-500">Erreur lors du chargement : {error.message}</p>
-      </div>
-    );
-  }
-
-  if (!competences || competences.length === 0) {
-    return (
-      <div className="flex justify-center py-12">
-        <p className="text-muted-foreground">Aucune compétence trouvée.</p>
-      </div>
-    );
-  }
-
-  // Fonction pour extraire le prérequis, qu'il soit string ou objet
   const getPrerequisText = (niv: any) => {
     let raw = niv.prerequis ?? niv.prerequisites ?? null;
     if (raw === null) return null;
@@ -230,9 +244,7 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
                     <div className="flex items-center gap-2">
                       <span>{comp.nom}</span>
                       {comp.est_general && (
-                        <Badge variant="outline" className="text-xs">
-                          Général
-                        </Badge>
+                        <Badge variant="outline" className="text-xs">Général</Badge>
                       )}
                     </div>
                   </AccordionTrigger>
