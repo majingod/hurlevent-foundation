@@ -155,6 +155,7 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     },
   });
 
+  // Toujours déclarer tous les hooks avant le moindre return
   const categories = useMemo(() => {
     if (!competences) return [];
     const cats = [...new Set(competences.map((c: any) => c.categorie))];
@@ -179,6 +180,7 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     return groups;
   }, [categories, filtered]);
 
+  // Maintenant on peut gérer les retours conditionnels
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -203,17 +205,14 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
     );
   }
 
-  // Fonction pour extraire le prérequis sous forme de texte, quelle que soit sa structure
+  // Fonction pour extraire le prérequis, qu'il soit string ou objet
   const getPrerequisText = (niv: any) => {
-    // Essayer la clé 'prerequis' (français), puis 'prerequisites' (anglais)
     let raw = niv.prerequis ?? niv.prerequisites ?? null;
     if (raw === null) return null;
-    // Si c'est un objet, on prend sa première valeur texte (ex: {"prerequisites": "..."})
     if (typeof raw === "object") {
-      // Cherche une propriété 'prerequisites' ou 'prerequis' dans l'objet
       return raw.prerequisites || raw.prerequis || JSON.stringify(raw);
     }
-    return raw; // C'est déjà une chaîne
+    return raw;
   };
 
   return (
@@ -245,7 +244,6 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
                       <div className="space-y-3">
                         {comp.niveaux.map((niv: any, i: number) => {
                           const prerequisText = getPrerequisText(niv);
-
                           return (
                             <div key={i} className="border rounded-lg p-3 bg-muted/30">
                               <p className="font-medium">
@@ -255,9 +253,9 @@ function CompetencesSection({ searchQuery }: { searchQuery: string }) {
                               {niv.description && (
                                 <p className="text-sm text-muted-foreground mt-1">{niv.description}</p>
                               )}
-                              {prerequisText ? (
+                              {prerequisText && (
                                 <p className="text-sm mt-2 font-medium">📋 {prerequisText}</p>
-                              ) : null}
+                              )}
                               {niv.effet && (
                                 <p className="text-sm mt-1 italic">{niv.effet}</p>
                               )}
@@ -392,4 +390,4 @@ function TraitsRaciauxSection({ searchQuery }: { searchQuery: string }) {
       ))}
     </div>
   );
-      }
+    }
