@@ -46,11 +46,11 @@ const AdminPersonnages = () => {
     return (
       <AdminLayout
         title="Gestion des personnages"
-        searchPlaceholder="Rechercher un personnage…"
+        searchPlaceholder="Rechercher un personnageâ€¦"
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
       >
-        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
+        <p className="text-center py-12 text-muted-foreground">Chargementâ€¦</p>
       </AdminLayout>
     );
   }
@@ -58,13 +58,13 @@ const AdminPersonnages = () => {
   return (
     <AdminLayout
       title="Gestion des personnages"
-      searchPlaceholder="Rechercher un personnage…"
+      searchPlaceholder="Rechercher un personnageâ€¦"
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
     >
-      <Card>
+      <Card className="border-primary/10 bg-card/50 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-base">
+          <CardTitle className="text-base font-heading">
             Liste des personnages ({filteredPersonnages?.length ?? 0})
           </CardTitle>
         </CardHeader>
@@ -72,20 +72,20 @@ const AdminPersonnages = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-primary/10">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nom</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Joueur</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Race</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Classe</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Niveau</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Statut</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Étape</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ã‰tape</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPersonnages?.map((perso) => (
-                  <tr key={perso.id} className="border-b border-border/50 hover:bg-muted/50">
+                  <tr key={perso.id} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                     <td className="py-3 px-4 font-medium text-foreground">{perso.nom}</td>
                     <td className="py-3 px-4 text-muted-foreground text-sm">{perso.joueur_nom}</td>
                     <td className="py-3 px-4 text-muted-foreground text-sm">{perso.race_nom}</td>
