@@ -62,6 +62,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Couleurs Base44
+        gold: COLORS_BASE44.gold,
+        'gold-accent': COLORS_BASE44.goldAccent,
+        'gold-dark': COLORS_BASE44.goldDark,
+        'dark-brown': COLORS_BASE44.darkBrown,
+        'mid-brown': COLORS_BASE44.midBrown,
+        bordeaux: COLORS_BASE44.bordeaux,
       },
       borderRadius: {
         lg: "var(--radius)",
