@@ -484,6 +484,16 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
   const filtered = filterByText(competences, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
   const grouped = groupBy(filtered, (c) => c.categorie ?? "autre");
+  // Nouvelle fonction pour extraire le prérequis (chaîne ou objet)
+  const getPrerequisText = (niv: any): string | null => {
+    let raw = niv.prerequis ?? niv.prerequisites ?? null;
+    if (!raw) return null;
+    if (typeof raw === "string") return raw;
+    if (typeof raw === "object") {
+      return raw.prerequisites || raw.prerequis || null;
+    }
+    return null;
+  };
   const orderedKeys = ["general", "guerrier", "voleur", "mage", "pretre"];
   const keys = [...orderedKeys.filter((k) => k in grouped), ...Object.keys(grouped).filter((k) => !orderedKeys.includes(k))];
 
@@ -514,6 +524,12 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
                               Niveau {niv.niveau ?? i + 1}{niv.cout_xp != null && ` — ${niv.cout_xp} XP`}
                             </p>
                             {niv.description && <p className="text-muted-foreground text-xs">{niv.description}</p>}
+                            {(() => {
+                             const prerequisText = getPrerequisText(niv);
+                             return prerequisText ? (
+                               <p className="text-xs mt-1 font-medium">📋 {prerequisText}</p>
+                             ) : null;
+                             })()}
                             {niv.effet && <p className="text-muted-foreground text-xs">{niv.effet}</p>}
                           </div>
                         ))}
