@@ -97,17 +97,7 @@ export const STATUT_PERSONNAGE_LABELS = {
   decede:  "Décédé",
 } as const;
 
-// --- Encyclopedie Races ---
-
-export const RACE_ICONS = {
-  COSTUME_REQUIS: '👕', // ou 🎭 ou 👗 selon ta préférence
-  ESPERANCE_VIE: '⏳',
-  XP_DEPART: '⭐'
-}
-
-// ============================================
-// RACE ICONS & DISPLAY ELEMENTS
-// ============================================
+// --- Race Icons & Emojis ---
 
 export const RACE_ICONS = {
   COSTUME_REQUIS: '🎭',
@@ -115,7 +105,6 @@ export const RACE_ICONS = {
   XP_DEPART: '⭐',
 } as const;
 
-// Emojis par race
 export const RACE_EMOJI_MAP: Record<string, string> = {
   'Chiméride': '🐾',
   'Demi-Elfe': '⚔️',
