@@ -104,3 +104,27 @@ export const RACE_ICONS = {
   ESPERANCE_VIE: '⏳',
   XP_DEPART: '⭐'
 }
+
+// ============================================
+// RACE ICONS & DISPLAY ELEMENTS
+// ============================================
+
+export const RACE_ICONS = {
+  COSTUME_REQUIS: '🎭',
+  ESPERANCE_VIE: '⏳',
+  XP_DEPART: '⭐',
+} as const;
+
+// Emojis par race
+export const RACE_EMOJI_MAP: Record<string, string> = {
+  'Chiméride': '🐾',
+  'Demi-Elfe': '⚔️',
+  'Demi-Orc': '💪',
+  'Drow': '🌙',
+  'Fée': '✨',
+  'Gobelin': '🎭',
+  'Haut-Elfe': '👑',
+  'Humain': '👤',
+  'Myrvalk': '⛏️',
+  'Orc': '🗡️',
+} as const;
