@@ -19,6 +19,7 @@ import ForgeJoaillerieSection from "@/components/encyclopedie/ForgeJoaillerieSec
 import BestiaireSection from "@/components/encyclopedie/BestiaireSection";
 import LoreSection from "@/components/encyclopedie/LoreSection";
 import PiegesSection from "@/components/encyclopedie/PiegesSection";
+import RaceCard from "@/components/encyclopedie/RaceCard";
 
 /* ── types ── */
 
@@ -30,6 +31,7 @@ interface Race {
   xp_depart: number;
   esperance_vie: string | null;
   exigences_costume: string | null;
+  emoji: string | null;
 }
 
 interface Classe {
@@ -174,14 +176,11 @@ const Encyclopedie = () => {
   const [pieges, setPieges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Réagit aux changements d'URL (?tab=...)
   useEffect(() => {
     const fromUrl = URL_TO_KEY[searchParams.get("tab") ?? ""];
     if (fromUrl && fromUrl !== active) setActive(fromUrl);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Réinitialise la recherche quand on change d'onglet
   useEffect(() => {
     setSearch("");
   }, [active]);
@@ -258,7 +257,6 @@ const Encyclopedie = () => {
       </h1>
 
       <div className="flex flex-col md:flex-row gap-8">
-        {/* ── Sidebar nav ── */}
         <nav className="md:w-56 flex-shrink-0">
           <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible md:sticky md:top-24">
             {sectionData?.map(s => {
@@ -268,7 +266,7 @@ const Encyclopedie = () => {
                 <button
                   key={s.cle}
                   onClick={() => handleTabClick(s.cle as SectionKey)}
-className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(184,146,70,0.3)]"
                       : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
@@ -282,9 +280,7 @@ className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium w
           </div>
         </nav>
 
-        {/* ── Content ── */}
         <main className="flex-1 min-w-0">
-          {/* Recherche par onglet */}
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -328,8 +324,6 @@ className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium w
   );
 };
 
-/* ── Section components ── */
-
 const NoResults = () => (
   <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
 );
@@ -367,36 +361,27 @@ const ExpandableCard = ({
 );
 
 const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: string }) => {
-  const [expanded, setExpanded] = useState<string | null>(null);
   const filtered = filterByText(races, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.nom_latin ?? ""]);
+  
   return (
-    <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Les Races de Destéa</h2>
-      {filtered.length === 0 ? <NoResults /> : (
-        <div className="grid gap-4 sm:grid-cols-2">
+    <div className="space-y-6">
+      <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Races de Destéa</h2>
+      {filtered.length === 0 ? (
+        <NoResults />
+      ) : (
+        <div className="grid gap-6">
           {filtered.map((r) => (
-            <ExpandableCard
+            <RaceCard
               key={r.id}
-              isOpen={expanded === r.id}
-              onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
-              header={
-                <>
-                  <CardTitle className="font-heading text-xl">{r.nom}</CardTitle>
-                  {r.nom_latin && <p className="text-sm italic text-muted-foreground">{r.nom_latin}</p>}
-                  <p className="text-sm text-muted-foreground mt-1">XP de départ : {r.xp_depart}</p>
-                </>
-              }
-            >
-              <div className="space-y-2 border-t border-primary/10 pt-3 mt-1">
-                {r.esperance_vie && <p>Espérance de vie : {r.esperance_vie}</p>}
-                {r.exigences_costume && (
-                  <Badge variant="outline" className="border-orange-500/50 text-orange-400">
-                    Costume : {r.exigences_costume}
-                  </Badge>
-                )}
-                {r.description && <p className="mt-2">{r.description}</p>}
-              </div>
-            </ExpandableCard>
+              id={r.id}
+              nom={r.nom || ''}
+              nom_latin={r.nom_latin}
+              emoji={r.emoji || '?'}
+              esperance_vie={r.esperance_vie}
+              xp_depart={r.xp_depart}
+              description={r.description}
+              exigences_costume={r.exigences_costume}
+            />
           ))}
         </div>
       )}
@@ -484,7 +469,6 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
   const filtered = filterByText(competences, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
   const grouped = groupBy(filtered, (c) => c.categorie ?? "autre");
-  // Nouvelle fonction pour extraire le prérequis (chaîne ou objet)
   const getPrerequisText = (niv: any): string | null => {
     let raw = niv.prerequis ?? niv.prerequisites ?? null;
     if (!raw) return null;
@@ -665,4 +649,3 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
 };
 
 export default Encyclopedie;
-
