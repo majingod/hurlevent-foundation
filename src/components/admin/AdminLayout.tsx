@@ -50,8 +50,8 @@ const AdminLayout = ({
   const currentSection = ADMIN_SECTIONS.find(s => s.path === location.pathname);
 
   return (
-    <div className="container py-8 max-w-6xl">
-      <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-8">
+    <div className="container py-8 max-w-6xl animate-in fade-in duration-500">
+      <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-8 tracking-tight">
         {title}
       </h1>
 
@@ -66,10 +66,10 @@ const AdminLayout = ({
                 <button
                   key={section.id}
                   onClick={() => navigate(section.path)}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(184,146,70,0.3)]"
+                      : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
                   }`}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
@@ -104,3 +104,4 @@ const AdminLayout = ({
 };
 
 export default AdminLayout;
+
