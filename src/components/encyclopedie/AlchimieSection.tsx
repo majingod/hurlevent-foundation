@@ -101,7 +101,7 @@ const AlchimieSection = ({ recettes, ingredients }: { recettes: Recette[]; ingre
             <h4 className="text-sm font-medium text-muted-foreground mb-2">Niveau {niv}</h4>
             <div className="space-y-1">
               {groupedIngredients[niv].map((ing) => (
-                <div key={ing.id} className="rounded-lg border border-border p-3 flex items-center justify-between text-sm">
+                <div key={ing.id} className="rounded-lg border border-primary/10 bg-card/30 p-3 flex items-center justify-between text-sm hover:border-primary/30 transition-colors">
                   <span className="font-medium text-foreground">{ing.nom}</span>
                   {ing.manipulations && <span className="text-muted-foreground text-xs">{ing.manipulations}</span>}
                 </div>
@@ -115,3 +115,4 @@ const AlchimieSection = ({ recettes, ingredients }: { recettes: Recette[]; ingre
 };
 
 export default AlchimieSection;
+
