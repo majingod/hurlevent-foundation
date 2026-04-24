@@ -55,7 +55,7 @@ const AdminCompetencesMaitre = () => {
         .eq("id", id);
 
       if (error) throw error;
-      toast.success("Compétence approuvée !");
+      toast.success("CompÃ©tence approuvÃ©e !");
       refetch();
     } catch (err: any) {
       console.error(err);
@@ -74,7 +74,7 @@ const AdminCompetencesMaitre = () => {
         .eq("id", id);
 
       if (error) throw error;
-      toast.success("Compétence rejetée !");
+      toast.success("CompÃ©tence rejetÃ©e !");
       refetch();
     } catch (err: any) {
       console.error(err);
@@ -87,39 +87,39 @@ const AdminCompetencesMaitre = () => {
   if (isLoading) {
     return (
       <AdminLayout
-        title="Approbations maître"
-        searchPlaceholder="Rechercher une compétence…"
+        title="Approbations maÃ®tre"
+        searchPlaceholder="Rechercher une compÃ©tenceâ€¦"
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
       >
-        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
+        <p className="text-center py-12 text-muted-foreground">Chargementâ€¦</p>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout
-      title="Approbations maître"
-      searchPlaceholder="Rechercher une compétence…"
+      title="Approbations maÃ®tre"
+      searchPlaceholder="Rechercher une compÃ©tenceâ€¦"
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
     >
       <div className="space-y-6">
         {/* En attente */}
         {enAttente.length > 0 && (
-          <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <Card className="border-yellow-500/20 bg-yellow-500/5 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-base text-yellow-700">
+              <CardTitle className="text-base font-heading text-yellow-600">
                 En attente d'approbation ({enAttente.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {enAttente.map((comp) => (
-                <div key={comp.id} className="p-3 rounded border border-border/50 flex items-center justify-between">
+                <div key={comp.id} className="p-3 rounded border border-primary/10 bg-card/30 flex items-center justify-between hover:border-primary/30 transition-colors">
                   <div className="flex-1">
                     <p className="font-medium text-foreground">{comp.competence_nom}</p>
                     <p className="text-xs text-muted-foreground">
-                      {comp.personnage_nom} ({comp.joueur_nom}) • Niveau {comp.niveau_acquis} • Maître: {comp.nom_maitre}
+                      {comp.personnage_nom} ({comp.joueur_nom}) â€¢ Niveau {comp.niveau_acquis} â€¢ MaÃ®tre: {comp.nom_maitre}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -150,18 +150,18 @@ const AdminCompetencesMaitre = () => {
           </Card>
         )}
 
-        {/* Approuvées */}
+        {/* ApprouvÃ©es */}
         {approuvees.length > 0 && (
-          <Card className="border-green-500/30 bg-green-500/5">
+          <Card className="border-green-500/20 bg-green-500/5 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-base text-green-700">Approuvées ({approuvees.length})</CardTitle>
+              <CardTitle className="text-base font-heading text-green-600">ApprouvÃ©es ({approuvees.length})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {approuvees.map((comp) => (
                 <div key={comp.id} className="p-2 rounded border border-border/50 text-sm">
                   <p className="font-medium text-foreground">{comp.competence_nom}</p>
                   <p className="text-xs text-muted-foreground">
-                    {comp.personnage_nom} • {new Date(comp.date_demande).toLocaleDateString("fr-FR")}
+                    {comp.personnage_nom} â€¢ {new Date(comp.date_demande).toLocaleDateString("fr-FR")}
                   </p>
                 </div>
               ))}
@@ -169,18 +169,18 @@ const AdminCompetencesMaitre = () => {
           </Card>
         )}
 
-        {/* Rejetées */}
+        {/* RejetÃ©es */}
         {rejetees.length > 0 && (
-          <Card className="border-red-500/30 bg-red-500/5">
+          <Card className="border-red-500/20 bg-red-500/5 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-base text-red-700">Rejetées ({rejetees.length})</CardTitle>
+              <CardTitle className="text-base font-heading text-red-600">RejetÃ©es ({rejetees.length})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {rejetees.map((comp) => (
                 <div key={comp.id} className="p-2 rounded border border-border/50 text-sm">
                   <p className="font-medium text-foreground">{comp.competence_nom}</p>
                   <p className="text-xs text-muted-foreground">
-                    {comp.personnage_nom} • {new Date(comp.date_demande).toLocaleDateString("fr-FR")}
+                    {comp.personnage_nom} â€¢ {new Date(comp.date_demande).toLocaleDateString("fr-FR")}
                   </p>
                 </div>
               ))}
@@ -191,7 +191,7 @@ const AdminCompetencesMaitre = () => {
         {enAttente.length === 0 && approuvees.length === 0 && rejetees.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              Aucune compétence maître.
+              Aucune compÃ©tence maÃ®tre.
             </CardContent>
           </Card>
         )}
