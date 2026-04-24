@@ -96,3 +96,11 @@ export const STATUT_PERSONNAGE_LABELS = {
   inactif: "Inactif",
   decede:  "Décédé",
 } as const;
+
+// --- Encyclopedie Races ---
+
+export const RACE_ICONS = {
+  COSTUME_REQUIS: '👕', // ou 🎭 ou 👗 selon ta préférence
+  ESPERANCE_VIE: '⏳',
+  XP_DEPART: '⭐'
+}
