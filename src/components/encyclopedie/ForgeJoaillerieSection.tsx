@@ -116,7 +116,7 @@ const ForgeJoaillerieSection = ({
       {/* Forge */}
       {mode === "forge" && fForge.length > 0 && (
         <section className="space-y-6">
-          <div className="rounded-md border border-primary/30 bg-[#111111] p-4 text-sm text-muted-foreground space-y-2">
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground space-y-2 backdrop-blur-sm">
             <div className="flex items-start gap-2">
               <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
               <div className="space-y-1">
@@ -165,7 +165,7 @@ const ForgeJoaillerieSection = ({
       {/* Joaillerie */}
       {mode === "joaillerie" && fJoail.length > 0 && (
         <section className="space-y-6">
-          <div className="rounded-md border border-primary/30 bg-[#111111] p-4 text-sm text-muted-foreground space-y-2">
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground space-y-2 backdrop-blur-sm">
             <div className="flex items-start gap-2">
               <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
               <div className="space-y-1">
@@ -212,11 +212,11 @@ const ForgeJoaillerieSection = ({
                 {repsByCat[cat].map((r) => {
                   const isOpen = expandedRep === r.id;
                   return (
-                    <Card
-                      key={r.id}
-                      className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
-                      onClick={() => setExpandedRep(isOpen ? null : r.id)}
-                    >
+<Card
+	                      key={r.id}
+	                      className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
+	                      onClick={() => setExpandedRep(isOpen ? null : r.id)}
+	                    >
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
                           <CardTitle className="font-heading text-base">{r.nom_affichage}</CardTitle>
@@ -256,3 +256,4 @@ const ForgeJoaillerieSection = ({
 };
 
 export default ForgeJoaillerieSection;
+
