@@ -76,7 +76,7 @@ const AdminDashboard = () => {
           {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
-              <Card key={stat.title} className="border-border/50">
+              <Card key={stat.title} className="border-primary/10 bg-card/50 backdrop-blur-sm hover:border-primary/30 transition-all duration-300">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
                     {stat.title}
@@ -93,7 +93,7 @@ const AdminDashboard = () => {
 
         {/* Prochain événement */}
         {stats?.prochain_evenement_titre && (
-          <Card className="border-primary/30 bg-primary/5">
+          <Card className="border-primary/20 bg-primary/5 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
@@ -119,9 +119,9 @@ const AdminDashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <Card>
+        <Card className="border-primary/10 bg-card/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-base">Actions rapides</CardTitle>
+            <CardTitle className="text-base font-heading">Actions rapides</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <Button
@@ -167,3 +167,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
