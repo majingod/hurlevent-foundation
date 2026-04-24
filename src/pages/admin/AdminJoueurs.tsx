@@ -81,9 +81,9 @@ const AdminJoueurs = () => {
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
     >
-      <Card>
+      <Card className="border-primary/10 bg-card/50 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-base">
+          <CardTitle className="text-base font-heading">
             Liste des joueurs ({filteredJoueurs?.length ?? 0})
           </CardTitle>
         </CardHeader>
@@ -91,7 +91,7 @@ const AdminJoueurs = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-primary/10">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nom</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Email</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rôle</th>
@@ -101,7 +101,7 @@ const AdminJoueurs = () => {
               </thead>
               <tbody>
                 {filteredJoueurs?.map((joueur) => (
-                  <tr key={joueur.id} className="border-b border-border/50 hover:bg-muted/50">
+                  <tr key={joueur.id} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
                     <td className="py-3 px-4 font-medium text-foreground">{joueur.nom_affichage}</td>
                     <td className="py-3 px-4 text-muted-foreground text-sm">{joueur.email}</td>
                     <td className="py-3 px-4">
@@ -138,3 +138,4 @@ const AdminJoueurs = () => {
 };
 
 export default AdminJoueurs;
+
