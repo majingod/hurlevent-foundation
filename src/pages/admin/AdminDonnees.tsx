@@ -43,20 +43,20 @@ const AdminDonnees = () => {
   if (isLoading) {
     return (
       <AdminLayout
-        title="Gestion des données de jeu"
-        searchPlaceholder="Rechercher…"
+        title="Gestion des donnÃ©es de jeu"
+        searchPlaceholder="Rechercherâ€¦"
         searchValue={searchTerm}
         onSearchChange={setSearchTerm}
       >
-        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
+        <p className="text-center py-12 text-muted-foreground">Chargementâ€¦</p>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout
-      title="Gestion des données de jeu"
-      searchPlaceholder="Rechercher…"
+      title="Gestion des donnÃ©es de jeu"
+      searchPlaceholder="Rechercherâ€¦"
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
     >
@@ -71,7 +71,7 @@ const AdminDonnees = () => {
         <TabsContent value="overview" className="space-y-4 mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {counts?.map((item) => (
-              <Card key={item.table_name}>
+              <Card key={item.table_name} className="border-primary/10 bg-card/50 backdrop-blur-sm hover:border-primary/30 transition-all duration-300">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -92,30 +92,30 @@ const AdminDonnees = () => {
 
         {/* Races */}
         <TabsContent value="races" className="space-y-4 mt-6">
-          <Card>
+          <Card className="border-primary/10 bg-card/50 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-base">Races disponibles</CardTitle>
+              <CardTitle className="text-base font-heading">Races disponibles</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Gérez les races disponibles pour la création de personnages. Les races marquées comme "jouables" apparaîtront dans le créateur.
+                GÃ©rez les races disponibles pour la crÃ©ation de personnages. Les races marquÃ©es comme "jouables" apparaÃ®tront dans le crÃ©ateur.
               </p>
-              <Button className="mt-4">Gérer les races</Button>
+              <Button className="mt-4">GÃ©rer les races</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Classes */}
         <TabsContent value="classes" className="space-y-4 mt-6">
-          <Card>
+          <Card className="border-primary/10 bg-card/50 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-base">Classes disponibles</CardTitle>
+              <CardTitle className="text-base font-heading">Classes disponibles</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Gérez les classes disponibles pour la création de personnages. Chaque classe définit les compétences gratuites et les statistiques de base.
+                GÃ©rez les classes disponibles pour la crÃ©ation de personnages. Chaque classe dÃ©finit les compÃ©tences gratuites et les statistiques de base.
               </p>
-              <Button className="mt-4">Gérer les classes</Button>
+              <Button className="mt-4">GÃ©rer les classes</Button>
             </CardContent>
           </Card>
         </TabsContent>
