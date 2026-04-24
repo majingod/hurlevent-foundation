@@ -146,17 +146,6 @@ function filterByText<T>(arr: T[], q: string, fields: (item: T) => string[]): T[
   return arr.filter((item) => fields(item).some((f) => (f ?? "").toLowerCase().includes(lc)));
 }
 
-// Nouvelle fonction pour extraire le prérequis (chaîne ou objet)
-const getPrerequisText = (niv: any): string | null => {
-  let raw = niv.prerequis ?? niv.prerequisites ?? null;
-  if (!raw) return null;
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "object") {
-    return raw.prerequisites || raw.prerequis || null;
-  }
-  return null;
-};
-
 /* ── component ── */
 
 const Encyclopedie = () => {
@@ -263,8 +252,8 @@ const Encyclopedie = () => {
   }
 
   return (
-    <div className="container py-8 max-w-6xl">
-      <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-8">
+    <div className="container py-8 max-w-6xl animate-in fade-in duration-500">
+      <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-8 tracking-tight">
         Encyclopédie de Destéa
       </h1>
 
@@ -279,10 +268,10 @@ const Encyclopedie = () => {
                 <button
                   key={s.cle}
                   onClick={() => handleTabClick(s.cle as SectionKey)}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(184,146,70,0.3)]"
+                      : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
                   }`}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
@@ -354,13 +343,13 @@ const ExpandableCard = ({
   children: React.ReactNode;
 }) => (
   <Card
-    className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
+    className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
     onClick={onToggle}
   >
     <CardHeader className="pb-2">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">{header}</div>
-        <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 flex-shrink-0 group-hover:text-primary ${isOpen ? "rotate-180" : ""}`} />
       </div>
     </CardHeader>
     <CardContent className="text-sm text-muted-foreground">
@@ -519,21 +508,15 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
                     {c.description && <p>{c.description}</p>}
                     {niveaux.length > 0 && (
                       <div className="space-y-2 mt-2">
-                        {niveaux.map((niv: any, i: number) => {
-                          const prerequisText = getPrerequisText(niv);
-                          return (
-                            <div key={i} className="rounded-lg border border-border p-3">
-                              <p className="font-medium text-foreground text-xs mb-1">
-                                Niveau {niv.niveau ?? i + 1}{niv.cout_xp != null && ` — ${niv.cout_xp} XP`}
-                              </p>
-                              {niv.description && <p className="text-muted-foreground text-xs">{niv.description}</p>}
-                              {prerequisText && (
-                                <p className="text-xs mt-1 font-medium">📋 {prerequisText}</p>
-                              )}
-                              {niv.effet && <p className="text-muted-foreground text-xs">{niv.effet}</p>}
-                            </div>
-                          );
-                        })}
+                        {niveaux.map((niv: any, i: number) => (
+                          <div key={i} className="rounded-lg border border-border p-3">
+                            <p className="font-medium text-foreground text-xs mb-1">
+                              Niveau {niv.niveau ?? i + 1}{niv.cout_xp != null && ` — ${niv.cout_xp} XP`}
+                            </p>
+                            {niv.description && <p className="text-muted-foreground text-xs">{niv.description}</p>}
+                            {niv.effet && <p className="text-muted-foreground text-xs">{niv.effet}</p>}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </AccordionContent>
@@ -666,3 +649,4 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
 };
 
 export default Encyclopedie;
+
