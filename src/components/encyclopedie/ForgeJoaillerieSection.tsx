@@ -80,7 +80,14 @@ const ForgeJoaillerieSection = ({
         );
 
   const fForge = filterFn(forge);
-  const fJoail = filterFn(joaillerie);
+  const fJoail = !q
+    ? joaillerie
+    : joaillerie.filter(
+        (o) =>
+          (o.nom ?? "").toLowerCase().includes(q) ||
+          (o.description ?? "").toLowerCase().includes(q) ||
+          (o.effet ?? "").toLowerCase().includes(q),
+      );
   const fReps = !q
     ? reparations
     : reparations.filter(

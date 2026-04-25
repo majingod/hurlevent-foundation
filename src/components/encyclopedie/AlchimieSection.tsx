@@ -38,8 +38,18 @@ const labelType: Record<string, string> = {
   autre: "Autres",
 };
 
-const AlchimieSection = ({ recettes, ingredients }: { recettes: Recette[]; ingredients: Ingredient[] }) => {
-  const groupedByType = groupBy(recettes, (r) => r.type ?? "autre");
+const AlchimieSection = ({ recettes, ingredients, searchQuery = "" }: { recettes: Recette[]; ingredients: Ingredient[]; searchQuery?: string }) => {
+  const q = searchQuery.trim().toLowerCase();
+  const filteredRecettes = q
+    ? recettes.filter(
+        (r) =>
+          (r.nom ?? "").toLowerCase().includes(q) ||
+          (r.description ?? "").toLowerCase().includes(q) ||
+          (r.formule ?? "").toLowerCase().includes(q) ||
+          (r.effet ?? "").toLowerCase().includes(q),
+      )
+    : recettes;
+  const groupedByType = groupBy(filteredRecettes, (r) => r.type ?? "autre");
   const typeOrder = ["potion", "poison", "autre"];
   const typeKeys = [...typeOrder.filter((k) => k in groupedByType), ...Object.keys(groupedByType).filter((k) => !typeOrder.includes(k))];
 

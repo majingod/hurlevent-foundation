@@ -38,7 +38,8 @@ const PiegesSection = ({
     ? pieges.filter(
         (p) =>
           p.nom.toLowerCase().includes(q) ||
-          (p.effets ?? "").toLowerCase().includes(q),
+          (p.effets ?? "").toLowerCase().includes(q) ||
+          (p.cible ?? "").toLowerCase().includes(q),
       )
     : pieges;
 

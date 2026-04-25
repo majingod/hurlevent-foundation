@@ -295,8 +295,8 @@ const Encyclopedie = () => {
           {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} />}
           {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} />}
           {active === "religions" && <ReligionsSection religions={religions} searchQuery={search} />}
-          {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} />}
-          {active === "assemblages" && <AssemblagesSection assemblages={assemblages} />}
+          {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} searchQuery={search} />}
+          {active === "assemblages" && <AssemblagesSection assemblages={assemblages} searchQuery={search} />}
           {active === "forge" && (
             <ForgeJoaillerieSection
               mode="forge"
@@ -358,7 +358,7 @@ const ExpandableCard = ({
 );
 
 const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: string }) => {
-  const filtered = filterByText(races, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.nom_latin ?? ""]);
+  const filtered = filterByText(races, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.nom_latin ?? "", r.exigences_costume ?? ""]);
   
   return (
     <div className="space-y-6">
@@ -417,7 +417,7 @@ const TraitsSection = ({ traits, searchQuery }: { traits: TraitRacial[]; searchQ
 
 const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQuery: string }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const filtered = filterByText(classes, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
+  const filtered = filterByText(classes, searchQuery, (c) => [c.nom ?? "", c.description ?? "", c.role_combat ?? ""]);
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Les Classes de Destéa</h2>

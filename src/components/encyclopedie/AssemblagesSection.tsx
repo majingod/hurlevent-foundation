@@ -15,14 +15,26 @@ interface Assemblage {
   cout_ps_maitrise: number | null;
 }
 
-const AssemblagesSection = ({ assemblages }: { assemblages: Assemblage[] }) => {
+const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: Assemblage[]; searchQuery?: string }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? assemblages.filter(
+        (a) =>
+          (a.nom ?? "").toLowerCase().includes(q) ||
+          (a.description_longue ?? "").toLowerCase().includes(q) ||
+          (a.effet ?? "").toLowerCase().includes(q),
+      )
+    : assemblages;
 
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Assemblages de Runes</h2>
+      {filtered.length === 0 && q && (
+        <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
-        {assemblages.map((a) => (
+        {filtered.map((a) => (
           <Card
             key={a.id}
             className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
