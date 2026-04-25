@@ -68,6 +68,7 @@ const ForgeJoaillerieSection = ({
   searchQuery?: string;
 }) => {
   const [expandedRep, setExpandedRep] = useState<string | null>(null);
+  const [expandedForge, setExpandedForge] = useState<string | null>(null);
   const [forgeOnglet, setForgeOnglet] = useState<'fabrication' | 'reparation'>('fabrication');
   const q = searchQuery.trim().toLowerCase();
 
@@ -154,39 +155,48 @@ const ForgeJoaillerieSection = ({
             </div>
           </div>
 
-          {forgeKeys.map((diff) => (
-            <div key={diff} className="mb-4">
-              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> Temps de fabrication : {diff} min
-              </h4>
-              <Accordion type="multiple" className="w-full">
-                {forgeByDiff[diff].map((o) => {
-                  const stats = o.stats && typeof o.stats === "object" && !Array.isArray(o.stats) ? o.stats as Record<string, any> : null;
-                  const typeLabel = o.type ? (TYPE_OBJET_FORGE_LABELS[o.type] || o.type) : null;
-                  return (
-                    <AccordionItem key={o.id} value={o.id}>
-                      <AccordionTrigger className="font-heading text-base hover:no-underline">
-                        <span className="flex items-center gap-2">
-                          {o.nom}
-                          {typeLabel && <span className="text-xs text-muted-foreground">({typeLabel})</span>}
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent className="text-sm text-muted-foreground space-y-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {fForge.map((o) => {
+              const isOpen = expandedForge === o.id;
+              const stats = o.stats && typeof o.stats === "object" && !Array.isArray(o.stats) ? o.stats as Record<string, any> : null;
+              return (
+                <Card
+                  key={o.id}
+                  className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
+                  onClick={() => setExpandedForge(isOpen ? null : o.id)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
+                      <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
+                    </div>
+                    {o.type && (
+                      <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
+                    </p>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground">
+                    <div
+                      className="overflow-hidden transition-all duration-300 ease-in-out"
+                      style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
+                    >
+                      <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
                         {o.description && <p>{o.description}</p>}
-                        {stats && (
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                            {Object.entries(stats).map(([k, v]) => (
-                              <span key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</span>
-                            ))}
-                          </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            </div>
-          ))}
+                        {stats && Object.entries(stats).map(([k, v]) => (
+                          <p key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</p>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-1">
+                      <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </section>
       )}
 
