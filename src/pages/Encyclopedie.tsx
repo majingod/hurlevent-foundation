@@ -278,7 +278,7 @@ const Encyclopedie = () => {
                   }`}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
-                  <span>{s.label}</span>
+                  <span>{s.cle === "magie" ? "Magie Arcane" : s.label}</span>
                 </button>
               );
             })}
@@ -630,8 +630,24 @@ const SOUS_ONGLETS_CERCLES = [
   ...CERCLES_MAGE.map(c => ({ key: c, label: c })),
 ];
 
+type NiveauMin = 1 | 6 | 11;
+
+function getNiveauMin(niveau: number): NiveauMin {
+  if (niveau <= 5) return 1;
+  if (niveau <= 10) return 6;
+  return 11;
+}
+
+const NIVEAU_MIN_FILTERS: { key: NiveauMin | null; label: string }[] = [
+  { key: null, label: "Tous" },
+  { key: 1, label: "Niveau 1" },
+  { key: 6, label: "Niveau 6" },
+  { key: 11, label: "Niveau 11" },
+];
+
 const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: string }) => {
   const [cercleActif, setCercleActif] = useState<string | null>(null);
+  const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
 
   const filtered = sorts.filter(sort => {
     const query = searchQuery.toLowerCase();
@@ -640,7 +656,8 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
       sort.description?.toLowerCase().includes(query) ||
       sort.cercle?.toLowerCase().includes(query);
     const matchCercle = !cercleActif || sort.cercle === cercleActif;
-    return matchTexte && matchCercle;
+    const matchNiveau = niveauMinActif === null || getNiveauMin(sort.niveau) === niveauMinActif;
+    return matchTexte && matchCercle && matchNiveau;
   });
 
   const grouped = groupBy(filtered, (s) => s.cercle);
@@ -648,7 +665,7 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
 
   return (
     <div className="space-y-8">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Magie — Cercles et Sorts</h2>
+      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Cercles de magie et Effets de Sorts</h2>
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {SOUS_ONGLETS_CERCLES.map(sc => (
           <button
@@ -664,32 +681,59 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
           </button>
         ))}
       </div>
-      {filtered.length === 0 ? <NoResults /> : keys.map((cercle) => (
-        <section key={cercle}>
-          <h3 className="font-heading text-lg font-semibold text-primary mb-3">{cercle}</h3>
-          <Accordion type="multiple" className="w-full">
-            {grouped[cercle].map((s) => (
-              <AccordionItem key={s.id} value={s.id}>
-                <AccordionTrigger className="font-heading text-base hover:no-underline">
-                  <span className="flex items-center gap-2">
-                    {s.nom}
-                    <Badge variant="secondary" className="text-xs">Niv. {s.niveau}</Badge>
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground">
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
-                    {s.type_sort && <span>Type : {s.type_sort}</span>}
-                    {s.portee && <span>Portée : {s.portee}</span>}
-                    {s.zone_effet && <span>Zone : {s.zone_effet}</span>}
-                    {s.duree && <span>Durée : {s.duree}</span>}
-                  </div>
-                  {s.description && <p>{s.description}</p>}
-                </AccordionContent>
-              </AccordionItem>
+      <div className="flex gap-2 mb-4">
+        {NIVEAU_MIN_FILTERS.map(nf => (
+          <button
+            key={String(nf.key)}
+            onClick={() => setNiveauMinActif(nf.key)}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+              niveauMinActif === nf.key
+                ? "bg-amber-700 text-white border border-amber-500"
+                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+            }`}
+          >
+            {nf.label}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? <NoResults /> : keys.map((cercle) => {
+        const sortsInCercle = grouped[cercle];
+        const byNiveauMin = groupBy(sortsInCercle, (s) => String(getNiveauMin(s.niveau)));
+        const niveauGroups: [NiveauMin, Sort[]][] = ([1, 6, 11] as NiveauMin[])
+          .filter(n => byNiveauMin[String(n)])
+          .map(n => [n, byNiveauMin[String(n)]]);
+        return (
+          <section key={cercle}>
+            <h3 className="font-heading text-lg font-semibold text-primary mb-3">{cercle}</h3>
+            {niveauGroups.map(([nMin, groupSorts]) => (
+              <div key={nMin} className="mb-4">
+                <h4 className="font-heading text-sm font-semibold text-primary/70 mb-2 ml-1">Niveau Minimum : {nMin}</h4>
+                <Accordion type="multiple" className="w-full">
+                  {groupSorts.map((s) => (
+                    <AccordionItem key={s.id} value={s.id}>
+                      <AccordionTrigger className="font-heading text-base hover:no-underline">
+                        <span className="flex items-center gap-2">
+                          {s.nom}
+                          <Badge variant="secondary" className="text-xs">Niv. {s.niveau}</Badge>
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent className="text-sm text-muted-foreground">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
+                          {s.type_sort && <span>Type : {s.type_sort}</span>}
+                          {s.portee && <span>Portée : {s.portee}</span>}
+                          {s.zone_effet && <span>Zone : {s.zone_effet}</span>}
+                          {s.duree && <span>Durée : {s.duree}</span>}
+                        </div>
+                        {s.description && <p>{s.description}</p>}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
             ))}
-          </Accordion>
-        </section>
-      ))}
+          </section>
+        );
+      })}
     </div>
   );
 };
