@@ -68,6 +68,7 @@ const ForgeJoaillerieSection = ({
   searchQuery?: string;
 }) => {
   const [expandedRep, setExpandedRep] = useState<string | null>(null);
+  const [forgeOnglet, setForgeOnglet] = useState<'fabrication' | 'reparation'>('fabrication');
   const q = searchQuery.trim().toLowerCase();
 
   const filterFn = <T extends { nom: string | null; description?: string | null }>(arr: T[]) =>
@@ -108,7 +109,9 @@ const ForgeJoaillerieSection = ({
     ...Object.keys(repsByCat).filter((k) => !repCatOrder.includes(k)),
   ];
 
-  const noResults = mode === "forge" ? (fForge.length === 0 && fReps.length === 0) : (fJoail.length === 0);
+  const noResults = mode === "forge"
+    ? (forgeOnglet === 'fabrication' ? fForge.length === 0 : fReps.length === 0)
+    : fJoail.length === 0;
 
   return (
     <div className="space-y-8">
@@ -120,8 +123,26 @@ const ForgeJoaillerieSection = ({
         <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
       )}
 
-      {/* Forge */}
-      {mode === "forge" && fForge.length > 0 && (
+      {/* Forge — sous-onglets */}
+      {mode === "forge" && (
+        <div className="flex gap-2 mb-4 border-b border-stone-700 pb-3">
+          {(['fabrication', 'reparation'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setForgeOnglet(tab)}
+              className={forgeOnglet === tab
+                ? "px-4 py-1.5 rounded-md text-sm font-semibold bg-amber-700 text-white border border-amber-500"
+                : "px-4 py-1.5 rounded-md text-sm font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+              }
+            >
+              {tab === 'fabrication' ? 'Fabrication' : 'Réparation'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Forge — Fabrication */}
+      {mode === "forge" && forgeOnglet === 'fabrication' && fForge.length > 0 && (
         <section className="space-y-6">
           <div className="rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground space-y-2 backdrop-blur-sm">
             <div className="flex items-start gap-2">
@@ -205,8 +226,8 @@ const ForgeJoaillerieSection = ({
         </section>
       )}
 
-      {/* Réparations */}
-      {fReps.length > 0 && (
+      {/* Forge — Réparations (sous-onglet) */}
+      {mode === "forge" && forgeOnglet === 'reparation' && fReps.length > 0 && (
         <section>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">Réparations</h3>
           <p className="text-sm text-muted-foreground italic mb-4">
