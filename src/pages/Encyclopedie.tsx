@@ -279,7 +279,7 @@ const Encyclopedie = () => {
                   }`}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
-                  <span>{s.cle === "magie" ? "Magie Arcane" : s.label}</span>
+                  <span>{s.cle === "magie" ? "Magie Arcane" : s.cle === "prieres" ? "Magie Divine" : s.label}</span>
                 </button>
               );
             })}
@@ -783,6 +783,7 @@ const SOUS_ONGLETS_DOMAINES = [
 
 const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQuery: string }) => {
   const [domaineActif, setDomaineActif] = useState<string | null>(null);
+  const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
 
   const filtered = prieres.filter(priere => {
     const query = searchQuery.toLowerCase();
@@ -791,7 +792,8 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
       priere.description?.toLowerCase().includes(query) ||
       priere.domaine?.toLowerCase().includes(query);
     const matchDomaine = !domaineActif || priere.domaine === domaineActif;
-    return matchTexte && matchDomaine;
+    const matchNiveau = niveauMinActif === null || getNiveauMin(priere.niveau) === niveauMinActif;
+    return matchTexte && matchDomaine && matchNiveau;
   });
 
   const grouped = groupBy(filtered, (p) => p.domaine);
@@ -799,7 +801,22 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
 
   return (
     <div className="space-y-8">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Prières — Domaines</h2>
+      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Domaines et Effets de Prières</h2>
+      <div className="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
+        {NIVEAU_MIN_FILTERS.map(nf => (
+          <button
+            key={String(nf.key)}
+            onClick={() => setNiveauMinActif(nf.key)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
+              niveauMinActif === nf.key
+                ? "bg-amber-700 text-white border border-amber-500"
+                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+            }`}
+          >
+            {nf.label}
+          </button>
+        ))}
+      </div>
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {SOUS_ONGLETS_DOMAINES.map(sd => (
           <button
@@ -824,7 +841,7 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
                 <AccordionTrigger className="font-heading text-base hover:no-underline">
                   <span className="flex items-center gap-2">
                     {p.nom}
-                    <Badge variant="secondary" className="text-xs">Niv. {p.niveau}</Badge>
+                    <Badge variant="secondary" className="text-xs">Niveau Minimum : {getNiveauMin(p.niveau)}</Badge>
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
