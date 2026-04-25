@@ -37,8 +37,8 @@ interface Race {
 interface Classe {
   id: string;
   nom: string | null;
+  emoji: string | null;
   description: string | null;
-  role_combat: string | null;
   pv_depart: number | null;
   ps_depart: number | null;
   competences_gratuites: Json | null;
@@ -201,7 +201,7 @@ const Encyclopedie = () => {
       ] = await Promise.all([
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
         supabase.from("traits_raciaux").select(`id, nom, description, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
-        supabase.from("classes").select("*").eq("est_actif", true).order("nom"),
+        supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
         supabase.from("competences").select("*").eq("est_actif", true).order("categorie").order("nom"),
         supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
         supabase.from("prieres").select("*").eq("est_actif", true).order("domaine").order("niveau").order("nom"),
@@ -468,56 +468,95 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
 };
 
 const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQuery: string }) => {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const filtered = filterByText(classes, searchQuery, (c) => [c.nom ?? "", c.description ?? "", c.role_combat ?? ""]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const filtered = filterByText(classes, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
+
+  const toggle = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Les Classes de Destéa</h2>
+      <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Classes de Destéa</h2>
       {filtered.length === 0 ? <NoResults /> : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-6">
           {filtered.map((c) => {
-            const gratuites = Array.isArray(c.competences_gratuites) ? c.competences_gratuites : [];
-            const gratuitesDisplay = Array.isArray(c.competences_gratuites)
-              ? (c.competences_gratuites as any[]).map(String).join(', ')
-              : typeof c.competences_gratuites === 'string'
-                ? c.competences_gratuites
-                : null;
+            const isOpen = expanded.has(c.id);
+            const comps: any[] = Array.isArray(c.competences_gratuites)
+              ? c.competences_gratuites
+              : JSON.parse((c.competences_gratuites as string) ?? "[]");
             return (
-              <ExpandableCard
+              <div
                 key={c.id}
-                isOpen={expanded === c.id}
-                onToggle={() => setExpanded(expanded === c.id ? null : c.id)}
-                header={
-                  <>
-                    <CardTitle className="font-heading text-xl">{c.nom}</CardTitle>
-                    {c.role_combat && <Badge variant="secondary" className="text-xs w-fit mt-1">{c.role_combat}</Badge>}
-                    <div className="flex gap-4 text-xs mt-2">
-                      <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-primary/60" /> PV : {c.pv_depart ?? "—"}</span>
-                      <span className="flex items-center gap-1"><Swords className="h-3.5 w-3.5 text-primary/60" /> PS : {c.ps_depart ?? "—"}</span>
-                    </div>
-                    {gratuitesDisplay && (
-                      <div className="text-xs text-amber-300/80 mt-1">
-                        <span className="font-medium">Compétences gratuites : </span>
-                        {gratuitesDisplay}
-                      </div>
-                    )}
-                  </>
-                }
+                className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
+                onClick={() => toggle(c.id)}
               >
-                <div className="border-t border-primary/10 pt-3 mt-1 space-y-2">
-                  {c.description && <p>{c.description}</p>}
-                  {gratuites.length > 0 && (
-                    <div>
-                      <p className="font-medium text-foreground text-xs mb-1">Compétences gratuites :</p>
-                      <div className="flex flex-wrap gap-1">
-                        {gratuites.map((g, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">{String(g)}</Badge>
+                {/* Header — always visible */}
+                <div className="px-6 py-5">
+                  <div className="flex items-start gap-4">
+                    <div className="text-5xl flex-shrink-0 leading-none">{c.emoji}</div>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h2 className="text-3xl font-heading font-bold text-gold leading-tight">{c.nom}</h2>
+                        <ChevronDown
+                          size={20}
+                          className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </div>
+                      <div className="flex gap-5 text-sm mt-2 text-foreground/80">
+                        <span>❤️ {c.pv_depart ?? "—"} PV</span>
+                        <span>✨ {c.ps_depart ?? "—"} PS</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Accordion body */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: isOpen ? "1200px" : "0", opacity: isOpen ? 1 : 0 }}
+                >
+                  {c.description && (
+                    <div className="px-6 pb-4 border-t border-gold/30 pt-4">
+                      <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">{c.description}</p>
+                    </div>
+                  )}
+                  {comps.length > 0 && (
+                    <div className="px-6 pb-5">
+                      <p
+                        className="text-xs font-semibold mb-3 tracking-wider"
+                        style={{ color: "#c9a84c", fontVariant: "small-caps" }}
+                      >
+                        ⭐ COMPÉTENCES GRATUITES
+                      </p>
+                      <div className="space-y-2">
+                        {comps.map((comp, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-3 rounded-md border border-gold/30 px-4 py-3"
+                            style={{ background: "rgba(201,168,76,0.06)" }}
+                          >
+                            <span className="flex-shrink-0">⭐</span>
+                            <span className="text-sm text-foreground/90">{String(comp)}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-              </ExpandableCard>
+
+                {/* Footer */}
+                <div className="px-6 py-3 flex justify-end border-t border-gold/20">
+                  <span className="text-xs" style={{ color: "#c9a84c" }}>
+                    {isOpen ? "Voir moins" : "Voir plus"}
+                  </span>
+                </div>
+              </div>
             );
           })}
         </div>
