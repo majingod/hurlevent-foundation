@@ -255,7 +255,7 @@ const Encyclopedie = () => {
 
       <div className="flex flex-col md:flex-row gap-8">
         <nav className="md:w-56 flex-shrink-0">
-          <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible md:sticky md:top-24">
+          <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible md:sticky md:top-24 bg-card border border-border rounded-lg p-1">
             {sectionData?.map(s => {
               const Icon = LUCIDE_ICON_MAP[s.icon_nom] ?? Globe;
               const isActive = active === s.cle;
@@ -263,9 +263,9 @@ const Encyclopedie = () => {
                 <button
                   key={s.cle}
                   onClick={() => handleTabClick(s.cle as SectionKey)}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 font-heading text-xs sm:text-sm whitespace-nowrap transition-all duration-200 ${
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(184,146,70,0.3)]"
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
                   }`}
                 >
