@@ -1,7 +1,4 @@
 import { useState } from "react";
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, Clock, Info } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
@@ -69,6 +66,7 @@ const ForgeJoaillerieSection = ({
 }) => {
   const [expandedRep, setExpandedRep] = useState<string | null>(null);
   const [expandedForge, setExpandedForge] = useState<string | null>(null);
+  const [expandedJoail, setExpandedJoail] = useState<string | null>(null);
   const [forgeOnglet, setForgeOnglet] = useState<'fabrication' | 'reparation'>('fabrication');
   const q = searchQuery.trim().toLowerCase();
 
@@ -97,11 +95,6 @@ const ForgeJoaillerieSection = ({
           r.nom_affichage.toLowerCase().includes(q) ||
           (r.notes ?? "").toLowerCase().includes(q),
       );
-
-  const forgeByDiff = groupBy(fForge, (o) => String(o.difficulte ?? 0));
-  const joailByDiff = groupBy(fJoail, (o) => String(o.difficulte ?? 0));
-  const forgeKeys = Object.keys(forgeByDiff).sort((a, b) => Number(a) - Number(b));
-  const joailKeys = Object.keys(joailByDiff).sort((a, b) => Number(a) - Number(b));
 
   const repsByCat = groupBy(fReps, (r) => r.categorie);
   const repCatOrder = ["arme", "armure", "bouclier"];
@@ -213,26 +206,45 @@ const ForgeJoaillerieSection = ({
             </div>
           </div>
 
-          {joailKeys.map((diff) => (
-            <div key={diff} className="mb-4">
-              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> Temps de fabrication : {diff} min
-              </h4>
-              <Accordion type="multiple" className="w-full">
-                {joailByDiff[diff].map((o) => (
-                  <AccordionItem key={o.id} value={o.id}>
-                    <AccordionTrigger className="font-heading text-base hover:no-underline">
-                      {o.nom}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-sm text-muted-foreground space-y-2">
-                      {o.description && <p>{o.description}</p>}
-                      {o.effet && <p><span className="font-medium text-foreground">Effet :</span> {o.effet}</p>}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </div>
-          ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {fJoail.map((o) => {
+              const isOpen = expandedJoail === o.id;
+              return (
+                <Card
+                  key={o.id}
+                  className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
+                  onClick={() => setExpandedJoail(isOpen ? null : o.id)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
+                      <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
+                    </div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
+                    </p>
+                    {o.effet && (
+                      <p className="text-xs text-stone-400 truncate">{o.effet}</p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground">
+                    <div
+                      className="overflow-hidden transition-all duration-300 ease-in-out"
+                      style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
+                    >
+                      <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
+                        {o.description && <p>{o.description}</p>}
+                        {o.effet && <p><span className="font-medium text-foreground">Effet :</span> {o.effet}</p>}
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-1">
+                      <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </section>
       )}
 
