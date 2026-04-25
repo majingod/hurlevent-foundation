@@ -2,14 +2,27 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, User } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2, Plus, Trash2, User } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 const TableauDeBord = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [personnages, setPersonnages] = useState<any[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [personnageASupprimer, setPersonnageASupprimer] = useState<any | null>(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -18,10 +31,10 @@ const TableauDeBord = () => {
         setError(null);
 
         const { data: sessionData } = await supabase.auth.getSession();
-        const user = sessionData.session?.user;
-        setUserEmail(user?.email || null);
+        const sessionUser = sessionData.session?.user;
+        setUserEmail(sessionUser?.email || null);
 
-        if (!user) {
+        if (!sessionUser) {
           setError("Vous devez être connecté.");
           return;
         }
@@ -30,7 +43,7 @@ const TableauDeBord = () => {
         const { data: personnagesData, error: persoError } = await supabase
           .from("vue_tableau_de_bord")
           .select("*")
-          .eq("joueur_id", user.id)
+          .eq("joueur_id", sessionUser.id)
           .order("date_creation", { ascending: false });
 
         if (persoError) throw persoError;
@@ -45,6 +58,30 @@ const TableauDeBord = () => {
 
     fetchData();
   }, []);
+
+  const supprimerPersonnage = async () => {
+    if (!personnageASupprimer || !user) return;
+
+    setSuppressionEnCours(true);
+    try {
+      const { error } = await supabase
+        .from("personnages")
+        .update({ est_actif: false })
+        .eq("id", personnageASupprimer.id)
+        .eq("joueur_id", user.id);
+
+      if (error) throw error;
+
+      setPersonnages((prev) => prev.filter((p) => p.id !== personnageASupprimer.id));
+      setPersonnageASupprimer(null);
+      toast({ title: "Personnage supprimé avec succès." });
+    } catch (err) {
+      console.error("Erreur suppression:", err);
+      toast({ title: "Une erreur est survenue.", variant: "destructive" });
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -113,11 +150,43 @@ const TableauDeBord = () => {
                     </Button>
                   </Link>
                 </div>
+                <div className="mt-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full opacity-60 hover:opacity-100"
+                    onClick={() => setPersonnageASupprimer(p)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={!!personnageASupprimer} onOpenChange={(open) => { if (!open) setPersonnageASupprimer(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer le personnage</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer le personnage «{personnageASupprimer?.nom}» ?
+              Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPersonnageASupprimer(null)} disabled={suppressionEnCours}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={supprimerPersonnage} disabled={suppressionEnCours}>
+              {suppressionEnCours && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Supprimer définitivement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
