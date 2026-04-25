@@ -621,13 +621,49 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
   );
 };
 
+const CERCLES_MAGE = [
+  'Air', 'Altération', 'Charmes', 'Combat', 'Divination', 'Eau', 'Feu',
+  'Illusion', 'Magie Noire', 'Magie Pure', 'Nécromancie', 'Protection', 'Terre',
+];
+const SOUS_ONGLETS_CERCLES = [
+  { key: null, label: 'Tous' },
+  ...CERCLES_MAGE.map(c => ({ key: c, label: c })),
+];
+
 const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: string }) => {
-  const filtered = filterByText(sorts, searchQuery, (s) => [s.nom, s.description ?? "", s.cercle]);
+  const [cercleActif, setCercleActif] = useState<string | null>(null);
+
+  const filtered = sorts.filter(sort => {
+    const query = searchQuery.toLowerCase();
+    const matchTexte = !searchQuery ||
+      sort.nom.toLowerCase().includes(query) ||
+      sort.description?.toLowerCase().includes(query) ||
+      sort.cercle?.toLowerCase().includes(query);
+    const matchCercle = !cercleActif || sort.cercle === cercleActif;
+    return matchTexte && matchCercle;
+  });
+
   const grouped = groupBy(filtered, (s) => s.cercle);
   const keys = Object.keys(grouped).sort();
+
   return (
     <div className="space-y-8">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Magie — Cercles et Sorts</h2>
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+        {SOUS_ONGLETS_CERCLES.map(sc => (
+          <button
+            key={String(sc.key)}
+            onClick={() => setCercleActif(sc.key)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
+              cercleActif === sc.key
+                ? "bg-amber-700 text-white border border-amber-500"
+                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+            }`}
+          >
+            {sc.label}
+          </button>
+        ))}
+      </div>
       {filtered.length === 0 ? <NoResults /> : keys.map((cercle) => (
         <section key={cercle}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{cercle}</h3>
