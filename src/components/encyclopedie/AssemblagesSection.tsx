@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
+
+const CIBLE_FILTERS: { value: string; label: string }[] = [
+  { value: "tous", label: "Tous" },
+  { value: "individu", label: "Un individu" },
+  { value: "bouclier", label: "Un bouclier" },
+  { value: "armure", label: "Une armure" },
+  { value: "enclume", label: "Une enclume ou un marteau de forge" },
+];
 
 interface Assemblage {
   id: string;
@@ -17,20 +26,34 @@ interface Assemblage {
 
 const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: Assemblage[]; searchQuery?: string }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [cibleFilter, setCibleFilter] = useState<string>("tous");
   const q = searchQuery.trim().toLowerCase();
-  const filtered = q
-    ? assemblages.filter(
-        (a) =>
-          (a.nom ?? "").toLowerCase().includes(q) ||
-          (a.description_longue ?? "").toLowerCase().includes(q) ||
-          (a.effet ?? "").toLowerCase().includes(q),
-      )
-    : assemblages;
+  const filtered = assemblages
+    .filter((a) => cibleFilter === "tous" || a.cible === cibleFilter)
+    .filter(
+      (a) =>
+        !q ||
+        (a.nom ?? "").toLowerCase().includes(q) ||
+        (a.description_longue ?? "").toLowerCase().includes(q) ||
+        (a.effet ?? "").toLowerCase().includes(q),
+    );
 
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Assemblages de Runes</h2>
-      {filtered.length === 0 && q && (
+      <div className="flex flex-wrap gap-2">
+        {CIBLE_FILTERS.map((f) => (
+          <Button
+            key={f.value}
+            variant={cibleFilter === f.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCibleFilter(f.value)}
+          >
+            {f.label}
+          </Button>
+        ))}
+      </div>
+      {filtered.length === 0 && (q || cibleFilter !== "tous") && (
         <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
