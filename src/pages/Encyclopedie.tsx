@@ -96,6 +96,14 @@ interface TraitRacial {
   nom: string;
   description: string;
   cout_xp: number;
+  race_traits: {
+    sous_type: string | null;
+    races: {
+      id: string;
+      nom: string | null;
+      est_jouable: boolean;
+    } | null;
+  }[];
 }
 
 type SectionKey =
@@ -192,7 +200,7 @@ const Encyclopedie = () => {
         loreRes, piegesRes,
       ] = await Promise.all([
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
-        supabase.from("traits_raciaux").select("*").eq("est_actif", true).order("nom"),
+        supabase.from("traits_raciaux").select(`id, nom, description, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
         supabase.from("classes").select("*").eq("est_actif", true).order("nom"),
         supabase.from("competences").select("*").eq("est_actif", true).order("categorie").order("nom"),
         supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
@@ -389,26 +397,38 @@ const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: stri
 const TraitsSection = ({ traits, searchQuery }: { traits: TraitRacial[]; searchQuery: string }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const filtered = filterByText(traits, searchQuery, (t) => [t.nom, t.description]);
+
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Traits Raciaux</h2>
       {filtered.length === 0 ? <NoResults /> : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {filtered.map((t) => (
-            <ExpandableCard
-              key={t.id}
-              isOpen={expanded === t.id}
-              onToggle={() => setExpanded(expanded === t.id ? null : t.id)}
-              header={
-                <>
-                  <CardTitle className="font-heading text-lg">{t.nom}</CardTitle>
-                  <Badge variant="outline" className="text-xs w-fit mt-1">{t.cout_xp} XP</Badge>
-                </>
-              }
-            >
-              <p className="border-t border-primary/10 pt-3 mt-1">{t.description}</p>
-            </ExpandableCard>
-          ))}
+          {filtered.map((t) => {
+            const raceNoms = t.race_traits
+              .map(rt => rt.races?.nom)
+              .filter(Boolean) as string[];
+            return (
+              <ExpandableCard
+                key={t.id}
+                isOpen={expanded === t.id}
+                onToggle={() => setExpanded(expanded === t.id ? null : t.id)}
+                header={
+                  <>
+                    <CardTitle className="font-heading text-lg">{t.nom}</CardTitle>
+                    {raceNoms.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {raceNoms.map(nom => (
+                          <span key={nom} className="bg-stone-700 text-amber-200 text-xs px-2 py-0.5 rounded-full">{nom}</span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                }
+              >
+                <p className="border-t border-primary/10 pt-3 mt-1">{t.description}</p>
+              </ExpandableCard>
+            );
+          })}
         </div>
       )}
     </div>
