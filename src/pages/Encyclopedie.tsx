@@ -477,6 +477,11 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((c) => {
             const gratuites = Array.isArray(c.competences_gratuites) ? c.competences_gratuites : [];
+            const gratuitesDisplay = Array.isArray(c.competences_gratuites)
+              ? (c.competences_gratuites as any[]).map(String).join(', ')
+              : typeof c.competences_gratuites === 'string'
+                ? c.competences_gratuites
+                : null;
             return (
               <ExpandableCard
                 key={c.id}
@@ -490,6 +495,12 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
                       <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-primary/60" /> PV : {c.pv_depart ?? "—"}</span>
                       <span className="flex items-center gap-1"><Swords className="h-3.5 w-3.5 text-primary/60" /> PS : {c.ps_depart ?? "—"}</span>
                     </div>
+                    {gratuitesDisplay && (
+                      <div className="text-xs text-amber-300/80 mt-1">
+                        <span className="font-medium">Compétences gratuites : </span>
+                        {gratuitesDisplay}
+                      </div>
+                    )}
                   </>
                 }
               >
