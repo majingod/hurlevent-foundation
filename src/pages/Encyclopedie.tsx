@@ -32,6 +32,7 @@ interface Race {
   esperance_vie: string | null;
   exigences_costume: string | null;
   emoji: string | null;
+  nb_traits_raciaux: number;
 }
 
 interface Classe {
@@ -386,6 +387,7 @@ const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: stri
               xp_depart={r.xp_depart}
               description={r.description}
               exigences_costume={r.exigences_costume}
+              nb_traits_raciaux={r.nb_traits_raciaux}
             />
           ))}
         </div>
