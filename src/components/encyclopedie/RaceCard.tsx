@@ -10,6 +10,7 @@ interface RaceCardProps {
   xp_depart: number;
   description: string | null;
   exigences_costume: string | null;
+  nb_traits_raciaux: number;
 }
 
 const RaceCard: React.FC<RaceCardProps> = ({
@@ -20,93 +21,76 @@ const RaceCard: React.FC<RaceCardProps> = ({
   xp_depart,
   description,
   exigences_costume,
+  nb_traits_raciaux,
 }) => {
-  const [costumeOuvert, setCostumeOuvert] = useState(false);
+  const [ouvert, setOuvert] = useState(false);
 
   return (
-    <div className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg">
-
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-gold/40">
-        <div className="flex items-start gap-4">
-          <div className="text-5xl flex-shrink-0">{emoji}</div>
-          <div className="flex-grow">
-            <h2 className="text-3xl font-heading font-bold text-gold mb-1">
+    <div
+      className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-colors duration-300 overflow-hidden shadow-lg cursor-pointer"
+      onClick={() => setOuvert(!ouvert)}
+    >
+      {/* Header — toujours visible */}
+      <div className="px-6 py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-3xl flex-shrink-0">{emoji}</span>
+          <div className="min-w-0">
+            <h2 className="text-2xl font-heading font-bold text-gold">
               {nom}
             </h2>
-            {nom_latin && (
-              <p className="text-foreground/70 italic text-sm">
-                {nom_latin}
-              </p>
+            <p className="text-sm text-foreground/70 mt-0.5">
+              XP de départ : {xp_depart}
+            </p>
+          </div>
+        </div>
+        <ChevronDown
+          size={20}
+          className={`text-gold flex-shrink-0 transition-transform duration-300 ${ouvert ? 'rotate-180' : ''}`}
+        />
+      </div>
+
+      {/* Section dépliable */}
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ maxHeight: ouvert ? '1500px' : '0', opacity: ouvert ? 1 : 0 }}
+      >
+        <div className="px-6 pb-4 border-t border-gold/30 pt-4 space-y-3 text-sm text-foreground/85">
+          {description && (
+            <p className="leading-relaxed whitespace-pre-wrap">{description}</p>
+          )}
+          <dl className="space-y-1.5 mt-1">
+            {esperance_vie && (
+              <div className="flex flex-wrap gap-1">
+                <dt className="font-semibold text-gold/80">Espérance de vie :</dt>
+                <dd>{esperance_vie}</dd>
+              </div>
             )}
-          </div>
+            {exigences_costume && (
+              <div className="flex flex-wrap gap-1">
+                <dt className="font-semibold text-gold/80">Exigences de costume :</dt>
+                <dd className="leading-relaxed">{exigences_costume}</dd>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1">
+              <dt className="font-semibold text-gold/80">Traits raciaux :</dt>
+              <dd>{nb_traits_raciaux}</dd>
+            </div>
+            {nom_latin && (
+              <div className="flex flex-wrap gap-1">
+                <dt className="font-semibold text-gold/80">Nom latin :</dt>
+                <dd className="italic">{nom_latin}</dd>
+              </div>
+            )}
+          </dl>
         </div>
       </div>
 
-      {/* Description */}
-      {description && (
-        <div className="px-6 py-5 border-b border-gold/40">
-          <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">
-            {description}
-          </p>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="px-6 py-5 border-b border-gold/40">
-        <div className="grid grid-cols-2 gap-4">
-          {esperance_vie && (
-            <div className="border border-gold/50 rounded-lg p-4 bg-card/50">
-              <p className="text-foreground/60 text-xs uppercase tracking-wider mb-1">
-                ⏳ Longévité
-              </p>
-              <p className="text-gold font-heading text-sm font-semibold">
-                {esperance_vie}
-              </p>
-            </div>
-          )}
-          <div className="border border-gold/50 rounded-lg p-4 bg-card/50">
-            <p className="text-foreground/60 text-xs uppercase tracking-wider mb-1">
-              ⭐ XP de départ
-            </p>
-            <p className="text-gold font-heading text-sm font-semibold">
-              {xp_depart} XP
-            </p>
-          </div>
-        </div>
+      {/* Pied de carte */}
+      <div className="px-6 py-2 flex justify-end">
+        <span className="text-xs" style={{ color: '#c9a84c' }}>
+          {ouvert ? 'Voir moins' : 'Voir plus'}
+        </span>
       </div>
-
-      {/* Costume requis */}
-      {exigences_costume && (
-        <div>
-          <button
-            onClick={() => setCostumeOuvert(!costumeOuvert)}
-            className="w-full px-6 py-4 flex items-center justify-between hover:bg-card/80 transition-colors duration-200"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🎭</span>
-              <span className="text-gold font-heading font-bold text-lg">
-                Costume requis
-              </span>
-            </div>
-            <ChevronDown
-              size={20}
-              className={`text-gold transition-transform duration-300 ${
-                costumeOuvert ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-
-          {costumeOuvert && (
-            <div className="px-6 pb-5 border-t border-gold/30">
-              <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-wrap pt-4">
-                {exigences_costume}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
     </div>
   );
 };
