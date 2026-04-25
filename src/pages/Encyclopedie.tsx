@@ -542,18 +542,15 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
     const matchTexte = !searchQuery ||
       (comp.nom ?? "").toLowerCase().includes(query) ||
       (comp.description ?? "").toLowerCase().includes(query);
-    const matchCategorie = !categorieActive || comp.categorie === categorieActive;
+    const matchCategorie = !categorieActive ||
+      (categorieActive === 'general' ? comp.est_general === true : comp.categorie === categorieActive);
     return matchTexte && matchCategorie;
   });
   const grouped = groupBy(filtered, (c) => c.categorie ?? "autre");
   const getPrerequisText = (niv: any): string | null => {
-    let raw = niv.prerequis ?? niv.prerequisites ?? null;
-    if (!raw) return null;
-    if (typeof raw === "string") return raw;
-    if (typeof raw === "object") {
-      return raw.prerequisites || raw.prerequis || null;
-    }
-    return null;
+    const raw = niv.prerequis;
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    return raw.join(", ");
   };
   const orderedKeys = ["general", "guerrier", "voleur", "mage", "pretre"];
   const keys = [...orderedKeys.filter((k) => k in grouped), ...Object.keys(grouped).filter((k) => !orderedKeys.includes(k))];
@@ -584,10 +581,7 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
               return (
                 <AccordionItem key={c.id} value={c.id}>
                   <AccordionTrigger className="font-heading text-base hover:no-underline">
-                    <span className="flex items-center gap-2">
-                      {c.nom}
-                      {c.est_general && <Badge variant="secondary" className="text-xs">Générale</Badge>}
-                    </span>
+                    {c.nom}
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 text-sm text-muted-foreground">
                     {c.description && <p>{c.description}</p>}
@@ -602,7 +596,7 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
                             {(() => {
                              const prerequisText = getPrerequisText(niv);
                              return prerequisText ? (
-                               <p className="text-xs mt-1 font-medium">📋 {prerequisText}</p>
+                               <p className="text-xs mt-1 font-medium">⚡ Prérequis : {prerequisText}</p>
                              ) : null;
                              })()}
                             {niv.effet && <p className="text-muted-foreground text-xs">{niv.effet}</p>}
