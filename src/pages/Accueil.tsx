@@ -78,7 +78,21 @@ const Accueil = () => {
       setEvenement(evRes.data as ProchainEvenement | null);
       setLoading(false);
     };
+
     fetchData();
+
+    const channel = supabase
+      .channel("inscriptions-accueil")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inscriptions_evenements" },
+        () => fetchData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // load player's active characters + check existing inscription

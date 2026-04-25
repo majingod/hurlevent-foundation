@@ -95,7 +95,7 @@ const Evenements = () => {
           .from("inscriptions_evenements")
           .select("*", { count: "exact", head: true })
           .eq("evenement_id", ev.id)
-          .eq("statut", "present");
+          .in("statut", ["en_attente", "present"]);
         events.push({ ...ev, nb_inscrits: count ?? 0 });
       }
       setEvenements(events);
@@ -118,7 +118,21 @@ const Evenements = () => {
 
       setLoading(false);
     };
+
     load();
+
+    const channel = supabase
+      .channel("inscriptions-evenements")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inscriptions_evenements" },
+        () => load()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const openModal = (ev: Evenement) => {
