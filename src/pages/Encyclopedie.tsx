@@ -526,8 +526,25 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
   );
 };
 
+const CATEGORIES = [
+  { key: null, label: 'Toutes' },
+  { key: 'general', label: 'Générale' },
+  { key: 'guerrier', label: 'Guerrier' },
+  { key: 'voleur', label: 'Voleur' },
+  { key: 'mage', label: 'Mage' },
+  { key: 'pretre', label: 'Prêtre' },
+];
+
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
-  const filtered = filterByText(competences, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
+  const [categorieActive, setCategorieActive] = useState<string | null>(null);
+  const filtered = competences.filter(comp => {
+    const query = searchQuery.toLowerCase();
+    const matchTexte = !searchQuery ||
+      (comp.nom ?? "").toLowerCase().includes(query) ||
+      (comp.description ?? "").toLowerCase().includes(query);
+    const matchCategorie = !categorieActive || comp.categorie === categorieActive;
+    return matchTexte && matchCategorie;
+  });
   const grouped = groupBy(filtered, (c) => c.categorie ?? "autre");
   const getPrerequisText = (niv: any): string | null => {
     let raw = niv.prerequis ?? niv.prerequisites ?? null;
@@ -544,6 +561,20 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
   return (
     <div className="space-y-8">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Compétences</h2>
+      <div className="flex flex-wrap gap-2 mb-4 border-b border-stone-700 pb-3">
+        {CATEGORIES.map(cat => (
+          <button
+            key={String(cat.key)}
+            onClick={() => setCategorieActive(cat.key)}
+            className={categorieActive === cat.key
+              ? "px-4 py-1.5 rounded-md text-sm font-semibold bg-amber-700 text-white border border-amber-500"
+              : "px-4 py-1.5 rounded-md text-sm font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+            }
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
       {filtered.length === 0 ? <NoResults /> : keys.map((cat) => (
         <section key={cat}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{labelCategorie[cat] ?? cat}</h3>
