@@ -694,13 +694,48 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
   );
 };
 
+const DOMAINES_PRETRE = [
+  'Bénédiction', 'Chaos', 'Connaissance', 'Éléments', 'Guerre', 'Nature', 'Nécromancie', 'Ordre',
+];
+const SOUS_ONGLETS_DOMAINES = [
+  { key: null, label: 'Tous' },
+  ...DOMAINES_PRETRE.map(d => ({ key: d, label: d })),
+];
+
 const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQuery: string }) => {
-  const filtered = filterByText(prieres, searchQuery, (p) => [p.nom, p.description ?? "", p.domaine]);
+  const [domaineActif, setDomaineActif] = useState<string | null>(null);
+
+  const filtered = prieres.filter(priere => {
+    const query = searchQuery.toLowerCase();
+    const matchTexte = !searchQuery ||
+      priere.nom.toLowerCase().includes(query) ||
+      priere.description?.toLowerCase().includes(query) ||
+      priere.domaine?.toLowerCase().includes(query);
+    const matchDomaine = !domaineActif || priere.domaine === domaineActif;
+    return matchTexte && matchDomaine;
+  });
+
   const grouped = groupBy(filtered, (p) => p.domaine);
   const keys = Object.keys(grouped).sort();
+
   return (
     <div className="space-y-8">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Prières — Domaines</h2>
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+        {SOUS_ONGLETS_DOMAINES.map(sd => (
+          <button
+            key={String(sd.key)}
+            onClick={() => setDomaineActif(sd.key)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
+              domaineActif === sd.key
+                ? "bg-amber-700 text-white border border-amber-500"
+                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+            }`}
+          >
+            {sd.label}
+          </button>
+        ))}
+      </div>
       {filtered.length === 0 ? <NoResults /> : keys.map((domaine) => (
         <section key={domaine}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{domaine}</h3>
