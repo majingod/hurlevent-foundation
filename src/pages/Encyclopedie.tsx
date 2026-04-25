@@ -297,7 +297,7 @@ const Encyclopedie = () => {
           </div>
 
           {active === "races" && <RacesSection races={races} searchQuery={search} />}
-          {active === "traits" && <TraitsSection traits={traits} searchQuery={search} />}
+          {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} />}
           {active === "classes" && <ClassesSection classes={classes} searchQuery={search} />}
           {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
           {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} />}
@@ -394,13 +394,45 @@ const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: stri
   );
 };
 
-const TraitsSection = ({ traits, searchQuery }: { traits: TraitRacial[]; searchQuery: string }) => {
+const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; searchQuery: string; races: Race[] }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const filtered = filterByText(traits, searchQuery, (t) => [t.nom, t.description]);
+  const [raceFiltre, setRaceFiltre] = useState<string | null>(null);
+
+  const filtered = traits.filter(trait => {
+    const matchTexte = !searchQuery ||
+      trait.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      trait.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchRace = !raceFiltre ||
+      trait.race_traits.some(rt => rt.races?.id === raceFiltre);
+    return matchTexte && matchRace;
+  });
 
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Traits Raciaux</h2>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => setRaceFiltre(null)}
+          className={raceFiltre === null
+            ? "px-3 py-1 rounded-full text-sm font-medium bg-amber-600 text-white"
+            : "px-3 py-1 rounded-full text-sm font-medium bg-stone-700 text-amber-200 hover:bg-stone-600"
+          }
+        >
+          Toutes
+        </button>
+        {races.map(race => (
+          <button
+            key={race.id}
+            onClick={() => setRaceFiltre(race.id)}
+            className={raceFiltre === race.id
+              ? "px-3 py-1 rounded-full text-sm font-medium bg-amber-600 text-white"
+              : "px-3 py-1 rounded-full text-sm font-medium bg-stone-700 text-amber-200 hover:bg-stone-600"
+            }
+          >
+            {race.nom}
+          </button>
+        ))}
+      </div>
       {filtered.length === 0 ? <NoResults /> : (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((t) => {
