@@ -171,8 +171,7 @@ const Encyclopedie = () => {
   const [joaillerie, setJoaillerie] = useState<any[]>([]);
   const [reparations, setReparations] = useState<any[]>([]);
   const [creatures, setCreatures] = useState<any[]>([]);
-  const [regions, setRegions] = useState<any[]>([]);
-  const [cites, setCites] = useState<any[]>([]);
+  const [loreEntries, setLoreEntries] = useState<any[]>([]);
   const [pieges, setPieges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -190,7 +189,7 @@ const Encyclopedie = () => {
       const [
         racesRes, traitsRes, classesRes, compRes, sortsRes, prieresRes, relRes,
         recettesRes, ingsRes, assRes, forgeRes, joailRes, repRes, bestRes,
-        regionsRes, citesRes, piegesRes,
+        loreRes, piegesRes,
       ] = await Promise.all([
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
         supabase.from("traits_raciaux").select("*").eq("est_actif", true).order("nom"),
@@ -206,8 +205,7 @@ const Encyclopedie = () => {
         supabase.from("objets_joaillerie").select("*").eq("est_actif", true).order("difficulte").order("nom"),
         supabase.from("reparations_forge").select("*").eq("est_actif", true).order("categorie").order("nom_affichage"),
         supabase.from("bestiaire").select("*").eq("est_actif", true).order("categorie").order("nom"),
-        supabase.from("lore").select("*").eq("categorie", "region").eq("est_actif", true).order("ordre"),
-        supabase.from("lore").select("*").eq("categorie", "cite").eq("est_actif", true).order("ordre"),
+        supabase.from("lore").select("id, categorie, nom, sous_titre, embleme, description, ordre").eq("est_actif", true).order("categorie").order("ordre"),
         supabase.from("pieges").select("*").eq("est_actif", true).order("nom").order("niveau"),
       ]);
       setRaces((racesRes.data ?? []) as Race[]);
@@ -224,8 +222,7 @@ const Encyclopedie = () => {
       setJoaillerie(joailRes.data ?? []);
       setReparations(repRes.data ?? []);
       setCreatures(bestRes.data ?? []);
-      setRegions(regionsRes.data ?? []);
-      setCites(citesRes.data ?? []);
+      setLoreEntries(loreRes.data ?? []);
       setPieges(piegesRes.data ?? []);
       setLoading(false);
     };
@@ -317,7 +314,7 @@ const Encyclopedie = () => {
           )}
           {active === "pieges" && <PiegesSection pieges={pieges} searchQuery={search} />}
           {active === "bestiaire" && <BestiaireSection creatures={creatures} searchQuery={search} />}
-          {active === "lore" && <LoreSection regions={regions} cites={cites} />}
+          {active === "lore" && <LoreSection loreEntries={loreEntries} searchQuery={search} />}
         </main>
       </div>
     </div>
