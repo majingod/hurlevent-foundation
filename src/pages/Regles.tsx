@@ -146,17 +146,6 @@ const Regles = () => {
         </p>
       </div>
 
-      {/* Recherche globale */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher dans cette section…"
-          value={recherche}
-          onChange={(e) => setRecherche(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
       <Tabs value={activeCat} onValueChange={setActiveCat} className="w-full">
         <div className="overflow-x-auto -mx-2 px-2 mb-6">
           <TabsList className="inline-flex h-auto bg-card border border-border p-1 w-max">
@@ -170,6 +159,17 @@ const Regles = () => {
               </TabsTrigger>
             ))}
           </TabsList>
+        </div>
+
+        {/* Recherche globale */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher dans cette section…"
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            className="pl-10"
+          />
         </div>
 
         {CATEGORIES.map((c) => (
