@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import ReligionCard from "@/components/encyclopedie/ReligionCard";
-import RaceCard from "@/components/encyclopedie/RaceCard";
 
 // Imports des étapes séparées
+import Step2Race from "@/components/creation/Step2Race";
 import Step3Classe from "@/components/creation/Step3Classe";
 import Step4Competences from "@/components/creation/Step4Competences";
 import Step5Sorts from "@/components/creation/Step5Sorts";
@@ -84,15 +84,6 @@ const PersonnageNouveau = () => {
     queryKey: ["religions"],
     queryFn: async () => {
       const { data, error } = await supabase.from("religions").select("*").eq("est_actif", true).order("nom");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: races = [] } = useQuery({
-    queryKey: ["races"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("races").select("*").eq("est_actif", true);
       if (error) throw error;
       return data;
     },
@@ -204,39 +195,12 @@ const PersonnageNouveau = () => {
 
       case 2:
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-heading text-gold">Choisis ta Race</h2>
-              <p className="text-muted-foreground">La race définit tes origines et tes capacités naturelles.</p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {races.map((race) => (
-                <div 
-                  key={race.id} 
-                  className={`relative rounded-lg overflow-hidden transition-all ${raceId === race.id ? 'ring-2 ring-gold' : ''}`}
-                  onClick={() => setRaceId(race.id)}
-                >
-                  <RaceCard {...race} />
-                  {raceId === race.id && (
-                    <div className="absolute top-2 right-2 bg-gold text-black rounded-full p-1">
-                      <Sparkles size={16} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {(raceId === "chimeride-id" || races.find(r => r.id === raceId)?.nom === "Non-Race") && (
-              <div className="flex items-start gap-3 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400">
-                <AlertTriangle className="h-6 w-6 shrink-0" />
-                <div>
-                  <p className="font-bold uppercase tracking-tight">⚠️ Validation obligatoire</p>
-                  <p className="text-sm">Ce concept nécessite une validation obligatoire par l'organisation avant le jeu. Une demande d'autorisation sera envoyée automatiquement à la fin de la création.</p>
-                </div>
-              </div>
-            )}
-          </div>
+          <Step2Race
+            raceId={raceId}
+            onRaceSelect={setRaceId}
+            personnageId={personnageId}
+            nomPersonnage={nom}
+          />
         );
 
       case 3: return <div className="text-white">Étape 3: Traits Raciaux (À venir)</div>;
