@@ -262,69 +262,68 @@ const Encyclopedie = () => {
         Encyclopédie de Destéa
       </h1>
 
-      <div className="flex flex-col md:flex-row gap-8">
-        <nav className="md:w-56 flex-shrink-0">
-          <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible md:sticky md:top-24 bg-card border border-border rounded-lg p-1">
-            {sectionData?.map(s => {
-              const Icon = LUCIDE_ICON_MAP[s.icon_nom] ?? Globe;
-              const isActive = active === s.cle;
-              return (
-                <button
-                  key={s.cle}
-                  onClick={() => handleTabClick(s.cle as SectionKey)}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 font-heading text-xs sm:text-sm whitespace-nowrap transition-all duration-200 ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                  }`}
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                  <span>{s.cle === "magie" ? "Magie Arcane" : s.cle === "prieres" ? "Magie Divine" : s.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+      {/* Barre d'onglets horizontale — même style que la page Règles */}
+      <div className="overflow-x-auto -mx-2 px-2 mb-6">
+        <div className="inline-flex h-auto bg-card border border-border p-1 rounded-lg w-max">
+          {sectionData?.map(s => {
+            const Icon = LUCIDE_ICON_MAP[s.icon_nom] ?? Globe;
+            const isActive = active === s.cle;
+            return (
+              <button
+                key={s.cle}
+                onClick={() => handleTabClick(s.cle as SectionKey)}
+                className={`flex items-center gap-2 rounded-sm px-3 py-1.5 font-heading text-xs sm:text-sm whitespace-nowrap transition-all duration-200 ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                <span>{s.cle === "magie" ? "Magie Arcane" : s.cle === "prieres" ? "Magie Divine" : s.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-        <main className="flex-1 min-w-0">
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher dans cet onglet…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher dans cet onglet…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10"
+        />
+      </div>
 
-          {active === "races" && <RacesSection races={races} searchQuery={search} />}
-          {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} />}
-          {active === "classes" && <ClassesSection classes={classes} searchQuery={search} />}
-          {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
-          {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} />}
-          {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} />}
-          {active === "religions" && <ReligionsSection religions={religions} searchQuery={search} />}
-          {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} searchQuery={search} />}
-          {active === "assemblages" && <AssemblagesSection assemblages={assemblages} searchQuery={search} />}
-          {active === "forge" && (
-            <ForgeJoaillerieSection
-              mode="forge"
-              forge={forge}
-              reparations={reparations}
-              searchQuery={search}
-            />
-          )}
-          {active === "joaillerie" && (
-            <ForgeJoaillerieSection
-              mode="joaillerie"
-              joaillerie={joaillerie}
-              searchQuery={search}
-            />
-          )}
-          {active === "pieges" && <PiegesSection pieges={pieges} searchQuery={search} />}
-          {active === "bestiaire" && <BestiaireSection creatures={creatures} searchQuery={search} />}
-          {active === "lore" && <LoreSection loreEntries={loreEntries} searchQuery={search} />}
-        </main>
+      <div>
+        {active === "races" && <RacesSection races={races} searchQuery={search} />}
+        {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} />}
+        {active === "classes" && <ClassesSection classes={classes} searchQuery={search} />}
+        {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
+        {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} />}
+        {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} />}
+        {active === "religions" && <ReligionsSection religions={religions} searchQuery={search} />}
+        {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} searchQuery={search} />}
+        {active === "assemblages" && <AssemblagesSection assemblages={assemblages} searchQuery={search} />}
+        {active === "forge" && (
+          <ForgeJoaillerieSection
+            mode="forge"
+            forge={forge}
+            reparations={reparations}
+            searchQuery={search}
+          />
+        )}
+        {active === "joaillerie" && (
+          <ForgeJoaillerieSection
+            mode="joaillerie"
+            joaillerie={joaillerie}
+            searchQuery={search}
+          />
+        )}
+        {active === "pieges" && <PiegesSection pieges={pieges} searchQuery={search} />}
+        {active === "bestiaire" && <BestiaireSection creatures={creatures} searchQuery={search} />}
+        {active === "lore" && <LoreSection loreEntries={loreEntries} searchQuery={search} />}
       </div>
     </div>
   );
