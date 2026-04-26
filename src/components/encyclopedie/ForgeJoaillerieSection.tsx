@@ -16,6 +16,8 @@ interface ObjetForge {
   type: string | null;
   stats: Json | null;
   difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
 }
 
 interface ObjetJoaillerie {
@@ -24,6 +26,8 @@ interface ObjetJoaillerie {
   description: string | null;
   effet: string | null;
   difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
 }
 
 interface Reparation {
@@ -50,6 +54,15 @@ const labelReparation: Record<string, string> = {
   armure: "Armures",
   bouclier: "Boucliers",
 };
+
+const labelTypeForge: Record<string, string> = {
+  arme: "Armes",
+  armure: "Armures",
+  accessoire: "Accessoires d'armure",
+  bouclier: "Boucliers",
+};
+
+const typeForgeOrder = ["arme", "armure", "accessoire", "bouclier"];
 
 const ForgeJoaillerieSection = ({
   mode,
@@ -148,48 +161,68 @@ const ForgeJoaillerieSection = ({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {fForge.map((o) => {
-              const isOpen = expandedForge === o.id;
-              const stats = o.stats && typeof o.stats === "object" && !Array.isArray(o.stats) ? o.stats as Record<string, any> : null;
-              return (
-                <Card
-                  key={o.id}
-                  className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
-                  onClick={() => setExpandedForge(isOpen ? null : o.id)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
-                      <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
-                    </div>
-                    {o.type && (
-                      <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
-                    </p>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    <div
-                      className="overflow-hidden transition-all duration-300 ease-in-out"
-                      style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
-                    >
-                      <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
-                        {o.description && <p>{o.description}</p>}
-                        {stats && Object.entries(stats).map(([k, v]) => (
-                          <p key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</p>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          {(() => {
+            const forgeByType = groupBy(fForge, (o) => o.type ?? "autre");
+            const forgeTypeKeys = [
+              ...typeForgeOrder.filter(k => k in forgeByType),
+              ...Object.keys(forgeByType).filter(k => !typeForgeOrder.includes(k)),
+            ];
+            return forgeTypeKeys.map(type => (
+              <div key={type} className="space-y-3">
+                <h3 className="font-heading text-base font-semibold text-primary">
+                  {labelTypeForge[type] ?? type}
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {forgeByType[type].map((o) => {
+                    const isOpen = expandedForge === o.id;
+                    const stats = o.stats && typeof o.stats === "object" && !Array.isArray(o.stats) ? o.stats as Record<string, any> : null;
+                    return (
+                      <Card
+                        key={o.id}
+                        className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
+                        onClick={() => setExpandedForge(isOpen ? null : o.id)}
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
+                            <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
+                          </div>
+                          {o.type && (
+                            <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
+                          </p>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                          <div
+                            className="overflow-hidden transition-all duration-300 ease-in-out"
+                            style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
+                          >
+                            <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
+                              {o.description && <p>{o.description}</p>}
+                              {stats && Object.entries(stats).map(([k, v]) => (
+                                <p key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</p>
+                              ))}
+                              {o.materiaux_communs && (
+                                <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
+                              )}
+                              {o.materiaux_rares && (
+                                <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex justify-end pt-1">
+                            <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ));
+          })()}
         </section>
       )}
 
@@ -235,6 +268,12 @@ const ForgeJoaillerieSection = ({
                       <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
                         {o.description && <p>{o.description}</p>}
                         {o.effet && <p><span className="font-medium text-foreground">Effet :</span> {o.effet}</p>}
+                        {o.materiaux_communs && (
+                          <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
+                        )}
+                        {o.materiaux_rares && (
+                          <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex justify-end pt-1">
