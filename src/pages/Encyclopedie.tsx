@@ -635,7 +635,7 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
               const niveaux = Array.isArray(c.niveaux) ? c.niveaux : [];
               return (
                 <AccordionItem key={c.id} value={c.id}>
-                  <AccordionTrigger className="font-heading text-base hover:no-underline">
+                  <AccordionTrigger className="font-heading text-base hover:no-underline text-left">
                     {c.nom}
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 text-sm text-muted-foreground">
