@@ -15,7 +15,6 @@ import ReligionCard from "@/components/encyclopedie/ReligionCard";
 // Imports des étapes séparées
 import Step2Race from "@/components/creation/Etape_Race";
 import Step3TraitsRaciaux from "@/components/creation/Etape_TraitsRaciaux";
-import Step3Classe from "@/components/creation/Etape_Classe";
 import Step4Competences from "@/components/creation/Etape_Competences";
 import Step5Sorts from "@/components/creation/Etape_SortsArcaniques";
 import Step6Prieres from "@/components/creation/Etape_PrieresDivines";
@@ -251,8 +250,14 @@ const PersonnageNouveau = () => {
 
       case 3:
         return <Step3TraitsRaciaux personnageId={personnageId} />;
-      case 4: return <Step3Classe data={{}} onUpdate={() => {}} />; // À décaler
-      // Les étapes suivantes devront être décalées d'un cran...
+      case 4:
+      case 5:
+      case 6:
+      case 7:
+      case 8:
+      case 9:
+      case 10:
+      case 11:
       default:
         return <div className="text-white">En construction...</div>;
     }
