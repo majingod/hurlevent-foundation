@@ -40,12 +40,14 @@ const FILTRES_TYPE = [
   { key: "ingredients", label: "Ingrédients Alchimiques" },
 ];
 
-const FILTRES_NIVEAU_ING = [
+const FILTRES_NIVEAU = [
   { key: null, label: "Tous les niveaux" },
   { key: 1, label: "Mineurs" },
   { key: 2, label: "Intermédiaires" },
   { key: 3, label: "Majeurs" },
 ];
+
+const FILTRES_NIVEAU_ING = FILTRES_NIVEAU;
 
 const AlchimieSection = ({
   recettes,
@@ -57,13 +59,16 @@ const AlchimieSection = ({
   searchQuery?: string;
 }) => {
   const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
+  const [niveauFiltre, setNiveauFiltre] = useState<number | null>(null);
   const [niveauIngFiltre, setNiveauIngFiltre] = useState<number | null>(null);
 
   const showIngredients = typeFiltre === "ingredients";
 
   const handleTypeFiltre = (key: string | null) => {
     setTypeFiltre(key);
-    if (key !== "ingredients") {
+    if (key === "ingredients") {
+      setNiveauFiltre(null);
+    } else {
       setNiveauIngFiltre(null);
     }
   };
@@ -79,7 +84,8 @@ const AlchimieSection = ({
           (rec.formule ?? "").toLowerCase().includes(query) ||
           (rec.effet ?? "").toLowerCase().includes(query);
         const matchType = !typeFiltre || rec.type === typeFiltre;
-        return matchTexte && matchType;
+        const matchNiveau = niveauFiltre === null || rec.niveau_requis === niveauFiltre;
+        return matchTexte && matchType && matchNiveau;
       });
 
   const ingredientsFiltres = showIngredients
@@ -110,6 +116,25 @@ const AlchimieSection = ({
 
       {/* Filtres */}
       <div className="space-y-2 mb-2">
+        {/* Rangée 1 — Niveau (recettes par niveau_requis) */}
+        {!showIngredients && (
+          <div className="flex flex-wrap gap-2">
+            {FILTRES_NIVEAU.map((f) => (
+              <button
+                key={String(f.key)}
+                onClick={() => setNiveauFiltre(f.key)}
+                className={
+                  niveauFiltre === f.key
+                    ? "px-3 py-1 rounded-md text-xs font-semibold bg-amber-700 text-white border border-amber-500"
+                    : "px-3 py-1 rounded-md text-xs font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Rangée 2 — Type */}
         <div className="flex flex-wrap gap-2">
           {FILTRES_TYPE.map((f) => (
             <button
@@ -125,6 +150,7 @@ const AlchimieSection = ({
             </button>
           ))}
         </div>
+        {/* Rangée niveau ingrédients */}
         {showIngredients && (
           <div className="flex flex-wrap gap-2">
             {FILTRES_NIVEAU_ING.map((f) => (
