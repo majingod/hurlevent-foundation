@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, User } from "lucide-react";
+import { Loader2, Plus, Trash2, User, Edit2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -35,126 +35,140 @@ const TableauDeBord = () => {
         setUserEmail(sessionUser?.email || null);
 
         if (!sessionUser) {
-          setError("Vous devez être connecté.");
+          setError("Vous devez être connecté pour accéder au tableau de bord.");
           return;
         }
 
-        // 🟢 Appel à la vue Supabase – plus aucune jointure à écrire côté React
-        const { data: personnagesData, error: persoError } = await supabase
-          .from("vue_tableau_de_bord")
+        const { data, error: fetchError } = await supabase
+          .from("personnages")
           .select("*")
           .eq("joueur_id", sessionUser.id)
-          .order("date_creation", { ascending: false });
+          .eq("est_actif", true)
+          .order("created_at", { ascending: false });
 
-        if (persoError) throw persoError;
-        setPersonnages(personnagesData || []);
+        if (fetchError) throw fetchError;
+        setPersonnages(data || []);
       } catch (err: any) {
-        console.error("Erreur tableau de bord:", err);
-        setError(err.message || "Erreur de chargement");
+        console.error("Erreur lors du chargement :", err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [user]);
 
   const supprimerPersonnage = async () => {
-    if (!personnageASupprimer || !user) return;
+    if (!personnageASupprimer) return;
 
-    setSuppressionEnCours(true);
     try {
-      const { error } = await supabase
+      setSuppressionEnCours(true);
+      const { error: deleteError } = await supabase
         .from("personnages")
         .update({ est_actif: false })
-        .eq("id", personnageASupprimer.id)
-        .eq("joueur_id", user.id);
+        .eq("id", personnageASupprimer.id);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
 
-      setPersonnages((prev) => prev.filter((p) => p.id !== personnageASupprimer.id));
-      setPersonnageASupprimer(null);
-      toast({ title: "Personnage supprimé avec succès." });
-    } catch (err) {
-      console.error("Erreur suppression:", err);
-      toast({ title: "Une erreur est survenue.", variant: "destructive" });
+      setPersonnages(personnages.filter((p) => p.id !== personnageASupprimer.id));
+      toast({
+        title: "Personnage supprimé",
+        description: `Le personnage «${personnageASupprimer.nom}» a été supprimé.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Erreur lors de la suppression",
+        description: err.message,
+      });
     } finally {
       setSuppressionEnCours(false);
+      setPersonnageASupprimer(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="container py-8 flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gold" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container py-8">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400">
-          <h2 className="text-xl font-bold mb-2">Erreur de chargement</h2>
-          <p>{error}</p>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="font-cinzel text-3xl mb-4 md:mb-0">Tableau de bord</h1>
-        <p className="text-white/60">{userEmail}</p>
-      </div>
-
-      <div className="mb-8">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-heading text-gold">Tableau de bord</h1>
+          <p className="text-muted-foreground">{userEmail}</p>
+        </div>
         <Link to="/personnage/nouveau">
-          <Button className="bg-gold text-black hover:bg-gold/80">
+          <Button className="bg-gold hover:bg-gold/80 text-black font-bold">
             <Plus className="mr-2 h-4 w-4" />
-            Créer un nouveau personnage
+            Nouveau personnage
           </Button>
         </Link>
       </div>
 
-      <h2 className="font-cinzel text-2xl mb-4">Mes personnages</h2>
+      {error && (
+        <Card className="border-destructive/50 bg-destructive/10">
+          <CardContent className="pt-6">
+            <p className="text-destructive">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {personnages.length === 0 ? (
-        <Card className="bg-white/5 border-white/10">
-          <CardContent className="py-8 text-center text-white/60">
-            Vous n'avez pas encore créé de personnage.
+        <Card className="border-white/10 bg-white/5 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <User className="mb-4 h-12 w-12 text-white/20" />
+            <h3 className="text-xl font-heading text-white/80">Aucun personnage actif</h3>
+            <p className="mb-6 text-muted-foreground">
+              Vous n'avez pas encore créé de personnage. Commencez votre aventure maintenant !
+            </p>
+            <Link to="/personnage/nouveau">
+              <Button variant="outline">Créer mon premier personnage</Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {personnages.map((p) => (
-            <Card key={p.id} className="bg-white/5 border-white/10 hover:bg-white/10 transition">
+            <Card key={p.id} className="group overflow-hidden border-white/10 bg-white/5 transition-all hover:border-gold/30">
               <CardHeader className="pb-2">
-                <CardTitle className="text-white flex items-center justify-between">
-                  <span>{p.nom}</span>
-                  {!p.est_actif && <span className="text-xs bg-white/10 px-2 py-1 rounded">Archivé</span>}
-                  {p.est_mort && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Mort</span>}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl font-heading text-gold">{p.nom}</CardTitle>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/10 text-gold group-hover:scale-110 transition-transform">
+                    <User size={20} />
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1 text-sm text-white/70">
-                  <p>Race : {p.race_nom || "Inconnue"}</p>
-                  <p>Classe : {p.classe_nom || "Inconnue"}</p>
-                  <p>Niveau {p.niveau} — XP : {p.xp_total} total / {p.xp_depense} dépensé</p>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="text-white/60">Race:</span> {p.race_id || "Non définie"}</p>
+                  <p><span className="text-white/60">Classe:</span> {p.classe_id || "Non définie"}</p>
                 </div>
-                <div className="mt-4">
-                  <Link to={`/personnage/${p.id}`}>
-                    <Button variant="outline" size="sm" className="w-full border-white/20 text-white/80">
+                
+                <div className="mt-6 flex flex-col gap-2">
+                  <Link to={`/personnage/${p.id}`} className="w-full">
+                    <Button variant="outline" size="sm" className="w-full border-white/20 hover:bg-white/5">
                       <User className="mr-2 h-4 w-4" />
                       Voir la fiche
                     </Button>
                   </Link>
-                </div>
-                <div className="mt-2">
+                  
+                  <Link to={`/personnage/nouveau?id=${p.id}`} className="w-full">
+                    <Button variant="secondary" size="sm" className="w-full bg-gold/10 text-gold hover:bg-gold/20 border-gold/20">
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      {p.etape_creation < 11 ? "Continuer la création" : "Modifier le personnage"}
+                    </Button>
+                  </Link>
+
                   <Button
                     variant="destructive"
                     size="sm"
-                    className="w-full opacity-60 hover:opacity-100"
+                    className="w-full opacity-40 hover:opacity-100 transition-opacity mt-2"
                     onClick={() => setPersonnageASupprimer(p)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -168,15 +182,15 @@ const TableauDeBord = () => {
       )}
 
       <Dialog open={!!personnageASupprimer} onOpenChange={(open) => { if (!open) setPersonnageASupprimer(null); }}>
-        <DialogContent>
+        <DialogContent className="border-white/10 bg-slate-900">
           <DialogHeader>
-            <DialogTitle>Supprimer le personnage</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-gold font-heading">Supprimer le personnage</DialogTitle>
+            <DialogDescription className="text-white/70">
               Êtes-vous sûr de vouloir supprimer le personnage «{personnageASupprimer?.nom}» ?
               Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setPersonnageASupprimer(null)} disabled={suppressionEnCours}>
               Annuler
             </Button>
