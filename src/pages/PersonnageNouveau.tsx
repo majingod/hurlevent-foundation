@@ -61,7 +61,7 @@ const PersonnageNouveau = () => {
             setPersonnageId(data.id);
             setNom(data.nom);
             setReligionId(data.religion_id);
-            setEstCroyant(!!data.religion_id);
+            setEstCroyant((data as any).est_croyant ?? !!data.religion_id);
             setRaceId(data.race_id);
             if (!etapeParam) {
               const etapeDb = data.etape_creation ?? 0;
@@ -83,7 +83,7 @@ const PersonnageNouveau = () => {
   const { data: religions = [] } = useQuery({
     queryKey: ["religions"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("religions").select("*").eq("est_actif", true);
+      const { data, error } = await supabase.from("religions").select("*").eq("est_actif", true).order("nom");
       if (error) throw error;
       return data;
     },
@@ -101,11 +101,12 @@ const PersonnageNouveau = () => {
   // Sauvegarde automatique de l'étape en base de données
   const sauvegarderEtape = async (nouvelleEtape: number) => {
     if (!user) return;
-    
+
     try {
-      const payload = {
+      const payload: any = {
         nom,
         joueur_id: user.id,
+        est_croyant: estCroyant,
         religion_id: religionId,
         race_id: raceId,
         etape_creation: nouvelleEtape,
@@ -121,6 +122,17 @@ const PersonnageNouveau = () => {
       }
     } catch (err) {
       console.error("Erreur sauvegarde étape:", err);
+    }
+  };
+
+  const sauvegarderCroyance = async (croyant: boolean | null, relId: string | null) => {
+    if (!personnageId || !user) return;
+    try {
+      await (supabase.from("personnages") as any)
+        .update({ est_croyant: croyant, religion_id: relId, updated_at: new Date().toISOString() })
+        .eq("id", personnageId);
+    } catch (err) {
+      console.error("Erreur sauvegarde croyance:", err);
     }
   };
 
@@ -155,14 +167,14 @@ const PersonnageNouveau = () => {
             <div className="space-y-4">
               <Label className="text-xl font-heading text-gold block">Est-ce que ton personnage croit en une religion ?</Label>
               <div className="flex gap-4">
-                <Button 
-                  variant={estCroyant === true ? "default" : "outline"} 
-                  onClick={() => setEstCroyant(true)}
+                <Button
+                  variant={estCroyant === true ? "default" : "outline"}
+                  onClick={() => { setEstCroyant(true); sauvegarderCroyance(true, religionId); }}
                   className={`flex-1 h-14 text-lg ${estCroyant === true ? 'bg-gold text-black hover:bg-gold/90' : ''}`}
                 >Oui</Button>
-                <Button 
-                  variant={estCroyant === false ? "default" : "outline"} 
-                  onClick={() => { setEstCroyant(false); setReligionId(null); }}
+                <Button
+                  variant={estCroyant === false ? "default" : "outline"}
+                  onClick={() => { setEstCroyant(false); setReligionId(null); sauvegarderCroyance(false, null); }}
                   className={`flex-1 h-14 text-lg ${estCroyant === false ? 'bg-gold text-black hover:bg-gold/90' : ''}`}
                 >Non</Button>
               </div>
@@ -170,14 +182,18 @@ const PersonnageNouveau = () => {
 
             {estCroyant && (
               <div className="space-y-6 pt-6 border-t border-white/5 animate-in zoom-in-95">
-                <h3 className="text-lg font-heading text-white/70">Choisis la religion pour laquelle ton personnage est un fidèle croyant :</h3>
+                <h3 className="text-lg font-heading text-white/70">Choisis la religion de ton personnage :</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   {religions.map((rel) => (
-                    <ReligionCard 
-                      key={rel.id} 
-                      religion={rel} 
+                    <ReligionCard
+                      key={rel.id}
+                      religion={rel}
                       isSelected={religionId === rel.id}
-                      onClick={() => setReligionId(rel.id)}
+                      onClick={() => {
+                        const newId = religionId === rel.id ? null : rel.id;
+                        setReligionId(newId);
+                        sauvegarderCroyance(true, newId);
+                      }}
                     />
                   ))}
                 </div>
