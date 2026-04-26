@@ -1,117 +1,320 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { ClasseCard } from "@/components/shared/CardTemplates";
+import ReligionCard from "@/components/encyclopedie/ReligionCard";
+import { Button } from "@/components/ui/button";
 
-interface Step3Props {
-  classes: any[];
+interface EtapeClasseProps {
+  personnageId: string | null;
   classeId: string | null;
-  setClasseId: (v: string) => void;
-  religions: any[];
+  onClasseSelect: (id: string | null) => void;
+  estCroyant: boolean | null;
   religionId: string | null;
-  setReligionId: (v: string | null) => void;
-  estCroyant: boolean;
+  onReligionChange: (id: string | null, croyant?: boolean) => void;
+  onPeutPasser: (peut: boolean) => void;
 }
 
-const Step3Classe = ({
-  classes, classeId, setClasseId,
-  religions, religionId, setReligionId, estCroyant,
-}: Step3Props) => {
-  const selectedClasse = classes.find((c) => c.id === classeId);
-  const isPretre = selectedClasse?.nom === "Prêtre";
-  const needsReligion = isPretre && !religionId;
+const EtapeClasse = ({
+  personnageId,
+  classeId,
+  onClasseSelect,
+  estCroyant,
+  religionId,
+  onReligionChange,
+  onPeutPasser,
+}: EtapeClasseProps) => {
+  const [choixDecryptage, setChoixDecryptage] = useState<string | null>(null);
+  const [confirmationReligion, setConfirmationReligion] = useState<"oui" | "non" | null>(null);
+  const [religionIdLocale, setReligionIdLocale] = useState<string | null>(religionId);
 
-  const formatGratuites = (gratuites: any): string[] => {
-    if (!gratuites) return [];
-    if (Array.isArray(gratuites)) return gratuites.map(String);
+  const { data: classes = [] } = useQuery({
+    queryKey: ["classes-creation"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("classes")
+        .select("*")
+        .eq("est_actif", true)
+        .order("nom");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: competenceDecryptage = null } = useQuery({
+    queryKey: ["competence-decryptage"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("competences")
+        .select("*")
+        .ilike("nom", "%décryptage%")
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+
+  const { data: religions = [] } = useQuery({
+    queryKey: ["religions-creation"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("religions")
+        .select("*")
+        .eq("est_actif", true)
+        .order("nom");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const classeSelectionnee = classes.find((c) => c.id === classeId);
+  const nomClasse = classeSelectionnee?.nom?.toLowerCase() ?? "";
+  const isMage = nomClasse.includes("mage");
+  const isPretre = nomClasse.includes("prêtre") || nomClasse.includes("pretre");
+
+  const choixDecryptageOptions: string[] = (() => {
+    if (!competenceDecryptage?.niveaux) return [];
+    const niveaux = competenceDecryptage.niveaux as any;
+    if (Array.isArray(niveaux)) {
+      const premier = niveaux[0];
+      if (typeof premier === "string") return niveaux as string[];
+      if (premier && typeof premier === "object") {
+        const candidats = premier.choix ?? premier.options ?? premier.valeurs;
+        if (Array.isArray(candidats)) return candidats.map(String);
+      }
+    }
     return [];
+  })();
+
+  useEffect(() => {
+    if (!classeId) { onPeutPasser(false); return; }
+
+    if (isMage && competenceDecryptage && choixDecryptageOptions.length > 0) {
+      if (!choixDecryptage) { onPeutPasser(false); return; }
+    }
+
+    if (isPretre) {
+      const aReligionCroyant = !!(estCroyant && religionId);
+      if (aReligionCroyant) {
+        if (confirmationReligion === "oui") { onPeutPasser(true); return; }
+        if (confirmationReligion === "non" && religionIdLocale) { onPeutPasser(true); return; }
+        onPeutPasser(false); return;
+      } else {
+        onPeutPasser(!!religionIdLocale); return;
+      }
+    }
+
+    onPeutPasser(true);
+  }, [
+    classeId, isMage, isPretre, competenceDecryptage,
+    choixDecryptage, choixDecryptageOptions.length,
+    confirmationReligion, religionIdLocale, estCroyant, religionId,
+    onPeutPasser,
+  ]);
+
+  const sauvegarderClasse = async (id: string) => {
+    if (!personnageId) return;
+    await supabase
+      .from("personnages")
+      .update({ classe_id: id, updated_at: new Date().toISOString() })
+      .eq("id", personnageId);
+  };
+
+  const sauvegarderDecryptage = async (choix: string) => {
+    if (!personnageId || !competenceDecryptage) return;
+    await (supabase as any).from("personnage_competences").upsert(
+      {
+        personnage_id: personnageId,
+        competence_id: competenceDecryptage.id,
+        choix_achat: choix,
+        xp_depense: 0,
+        niveau_acquis: 1,
+      },
+      { onConflict: "personnage_id,competence_id" }
+    );
+  };
+
+  const sauvegarderReligion = async (id: string | null, croyant = true) => {
+    if (!personnageId) return;
+    await (supabase as any)
+      .from("personnages")
+      .update({ religion_id: id, est_croyant: croyant, updated_at: new Date().toISOString() })
+      .eq("id", personnageId);
+  };
+
+  const handleClasseClick = (id: string) => {
+    if (classeId === id) return;
+    onClasseSelect(id);
+    sauvegarderClasse(id);
+    setChoixDecryptage(null);
+    setConfirmationReligion(null);
+    setReligionIdLocale(religionId);
+  };
+
+  const handleChoixDecryptage = (choix: string) => {
+    const nouveau = choixDecryptage === choix ? null : choix;
+    setChoixDecryptage(nouveau);
+    if (nouveau) sauvegarderDecryptage(nouveau);
+  };
+
+  const handleChoixReligionPretre = (id: string) => {
+    const nouveau = religionIdLocale === id ? null : id;
+    setReligionIdLocale(nouveau);
+    onReligionChange(nouveau, true);
+    sauvegarderReligion(nouveau, true);
+  };
+
+  const renderPanneauMage = () => {
+    if (!isMage) return null;
+    return (
+      <div className="mt-8 pt-8 border-t border-white/10 space-y-4 animate-in fade-in slide-in-from-bottom-4">
+        <p className="text-sm text-white/80">
+          La classe Mage t'offre gratuitement la compétence{" "}
+          <strong className="text-gold">Décryptage</strong>. Choisis le type de décryptage :
+        </p>
+        {choixDecryptageOptions.length === 0 ? (
+          <p className="text-xs text-white/40 italic">Chargement des choix de décryptage…</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {choixDecryptageOptions.map((choix) => (
+              <button
+                key={choix}
+                type="button"
+                onClick={() => handleChoixDecryptage(choix)}
+                className={`rounded-lg border p-4 text-left text-sm font-medium transition-all ${
+                  choixDecryptage === choix
+                    ? "border-gold bg-gold/10 text-gold ring-2 ring-gold/40"
+                    : "border-white/10 bg-white/5 text-white/80 hover:border-gold/50"
+                }`}
+              >
+                {choixDecryptage === choix && <span className="mr-2">✓</span>}
+                {choix}
+              </button>
+            ))}
+          </div>
+        )}
+        {!choixDecryptage && choixDecryptageOptions.length > 0 && (
+          <p className="text-xs text-amber-400/80">
+            ⚠️ Tu dois choisir un type de décryptage pour continuer.
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const renderPanneauPretre = () => {
+    if (!isPretre) return null;
+    const aReligionCroyant = !!(estCroyant && religionId);
+    const religionActuelle = religions.find((r) => r.id === religionId);
+
+    return (
+      <div className="mt-8 pt-8 border-t border-white/10 space-y-6 animate-in fade-in slide-in-from-bottom-4">
+        {aReligionCroyant ? (
+          <>
+            <p className="text-sm text-white/80">
+              Ton personnage est déjà croyant. Souhaites-tu garder cette religion pour ta classe Prêtre ?
+            </p>
+            {religionActuelle && (
+              <div className="max-w-md">
+                <ReligionCard religion={religionActuelle} isSelected={false} />
+              </div>
+            )}
+            <div className="flex gap-4">
+              <Button
+                type="button"
+                variant={confirmationReligion === "oui" ? "default" : "outline"}
+                onClick={() => setConfirmationReligion("oui")}
+                className={`flex-1 h-12 ${
+                  confirmationReligion === "oui"
+                    ? "bg-gold text-black hover:bg-gold/90"
+                    : "border-white/10 text-white"
+                }`}
+              >
+                Oui, garder cette religion
+              </Button>
+              <Button
+                type="button"
+                variant={confirmationReligion === "non" ? "default" : "outline"}
+                onClick={() => setConfirmationReligion("non")}
+                className={`flex-1 h-12 ${
+                  confirmationReligion === "non"
+                    ? "bg-gold text-black hover:bg-gold/90"
+                    : "border-white/10 text-white"
+                }`}
+              >
+                Non, en choisir une autre
+              </Button>
+            </div>
+            {confirmationReligion === "non" && (
+              <div className="space-y-3 animate-in fade-in">
+                <p className="text-sm text-white/60">Choisis une nouvelle religion :</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {religions.map((rel) => (
+                    <ReligionCard
+                      key={rel.id}
+                      religion={rel}
+                      isSelected={religionIdLocale === rel.id}
+                      onClick={() => handleChoixReligionPretre(rel.id)}
+                    />
+                  ))}
+                </div>
+                {!religionIdLocale && (
+                  <p className="text-xs text-amber-400/80">
+                    ⚠️ Tu dois choisir une religion pour continuer.
+                  </p>
+                )}
+              </div>
+            )}
+            {confirmationReligion === null && (
+              <p className="text-xs text-amber-400/80">
+                ⚠️ Tu dois confirmer ta religion pour continuer.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-white/80">
+              La classe Prêtre nécessite une religion. Choisis la religion de ton personnage :
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {religions.map((rel) => (
+                <ReligionCard
+                  key={rel.id}
+                  religion={rel}
+                  isSelected={religionIdLocale === rel.id}
+                  onClick={() => handleChoixReligionPretre(rel.id)}
+                />
+              ))}
+            </div>
+            {!religionIdLocale && (
+              <p className="text-xs text-amber-400/80">
+                ⚠️ Tu dois choisir une religion pour continuer.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="font-heading text-xl font-semibold text-foreground">
-        Étape 3 — Choix de la classe
-      </h2>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+      <h2 className="text-2xl font-heading text-gold">Choisis la classe de ton personnage</h2>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {classes.map((cls) => {
-          const gratuites = formatGratuites(cls.competences_gratuites);
-          const selected = classeId === cls.id;
-          return (
-            <Card
-              key={cls.id}
-              className={`cursor-pointer transition-all hover:border-primary/50 ${
-                selected ? "border-2 border-primary ring-2 ring-primary/20" : ""
-              }`}
-              onClick={() => setClasseId(cls.id)}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-heading">{cls.nom}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p className="text-muted-foreground">{cls.description}</p>
-                <div className="flex gap-4">
-                  <span>PV de départ : <strong className="text-primary">{cls.pv_depart}</strong></span>
-                  <span>PS de départ : <strong className="text-primary">{cls.ps_depart}</strong></span>
-                </div>
-                {cls.role_combat && (
-                  <p className="text-xs text-muted-foreground">Rôle : {cls.role_combat}</p>
-                )}
-                {gratuites.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Compétences gratuites :</p>
-                    <div className="flex flex-wrap gap-1">
-                      {gratuites.map((g, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">{g}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="grid gap-4 md:grid-cols-2">
+        {classes.map((cls) => (
+          <ClasseCard
+            key={cls.id}
+            data={cls}
+            isSelected={classeId === cls.id}
+            onSelect={() => handleClasseClick(cls.id)}
+          />
+        ))}
       </div>
 
-      {/* Prêtre needs religion */}
-      {isPretre && !estCroyant && !religionId && (
-        <div className="space-y-4">
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-            <p>La classe Prêtre nécessite une religion. Veuillez choisir une religion ci-dessous.</p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {religions.map((rel) => (
-              <Card
-                key={rel.id}
-                className={`cursor-pointer transition-all hover:border-primary/50 ${
-                  religionId === rel.id ? "border-2 border-primary ring-2 ring-primary/20" : ""
-                }`}
-                onClick={() => setReligionId(rel.id)}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-heading">{rel.nom}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  {rel.domaines_principaux && (
-                    <p>Domaines : {rel.domaines_principaux.join(", ")}</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Summary */}
-      {selectedClasse && (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm space-y-1">
-          <p>Classe sélectionnée : <strong className="text-primary">{selectedClasse.nom}</strong></p>
-          <p>PV max : <strong>{selectedClasse.pv_depart}</strong> — PS max : <strong>{selectedClasse.ps_depart}</strong></p>
-        </div>
-      )}
+      {renderPanneauMage()}
+      {renderPanneauPretre()}
     </div>
   );
 };
 
-export default Step3Classe;
+export default EtapeClasse;
