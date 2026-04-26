@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle, Sparkles, Hammer, Gem } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -49,6 +48,8 @@ interface ObjetForge {
   type: string | null;
   stats: any;
   difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
 }
 
 interface ObjetJoaillerie {
@@ -57,6 +58,8 @@ interface ObjetJoaillerie {
   description: string | null;
   effet: string | null;
   difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
 }
 
 interface Step7Props {
@@ -149,6 +152,10 @@ const Step7Artisanat = ({
   const hasForge = artisanat.niveau_forge >= 1;
   const hasJoaillerie = artisanat.niveau_joaillerie >= 1;
 
+  const quotaMineur = recettes.filter(r => recettesGratuites.has(r.id) && r.niveau_requis === 1).length;
+  const quotaInter = recettes.filter(r => recettesGratuites.has(r.id) && r.niveau_requis === 2).length;
+  const quotaMajeur = recettes.filter(r => recettesGratuites.has(r.id) && r.niveau_requis === 3).length;
+
   if (!hasAlchimie && !hasForge && !hasJoaillerie) {
     return (
       <div className="space-y-6">
@@ -184,94 +191,84 @@ const Step7Artisanat = ({
               <p className="text-sm text-muted-foreground">
                 Niveau d'Alchimie : <strong className="text-primary">{artisanat.niveau_alchimie}</strong>
               </p>
-              <p className="text-sm text-muted-foreground">
-                Quota gratuit : <strong className="text-primary">{recettesGratuites.size} / {artisanat.quota_recettes_total}</strong> recettes sélectionnées
-              </p>
+              {artisanat.niveau_alchimie >= 1 && (
+                <p className="text-sm text-muted-foreground">
+                  Quota de recettes Mineures gratuites : <strong className="text-primary">{quotaMineur} / 5</strong>
+                </p>
+              )}
+              {artisanat.niveau_alchimie >= 2 && (
+                <p className="text-sm text-muted-foreground">
+                  Quota de recettes Intermédiaires gratuites : <strong className="text-primary">{quotaInter} / 4</strong>
+                </p>
+              )}
+              {artisanat.niveau_alchimie >= 3 && (
+                <p className="text-sm text-muted-foreground">
+                  Quota de recettes Majeures gratuites : <strong className="text-primary">{quotaMajeur} / 3</strong>
+                </p>
+              )}
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Choisissez vos recettes gratuites</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {recettes
-                  .filter((r) => r.niveau_requis <= artisanat.niveau_alchimie)
-                  .map((recette) => (
-                    <div key={recette.id} className="flex items-start gap-3 p-2 rounded border border-border/50">
-                      <Checkbox
-                        id={`recette-${recette.id}`}
-                        checked={recettesGratuites.has(recette.id)}
-                        disabled={!recettesGratuites.has(recette.id) && recettesGratuites.size >= artisanat.quota_recettes_total}
-                        onCheckedChange={(checked) => {
-                          const newSet = new Set(recettesGratuites);
-                          if (checked) newSet.add(recette.id);
-                          else newSet.delete(recette.id);
-                          setRecettesGratuites(newSet);
-                        }}
-                      />
-                      <label htmlFor={`recette-${recette.id}`} className="flex-1 cursor-pointer text-sm">
-                        <div className="font-medium text-foreground">{recette.nom}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {recette.effet && <p>{recette.effet}</p>}
-                          <div className="flex gap-2 mt-1">
-                            {recette.type && <Badge variant="outline" className="text-xs">{TYPE_RECETTE_LABELS[recette.type] || recette.type}</Badge>}
-                            {recette.niveau_requis && <Badge variant="secondary" className="text-xs">{NIVEAU_ALCHIMIE_LABELS[recette.niveau_requis] || `Niveau ${recette.niveau_requis}`}</Badge>}
-                          </div>
-                        </div>
-                      </label>
-                    </div>
-                  ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Recettes supplémentaires ({COUT_RECETTE_SUPPLEMENTAIRE} XP chacune)</CardTitle>
+                <CardTitle className="text-base">Recettes d'alchimie</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {recettes
                   .filter((r) => r.niveau_requis <= artisanat.niveau_alchimie)
                   .map((recette) => {
-                    const isAchetee = recettesAchetees.has(recette.id);
+                    const estGratuite = recettesGratuites.has(recette.id);
+                    const estAchetee = recettesAchetees.has(recette.id);
+                    const niv = recette.niveau_requis;
+                    const quotaActuel = niv === 1 ? quotaMineur : niv === 2 ? quotaInter : quotaMajeur;
+                    const quotaMax = niv === 1 ? 5 : niv === 2 ? 4 : 3;
+                    const gratuitDisabled = estAchetee || (!estGratuite && quotaActuel >= quotaMax);
+                    const achatDisabled = estGratuite || (!estAchetee && xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE);
                     return (
-                      <div key={recette.id} className="flex items-center justify-between p-2 rounded border border-border/50">
-                        <div className="flex-1">
+                      <div key={recette.id} className="p-2 rounded border border-border/50 space-y-2">
+                        <div>
                           <div className="font-medium text-sm text-foreground">{recette.nom}</div>
-                          <div className="text-xs text-muted-foreground">{recette.effet}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {recette.effet && <p>{recette.effet}</p>}
+                            <div className="flex gap-2 mt-1">
+                              {recette.type && <Badge variant="outline" className="text-xs">{TYPE_RECETTE_LABELS[recette.type] || recette.type}</Badge>}
+                              {recette.niveau_requis && <Badge variant="secondary" className="text-xs">{NIVEAU_ALCHIMIE_LABELS[recette.niveau_requis] || `Niveau ${recette.niveau_requis}`}</Badge>}
+                            </div>
+                          </div>
                         </div>
-                        {isAchetee ? (
-                          <>
-                            <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">Acquise</Badge>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="ml-2 text-xs"
-                              onClick={() => {
-                                setRecettesAchetees((prev) => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(recette.id);
-                                  return newSet;
-                                });
-                                onXpSpent(-COUT_RECETTE_SUPPLEMENTAIRE);
-                              }}
-                            >
-                              Retirer
-                            </Button>
-                          </>
-                        ) : (
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="text-xs"
-                            disabled={xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE}
+                            variant={estGratuite ? "default" : "outline"}
+                            className={`text-xs flex-1${estGratuite ? " bg-green-700 hover:bg-green-800" : ""}`}
+                            disabled={gratuitDisabled}
                             onClick={() => {
-                              setRecettesAchetees((prev) => new Set(prev).add(recette.id));
-                              onXpSpent(COUT_RECETTE_SUPPLEMENTAIRE);
+                              if (estGratuite) {
+                                setRecettesGratuites(prev => { const s = new Set(prev); s.delete(recette.id); return s; });
+                              } else {
+                                setRecettesGratuites(prev => new Set(prev).add(recette.id));
+                              }
                             }}
                           >
-                            Acheter ({COUT_RECETTE_SUPPLEMENTAIRE} XP)
+                            {estGratuite ? "✓ Gratuit" : "Gratuit"}
                           </Button>
-                        )}
+                          <Button
+                            size="sm"
+                            variant={estAchetee ? "default" : "outline"}
+                            className={`text-xs flex-1${estAchetee ? " bg-amber-700 hover:bg-amber-800" : ""}`}
+                            disabled={achatDisabled}
+                            onClick={() => {
+                              if (estAchetee) {
+                                setRecettesAchetees(prev => { const s = new Set(prev); s.delete(recette.id); return s; });
+                                onXpSpent(-COUT_RECETTE_SUPPLEMENTAIRE);
+                              } else {
+                                setRecettesAchetees(prev => new Set(prev).add(recette.id));
+                                onXpSpent(COUT_RECETTE_SUPPLEMENTAIRE);
+                              }
+                            }}
+                          >
+                            {estAchetee ? `✓ Acheté (${COUT_RECETTE_SUPPLEMENTAIRE} XP)` : `Acheter (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`}
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -323,6 +320,16 @@ const Step7Artisanat = ({
                     {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
                     {obj.type && <p><span className="font-medium text-foreground">Type :</span> {obj.type}</p>}
                     <p className="text-xs text-muted-foreground">Temps de fabrication : {obj.difficulte} min</p>
+                    {obj.materiaux_communs && (
+                      <div className="mt-2 text-xs text-gray-300">
+                        <span className="text-amber-400">Matériaux communs :</span> {obj.materiaux_communs}
+                      </div>
+                    )}
+                    {obj.materiaux_rares && (
+                      <div className="text-xs text-gray-300">
+                        <span className="text-purple-400">Matériaux rares :</span> {obj.materiaux_rares}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -373,6 +380,16 @@ const Step7Artisanat = ({
                     {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
                     {obj.effet && <p><span className="font-medium text-foreground">Effet :</span> {obj.effet}</p>}
                     <p className="text-xs text-muted-foreground">Temps de fabrication : {obj.difficulte} min</p>
+                    {obj.materiaux_communs && (
+                      <div className="mt-2 text-xs text-gray-300">
+                        <span className="text-amber-400">Matériaux communs :</span> {obj.materiaux_communs}
+                      </div>
+                    )}
+                    {obj.materiaux_rares && (
+                      <div className="text-xs text-gray-300">
+                        <span className="text-purple-400">Matériaux rares :</span> {obj.materiaux_rares}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}

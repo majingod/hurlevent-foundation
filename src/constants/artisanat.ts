@@ -37,7 +37,7 @@ export const COUT_ASSEMBLAGE_SUPPLEMENTAIRE = 4;
 export const NOTE_FORGE: Record<number, string> = {
   1: "Vous pouvez fabriquer ces objets avec des métaux communs.",
   2: "Vous pouvez fabriquer ces objets avec des métaux communs et rares.",
-  3: "Vous pouvez fabriquer ces objets avec des métaux communs et rares.",
+  3: "Vous pouvez fabriquer ces objets avec des métaux communs, rares et légendaires.",
 };
 
 // ------------------------------------------------------------
@@ -47,7 +47,7 @@ export const NOTE_FORGE: Record<number, string> = {
 export const NOTE_JOAILLERIE: Record<number, string> = {
   1: "Vous pouvez créer ces pièces avec des matériaux communs.",
   2: "Vous pouvez créer ces pièces avec des matériaux communs et rares.",
-  3: "Vous pouvez créer ces pièces avec des matériaux communs et rares.",
+  3: "Vous pouvez créer ces pièces avec des matériaux communs, rares et légendaires.",
 };
 
 // ------------------------------------------------------------

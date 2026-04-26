@@ -210,7 +210,7 @@ const Encyclopedie = () => {
         supabase.from("recettes_alchimie").select("*").eq("est_actif", true).order("niveau_requis").order("type").order("nom"),
         supabase.from("ingredients_alchimiques").select("*").order("niveau").order("nom"),
         supabase.from("assemblages_runes").select("*").eq("est_actif", true).order("nom"),
-        supabase.from("objets_forge").select("*").eq("est_actif", true).order("difficulte").order("nom"),
+        supabase.from("objets_forge").select("*").eq("est_actif", true).order("type").order("difficulte").order("nom"),
         supabase.from("objets_joaillerie").select("*").eq("est_actif", true).order("difficulte").order("nom"),
         supabase.from("reparations_forge").select("*").eq("est_actif", true).order("categorie").order("nom_affichage"),
         supabase.from("bestiaire").select("*").eq("est_actif", true).order("categorie").order("nom"),
