@@ -32,18 +32,19 @@ function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
   }, {} as Record<string, T[]>);
 }
 
-const FILTRES_NIVEAU = [
-  { key: null, label: "Tous les niveaux" },
-  { key: 1, label: "Mineurs" },
-  { key: 2, label: "Intermédiaires" },
-  { key: 3, label: "Majeurs" },
-];
-
 const FILTRES_TYPE = [
   { key: null, label: "Tous Types" },
   { key: "potion", label: "Potions" },
   { key: "poison", label: "Poisons" },
   { key: "autre", label: "Catalyseurs" },
+  { key: "ingredients", label: "Ingrédients Alchimiques" },
+];
+
+const FILTRES_NIVEAU_ING = [
+  { key: null, label: "Tous les niveaux" },
+  { key: 1, label: "Mineurs" },
+  { key: 2, label: "Intermédiaires" },
+  { key: 3, label: "Majeurs" },
 ];
 
 const AlchimieSection = ({
@@ -55,21 +56,43 @@ const AlchimieSection = ({
   ingredients: Ingredient[];
   searchQuery?: string;
 }) => {
-  const [niveauFiltre, setNiveauFiltre] = useState<number | null>(null);
   const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
+  const [niveauIngFiltre, setNiveauIngFiltre] = useState<number | null>(null);
 
-  const recettesFiltrees = recettes.filter((rec) => {
-    const query = searchQuery.toLowerCase();
-    const matchTexte =
-      !query ||
-      (rec.nom ?? "").toLowerCase().includes(query) ||
-      (rec.description ?? "").toLowerCase().includes(query) ||
-      (rec.formule ?? "").toLowerCase().includes(query) ||
-      (rec.effet ?? "").toLowerCase().includes(query);
-    const matchNiveau = !niveauFiltre || rec.niveau_requis === niveauFiltre;
-    const matchType = !typeFiltre || rec.type === typeFiltre;
-    return matchTexte && matchNiveau && matchType;
-  });
+  const showIngredients = typeFiltre === "ingredients";
+
+  const handleTypeFiltre = (key: string | null) => {
+    setTypeFiltre(key);
+    if (key !== "ingredients") {
+      setNiveauIngFiltre(null);
+    }
+  };
+
+  const recettesFiltrees = showIngredients
+    ? []
+    : recettes.filter((rec) => {
+        const query = searchQuery.toLowerCase();
+        const matchTexte =
+          !query ||
+          (rec.nom ?? "").toLowerCase().includes(query) ||
+          (rec.description ?? "").toLowerCase().includes(query) ||
+          (rec.formule ?? "").toLowerCase().includes(query) ||
+          (rec.effet ?? "").toLowerCase().includes(query);
+        const matchType = !typeFiltre || rec.type === typeFiltre;
+        return matchTexte && matchType;
+      });
+
+  const ingredientsFiltres = showIngredients
+    ? ingredients.filter((ing) => {
+        const query = searchQuery.toLowerCase();
+        const matchTexte =
+          !query ||
+          (ing.nom ?? "").toLowerCase().includes(query) ||
+          (ing.manipulations ?? "").toLowerCase().includes(query);
+        const matchNiveau = !niveauIngFiltre || ing.niveau === niveauIngFiltre;
+        return matchTexte && matchNiveau;
+      })
+    : [];
 
   const groupedByType = groupBy(recettesFiltrees, (r) => r.type ?? "autre");
   const typeOrder = ["potion", "poison", "autre"];
@@ -78,7 +101,7 @@ const AlchimieSection = ({
     ...Object.keys(groupedByType).filter((k) => !typeOrder.includes(k)),
   ];
 
-  const groupedIngredients = groupBy(ingredients, (i) => String(i.niveau ?? 1));
+  const groupedIngredients = groupBy(ingredientsFiltres, (i) => String(i.niveau ?? 1));
   const niveauKeys = Object.keys(groupedIngredients).sort();
 
   return (
@@ -88,25 +111,10 @@ const AlchimieSection = ({
       {/* Filtres */}
       <div className="space-y-2 mb-2">
         <div className="flex flex-wrap gap-2">
-          {FILTRES_NIVEAU.map((f) => (
-            <button
-              key={String(f.key)}
-              onClick={() => setNiveauFiltre(f.key)}
-              className={
-                niveauFiltre === f.key
-                  ? "px-3 py-1 rounded-md text-xs font-semibold bg-amber-700 text-white border border-amber-500"
-                  : "px-3 py-1 rounded-md text-xs font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-              }
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
           {FILTRES_TYPE.map((f) => (
             <button
               key={String(f.key)}
-              onClick={() => setTypeFiltre(f.key)}
+              onClick={() => handleTypeFiltre(f.key)}
               className={
                 typeFiltre === f.key
                   ? "px-3 py-1 rounded-md text-xs font-semibold bg-amber-700 text-white border border-amber-500"
@@ -117,14 +125,34 @@ const AlchimieSection = ({
             </button>
           ))}
         </div>
+        {showIngredients && (
+          <div className="flex flex-wrap gap-2">
+            {FILTRES_NIVEAU_ING.map((f) => (
+              <button
+                key={String(f.key)}
+                onClick={() => setNiveauIngFiltre(f.key)}
+                className={
+                  niveauIngFiltre === f.key
+                    ? "px-3 py-1 rounded-md text-xs font-semibold bg-amber-700 text-white border border-amber-500"
+                    : "px-3 py-1 rounded-md text-xs font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {recettesFiltrees.length === 0 && (searchQuery || niveauFiltre || typeFiltre) && (
+      {!showIngredients && recettesFiltrees.length === 0 && (searchQuery || typeFiltre) && (
+        <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
+      )}
+      {showIngredients && ingredientsFiltres.length === 0 && (searchQuery || niveauIngFiltre) && (
         <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
       )}
 
       {/* Recettes */}
-      {typeKeys.map((type) => {
+      {!showIngredients && typeKeys.map((type) => {
         const byNiveau = groupBy(groupedByType[type], (r) => String(r.niveau_requis ?? 1));
         const niveaux = Object.keys(byNiveau).sort();
         return (
@@ -143,7 +171,7 @@ const AlchimieSection = ({
                     return (
                       <AccordionItem key={r.id} value={r.id}>
                         <AccordionTrigger className="font-heading text-base hover:no-underline">
-                          {r.nom}
+                          <span className="flex items-center">{r.nom}</span>
                         </AccordionTrigger>
                         <AccordionContent className="text-sm text-muted-foreground space-y-2">
                           {r.effet && <p><span className="font-medium text-foreground">Effet :</span> {r.effet}</p>}
@@ -172,30 +200,32 @@ const AlchimieSection = ({
         );
       })}
 
-      {/* Ingrédients */}
-      <section>
-        <h3 className="font-heading text-lg font-semibold text-primary mb-3">Ingrédients Alchimiques</h3>
-        {niveauKeys.map((niv) => (
-          <div key={niv} className="mb-4">
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">
-              {NIVEAU_ALCHIMIE_LABELS[Number(niv)] ?? `Niveau ${niv}`}
-            </h4>
-            <div className="space-y-1">
-              {groupedIngredients[niv].map((ing) => (
-                <div
-                  key={ing.id}
-                  className="rounded-lg border border-primary/10 bg-card/30 p-3 flex items-center justify-between text-sm hover:border-primary/30 transition-colors"
-                >
-                  <span className="font-medium text-foreground">{ing.nom}</span>
-                  {ing.manipulations && (
-                    <span className="text-muted-foreground text-xs">{ing.manipulations}</span>
-                  )}
-                </div>
-              ))}
+      {/* Ingrédients Alchimiques */}
+      {showIngredients && (
+        <section>
+          <h3 className="font-heading text-lg font-semibold text-primary mb-3">Ingrédients Alchimiques</h3>
+          {niveauKeys.map((niv) => (
+            <div key={niv} className="mb-4">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                {NIVEAU_ALCHIMIE_LABELS[Number(niv)] ?? `Niveau ${niv}`}
+              </h4>
+              <div className="space-y-1">
+                {groupedIngredients[niv].map((ing) => (
+                  <div
+                    key={ing.id}
+                    className="rounded-lg border border-primary/10 bg-card/30 p-3 flex items-center justify-between text-sm hover:border-primary/30 transition-colors"
+                  >
+                    <span className="font-medium text-foreground">{ing.nom}</span>
+                    {ing.manipulations && (
+                      <span className="text-muted-foreground text-xs">{ing.manipulations}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </section>
+          ))}
+        </section>
+      )}
     </div>
   );
 };
