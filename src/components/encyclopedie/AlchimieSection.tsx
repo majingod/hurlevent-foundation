@@ -63,9 +63,6 @@ const AlchimieSection = ({
 
   const handleTypeFiltre = (key: string | null) => {
     setTypeFiltre(key);
-    if (key !== "ingredients") {
-      setNiveauIngFiltre(null);
-    }
   };
 
   const recettesFiltrees = showIngredients
@@ -79,7 +76,8 @@ const AlchimieSection = ({
           (rec.formule ?? "").toLowerCase().includes(query) ||
           (rec.effet ?? "").toLowerCase().includes(query);
         const matchType = !typeFiltre || rec.type === typeFiltre;
-        return matchTexte && matchType;
+        const matchNiveau = !niveauIngFiltre || rec.niveau_requis === niveauIngFiltre;
+        return matchTexte && matchType && matchNiveau;
       });
 
   const ingredientsFiltres = showIngredients
@@ -125,23 +123,21 @@ const AlchimieSection = ({
             </button>
           ))}
         </div>
-        {showIngredients && (
-          <div className="flex flex-wrap gap-2">
-            {FILTRES_NIVEAU_ING.map((f) => (
-              <button
-                key={String(f.key)}
-                onClick={() => setNiveauIngFiltre(f.key)}
-                className={
-                  niveauIngFiltre === f.key
-                    ? "px-3 py-1 rounded-md text-xs font-semibold bg-amber-700 text-white border border-amber-500"
-                    : "px-3 py-1 rounded-md text-xs font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-                }
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {FILTRES_NIVEAU_ING.map((f) => (
+            <button
+              key={String(f.key)}
+              onClick={() => setNiveauIngFiltre(f.key)}
+              className={
+                niveauIngFiltre === f.key
+                  ? "px-3 py-1 rounded-md text-xs font-semibold bg-amber-700 text-white border border-amber-500"
+                  : "px-3 py-1 rounded-md text-xs font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+              }
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {!showIngredients && recettesFiltrees.length === 0 && (searchQuery || typeFiltre) && (

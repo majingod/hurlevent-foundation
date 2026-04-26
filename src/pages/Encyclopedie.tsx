@@ -513,6 +513,21 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
                         <span>❤️ {c.pv_depart ?? "—"} PV</span>
                         <span>✨ {c.ps_depart ?? "—"} PS</span>
                       </div>
+                      {comps.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold mb-2 tracking-wider" style={{ color: "#c9a84c", fontVariant: "small-caps" }}>
+                            ⭐ COMPÉTENCES GRATUITES
+                          </p>
+                          <div className="space-y-1">
+                            {comps.map((comp, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm text-foreground/80">
+                                <span className="flex-shrink-0">⭐</span>
+                                <span>{String(comp)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -620,7 +635,7 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
               const niveaux = Array.isArray(c.niveaux) ? c.niveaux : [];
               return (
                 <AccordionItem key={c.id} value={c.id}>
-                  <AccordionTrigger className="font-heading text-base hover:no-underline">
+                  <AccordionTrigger className="font-heading text-base hover:no-underline text-left">
                     {c.nom}
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 text-sm text-muted-foreground">
@@ -802,21 +817,6 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
     <div className="space-y-8">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Domaines et Effets de Prières</h2>
       <div className="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-        {NIVEAU_MIN_FILTERS.map(nf => (
-          <button
-            key={String(nf.key)}
-            onClick={() => setNiveauMinActif(nf.key)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
-              niveauMinActif === nf.key
-                ? "bg-amber-700 text-white border border-amber-500"
-                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-            }`}
-          >
-            {nf.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {SOUS_ONGLETS_DOMAINES.map(sd => (
           <button
             key={String(sd.key)}
@@ -828,6 +828,21 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
             }`}
           >
             {sd.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+        {NIVEAU_MIN_FILTERS.map(nf => (
+          <button
+            key={String(nf.key)}
+            onClick={() => setNiveauMinActif(nf.key)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
+              niveauMinActif === nf.key
+                ? "bg-amber-700 text-white border border-amber-500"
+                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+            }`}
+          >
+            {nf.label}
           </button>
         ))}
       </div>
