@@ -18,6 +18,7 @@ import {
 import { Lock, ShieldAlert, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { useCategoriesCreatures } from "@/hooks/useCategoriesCreatures";
 import { useLangues } from "@/hooks/useLangues";
+import ReligionCard from "@/components/encyclopedie/ReligionCard";
 
 // ---- Types ----
 interface NiveauInfo {
@@ -430,6 +431,29 @@ const Step4Competences = ({
     setMasterModal(null);
   };
 
+  const handleRetirer = useCallback(async (comp: Competence, purchase: PurchasedComp) => {
+    try {
+      const { error } = await supabase
+        .from("personnage_competences")
+        .delete()
+        .eq("id", purchase.id);
+      if (error) throw error;
+      setPurchased((prev) => prev.filter((p) => p.id !== purchase.id));
+      onXpSpent(-purchase.xp_depense);
+      if (comp.nom === "Développement Spirituel" || comp.nom === "Développement Spirituel Supérieur") {
+        const newPs = Math.max(0, psMax - 1);
+        onPsMaxChange(newPs);
+        await supabase.from("personnages").update({ ps_max: newPs, xp_depense: Math.max(0, xpDepense - purchase.xp_depense) }).eq("id", personnageId);
+      } else {
+        await supabase.from("personnages").update({ xp_depense: Math.max(0, xpDepense - purchase.xp_depense) }).eq("id", personnageId);
+      }
+      toast.success(`${comp.nom}${purchase.choix_achat ? ` (${purchase.choix_achat})` : ""} retiré.`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erreur lors du retrait.");
+    }
+  }, [onXpSpent, onPsMaxChange, psMax, xpDepense, personnageId]);
+
   const renderCompetence = (comp: Competence, tabCategory: string) => {
     const crossLock = getCrossLockMessage(comp, tabCategory);
     const isFree = isFreeSkill(comp.nom);
@@ -469,6 +493,31 @@ const Step4Competences = ({
               </p>
               {isDS && <p className="text-xs text-primary">PS actuels : {psMax} / 20</p>}
               {isDSS && <p className="text-xs text-primary">PS actuels : {psMax} / 30</p>}
+              {comp.nom === "Connaissances des Religions" && (
+                <div className="border border-border rounded p-3 space-y-2 bg-card/50">
+                  {religionId ? (
+                    <>
+                      <p className="text-xs text-muted-foreground font-medium">Religion de votre personnage :</p>
+                      {religionData && <ReligionCard religion={religionData} isSelected={false} onClick={() => {}} />}
+                      <p className="text-xs text-muted-foreground italic">Religion fixée — modifiez-la à l'étape 1 si nécessaire.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground font-medium">Choisissez la religion pour cette compétence :</p>
+                      <Select
+                        value=""
+                        onValueChange={async (val) => {
+                          setReligionId(val);
+                          await supabase.from("personnages").update({ religion_id: val }).eq("id", personnageId);
+                        }}
+                      >
+                        <SelectTrigger className="text-xs"><SelectValue placeholder="Choisir une religion…" /></SelectTrigger>
+                        <SelectContent>{(religions ?? []).map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nom}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </>
+                  )}
+                </div>
+              )}
               {comp.niveaux.map((niv) => {
                 const levelKey = `${comp.id}-${niv.niveau}`;
                 const impossible = isImpossible(comp, niv.niveau);
@@ -501,13 +550,20 @@ const Step4Competences = ({
                         <span className="text-xs text-muted-foreground">({niv.cout_xp} XP)</span>
                         {reqMaster && !impossible && <Badge className="bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs"><ShieldAlert className="h-3 w-3 mr-1" /> Maître requis</Badge>}
                         {pendingApproval && <Badge className="bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs"><Clock className="h-3 w-3 mr-1" /> En attente</Badge>}
-                        {alreadyBought && !pendingApproval && !multi && <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">Acquise</Badge>}
                       </div>
                       {isExp && niv.description_niveau && <p className="text-xs text-muted-foreground mt-1">{niv.description_niveau}</p>}
                     </div>
                     {impossible ? (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild><span><Button size="sm" variant="outline" disabled className="text-xs"><Lock className="h-3 w-3 mr-1" /> Impossible</Button></span></TooltipTrigger><TooltipContent>Inaccessible hors de votre classe</TooltipContent></Tooltip></TooltipProvider>
-                    ) : alreadyBought && !multi ? null : (
+                    ) : alreadyBought && !multi ? (
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 text-xs bg-green-900/50 text-green-300 border border-green-700 rounded">✓ Acquise</span>
+                        <button
+                          onClick={() => { const p = getPurchases(comp.id).find((pp) => pp.niveau_acquis === niv.niveau); if (p) handleRetirer(comp, p); }}
+                          className="px-2 py-1 text-xs bg-red-900/50 text-red-400 border border-red-700 rounded hover:bg-red-900"
+                        >✕ Retirer</button>
+                      </div>
+                    ) : (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -537,12 +593,26 @@ const Step4Competences = ({
               {multi && getPurchases(comp.id).length > 0 && (
                 <div className="space-y-1 pt-1 border-t border-border">
                   <p className="text-xs font-medium text-muted-foreground">Achats effectués :</p>
-                  {getPurchases(comp.id).map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 text-xs">
-                      <Badge variant="secondary" className="text-xs">Niv. {p.niveau_acquis}{p.choix_achat ? ` — ${p.choix_achat}` : ""}</Badge>
-                      {p.statut_maitre === "en_attente" && <Badge className="bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs">En attente</Badge>}
-                    </div>
-                  ))}
+                  {getPurchases(comp.id).map((p) => {
+                    const isClasseAcquisition = p.xp_depense === 0;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between gap-2 text-xs bg-green-900/20 border border-green-900/30 rounded px-2 py-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary" className="text-xs">Niv. {p.niveau_acquis}{p.choix_achat ? ` — ${p.choix_achat}` : ""}</Badge>
+                          {p.statut_maitre === "en_attente" && <Badge className="bg-orange-600/20 text-orange-400 border-orange-600/30 text-xs">En attente</Badge>}
+                          {isClasseAcquisition && <span className="text-green-400 text-xs italic">compétence de classe</span>}
+                        </div>
+                        {isClasseAcquisition ? (
+                          <span className="text-green-400 text-xs italic whitespace-nowrap">non modifiable</span>
+                        ) : (
+                          <button
+                            onClick={() => handleRetirer(comp, p)}
+                            className="px-2 py-1 text-xs bg-red-900/50 text-red-400 border border-red-700 rounded hover:bg-red-900 whitespace-nowrap"
+                          >✕ Retirer</button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
