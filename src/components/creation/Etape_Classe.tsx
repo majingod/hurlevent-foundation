@@ -41,13 +41,13 @@ const EtapeClasse = ({
     },
   });
 
-  const { data: competenceDecryptage = null } = useQuery({
+  const { data: competenceDecryptage = null, isLoading: isLoadingDecryptage } = useQuery({
     queryKey: ["competence-decryptage"],
     queryFn: async () => {
       const { data } = await supabase
         .from("competences")
         .select("*")
-        .ilike("nom", "%décryptage%")
+        .or("nom.ilike.%décryptage%,nom.ilike.%decryptage%")
         .maybeSingle();
       return data ?? null;
     },
@@ -74,12 +74,24 @@ const EtapeClasse = ({
   const choixDecryptageOptions: string[] = (() => {
     if (!competenceDecryptage?.niveaux) return [];
     const niveaux = competenceDecryptage.niveaux as any;
-    if (Array.isArray(niveaux)) {
+    // Array de strings directement
+    if (Array.isArray(niveaux) && typeof niveaux[0] === "string") return niveaux as string[];
+    // Array d'objets avec clé choix/options/valeurs/choix_possibles
+    if (Array.isArray(niveaux) && niveaux[0] && typeof niveaux[0] === "object") {
       const premier = niveaux[0];
-      if (typeof premier === "string") return niveaux as string[];
-      if (premier && typeof premier === "object") {
-        const candidats = premier.choix ?? premier.options ?? premier.valeurs;
-        if (Array.isArray(candidats)) return candidats.map(String);
+      const candidats = premier.choix ?? premier.options ?? premier.valeurs ?? premier.choix_possibles;
+      if (Array.isArray(candidats)) return candidats.map(String);
+    }
+    // Object direct avec clé choix/options/choix_possibles
+    if (!Array.isArray(niveaux) && typeof niveaux === "object" && niveaux !== null) {
+      const candidats = niveaux.choix ?? niveaux.options ?? niveaux.choix_possibles;
+      if (Array.isArray(candidats)) return candidats.map(String);
+      // Object indexé par niveau : { "1": { choix: [...] } }
+      const firstKey = Object.keys(niveaux)[0];
+      if (firstKey && niveaux[firstKey] && typeof niveaux[firstKey] === "object") {
+        const sub = niveaux[firstKey];
+        const c2 = sub.choix ?? sub.options ?? sub.valeurs ?? sub.choix_possibles;
+        if (Array.isArray(c2)) return c2.map(String);
       }
     }
     return [];
@@ -171,8 +183,12 @@ const EtapeClasse = ({
           La classe Mage t'offre gratuitement la compétence{" "}
           <strong className="text-gold">Décryptage</strong>. Choisis le type de décryptage :
         </p>
-        {choixDecryptageOptions.length === 0 ? (
+        {isLoadingDecryptage ? (
           <p className="text-xs text-white/40 italic">Chargement des choix de décryptage…</p>
+        ) : choixDecryptageOptions.length === 0 ? (
+          <p className="text-xs text-red-400 italic">
+            Aucun choix de décryptage trouvé en base. Contacter l'administrateur.
+          </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {choixDecryptageOptions.map((choix) => (
