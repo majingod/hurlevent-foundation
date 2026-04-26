@@ -15,6 +15,7 @@ import ReligionCard from "@/components/encyclopedie/ReligionCard";
 // Imports des étapes séparées
 import Step2Race from "@/components/creation/Etape_Race";
 import Step3TraitsRaciaux from "@/components/creation/Etape_TraitsRaciaux";
+import EtapeClasse from "@/components/creation/Etape_Classe";
 import Step4Competences from "@/components/creation/Etape_Competences";
 import Step5Sorts from "@/components/creation/Etape_SortsArcaniques";
 import Step6Prieres from "@/components/creation/Etape_PrieresDivines";
@@ -48,6 +49,10 @@ const PersonnageNouveau = () => {
   // Étape 2 : Race
   const [raceId, setRaceId] = useState<string | null>(null);
 
+  // Étape 4 : Classe
+  const [classeId, setClasseId] = useState<string | null>(null);
+  const [etape4PeutPasser, setEtape4PeutPasser] = useState(false);
+
   // Chargement des données si ID présent (Modification/Reprise)
   useEffect(() => {
     if (idParam) {
@@ -69,6 +74,7 @@ const PersonnageNouveau = () => {
             setReligionId(data.religion_id);
             setEstCroyant((data as any).est_croyant ?? !!data.religion_id);
             setRaceId(data.race_id);
+            setClasseId(data.classe_id);
             if (!etapeParam) {
               const etapeDb = data.etape_creation ?? 0;
               setEtape(Math.min(Math.max(etapeDb + 1, 1), TOTAL_STEPS));
@@ -109,6 +115,7 @@ const PersonnageNouveau = () => {
         est_croyant: estCroyant,
         religion_id: religionId,
         race_id: raceId,
+        classe_id: classeId,
         etape_creation: nouvelleEtape,
         updated_at: new Date().toISOString(),
       };
@@ -251,6 +258,20 @@ const PersonnageNouveau = () => {
       case 3:
         return <Step3TraitsRaciaux personnageId={personnageId} />;
       case 4:
+        return (
+          <EtapeClasse
+            personnageId={personnageId}
+            classeId={classeId}
+            onClasseSelect={setClasseId}
+            estCroyant={estCroyant}
+            religionId={religionId}
+            onReligionChange={(id, croyant) => {
+              setReligionId(id);
+              if (croyant !== undefined) setEstCroyant(croyant);
+            }}
+            onPeutPasser={setEtape4PeutPasser}
+          />
+        );
       case 5:
       case 6:
       case 7:
@@ -298,7 +319,7 @@ const PersonnageNouveau = () => {
 
             <Button
               onClick={etapeSuivante}
-              disabled={!nom || (etape === 1 && estCroyant === null) || (etape === 2 && !raceId)}
+              disabled={!nom || (etape === 1 && estCroyant === null) || (etape === 2 && !raceId) || (etape === 4 && !etape4PeutPasser)}
               className="bg-gold font-bold text-black hover:bg-gold/80 px-8"
             >
               Suivant <ChevronRight className="ml-2 h-4 w-4" />
