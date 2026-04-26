@@ -14,6 +14,7 @@ import ReligionCard from "@/components/encyclopedie/ReligionCard";
 
 // Imports des étapes séparées
 import Step2Race from "@/components/creation/Step2Race";
+import Step3TraitsRaciaux from "@/components/creation/Step3TraitsRaciaux";
 import Step3Classe from "@/components/creation/Step3Classe";
 import Step4Competences from "@/components/creation/Step4Competences";
 import Step5Sorts from "@/components/creation/Step5Sorts";
@@ -203,7 +204,8 @@ const PersonnageNouveau = () => {
           />
         );
 
-      case 3: return <div className="text-white">Étape 3: Traits Raciaux (À venir)</div>;
+      case 3:
+        return <Step3TraitsRaciaux personnageId={personnageId} />;
       case 4: return <Step3Classe data={{}} onUpdate={() => {}} />; // À décaler
       // Les étapes suivantes devront être décalées d'un cran...
       default:
