@@ -513,6 +513,21 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
                         <span>❤️ {c.pv_depart ?? "—"} PV</span>
                         <span>✨ {c.ps_depart ?? "—"} PS</span>
                       </div>
+                      {comps.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold mb-2 tracking-wider" style={{ color: "#c9a84c", fontVariant: "small-caps" }}>
+                            ⭐ COMPÉTENCES GRATUITES
+                          </p>
+                          <div className="space-y-1">
+                            {comps.map((comp, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm text-foreground/80">
+                                <span className="flex-shrink-0">⭐</span>
+                                <span>{String(comp)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
