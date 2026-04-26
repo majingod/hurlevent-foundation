@@ -21,6 +21,15 @@ import {
   isZoneUnique,
 } from "@/utils/calculsMagie";
 
+const PastilleType = ({ type }: { type: string }) => {
+  const t = type.toLowerCase();
+  if (t.includes("bénéfique") || t.includes("benefique"))
+    return <span className="px-2 py-0.5 text-xs rounded-full bg-green-900/60 text-green-300 border border-green-700">Bénéfique</span>;
+  if (t.includes("dégât") || t.includes("degat"))
+    return <span className="px-2 py-0.5 text-xs rounded-full bg-red-900/60 text-red-400 border border-red-700">Dégâts</span>;
+  return <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-900/60 text-yellow-300 border border-yellow-700">Effet</span>;
+};
+
 interface Step5SortsProps {
   personnageId: string;
   niveauPersonnage: number;
@@ -38,6 +47,8 @@ const Step5Sorts = ({ personnageId, niveauPersonnage, xpDisponible, onXpSpent }:
   const [dureeChoisie, setDureeChoisie] = useState<string>("");
   const [niveau, setNiveau] = useState<number>(1);
   const [nomPersonnalise, setNomPersonnalise] = useState<string>("");
+  const [filtreType, setFiltreType] = useState<string>("Tous");
+  const [filtreNiveauMin, setFiltreNiveauMin] = useState<number>(0);
 
   // Cercles disponibles
   const { data: cerclesDisponibles } = useQuery({
@@ -90,6 +101,8 @@ const Step5Sorts = ({ personnageId, niveauPersonnage, xpDisponible, onXpSpent }:
   // Reset cascading
   useEffect(() => {
     setSortId(null);
+    setFiltreType("Tous");
+    setFiltreNiveauMin(0);
   }, [cercleSelectionne]);
 
   useEffect(() => {
@@ -128,6 +141,21 @@ const Step5Sorts = ({ personnageId, niveauPersonnage, xpDisponible, onXpSpent }:
     () => (sortSelectionne?.duree ? filterDureesDisponibles(sortSelectionne.duree) : DUREES),
     [sortSelectionne]
   );
+
+  const niveauMin6Visible = niveauMaxCercle >= 6;
+  const niveauMin11Visible = niveauMaxCercle >= 11;
+
+  const sortsFiltered = useMemo(() => {
+    if (!sorts) return [];
+    return sorts.filter((s) => {
+      const typeSort = s.type_sort?.toLowerCase() ?? "";
+      if (filtreType === "Bénéfique" && !typeSort.match(/b[ée]n[ée]fique/)) return false;
+      if (filtreType === "Effet" && !typeSort.includes("effet")) return false;
+      if (filtreType === "Dégâts" && !typeSort.match(/d[ée]g[âa]ts?/)) return false;
+      if (filtreNiveauMin >= 6 && (s.niveau ?? 0) < filtreNiveauMin) return false;
+      return true;
+    });
+  }, [sorts, filtreType, filtreNiveauMin]);
 
   const coutXpBase = Number(sortSelectionne?.cout_xp_base ?? 0);
   const coutXp =
@@ -223,28 +251,69 @@ const Step5Sorts = ({ personnageId, niveauPersonnage, xpDisponible, onXpSpent }:
           <CardHeader>
             <CardTitle className="text-base font-heading">2. Choisir un sort</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {sorts?.map((s) => (
-              <Card
-                key={s.id}
-                className={`cursor-pointer transition-all hover:border-primary/50 ${
-                  sortId === s.id ? "border-2 border-primary ring-2 ring-primary/20" : ""
-                }`}
-                onClick={() => setSortId(s.id)}
-              >
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <strong className="font-heading text-primary">{s.nom}</strong>
-                    <div className="flex gap-2">
-                      <Badge variant="outline">Niv. {s.niveau}</Badge>
-                      {s.type_sort && <Badge variant="secondary">{s.type_sort}</Badge>}
-                      <Badge>{s.cout_xp_base} XP base</Badge>
+          <CardContent className="space-y-4">
+            {/* Filtre par type */}
+            <div className="flex flex-wrap gap-2">
+              {["Tous", "Bénéfique", "Effet", "Dégâts"].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFiltreType(t)}
+                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                    filtreType === t
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            {/* Filtre par niveau minimum */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "Tous", min: 0 },
+                { label: "Niv. Min. 1", min: 1 },
+                ...(niveauMin6Visible ? [{ label: "Niv. Min. 6", min: 6 }] : []),
+                ...(niveauMin11Visible ? [{ label: "Niv. Min. 11", min: 11 }] : []),
+              ].map(({ label, min }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setFiltreNiveauMin(min)}
+                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                    filtreNiveauMin === min
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {sortsFiltered.map((s) => (
+                <Card
+                  key={s.id}
+                  className={`cursor-pointer transition-all hover:border-primary/50 ${
+                    sortId === s.id ? "border-2 border-primary ring-2 ring-primary/20" : ""
+                  }`}
+                  onClick={() => setSortId(s.id)}
+                >
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <strong className="font-heading text-primary">{s.nom}</strong>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">Niv. {s.niveau}</Badge>
+                        {s.type_sort && <PastilleType type={s.type_sort} />}
+                        <Badge>{s.cout_xp_base} XP base</Badge>
+                      </div>
                     </div>
-                  </div>
-                  {s.description && <p className="text-sm text-muted-foreground">{s.description}</p>}
-                </CardContent>
-              </Card>
-            ))}
+                    {s.description && <p className="text-sm text-muted-foreground">{s.description}</p>}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
