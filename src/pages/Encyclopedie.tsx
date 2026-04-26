@@ -817,21 +817,6 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
     <div className="space-y-8">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Domaines et Effets de Prières</h2>
       <div className="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-        {NIVEAU_MIN_FILTERS.map(nf => (
-          <button
-            key={String(nf.key)}
-            onClick={() => setNiveauMinActif(nf.key)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
-              niveauMinActif === nf.key
-                ? "bg-amber-700 text-white border border-amber-500"
-                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-            }`}
-          >
-            {nf.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {SOUS_ONGLETS_DOMAINES.map(sd => (
           <button
             key={String(sd.key)}
@@ -843,6 +828,21 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
             }`}
           >
             {sd.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+        {NIVEAU_MIN_FILTERS.map(nf => (
+          <button
+            key={String(nf.key)}
+            onClick={() => setNiveauMinActif(nf.key)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
+              niveauMinActif === nf.key
+                ? "bg-amber-700 text-white border border-amber-500"
+                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
+            }`}
+          >
+            {nf.label}
           </button>
         ))}
       </div>
