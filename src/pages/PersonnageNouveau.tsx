@@ -13,16 +13,16 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import ReligionCard from "@/components/encyclopedie/ReligionCard";
 
 // Imports des étapes séparées
-import Step2Race from "@/components/creation/Step2Race";
-import Step3TraitsRaciaux from "@/components/creation/Step3TraitsRaciaux";
-import Step3Classe from "@/components/creation/Step3Classe";
-import Step4Competences from "@/components/creation/Step4Competences";
-import Step5Sorts from "@/components/creation/Step5Sorts";
-import Step6Prieres from "@/components/creation/Step6Prieres";
-import Step7Artisanat from "@/components/creation/Step7Artisanat";
-import Step8Runes from "@/components/creation/Step8Runes";
-import Step9Historique from "@/components/creation/Step9Historique";
-import Step10Recap from "@/components/creation/Step10Recap";
+import Step2Race from "@/components/creation/Etape_Race";
+import Step3TraitsRaciaux from "@/components/creation/Etape_TraitsRaciaux";
+import Step3Classe from "@/components/creation/Etape_Classe";
+import Step4Competences from "@/components/creation/Etape_Competences";
+import Step5Sorts from "@/components/creation/Etape_SortsArcaniques";
+import Step6Prieres from "@/components/creation/Etape_PrieresDivines";
+import Step7Artisanat from "@/components/creation/Etape_Artisanat";
+import Step8Runes from "@/components/creation/Etape_AssemblagesRunes";
+import Step9Historique from "@/components/creation/Etape_HistoriqueAme";
+import Step10Recap from "@/components/creation/Etape_Recapitulatif";
 
 const TOTAL_STEPS = 11;
 
