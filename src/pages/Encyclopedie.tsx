@@ -513,6 +513,12 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
                         <span>❤️ {c.pv_depart ?? "—"} PV</span>
                         <span>✨ {c.ps_depart ?? "—"} PS</span>
                       </div>
+                      {comps.length > 0 && (
+                        <p className="text-xs text-amber-300/80 mt-1">
+                          <span className="font-medium">Compétences gratuites : </span>
+                          {comps.map(comp => String(comp)).join(", ")}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
