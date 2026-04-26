@@ -52,7 +52,7 @@ const RaceCard: React.FC<RaceCardProps> = ({
       {/* Section dépliable */}
       <div
         className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{ maxHeight: ouvert ? '1500px' : '0', opacity: ouvert ? 1 : 0 }}
+        style={{ maxHeight: ouvert ? '9999px' : '0', opacity: ouvert ? 1 : 0 }}
       >
         <div className="px-6 pb-4 border-t border-gold/30 pt-4 space-y-3 text-sm text-foreground/85">
           {description && (
