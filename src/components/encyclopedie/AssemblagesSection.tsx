@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 
-const CIBLE_FILTERS: { value: string; label: string }[] = [
-  { value: "tous", label: "Tous" },
-  { value: "individu", label: "Un individu" },
-  { value: "bouclier", label: "Un bouclier" },
-  { value: "armure", label: "Une armure" },
-  { value: "enclume", label: "Une enclume ou un marteau de forge" },
+const CIBLE_FILTERS: { value: string | null; label: string }[] = [
+  { value: null, label: "Tous" },
+  { value: "Un individu", label: "Un individu" },
+  { value: "Un bouclier", label: "Un bouclier" },
+  { value: "Une armure", label: "Une armure" },
+  { value: "Une enclume ou un marteau de forge", label: "Une enclume ou un marteau de forge" },
 ];
 
 interface Assemblage {
@@ -26,10 +26,10 @@ interface Assemblage {
 
 const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: Assemblage[]; searchQuery?: string }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [cibleFilter, setCibleFilter] = useState<string>("tous");
+  const [cibleFilter, setCibleFilter] = useState<string | null>(null);
   const q = searchQuery.trim().toLowerCase();
   const filtered = assemblages
-    .filter((a) => cibleFilter === "tous" || a.cible === cibleFilter)
+    .filter((a) => cibleFilter === null || a.cible === cibleFilter)
     .filter(
       (a) =>
         !q ||
@@ -53,7 +53,7 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
           </Button>
         ))}
       </div>
-      {filtered.length === 0 && (q || cibleFilter !== "tous") && (
+      {filtered.length === 0 && (q || cibleFilter !== null) && (
         <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
