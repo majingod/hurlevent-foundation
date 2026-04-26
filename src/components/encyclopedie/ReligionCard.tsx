@@ -50,7 +50,7 @@ const ReligionCard = ({ religion, isSelected, onClick }: ReligionCardProps) => {
             <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Domaines de la religion</p>
             <div className="flex flex-wrap gap-2">
               {religion.domaines_principaux?.map((d: string) => (
-                <Badge key={d} className="bg-green-950/40 text-green-400 border-green-500/30 px-3 py-1">
+                <Badge key={d} className="bg-green-900/50 text-green-300 border border-green-700 px-3 py-1">
                   {d}
                 </Badge>
               ))}
@@ -62,7 +62,7 @@ const ReligionCard = ({ religion, isSelected, onClick }: ReligionCardProps) => {
               <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Domaines proscrits</p>
               <div className="flex flex-wrap gap-2">
                 {religion.domaines_proscrits.map((d: string) => (
-                  <Badge key={d} className="bg-red-950/40 text-red-500 border-red-500/30 font-bold px-3 py-1">
+                  <Badge key={d} className="bg-red-950/40 text-red-400 border border-red-700 font-bold px-3 py-1">
                     <X size={12} className="mr-1 inline" /> {d}
                   </Badge>
                 ))}
