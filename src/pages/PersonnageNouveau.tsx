@@ -404,11 +404,20 @@ const PersonnageNouveau = () => {
             onPeutPasser={setEtape4PeutPasser}
           />
         );
+      case 9:
+        if (!personnageId) return <div className="text-white">En construction...</div>;
+        return (
+          <Step8Runes
+            personnageId={personnageId}
+            xpDisponible={xpTotal != null ? xpTotal - xpDepense : 0}
+            xpDepense={xpDepense}
+            onXpSpent={(amount) => setXpDepense((prev) => prev + amount)}
+          />
+        );
       case 5:
       case 6:
       case 7:
       case 8:
-      case 9:
       case 10:
       case 11:
       default:
