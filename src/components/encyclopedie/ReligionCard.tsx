@@ -91,13 +91,13 @@ const ReligionCard = ({ religion, isSelected, onClick }: ReligionCardProps) => {
 
             {/* Dirigeants et Fondateurs */}
             <div className="grid grid-cols-2 gap-4">
-              {religion.dirigeants && (
+              {religion.dirigeant && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-gold">
                     <Crown size={14} />
-                    <h4 className="font-bold text-[10px] uppercase">Dirigeants</h4>
+                    <h4 className="font-bold text-[10px] uppercase">Dirigeant</h4>
                   </div>
-                  <p className="text-xs text-white/80">{religion.dirigeants}</p>
+                  <p className="text-xs text-white/80">{religion.dirigeant}</p>
                 </div>
               )}
               {religion.fondateur && (
