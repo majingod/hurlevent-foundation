@@ -158,10 +158,13 @@ const TableauDeBord = () => {
                     </Button>
                   </Link>
                   
-                  <Link to={`/personnage/nouveau?id=${p.id}`} className="w-full">
+                  <Link
+                    to={`/personnage/nouveau?id=${p.id}&etape=${(p.etape_creation ?? 0) >= 11 ? 11 : Math.max(1, (p.etape_creation ?? 0) + 1)}`}
+                    className="w-full"
+                  >
                     <Button variant="secondary" size="sm" className="w-full bg-gold/10 text-gold hover:bg-gold/20 border-gold/20">
                       <Edit2 className="mr-2 h-4 w-4" />
-                      {p.etape_creation < 11 ? "Continuer la création" : "Modifier le personnage"}
+                      {(p.etape_creation ?? 0) < 11 ? "Continuer la création" : "Modifier le personnage"}
                     </Button>
                   </Link>
 

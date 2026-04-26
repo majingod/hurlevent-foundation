@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertTriangle, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
 import ReligionCard from "@/components/encyclopedie/ReligionCard";
 import RaceCard from "@/components/encyclopedie/RaceCard";
 
@@ -30,9 +30,10 @@ const PersonnageNouveau = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const idParam = searchParams.get("id");
+  const etapeParam = searchParams.get("etape");
 
   // États de base
-  const [etape, setEtape] = useState(1);
+  const [etape, setEtape] = useState(etapeParam ? Math.max(1, Math.min(parseInt(etapeParam), TOTAL_STEPS)) : 1);
   const [chargementDonnees, setChargementDonnees] = useState(!!idParam);
   const [personnageId, setPersonnageId] = useState<string | null>(null);
 
@@ -62,7 +63,10 @@ const PersonnageNouveau = () => {
             setReligionId(data.religion_id);
             setEstCroyant(!!data.religion_id);
             setRaceId(data.race_id);
-            setEtape(data.etape_creation || 1);
+            if (!etapeParam) {
+              const etapeDb = data.etape_creation ?? 0;
+              setEtape(Math.min(Math.max(etapeDb + 1, 1), TOTAL_STEPS));
+            }
           }
         } catch (err) {
           console.error("Erreur reprise personnage:", err);
@@ -121,9 +125,8 @@ const PersonnageNouveau = () => {
   };
 
   const etapeSuivante = () => {
-    const next = Math.min(etape + 1, TOTAL_STEPS);
-    setEtape(next);
-    sauvegarderEtape(next);
+    sauvegarderEtape(etape);
+    setEtape(Math.min(etape + 1, TOTAL_STEPS));
     window.scrollTo(0, 0);
   };
 
