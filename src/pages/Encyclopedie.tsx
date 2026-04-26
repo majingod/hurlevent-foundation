@@ -894,14 +894,24 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
                 <>
                   <CardTitle className="font-heading text-xl">{r.nom}</CardTitle>
                   {r.description && <p className="text-sm text-muted-foreground mt-1">{r.description}</p>}
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {r.domaines_principaux?.map((d) => (
-                      <Badge key={d} variant="secondary" className="text-xs">{d}</Badge>
-                    ))}
-                    {r.domaines_proscrits?.map((d) => (
-                      <Badge key={d} variant="destructive" className="text-xs">Proscrit : {d}</Badge>
-                    ))}
-                  </div>
+                  {r.domaines_principaux && r.domaines_principaux.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {r.domaines_principaux.map((d) => (
+                        <span key={d} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900/50 text-green-300 border border-green-700">
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {r.domaines_proscrits && r.domaines_proscrits.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {r.domaines_proscrits.map((d) => (
+                        <span key={d} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900/50 text-red-400 border border-red-700">
+                          ✗ {d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </>
               }
             >
