@@ -40,6 +40,9 @@ const PersonnageNouveau = () => {
 
   // Étape 1 : Identité & Religion
   const [nom, setNom] = useState("");
+  const [gnCompletes, setGnCompletes] = useState(0);
+  const [miniGnCompletes, setMiniGnCompletes] = useState(0);
+  const [ouverturesTerrain, setOuverturesTerrain] = useState(0);
   const [estCroyant, setEstCroyant] = useState<boolean | null>(null);
   const [religionId, setReligionId] = useState<string | null>(null);
 
@@ -61,6 +64,9 @@ const PersonnageNouveau = () => {
           if (data) {
             setPersonnageId(data.id);
             setNom(data.nom);
+            setGnCompletes(data.gn_completes ?? 0);
+            setMiniGnCompletes(data.mini_gn_completes ?? 0);
+            setOuverturesTerrain(data.ouvertures_terrain ?? 0);
             setReligionId(data.religion_id);
             setEstCroyant((data as any).est_croyant ?? !!data.religion_id);
             setRaceId(data.race_id);
@@ -97,6 +103,9 @@ const PersonnageNouveau = () => {
     try {
       const payload: any = {
         nom,
+        gn_completes: gnCompletes,
+        mini_gn_completes: miniGnCompletes,
+        ouvertures_terrain: ouverturesTerrain,
         joueur_id: user.id,
         est_croyant: estCroyant,
         religion_id: religionId,
@@ -156,6 +165,42 @@ const PersonnageNouveau = () => {
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="gn_completes" className="text-sm font-semibold text-white/70">GN réguliers complétés</Label>
+                <Input
+                  id="gn_completes"
+                  type="number"
+                  min={0}
+                  value={gnCompletes}
+                  onChange={(e) => setGnCompletes(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mini_gn_completes" className="text-sm font-semibold text-white/70">Mini-GN complétés</Label>
+                <Input
+                  id="mini_gn_completes"
+                  type="number"
+                  min={0}
+                  value={miniGnCompletes}
+                  onChange={(e) => setMiniGnCompletes(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ouvertures_terrain" className="text-sm font-semibold text-white/70">Ouvertures de terrain</Label>
+                <Input
+                  id="ouvertures_terrain"
+                  type="number"
+                  min={0}
+                  value={ouverturesTerrain}
+                  onChange={(e) => setOuverturesTerrain(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+            </div>
+
             <div className="space-y-4">
               <Label className="text-xl font-heading text-gold block">Est-ce que ton personnage croit en une religion ?</Label>
               <div className="flex gap-4">
@@ -174,7 +219,7 @@ const PersonnageNouveau = () => {
 
             {estCroyant && (
               <div className="space-y-6 pt-6 border-t border-white/5 animate-in zoom-in-95">
-                <h3 className="text-lg font-heading text-white/70">Choisis la religion de ton personnage :</h3>
+                <p className="text-sm font-semibold mt-4 mb-2 text-amber-200">Choisis la religion de ton personnage :</p>
                 <div className="grid gap-4 md:grid-cols-2">
                   {religions.map((rel) => (
                     <ReligionCard
