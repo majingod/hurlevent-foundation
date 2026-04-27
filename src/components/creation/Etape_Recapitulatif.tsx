@@ -732,6 +732,161 @@ const Step10Recapitulatif = ({
             </Card>
           </TabsContent>
         )}
+        {/* Alchimie */}
+        {niveauAlchimie >= 1 && (
+          <TabsContent value="alchimie" className="space-y-4 mt-6">
+            {[
+              { label: "Recettes mineures", niveau: 1 },
+              { label: "Recettes intermédiaires", niveau: 2 },
+              { label: "Recettes majeures", niveau: 3 },
+            ]
+              .map(({ label, niveau }) => ({
+                label,
+                items: recettes.filter((r) => r.niveau_requis === niveau),
+              }))
+              .filter(({ items }) => items.length > 0)
+              .map(({ label, items }) => (
+                <Card key={label}>
+                  <CardHeader>
+                    <CardTitle className="text-base">{label}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {items.map((r) => (
+                      <div key={r.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{r.nom}</p>
+                        {r.effet && <p className="text-xs text-foreground/80">Effet : {r.effet}</p>}
+                        {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            {manipulations.filter((m) => (m.niveau ?? 0) <= niveauAlchimie).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Manipulations alchimiques accessibles</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {manipulations
+                    .filter((m) => (m.niveau ?? 0) <= niveauAlchimie)
+                    .map((m) => (
+                      <div key={m.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{m.nom}</p>
+                        {m.manipulations && <p className="text-xs text-muted-foreground">{m.manipulations}</p>}
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
+
+        {/* Artisanat (Forge) */}
+        {niveauForge >= 1 && (
+          <TabsContent value="forge" className="space-y-4 mt-6">
+            <p className="text-sm text-muted-foreground">
+              Niveau de Forge : <strong className="text-primary">{niveauForge}</strong>
+            </p>
+            {objetsForge
+              .filter((o) => (o.difficulte ?? 0) <= niveauForge)
+              .length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Fabrication</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {objetsForge
+                    .filter((o) => (o.difficulte ?? 0) <= niveauForge)
+                    .map((obj) => (
+                      <div key={obj.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{obj.nom}</p>
+                        {obj.description && <p className="text-xs text-muted-foreground">{obj.description}</p>}
+                        {obj.type && <p className="text-xs text-muted-foreground">Type : {obj.type}</p>}
+                        {obj.materiaux_communs && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-amber-400">Matériaux communs : </span>{obj.materiaux_communs}
+                          </p>
+                        )}
+                        {niveauForge >= 2 && obj.materiaux_rares && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-purple-400">Matériaux rares : </span>{obj.materiaux_rares}
+                          </p>
+                        )}
+                        {niveauForge >= 3 && (
+                          <p className="text-xs text-amber-300 italic">Accès aux matériaux légendaires disponible.</p>
+                        )}
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+            {reparationsForge.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Réparation</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {reparationsForge.map((rep) => (
+                    <div key={rep.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                      <p className="font-medium text-foreground">{rep.nom_affichage}</p>
+                      <p className="text-xs text-muted-foreground">Catégorie : {rep.categorie}</p>
+                      <p className="text-xs text-gray-300">
+                        <span className="text-amber-400">Matériaux communs : </span>{rep.materiaux}
+                      </p>
+                      {niveauForge >= 2 && (
+                        <p className="text-xs text-gray-300">
+                          <span className="text-purple-400">Matériaux rares : </span>{rep.materiaux_rares}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
+
+        {/* Artisanat (Joaillerie) */}
+        {niveauJoaillerie >= 1 && (
+          <TabsContent value="joaillerie" className="space-y-4 mt-6">
+            <p className="text-sm text-muted-foreground">
+              Niveau de Joaillerie : <strong className="text-primary">{niveauJoaillerie}</strong>
+            </p>
+            {objetsJoaillerie
+              .filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie)
+              .length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Fabrication</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {objetsJoaillerie
+                    .filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie)
+                    .map((obj) => (
+                      <div key={obj.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{obj.nom}</p>
+                        {obj.description && <p className="text-xs text-muted-foreground">{obj.description}</p>}
+                        {obj.effet && <p className="text-xs text-foreground/80">Effet : {obj.effet}</p>}
+                        {obj.materiaux_communs && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-amber-400">Matériaux communs : </span>{obj.materiaux_communs}
+                          </p>
+                        )}
+                        {niveauJoaillerie >= 2 && obj.materiaux_rares && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-purple-400">Matériaux rares : </span>{obj.materiaux_rares}
+                          </p>
+                        )}
+                        {niveauJoaillerie >= 3 && (
+                          <p className="text-xs text-amber-300 italic">Accès aux matériaux légendaires disponible.</p>
+                        )}
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Historique et âme */}
