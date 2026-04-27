@@ -368,59 +368,258 @@ const Step10Recapitulatif = ({
     const safeReligionNom = religionNom ? escapeHtml(religionNom) : "";
     const safeFamilleCriminelleNom = familleCriminelleNom ? escapeHtml(familleCriminelleNom) : "";
 
+    const niveauAlchimie = artisanatEtat?.niveau_alchimie ?? 0;
+    const niveauForge = artisanatEtat?.niveau_forge ?? 0;
+    const niveauJoaillerie = artisanatEtat?.niveau_joaillerie ?? 0;
+
+    const sortsByCercle: Record<string, PersonnageSort[]> = {};
+    sorts.forEach((s) => {
+      if (!sortsByCercle[s.cercle]) sortsByCercle[s.cercle] = [];
+      sortsByCercle[s.cercle].push(s);
+    });
+
+    const prieresByDomaine: Record<string, PersonnagePriere[]> = {};
+    prieres.forEach((p) => {
+      if (!prieresByDomaine[p.domaine]) prieresByDomaine[p.domaine] = [];
+      prieresByDomaine[p.domaine].push(p);
+    });
+
+    const recettesByNiveau: Record<number, PersonnageRecette[]> = {};
+    recettes.forEach((r) => {
+      if (!recettesByNiveau[r.niveau_requis]) recettesByNiveau[r.niveau_requis] = [];
+      recettesByNiveau[r.niveau_requis].push(r);
+    });
+
+    const niveauLabels: Record<number, string> = {
+      1: "Recettes mineures (Niv. 1)",
+      2: "Recettes intermédiaires (Niv. 2)",
+      3: "Recettes majeures (Niv. 3)",
+    };
+
     printWindow.document.write(`
       <!DOCTYPE html>
-      <html>
+      <html lang="fr">
       <head>
+        <meta charset="UTF-8">
         <title>Fiche de ${safeNomPersonnage}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          h1 { font-size: 24px; margin-bottom: 10px; }
-          h2 { font-size: 18px; margin-top: 20px; margin-bottom: 10px; border-bottom: 2px solid #333; }
-          .section { margin-bottom: 20px; }
-          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-          .item { margin-bottom: 8px; }
+          body { font-family: Arial, sans-serif; margin: 20px; color: #111; }
+          h1 { font-size: 24px; margin-bottom: 4px; }
+          h2 { font-size: 18px; margin-top: 24px; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 4px; }
+          h3 { font-size: 15px; margin-top: 16px; margin-bottom: 8px; color: #444; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+          .item { margin-bottom: 6px; }
           .label { font-weight: bold; }
           table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f0f0f0; }
+          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 12px; }
+          th { background-color: #f0f0f0; font-weight: bold; }
+          .card { border: 1px solid #ccc; border-radius: 4px; padding: 10px; margin-bottom: 10px; page-break-inside: avoid; }
+          .card-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+          .card-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+          .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 3px; padding: 1px 6px; font-size: 11px; white-space: nowrap; }
+          .badge-gray { background: #f3f4f6; border-color: #d1d5db; }
+          .muted { color: #666; font-size: 11px; margin-top: 2px; }
+          .desc { font-size: 12px; color: #333; margin-top: 6px; border-top: 1px solid #eee; padding-top: 4px; }
+          .formula { font-family: monospace; background: #fef3c7; padding: 2px 6px; border-radius: 2px; font-size: 12px; margin-top: 4px; display: inline-block; }
+          @media print {
+            .card { page-break-inside: avoid; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            p, span, div { overflow: visible !important; max-height: none !important; }
+          }
         </style>
       </head>
       <body>
         <h1>Fiche de ${safeNomPersonnage}</h1>
-        
+        <p class="muted">${safeRaceNom}${safeRaceNomLatin ? ` (${safeRaceNomLatin})` : ""} — ${safeClasseNom} — Niveau ${niveau}</p>
+
         <h2>Informations générales</h2>
         <div class="grid">
-          <div class="item"><span class="label">Race :</span> ${safeRaceNom}${safeRaceNomLatin ? ` (${safeRaceNomLatin})` : ""}</div>
-          <div class="item"><span class="label">Classe :</span> ${safeClasseNom}</div>
-          <div class="item"><span class="label">Niveau :</span> ${niveau}</div>
-          <div class="item"><span class="label">XP Total :</span> ${xpTotal}</div>
           <div class="item"><span class="label">PV Max :</span> ${pvMax}</div>
           <div class="item"><span class="label">PS Max :</span> ${psMax}</div>
+          <div class="item"><span class="label">XP Total :</span> ${xpTotal}</div>
+          <div class="item"><span class="label">XP Dépensé :</span> ${xpDepense}</div>
           ${safeReligionNom ? `<div class="item"><span class="label">Religion :</span> ${safeReligionNom}</div>` : ""}
           ${safeFamilleCriminelleNom ? `<div class="item"><span class="label">Famille criminelle :</span> ${safeFamilleCriminelleNom}</div>` : ""}
+          <div class="item"><span class="label">GN complétés :</span> ${gnCompletes}</div>
+          <div class="item"><span class="label">Mini-GN :</span> ${miniGnCompletes}</div>
+          <div class="item"><span class="label">Ouvertures terrain :</span> ${ouverturesTerrain}</div>
         </div>
 
-        <h2>Historique et âme</h2>
-        <div class="section">
-          <h3>Historique</h3>
-          <p>${escapeHtml(historique || "(Non renseigné)")}</p>
-          <h3>Âme</h3>
-          <p>${escapeHtml(amePersonnage || "(Non renseigné)")}</p>
-        </div>
+        ${(traitObligatoire || traitsOptionnels.length > 0) ? `
+        <h2>Traits raciaux</h2>
+        ${traitObligatoire ? `
+          <div class="card">
+            <div class="card-row">
+              <div class="card-title">${escapeHtml(traitObligatoire.nom)}</div>
+              <span class="badge badge-gray">Obligatoire</span>
+            </div>
+            ${traitObligatoire.description ? `<div class="desc">${escapeHtml(traitObligatoire.description)}</div>` : ""}
+          </div>
+        ` : ""}
+        ${traitsOptionnels.map((t) => `
+          <div class="card">
+            <div class="card-row">
+              <div class="card-title">${escapeHtml(t.nom)}</div>
+              ${t.cout_xp ? `<span class="badge badge-gray">${t.cout_xp} XP</span>` : ""}
+            </div>
+            ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
+          </div>
+        `).join("")}
+        ` : ""}
 
         <h2>Compétences</h2>
+        ${competences.length === 0 ? `<p class="muted">Aucune compétence acquise.</p>` : `
         <table>
-          <tr><th>Compétence</th><th>Niveau</th><th>XP</th><th>Statut</th></tr>
+          <tr><th>Compétence</th><th>Catégorie</th><th>Niveau</th><th>XP</th><th>Statut</th></tr>
           ${competences.map((c) => `
             <tr>
-              <td>${escapeHtml(c.competence_nom)}</td>
+              <td>
+                ${escapeHtml(c.competence_nom)}${c.choix_achat ? ` <span class="muted">(${escapeHtml(c.choix_achat)})</span>` : ""}
+                ${c.competence_description ? `<br><span class="muted">${escapeHtml(c.competence_description)}</span>` : ""}
+              </td>
+              <td>${escapeHtml(c.categorie)}</td>
               <td>${c.niveau_acquis}</td>
               <td>${c.xp_depense === 0 ? "Gratuit" : c.xp_depense}</td>
               <td>${escapeHtml(c.statut_maitre !== "non_requis" ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre : "—")}</td>
             </tr>
           `).join("")}
         </table>
+        `}
+
+        ${sorts.length > 0 ? `
+        <h2>Sorts arcaniques</h2>
+        ${Object.entries(sortsByCercle).map(([cercle, sortsDuCercle]) => `
+          <h3>${escapeHtml(cercle)}</h3>
+          ${sortsDuCercle.map((s) => `
+            <div class="card">
+              <div class="card-row">
+                <div class="card-title">${escapeHtml(s.nom_personnalise)}</div>
+                <span class="badge">${calculerCoutPS(s.cout_xp_base)} PS</span>
+              </div>
+              ${s.sort_nom_base && s.sort_nom_base !== s.nom_personnalise ? `<div class="muted">Basé sur : ${escapeHtml(s.sort_nom_base)}</div>` : ""}
+              ${s.formule_magique ? `<div class="formula">Formule : ${escapeHtml(s.formule_magique)}</div>` : ""}
+              <div class="muted">
+                ${s.zone_choisie ? `Zone : ${escapeHtml(s.zone_choisie)}` : ""}
+                ${s.portee_choisie ? ` &bull; Portée : ${escapeHtml(s.portee_choisie)}` : ""}
+                ${s.duree_choisie ? ` &bull; Durée : ${escapeHtml(s.duree_choisie)}` : ""}
+              </div>
+              ${s.sort_description ? `<div class="desc">${escapeHtml(s.sort_description)}</div>` : ""}
+            </div>
+          `).join("")}
+        `).join("")}
+        ` : ""}
+
+        ${prieres.length > 0 ? `
+        <h2>Prières divines</h2>
+        ${Object.entries(prieresByDomaine).map(([domaine, prieresDuDomaine]) => `
+          <h3>${escapeHtml(domaine)}</h3>
+          ${prieresDuDomaine.map((p) => `
+            <div class="card">
+              <div class="card-row">
+                <div class="card-title">${escapeHtml(p.nom_personnalise)}</div>
+                ${p.cout_xp_base != null ? `<span class="badge">${calculerCoutPS(p.cout_xp_base)} PS</span>` : ""}
+              </div>
+              <div class="muted">
+                ${p.duree_incantation ? `Incantation : ${escapeHtml(p.duree_incantation)}` : ""}
+                ${p.zone_choisie ? ` &bull; Zone : ${escapeHtml(p.zone_choisie)}` : ""}
+                ${p.portee_choisie ? ` &bull; Portée : ${escapeHtml(p.portee_choisie)}` : ""}
+                ${p.duree_choisie ? ` &bull; Durée : ${escapeHtml(p.duree_choisie)}` : ""}
+              </div>
+              ${p.priere_description ? `<div class="desc">${escapeHtml(p.priere_description)}</div>` : ""}
+            </div>
+          `).join("")}
+        `).join("")}
+        ` : ""}
+
+        ${assemblages.length > 0 ? `
+        <h2>Assemblages de runes</h2>
+        ${assemblages.map((a) => `
+          <div class="card">
+            <div class="card-row">
+              <div class="card-title">${escapeHtml(a.nom)}</div>
+              ${a.cout_ps != null ? `<span class="badge">${a.cout_ps} PS</span>` : ""}
+            </div>
+            ${a.cible ? `<div class="muted">Cible : ${escapeHtml(a.cible)}</div>` : ""}
+            ${a.runes_requises && a.runes_requises.length > 0 ? `<div class="muted">Runes : ${a.runes_requises.map(escapeHtml).join(", ")}</div>` : ""}
+            ${a.description ? `<div class="desc">${escapeHtml(a.description)}</div>` : ""}
+            ${a.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(a.effet)}</div>` : ""}
+          </div>
+        `).join("")}
+        ` : ""}
+
+        ${niveauAlchimie >= 1 ? `
+        <h2>Alchimie (Niv. ${niveauAlchimie})</h2>
+        ${[1, 2, 3].filter((n) => n <= niveauAlchimie && recettesByNiveau[n]?.length > 0).map((n) => `
+          <h3>${niveauLabels[n]}</h3>
+          ${(recettesByNiveau[n] ?? []).map((r) => `
+            <div class="card">
+              <div class="card-title">${escapeHtml(r.nom)}</div>
+              ${r.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(r.effet)}</div>` : ""}
+              ${r.description ? `<div class="desc">${escapeHtml(r.description)}</div>` : ""}
+            </div>
+          `).join("")}
+        `).join("")}
+        ${manipulations.filter((m) => (m.niveau ?? 0) <= niveauAlchimie).length > 0 ? `
+          <h3>Manipulations alchimiques</h3>
+          ${manipulations.filter((m) => (m.niveau ?? 0) <= niveauAlchimie).map((m) => `
+            <div class="card">
+              <div class="card-title">${escapeHtml(m.nom ?? "")}</div>
+              ${m.manipulations ? `<div class="desc">${escapeHtml(m.manipulations)}</div>` : ""}
+            </div>
+          `).join("")}
+        ` : ""}
+        ` : ""}
+
+        ${niveauForge >= 1 ? `
+        <h2>Forge (Niv. ${niveauForge})</h2>
+        ${objetsForge.filter((o) => (o.difficulte ?? 0) <= niveauForge).length > 0 ? `
+          <h3>Fabrication</h3>
+          ${objetsForge.filter((o) => (o.difficulte ?? 0) <= niveauForge).map((o) => `
+            <div class="card">
+              <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
+              ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
+              ${o.type ? `<div class="muted">Type : ${escapeHtml(o.type)}</div>` : ""}
+              ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
+              ${niveauForge >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
+              ${niveauForge >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
+            </div>
+          `).join("")}
+        ` : ""}
+        ${reparationsForge.length > 0 ? `
+          <h3>Réparation</h3>
+          ${reparationsForge.map((rep) => `
+            <div class="card">
+              <div class="card-title">${escapeHtml(rep.nom_affichage)}</div>
+              <div class="muted">Catégorie : ${escapeHtml(rep.categorie)}</div>
+              <div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(rep.materiaux)}</div>
+              ${niveauForge >= 2 ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(rep.materiaux_rares)}</div>` : ""}
+            </div>
+          `).join("")}
+        ` : ""}
+        ` : ""}
+
+        ${niveauJoaillerie >= 1 ? `
+        <h2>Joaillerie (Niv. ${niveauJoaillerie})</h2>
+        ${objetsJoaillerie.filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie).length > 0 ? `
+          <h3>Fabrication</h3>
+          ${objetsJoaillerie.filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie).map((o) => `
+            <div class="card">
+              <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
+              ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
+              ${o.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(o.effet)}</div>` : ""}
+              ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
+              ${niveauJoaillerie >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
+              ${niveauJoaillerie >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
+            </div>
+          `).join("")}
+        ` : ""}
+        ` : ""}
+
+        ${historique || amePersonnage ? `
+        <h2>Historique et âme</h2>
+        ${historique ? `<h3>Historique</h3><p>${escapeHtml(historique).replace(/\n/g, "<br>")}</p>` : ""}
+        ${amePersonnage ? `<h3>Âme</h3><p>${escapeHtml(amePersonnage).replace(/\n/g, "<br>")}</p>` : ""}
+        ` : ""}
       </body>
       </html>
     `);
