@@ -433,6 +433,9 @@ const Step10Recapitulatif = ({
   }
 
   const xpDisponible = xpTotal - xpDepense;
+  const niveauAlchimie = artisanatEtat?.niveau_alchimie ?? 0;
+  const niveauForge = artisanatEtat?.niveau_forge ?? 0;
+  const niveauJoaillerie = artisanatEtat?.niveau_joaillerie ?? 0;
 
   return (
     <div className="space-y-6">
@@ -446,16 +449,21 @@ const Step10Recapitulatif = ({
         </Button>
       </div>
 
-      <Tabs defaultValue="infos" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="infos">Infos</TabsTrigger>
-          <TabsTrigger value="traits">Traits</TabsTrigger>
-          <TabsTrigger value="competences">Compétences</TabsTrigger>
-          <TabsTrigger value="magie">Magie & Prières</TabsTrigger>
+      <Tabs defaultValue="resume" className="w-full">
+        <TabsList className="flex w-full overflow-x-auto gap-1 pb-1 h-auto">
+          <TabsTrigger className="flex-shrink-0" value="resume">Résumé</TabsTrigger>
+          <TabsTrigger className="flex-shrink-0" value="traits">Traits</TabsTrigger>
+          <TabsTrigger className="flex-shrink-0" value="competences">Compétences</TabsTrigger>
+          {sorts.length > 0 && <TabsTrigger className="flex-shrink-0" value="arcane">Magie Arcane</TabsTrigger>}
+          {prieres.length > 0 && <TabsTrigger className="flex-shrink-0" value="prieres-div">Prières Divines</TabsTrigger>}
+          {assemblages.length > 0 && <TabsTrigger className="flex-shrink-0" value="assemblages">Assemblages</TabsTrigger>}
+          {niveauAlchimie >= 1 && <TabsTrigger className="flex-shrink-0" value="alchimie">Alchimie</TabsTrigger>}
+          {niveauForge >= 1 && <TabsTrigger className="flex-shrink-0" value="forge">Artisanat (Forge)</TabsTrigger>}
+          {niveauJoaillerie >= 1 && <TabsTrigger className="flex-shrink-0" value="joaillerie">Artisanat (Joaillerie)</TabsTrigger>}
         </TabsList>
 
-        {/* Infos générales */}
-        <TabsContent value="infos" className="space-y-4 mt-6">
+        {/* Résumé général */}
+        <TabsContent value="resume" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Informations générales</CardTitle>
@@ -576,23 +584,28 @@ const Step10Recapitulatif = ({
               ) : (
                 <div className="space-y-2">
                   {competences.map((comp) => (
-                    <div key={comp.id} className="flex items-center justify-between p-2 rounded border border-border/50 text-sm">
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">
-                          {comp.competence_nom}
-                          {comp.choix_achat && <span className="text-muted-foreground ml-1">({comp.choix_achat})</span>}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_acquis}</Badge>
-                        {comp.xp_depense === 0 ? (
-                          <Badge variant="outline" className="text-xs">Gratuit</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">{comp.xp_depense} XP</Badge>
-                        )}
-                        {comp.statut_maitre !== "non_requis" && (
-                          <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
-                        )}
+                    <div key={comp.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">
+                            {comp.competence_nom}
+                            {comp.choix_achat && <span className="text-muted-foreground ml-1">({comp.choix_achat})</span>}
+                          </p>
+                          {comp.competence_description && (
+                            <p className="text-xs text-muted-foreground mt-1">{comp.competence_description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_acquis}</Badge>
+                          {comp.xp_depense === 0 ? (
+                            <Badge variant="outline" className="text-xs">Gratuit</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">{comp.xp_depense} XP</Badge>
+                          )}
+                          {comp.statut_maitre !== "non_requis" && (
+                            <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
