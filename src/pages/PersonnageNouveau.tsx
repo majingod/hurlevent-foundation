@@ -1,14 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import {
   Dialog,
@@ -18,26 +15,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import ReligionCard from "@/components/encyclopedie/ReligionCard";
 
 // Imports des étapes séparées
+import EtapeInfosBase from "@/components/creation/Etape_InfosBase";
 import Step2Race, { RACES_VALIDATION_IDS } from "@/components/creation/Etape_Race";
 import Step3TraitsRaciaux from "@/components/creation/Etape_TraitsRaciaux";
 import EtapeClasse from "@/components/creation/Etape_Classe";
-import Step4Competences from "@/components/creation/Etape_Competences";
 import Step5Sorts from "@/components/creation/Etape_SortsArcaniques";
 import Step6Prieres from "@/components/creation/Etape_PrieresDivines";
 import Step7Artisanat from "@/components/creation/Etape_Artisanat";
 import Step8Runes from "@/components/creation/Etape_AssemblagesRunes";
 import Step9Historique from "@/components/creation/Etape_HistoriqueAme";
-import Step10Recap from "@/components/creation/Etape_Recapitulatif";
 
 const TOTAL_STEPS = 11;
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
 
 const PersonnageNouveau = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const idParam = searchParams.get("id");
   const etapeParam = searchParams.get("etape");
@@ -62,6 +56,10 @@ const PersonnageNouveau = () => {
 
   // Étape 3 : Traits raciaux
   const [etape3PeutPasser, setEtape3PeutPasser] = useState(false);
+
+  // Étape 10 : Historique et âme
+  const [historique, setHistorique] = useState("");
+  const [amePersonnage, setAmePersonnage] = useState("");
 
   // Étape 4 : Classe
   const [classeId, setClasseId] = useState<string | null>(null);
@@ -100,6 +98,8 @@ const PersonnageNouveau = () => {
             setClasseId(data.classe_id);
             setXpDepense(data.xp_depense ?? 0);
             setSousTypeChimeride((data as any).sous_type_chimeride ?? null);
+            setHistorique(data.historique ?? "");
+            setAmePersonnage((data as any).ame_personnage ?? "");
             if (!etapeParam) {
               const etapeDb = data.etape_creation ?? 0;
               setEtape(Math.min(Math.max(etapeDb + 1, 1), TOTAL_STEPS));
@@ -167,6 +167,8 @@ const PersonnageNouveau = () => {
         religion_id: religionId,
         race_id: raceId,
         classe_id: classeId,
+        historique,
+        ame_personnage: amePersonnage,
         etape_creation: nouvelleEtape,
         updated_at: new Date().toISOString(),
       };
@@ -248,125 +250,22 @@ const PersonnageNouveau = () => {
     switch (etape) {
       case 1:
         return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-            <div className="space-y-4">
-              <Label htmlFor="nom" className="text-xl font-heading text-gold">Comment se nomme ton personnage ?</Label>
-              <Input
-                id="nom"
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                placeholder="Ex: Valerius l'Ancien"
-                className="text-lg bg-white/5 border-white/10"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="gn_completes" className="text-sm font-semibold text-white/70">GN réguliers complétés</Label>
-                <Input
-                  id="gn_completes"
-                  type="number"
-                  min={0}
-                  value={gnCompletes}
-                  onChange={(e) => setGnCompletes(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-white/5 border-white/10"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="mini_gn_completes" className="text-sm font-semibold text-white/70">Mini-GN complétés</Label>
-                <Input
-                  id="mini_gn_completes"
-                  type="number"
-                  min={0}
-                  value={miniGnCompletes}
-                  onChange={(e) => setMiniGnCompletes(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-white/5 border-white/10"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ouvertures_terrain" className="text-sm font-semibold text-white/70">Ouvertures de terrain</Label>
-                <Input
-                  id="ouvertures_terrain"
-                  type="number"
-                  min={0}
-                  value={ouverturesTerrain}
-                  onChange={(e) => setOuverturesTerrain(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="bg-white/5 border-white/10"
-                />
-              </div>
-            </div>
-
-            {/* Correctif 2 : affichage niveau + détail XP en temps réel */}
-            <div className="mt-4 p-3 rounded bg-gray-900/50 border border-gray-700 text-sm space-y-1">
-              <p className="text-gray-400">
-                Niveau actuel : <strong className="text-amber-300">{1 + gnCompletes}</strong>
-                <span className="text-gray-500 ml-2">
-                  (1 niveau de base + {gnCompletes} GN régulier{gnCompletes > 1 ? "s" : ""})
-                </span>
-              </p>
-              <p className="text-gray-400">
-                XP de GN : <strong className="text-green-400">+{gnCompletes * 15}</strong>
-                {gnCompletes > 0 && <span className="text-gray-500 ml-1">({gnCompletes} × 15 xp)</span>}
-              </p>
-              <p className="text-gray-400">
-                XP de mini-GN : <strong className="text-green-400">+{miniGnCompletes * 15}</strong>
-                {miniGnCompletes > 0 && <span className="text-gray-500 ml-1">({miniGnCompletes} × 15 xp)</span>}
-              </p>
-              <p className="text-gray-400">
-                XP d'ouvertures : <strong className="text-green-400">+{ouverturesTerrain * 10}</strong>
-                {ouverturesTerrain > 0 && <span className="text-gray-500 ml-1">({ouverturesTerrain} × 10 xp)</span>}
-              </p>
-              <p className="text-gray-500 italic text-xs mt-2">
-                XP total : sera calculé à l'étape suivante après le choix de la race.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <Label className="text-xl font-heading text-gold block">Est-ce que ton personnage croit en une religion ?</Label>
-              <div className="flex gap-4">
-                <Button
-                  variant={estCroyant === true ? "default" : "outline"}
-                  onClick={() => { setEstCroyant(true); sauvegarderCroyance(true, religionId); }}
-                  className={`flex-1 h-14 text-lg ${estCroyant === true ? 'bg-gold text-black hover:bg-gold/90' : ''}`}
-                >Oui</Button>
-                <Button
-                  variant={estCroyant === false ? "default" : "outline"}
-                  onClick={() => { setEstCroyant(false); setReligionId(null); sauvegarderCroyance(false, null); }}
-                  className={`flex-1 h-14 text-lg ${estCroyant === false ? 'bg-gold text-black hover:bg-gold/90' : ''}`}
-                >Non</Button>
-              </div>
-            </div>
-
-            {estCroyant && (
-              <div className="space-y-6 pt-6 border-t border-white/5 animate-in zoom-in-95">
-                <p className="text-sm font-semibold mt-4 mb-2 text-amber-200">Choisis la religion de ton personnage :</p>
-                {/* Correctif 3 : mentions sous chaque carte */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  {religions.map((rel) => (
-                    <div key={rel.id} className="space-y-1">
-                      <ReligionCard
-                        religion={rel}
-                        isSelected={religionId === rel.id}
-                        onClick={() => {
-                          const newId = religionId === rel.id ? null : rel.id;
-                          setReligionId(newId);
-                          sauvegarderCroyance(true, newId);
-                        }}
-                      />
-                      <p className="text-xs text-white/40 italic px-1">
-                        Le pouvoir du symbole n'est accessible qu'à la classe Prêtre.
-                      </p>
-                      {(rel as any).domaines_proscrits?.length > 0 && (
-                        <p className="text-xs text-amber-500/70 italic px-1">
-                          Attention : certains domaines de prière sont proscrits par cette religion.
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <EtapeInfosBase
+            nom={nom}
+            setNom={setNom}
+            gnCompletes={gnCompletes}
+            setGnCompletes={setGnCompletes}
+            miniGnCompletes={miniGnCompletes}
+            setMiniGnCompletes={setMiniGnCompletes}
+            ouverturesTerrain={ouverturesTerrain}
+            setOuverturesTerrain={setOuverturesTerrain}
+            estCroyant={estCroyant}
+            setEstCroyant={setEstCroyant}
+            religionId={religionId}
+            setReligionId={setReligionId}
+            religions={religions}
+            onCroyanceChange={sauvegarderCroyance}
+          />
         );
 
       case 2:
@@ -404,8 +303,39 @@ const PersonnageNouveau = () => {
             onPeutPasser={setEtape4PeutPasser}
           />
         );
+      case 6:
+        if (!personnageId) return <div className="text-white">Sauvegarde en cours...</div>;
+        return (
+          <Step5Sorts
+            personnageId={personnageId}
+            niveauPersonnage={1 + gnCompletes}
+            xpDisponible={xpTotal != null ? xpTotal - xpDepense : 0}
+            onXpSpent={(amount) => setXpDepense((prev) => prev + amount)}
+          />
+        );
+      case 7:
+        if (!personnageId) return <div className="text-white">Sauvegarde en cours...</div>;
+        return (
+          <Step6Prieres
+            personnageId={personnageId}
+            niveauPersonnage={1 + gnCompletes}
+            xpDisponible={xpTotal != null ? xpTotal - xpDepense : 0}
+            religionId={religionId}
+            onXpSpent={(amount) => setXpDepense((prev) => prev + amount)}
+          />
+        );
+      case 8:
+        if (!personnageId) return <div className="text-white">Sauvegarde en cours...</div>;
+        return (
+          <Step7Artisanat
+            personnageId={personnageId}
+            xpDisponible={xpTotal != null ? xpTotal - xpDepense : 0}
+            xpDepense={xpDepense}
+            onXpSpent={(amount) => setXpDepense((prev) => prev + amount)}
+          />
+        );
       case 9:
-        if (!personnageId) return <div className="text-white">En construction...</div>;
+        if (!personnageId) return <div className="text-white">Sauvegarde en cours...</div>;
         return (
           <Step8Runes
             personnageId={personnageId}
@@ -414,11 +344,16 @@ const PersonnageNouveau = () => {
             onXpSpent={(amount) => setXpDepense((prev) => prev + amount)}
           />
         );
-      case 5:
-      case 6:
-      case 7:
-      case 8:
       case 10:
+        return (
+          <Step9Historique
+            historique={historique}
+            setHistorique={setHistorique}
+            amePersonnage={amePersonnage}
+            setAmePersonnage={setAmePersonnage}
+          />
+        );
+      case 5:
       case 11:
       default:
         return <div className="text-white">En construction...</div>;
