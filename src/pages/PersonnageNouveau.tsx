@@ -21,6 +21,7 @@ import EtapeInfosBase from "@/components/creation/Etape_InfosBase";
 import Step2Race, { RACES_VALIDATION_IDS } from "@/components/creation/Etape_Race";
 import Step3TraitsRaciaux from "@/components/creation/Etape_TraitsRaciaux";
 import EtapeClasse from "@/components/creation/Etape_Classe";
+import Step4Competences from "@/components/creation/Etape_Competences";
 import Step5Sorts from "@/components/creation/Etape_SortsArcaniques";
 import Step6Prieres from "@/components/creation/Etape_PrieresDivines";
 import Step7Artisanat from "@/components/creation/Etape_Artisanat";
@@ -65,6 +66,12 @@ const PersonnageNouveau = () => {
   const [classeId, setClasseId] = useState<string | null>(null);
   const [etape4PeutPasser, setEtape4PeutPasser] = useState(false);
 
+  // Étape 5 : Compétences
+  const [classeNom, setClasseNom] = useState<string>('');
+  const [familleCriminelleId, setFamilleCriminelleId] = useState<string | null>(null);
+  const [psMax, setPsMax] = useState<number>(0);
+  const [competencesGratuites, setCompetencesGratuites] = useState<string[]>([]);
+
   // XP global
   const [xpDepart, setXpDepart] = useState<number | null>(null);
   const [xpDepense, setXpDepense] = useState(0);
@@ -100,9 +107,25 @@ const PersonnageNouveau = () => {
             setSousTypeChimeride((data as any).sous_type_chimeride ?? null);
             setHistorique(data.historique ?? "");
             setAmePersonnage((data as any).ame_personnage ?? "");
+            if ((data as any).famille_criminelle_id) {
+              setFamilleCriminelleId((data as any).famille_criminelle_id);
+            }
             if (!etapeParam) {
               const etapeDb = data.etape_creation ?? 0;
               setEtape(Math.min(Math.max(etapeDb + 1, 1), TOTAL_STEPS));
+            }
+            // Charger les données de la classe si elle est déjà choisie
+            if (data.classe_id) {
+              const { data: classe } = await supabase
+                .from('classes')
+                .select('nom, ps_depart, competences_gratuites')
+                .eq('id', data.classe_id)
+                .single();
+              if (classe) {
+                setClasseNom((classe as any).nom);
+                setCompetencesGratuites(((classe as any).competences_gratuites as string[]) ?? []);
+                setPsMax((data as any).ps_max ?? (classe as any).ps_depart ?? 0);
+              }
             }
             // Charger xp_depart de la race si elle est déjà choisie
             if (data.race_id) {
@@ -141,6 +164,33 @@ const PersonnageNouveau = () => {
     };
     fetchRaceXp();
   }, [raceId]);
+
+  // Quand la classe change, charger ses données pour l'étape 5
+  useEffect(() => {
+    if (!classeId) {
+      setClasseNom('');
+      if (!idParam) {
+        setPsMax(0);
+        setCompetencesGratuites([]);
+      }
+      return;
+    }
+    const fetchClasseData = async () => {
+      const { data } = await supabase
+        .from('classes')
+        .select('nom, ps_depart, competences_gratuites')
+        .eq('id', classeId)
+        .single();
+      if (data) {
+        setClasseNom((data as any).nom);
+        setCompetencesGratuites(((data as any).competences_gratuites as string[]) ?? []);
+        if (!idParam) {
+          setPsMax((data as any).ps_depart ?? 0);
+        }
+      }
+    };
+    fetchClasseData();
+  }, [classeId, idParam]);
 
   // Requêtes pour les données d'encyclopédie
   const { data: religions = [] } = useQuery({
@@ -354,6 +404,25 @@ const PersonnageNouveau = () => {
           />
         );
       case 5:
+        if (!personnageId || !classeId) return <div className="text-white">En construction...</div>;
+        return (
+          <Step4Competences
+            personnageId={personnageId}
+            classeId={classeId}
+            classeNom={classeNom}
+            religionId={religionId}
+            setReligionId={setReligionId}
+            familleCriminelleId={familleCriminelleId}
+            setFamilleCriminelleId={setFamilleCriminelleId}
+            xpDisponible={xpTotal != null ? xpTotal - xpDepense : 0}
+            xpDepense={xpDepense}
+            onXpSpent={(amount) => setXpDepense((prev) => prev + amount)}
+            psMax={psMax}
+            onPsMaxChange={setPsMax}
+            competencesGratuites={competencesGratuites}
+            religions={religions}
+          />
+        );
       case 11:
       default:
         return <div className="text-white">En construction...</div>;
