@@ -41,17 +41,21 @@ interface PersonnageCompetence {
   choix_achat: string | null;
   competence_nom: string;
   categorie: string;
+  competence_description: string | null;
 }
 
 interface PersonnageSort {
   id: string;
   nom_personnalise: string;
+  formule_magique: string | null;
   niveau_sort: number;
   zone_choisie: string | null;
   portee_choisie: string | null;
   duree_choisie: string | null;
   cercle: string;
   cout_xp_base: number;
+  sort_nom_base: string | null;
+  sort_description: string | null;
 }
 
 interface PersonnagePriere {
@@ -62,6 +66,9 @@ interface PersonnagePriere {
   portee_choisie: string | null;
   duree_choisie: string | null;
   domaine: string;
+  priere_description: string | null;
+  duree_incantation: string | null;
+  cout_xp_base: number | null;
 }
 
 interface PersonnageAssemblage {
@@ -70,6 +77,9 @@ interface PersonnageAssemblage {
   cible: string | null;
   cout_ps: number | null;
   xp_depense: number;
+  description: string | null;
+  effet: string | null;
+  runes_requises: string[] | null;
 }
 
 interface PersonnageRecette {
@@ -78,6 +88,50 @@ interface PersonnageRecette {
   type: string;
   niveau_requis: number;
   xp_depense: number;
+  description: string | null;
+  effet: string | null;
+}
+
+interface ArtisanatEtat {
+  niveau_alchimie: number | null;
+  niveau_forge: number | null;
+  niveau_joaillerie: number | null;
+}
+
+interface ManipulationAlchimique {
+  id: string;
+  nom: string | null;
+  niveau: number | null;
+  manipulations: string | null;
+}
+
+interface ObjetForge {
+  id: string;
+  nom: string | null;
+  description: string | null;
+  type: string | null;
+  difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
+}
+
+interface ReparationForge {
+  id: string;
+  nom_affichage: string;
+  categorie: string;
+  materiaux: string;
+  materiaux_rares: string;
+  temps_minutes: number;
+}
+
+interface ObjetJoaillerie {
+  id: string;
+  nom: string | null;
+  description: string | null;
+  effet: string | null;
+  difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
 }
 
 const Step10Recapitulatif = ({
@@ -108,6 +162,11 @@ const Step10Recapitulatif = ({
   const [assemblages, setAssemblages] = useState<PersonnageAssemblage[]>([]);
   const [recettes, setRecettes] = useState<PersonnageRecette[]>([]);
   const [loading, setLoading] = useState(true);
+  const [artisanatEtat, setArtisanatEtat] = useState<ArtisanatEtat | null>(null);
+  const [manipulations, setManipulations] = useState<ManipulationAlchimique[]>([]);
+  const [objetsForge, setObjetsForge] = useState<ObjetForge[]>([]);
+  const [reparationsForge, setReparationsForge] = useState<ReparationForge[]>([]);
+  const [objetsJoaillerie, setObjetsJoaillerie] = useState<ObjetJoaillerie[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,7 +177,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, niveau_acquis, appris_via_maitre, nom_maitre, statut_maitre, xp_depense, choix_achat,
-            competences!inner(nom, categorie)
+            competences!inner(nom, categorie, description)
           `
           )
           .eq("personnage_id", personnageId)
@@ -131,6 +190,7 @@ const Step10Recapitulatif = ({
             ...c,
             competence_nom: c.competences.nom,
             categorie: c.competences.categorie,
+            competence_description: c.competences.description,
           }))
         );
 
@@ -139,8 +199,8 @@ const Step10Recapitulatif = ({
           .from("personnage_sorts")
           .select(
             `
-            id, nom_personnalise, niveau_sort, zone_choisie, portee_choisie, duree_choisie,
-            sorts!inner(cercle, cout_xp_base)
+            id, nom_personnalise, formule_magique, niveau_sort, zone_choisie, portee_choisie, duree_choisie,
+            sorts!inner(cercle, cout_xp_base, nom, description)
           `
           )
           .eq("personnage_id", personnageId)
@@ -153,6 +213,8 @@ const Step10Recapitulatif = ({
             ...s,
             cercle: s.sorts.cercle,
             cout_xp_base: s.sorts.cout_xp_base,
+            sort_nom_base: s.sorts.nom,
+            sort_description: s.sorts.description,
           }))
         );
 
@@ -162,7 +224,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, nom_personnalise, niveau_priere, zone_choisie, portee_choisie, duree_choisie,
-            prieres!inner(domaine)
+            prieres!inner(domaine, description, duree_incantation, cout_xp_base)
           `
           )
           .eq("personnage_id", personnageId)
@@ -174,6 +236,9 @@ const Step10Recapitulatif = ({
           (prieData ?? []).map((p: any) => ({
             ...p,
             domaine: p.prieres.domaine,
+            priere_description: p.prieres.description,
+            duree_incantation: p.prieres.duree_incantation,
+            cout_xp_base: p.prieres.cout_xp_base,
           }))
         );
 
@@ -183,7 +248,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, xp_depense,
-            assemblages_runes!inner(nom, cible, cout_ps)
+            assemblages_runes!inner(nom, cible, cout_ps, description, effet, runes_requises)
           `
           )
           .eq("personnage_id", personnageId)
@@ -197,6 +262,9 @@ const Step10Recapitulatif = ({
             cible: a.assemblages_runes.cible,
             cout_ps: a.assemblages_runes.cout_ps,
             xp_depense: a.xp_depense,
+            description: a.assemblages_runes.description,
+            effet: a.assemblages_runes.effet,
+            runes_requises: a.assemblages_runes.runes_requises,
           }))
         );
 
@@ -206,7 +274,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, xp_depense,
-            recettes_alchimie!inner(nom, type, niveau_requis)
+            recettes_alchimie!inner(nom, type, niveau_requis, description, effet)
           `
           )
           .eq("personnage_id", personnageId)
@@ -222,8 +290,53 @@ const Step10Recapitulatif = ({
             type: r.recettes_alchimie.type,
             niveau_requis: r.recettes_alchimie.niveau_requis,
             xp_depense: r.xp_depense,
+            description: r.recettes_alchimie.description,
+            effet: r.recettes_alchimie.effet,
           }))
         );
+
+        // Récupérer l'état artisanat
+        const { data: artisanatData } = await supabase
+          .from("vue_artisanat_etat")
+          .select("niveau_alchimie, niveau_forge, niveau_joaillerie")
+          .eq("personnage_id", personnageId)
+          .maybeSingle();
+        if (artisanatData) setArtisanatEtat(artisanatData as ArtisanatEtat);
+
+        // Récupérer les manipulations alchimiques
+        const { data: manipData } = await supabase
+          .from("ingredients_alchimiques")
+          .select("id, nom, niveau, manipulations")
+          .order("niveau")
+          .order("nom");
+        setManipulations((manipData ?? []) as ManipulationAlchimique[]);
+
+        // Récupérer les objets de forge
+        const { data: forgeData } = await supabase
+          .from("objets_forge")
+          .select("*")
+          .eq("est_actif", true)
+          .order("difficulte")
+          .order("nom");
+        setObjetsForge((forgeData ?? []) as ObjetForge[]);
+
+        // Récupérer les réparations de forge
+        const { data: repData } = await supabase
+          .from("reparations_forge")
+          .select("id, nom_affichage, categorie, materiaux, materiaux_rares, temps_minutes")
+          .eq("est_actif", true)
+          .order("categorie")
+          .order("nom_affichage");
+        setReparationsForge((repData ?? []) as ReparationForge[]);
+
+        // Récupérer les objets de joaillerie
+        const { data: joaillerieData } = await supabase
+          .from("objets_joaillerie")
+          .select("*")
+          .eq("est_actif", true)
+          .order("difficulte")
+          .order("nom");
+        setObjetsJoaillerie((joaillerieData ?? []) as ObjetJoaillerie[]);
 
         setLoading(false);
       } catch (err: any) {
@@ -320,6 +433,9 @@ const Step10Recapitulatif = ({
   }
 
   const xpDisponible = xpTotal - xpDepense;
+  const niveauAlchimie = artisanatEtat?.niveau_alchimie ?? 0;
+  const niveauForge = artisanatEtat?.niveau_forge ?? 0;
+  const niveauJoaillerie = artisanatEtat?.niveau_joaillerie ?? 0;
 
   return (
     <div className="space-y-6">
@@ -333,16 +449,21 @@ const Step10Recapitulatif = ({
         </Button>
       </div>
 
-      <Tabs defaultValue="infos" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="infos">Infos</TabsTrigger>
-          <TabsTrigger value="traits">Traits</TabsTrigger>
-          <TabsTrigger value="competences">Compétences</TabsTrigger>
-          <TabsTrigger value="magie">Magie & Prières</TabsTrigger>
+      <Tabs defaultValue="resume" className="w-full">
+        <TabsList className="flex w-full overflow-x-auto gap-1 pb-1 h-auto">
+          <TabsTrigger className="flex-shrink-0" value="resume">Résumé</TabsTrigger>
+          <TabsTrigger className="flex-shrink-0" value="traits">Traits</TabsTrigger>
+          <TabsTrigger className="flex-shrink-0" value="competences">Compétences</TabsTrigger>
+          {sorts.length > 0 && <TabsTrigger className="flex-shrink-0" value="arcane">Magie Arcane</TabsTrigger>}
+          {prieres.length > 0 && <TabsTrigger className="flex-shrink-0" value="prieres-div">Prières Divines</TabsTrigger>}
+          {assemblages.length > 0 && <TabsTrigger className="flex-shrink-0" value="assemblages">Assemblages</TabsTrigger>}
+          {niveauAlchimie >= 1 && <TabsTrigger className="flex-shrink-0" value="alchimie">Alchimie</TabsTrigger>}
+          {niveauForge >= 1 && <TabsTrigger className="flex-shrink-0" value="forge">Artisanat (Forge)</TabsTrigger>}
+          {niveauJoaillerie >= 1 && <TabsTrigger className="flex-shrink-0" value="joaillerie">Artisanat (Joaillerie)</TabsTrigger>}
         </TabsList>
 
-        {/* Infos générales */}
-        <TabsContent value="infos" className="space-y-4 mt-6">
+        {/* Résumé général */}
+        <TabsContent value="resume" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Informations générales</CardTitle>
@@ -463,23 +584,28 @@ const Step10Recapitulatif = ({
               ) : (
                 <div className="space-y-2">
                   {competences.map((comp) => (
-                    <div key={comp.id} className="flex items-center justify-between p-2 rounded border border-border/50 text-sm">
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">
-                          {comp.competence_nom}
-                          {comp.choix_achat && <span className="text-muted-foreground ml-1">({comp.choix_achat})</span>}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_acquis}</Badge>
-                        {comp.xp_depense === 0 ? (
-                          <Badge variant="outline" className="text-xs">Gratuit</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">{comp.xp_depense} XP</Badge>
-                        )}
-                        {comp.statut_maitre !== "non_requis" && (
-                          <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
-                        )}
+                    <div key={comp.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">
+                            {comp.competence_nom}
+                            {comp.choix_achat && <span className="text-muted-foreground ml-1">({comp.choix_achat})</span>}
+                          </p>
+                          {comp.competence_description && (
+                            <p className="text-xs text-muted-foreground mt-1">{comp.competence_description}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_acquis}</Badge>
+                          {comp.xp_depense === 0 ? (
+                            <Badge variant="outline" className="text-xs">Gratuit</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">{comp.xp_depense} XP</Badge>
+                          )}
+                          {comp.statut_maitre !== "non_requis" && (
+                            <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -489,89 +615,278 @@ const Step10Recapitulatif = ({
           </Card>
         </TabsContent>
 
-        {/* Magie & Prières */}
-        <TabsContent value="magie" className="space-y-4 mt-6">
-          {sorts.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Sorts arcaniques</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {sorts.map((sort) => (
-                    <div key={sort.id} className="p-2 rounded border border-border/50 text-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
+        {/* Magie Arcane */}
+        {sorts.length > 0 && (
+          <TabsContent value="arcane" className="space-y-4 mt-6">
+            {Object.entries(
+              sorts.reduce((acc, s) => {
+                if (!acc[s.cercle]) acc[s.cercle] = [];
+                acc[s.cercle].push(s);
+                return acc;
+              }, {} as Record<string, PersonnageSort[]>)
+            ).map(([cercle, sortsDuCercle]) => (
+              <Card key={cercle}>
+                <CardHeader>
+                  <CardTitle className="text-base">{cercle}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {sortsDuCercle.map((sort) => (
+                    <div key={sort.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
                           <p className="font-medium text-foreground">{sort.nom_personnalise}</p>
-                          <p className="text-xs text-muted-foreground">{sort.cercle} — Niveau {sort.niveau_sort}</p>
+                          {sort.sort_nom_base && sort.sort_nom_base !== sort.nom_personnalise && (
+                            <p className="text-xs text-muted-foreground italic">Basé sur : {sort.sort_nom_base}</p>
+                          )}
                         </div>
-                        <Badge variant="secondary" className="text-xs">{calculerCoutPS(sort.cout_xp_base)} PS</Badge>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">{calculerCoutPS(sort.cout_xp_base)} PS</Badge>
                       </div>
+                      {sort.formule_magique && (
+                        <p className="text-xs text-amber-300 font-mono">Formule : {sort.formule_magique}</p>
+                      )}
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {sort.zone_choisie && <span>Zone : {sort.zone_choisie}</span>}
+                        {sort.portee_choisie && <span>Portée : {sort.portee_choisie}</span>}
+                        {sort.duree_choisie && <span>Durée : {sort.duree_choisie}</span>}
+                      </div>
+                      {sort.sort_description && (
+                        <p className="text-xs text-muted-foreground border-t border-border/30 pt-2">{sort.sort_description}</p>
+                      )}
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+        )}
 
-          {prieres.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Prières</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {prieres.map((priere) => (
-                    <div key={priere.id} className="p-2 rounded border border-border/50 text-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
-                          <p className="text-xs text-muted-foreground">{priere.domaine} — Niveau {priere.niveau_priere}</p>
-                        </div>
+        {/* Prières Divines */}
+        {prieres.length > 0 && (
+          <TabsContent value="prieres-div" className="space-y-4 mt-6">
+            {Object.entries(
+              prieres.reduce((acc, p) => {
+                if (!acc[p.domaine]) acc[p.domaine] = [];
+                acc[p.domaine].push(p);
+                return acc;
+              }, {} as Record<string, PersonnagePriere[]>)
+            ).map(([domaine, prieresDuDomaine]) => (
+              <Card key={domaine}>
+                <CardHeader>
+                  <CardTitle className="text-base">{domaine}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {prieresDuDomaine.map((priere) => (
+                    <div key={priere.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
+                        {priere.cout_xp_base != null && (
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">{calculerCoutPS(priere.cout_xp_base)} PS</Badge>
+                        )}
                       </div>
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {priere.duree_incantation && <span>Incantation : {priere.duree_incantation}</span>}
+                        {priere.zone_choisie && <span>Zone : {priere.zone_choisie}</span>}
+                        {priere.portee_choisie && <span>Portée : {priere.portee_choisie}</span>}
+                        {priere.duree_choisie && <span>Durée : {priere.duree_choisie}</span>}
+                      </div>
+                      {priere.priere_description && (
+                        <p className="text-xs text-muted-foreground border-t border-border/30 pt-2">{priere.priere_description}</p>
+                      )}
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+        )}
 
-          {assemblages.length > 0 && (
+        {/* Assemblages */}
+        {assemblages.length > 0 && (
+          <TabsContent value="assemblages" className="space-y-4 mt-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Assemblages de runes</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {assemblages.map((asm) => (
-                    <div key={asm.id} className="p-2 rounded border border-border/50 text-sm">
+              <CardContent className="space-y-3">
+                {assemblages.map((asm) => (
+                  <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                    <div className="flex items-start justify-between gap-2">
                       <p className="font-medium text-foreground">{asm.nom}</p>
-                      {asm.cout_ps && <p className="text-xs text-muted-foreground">Coût PS : {asm.cout_ps}</p>}
+                      {asm.cout_ps != null && (
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">{asm.cout_ps} PS</Badge>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    {asm.cible && <p className="text-xs text-muted-foreground">Cible : {asm.cible}</p>}
+                    {asm.runes_requises && asm.runes_requises.length > 0 && (
+                      <p className="text-xs text-muted-foreground">Runes : {asm.runes_requises.join(", ")}</p>
+                    )}
+                    {asm.description && (
+                      <p className="text-xs text-muted-foreground border-t border-border/30 pt-2">{asm.description}</p>
+                    )}
+                    {asm.effet && (
+                      <p className="text-xs text-foreground/80 font-medium">Effet : {asm.effet}</p>
+                    )}
+                  </div>
+                ))}
               </CardContent>
             </Card>
-          )}
+          </TabsContent>
+        )}
+        {/* Alchimie */}
+        {niveauAlchimie >= 1 && (
+          <TabsContent value="alchimie" className="space-y-4 mt-6">
+            {[
+              { label: "Recettes mineures", niveau: 1 },
+              { label: "Recettes intermédiaires", niveau: 2 },
+              { label: "Recettes majeures", niveau: 3 },
+            ]
+              .map(({ label, niveau }) => ({
+                label,
+                items: recettes.filter((r) => r.niveau_requis === niveau),
+              }))
+              .filter(({ items }) => items.length > 0)
+              .map(({ label, items }) => (
+                <Card key={label}>
+                  <CardHeader>
+                    <CardTitle className="text-base">{label}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {items.map((r) => (
+                      <div key={r.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{r.nom}</p>
+                        {r.effet && <p className="text-xs text-foreground/80">Effet : {r.effet}</p>}
+                        {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            {manipulations.filter((m) => (m.niveau ?? 0) <= niveauAlchimie).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Manipulations alchimiques accessibles</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {manipulations
+                    .filter((m) => (m.niveau ?? 0) <= niveauAlchimie)
+                    .map((m) => (
+                      <div key={m.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{m.nom}</p>
+                        {m.manipulations && <p className="text-xs text-muted-foreground">{m.manipulations}</p>}
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
 
-          {recettes.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Recettes alchimiques</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {recettes.map((recette) => (
-                    <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
-                      <p className="font-medium text-foreground">{recette.nom}</p>
-                      <p className="text-xs text-muted-foreground">{recette.type}</p>
+        {/* Artisanat (Forge) */}
+        {niveauForge >= 1 && (
+          <TabsContent value="forge" className="space-y-4 mt-6">
+            <p className="text-sm text-muted-foreground">
+              Niveau de Forge : <strong className="text-primary">{niveauForge}</strong>
+            </p>
+            {objetsForge
+              .filter((o) => (o.difficulte ?? 0) <= niveauForge)
+              .length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Fabrication</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {objetsForge
+                    .filter((o) => (o.difficulte ?? 0) <= niveauForge)
+                    .map((obj) => (
+                      <div key={obj.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{obj.nom}</p>
+                        {obj.description && <p className="text-xs text-muted-foreground">{obj.description}</p>}
+                        {obj.type && <p className="text-xs text-muted-foreground">Type : {obj.type}</p>}
+                        {obj.materiaux_communs && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-amber-400">Matériaux communs : </span>{obj.materiaux_communs}
+                          </p>
+                        )}
+                        {niveauForge >= 2 && obj.materiaux_rares && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-purple-400">Matériaux rares : </span>{obj.materiaux_rares}
+                          </p>
+                        )}
+                        {niveauForge >= 3 && (
+                          <p className="text-xs text-amber-300 italic">Accès aux matériaux légendaires disponible.</p>
+                        )}
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+            {reparationsForge.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Réparation</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {reparationsForge.map((rep) => (
+                    <div key={rep.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                      <p className="font-medium text-foreground">{rep.nom_affichage}</p>
+                      <p className="text-xs text-muted-foreground">Catégorie : {rep.categorie}</p>
+                      <p className="text-xs text-gray-300">
+                        <span className="text-amber-400">Matériaux communs : </span>{rep.materiaux}
+                      </p>
+                      {niveauForge >= 2 && (
+                        <p className="text-xs text-gray-300">
+                          <span className="text-purple-400">Matériaux rares : </span>{rep.materiaux_rares}
+                        </p>
+                      )}
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
+
+        {/* Artisanat (Joaillerie) */}
+        {niveauJoaillerie >= 1 && (
+          <TabsContent value="joaillerie" className="space-y-4 mt-6">
+            <p className="text-sm text-muted-foreground">
+              Niveau de Joaillerie : <strong className="text-primary">{niveauJoaillerie}</strong>
+            </p>
+            {objetsJoaillerie
+              .filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie)
+              .length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Fabrication</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {objetsJoaillerie
+                    .filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie)
+                    .map((obj) => (
+                      <div key={obj.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
+                        <p className="font-medium text-foreground">{obj.nom}</p>
+                        {obj.description && <p className="text-xs text-muted-foreground">{obj.description}</p>}
+                        {obj.effet && <p className="text-xs text-foreground/80">Effet : {obj.effet}</p>}
+                        {obj.materiaux_communs && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-amber-400">Matériaux communs : </span>{obj.materiaux_communs}
+                          </p>
+                        )}
+                        {niveauJoaillerie >= 2 && obj.materiaux_rares && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-purple-400">Matériaux rares : </span>{obj.materiaux_rares}
+                          </p>
+                        )}
+                        {niveauJoaillerie >= 3 && (
+                          <p className="text-xs text-amber-300 italic">Accès aux matériaux légendaires disponible.</p>
+                        )}
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Historique et âme */}
