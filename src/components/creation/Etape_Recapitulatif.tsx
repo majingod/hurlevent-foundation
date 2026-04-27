@@ -41,17 +41,21 @@ interface PersonnageCompetence {
   choix_achat: string | null;
   competence_nom: string;
   categorie: string;
+  competence_description: string | null;
 }
 
 interface PersonnageSort {
   id: string;
   nom_personnalise: string;
+  formule_magique: string | null;
   niveau_sort: number;
   zone_choisie: string | null;
   portee_choisie: string | null;
   duree_choisie: string | null;
   cercle: string;
   cout_xp_base: number;
+  sort_nom_base: string | null;
+  sort_description: string | null;
 }
 
 interface PersonnagePriere {
@@ -62,6 +66,9 @@ interface PersonnagePriere {
   portee_choisie: string | null;
   duree_choisie: string | null;
   domaine: string;
+  priere_description: string | null;
+  duree_incantation: string | null;
+  cout_xp_base: number | null;
 }
 
 interface PersonnageAssemblage {
@@ -70,6 +77,9 @@ interface PersonnageAssemblage {
   cible: string | null;
   cout_ps: number | null;
   xp_depense: number;
+  description: string | null;
+  effet: string | null;
+  runes_requises: string[] | null;
 }
 
 interface PersonnageRecette {
@@ -78,6 +88,50 @@ interface PersonnageRecette {
   type: string;
   niveau_requis: number;
   xp_depense: number;
+  description: string | null;
+  effet: string | null;
+}
+
+interface ArtisanatEtat {
+  niveau_alchimie: number | null;
+  niveau_forge: number | null;
+  niveau_joaillerie: number | null;
+}
+
+interface ManipulationAlchimique {
+  id: string;
+  nom: string | null;
+  niveau: number | null;
+  manipulations: string | null;
+}
+
+interface ObjetForge {
+  id: string;
+  nom: string | null;
+  description: string | null;
+  type: string | null;
+  difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
+}
+
+interface ReparationForge {
+  id: string;
+  nom_affichage: string;
+  categorie: string;
+  materiaux: string;
+  materiaux_rares: string;
+  temps_minutes: number;
+}
+
+interface ObjetJoaillerie {
+  id: string;
+  nom: string | null;
+  description: string | null;
+  effet: string | null;
+  difficulte: number | null;
+  materiaux_communs: string | null;
+  materiaux_rares: string | null;
 }
 
 const Step10Recapitulatif = ({
@@ -108,6 +162,11 @@ const Step10Recapitulatif = ({
   const [assemblages, setAssemblages] = useState<PersonnageAssemblage[]>([]);
   const [recettes, setRecettes] = useState<PersonnageRecette[]>([]);
   const [loading, setLoading] = useState(true);
+  const [artisanatEtat, setArtisanatEtat] = useState<ArtisanatEtat | null>(null);
+  const [manipulations, setManipulations] = useState<ManipulationAlchimique[]>([]);
+  const [objetsForge, setObjetsForge] = useState<ObjetForge[]>([]);
+  const [reparationsForge, setReparationsForge] = useState<ReparationForge[]>([]);
+  const [objetsJoaillerie, setObjetsJoaillerie] = useState<ObjetJoaillerie[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,7 +177,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, niveau_acquis, appris_via_maitre, nom_maitre, statut_maitre, xp_depense, choix_achat,
-            competences!inner(nom, categorie)
+            competences!inner(nom, categorie, description)
           `
           )
           .eq("personnage_id", personnageId)
@@ -131,6 +190,7 @@ const Step10Recapitulatif = ({
             ...c,
             competence_nom: c.competences.nom,
             categorie: c.competences.categorie,
+            competence_description: c.competences.description,
           }))
         );
 
@@ -139,8 +199,8 @@ const Step10Recapitulatif = ({
           .from("personnage_sorts")
           .select(
             `
-            id, nom_personnalise, niveau_sort, zone_choisie, portee_choisie, duree_choisie,
-            sorts!inner(cercle, cout_xp_base)
+            id, nom_personnalise, formule_magique, niveau_sort, zone_choisie, portee_choisie, duree_choisie,
+            sorts!inner(cercle, cout_xp_base, nom, description)
           `
           )
           .eq("personnage_id", personnageId)
@@ -153,6 +213,8 @@ const Step10Recapitulatif = ({
             ...s,
             cercle: s.sorts.cercle,
             cout_xp_base: s.sorts.cout_xp_base,
+            sort_nom_base: s.sorts.nom,
+            sort_description: s.sorts.description,
           }))
         );
 
@@ -162,7 +224,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, nom_personnalise, niveau_priere, zone_choisie, portee_choisie, duree_choisie,
-            prieres!inner(domaine)
+            prieres!inner(domaine, description, duree_incantation, cout_xp_base)
           `
           )
           .eq("personnage_id", personnageId)
@@ -174,6 +236,9 @@ const Step10Recapitulatif = ({
           (prieData ?? []).map((p: any) => ({
             ...p,
             domaine: p.prieres.domaine,
+            priere_description: p.prieres.description,
+            duree_incantation: p.prieres.duree_incantation,
+            cout_xp_base: p.prieres.cout_xp_base,
           }))
         );
 
@@ -183,7 +248,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, xp_depense,
-            assemblages_runes!inner(nom, cible, cout_ps)
+            assemblages_runes!inner(nom, cible, cout_ps, description, effet, runes_requises)
           `
           )
           .eq("personnage_id", personnageId)
@@ -197,6 +262,9 @@ const Step10Recapitulatif = ({
             cible: a.assemblages_runes.cible,
             cout_ps: a.assemblages_runes.cout_ps,
             xp_depense: a.xp_depense,
+            description: a.assemblages_runes.description,
+            effet: a.assemblages_runes.effet,
+            runes_requises: a.assemblages_runes.runes_requises,
           }))
         );
 
@@ -206,7 +274,7 @@ const Step10Recapitulatif = ({
           .select(
             `
             id, xp_depense,
-            recettes_alchimie!inner(nom, type, niveau_requis)
+            recettes_alchimie!inner(nom, type, niveau_requis, description, effet)
           `
           )
           .eq("personnage_id", personnageId)
@@ -222,8 +290,53 @@ const Step10Recapitulatif = ({
             type: r.recettes_alchimie.type,
             niveau_requis: r.recettes_alchimie.niveau_requis,
             xp_depense: r.xp_depense,
+            description: r.recettes_alchimie.description,
+            effet: r.recettes_alchimie.effet,
           }))
         );
+
+        // Récupérer l'état artisanat
+        const { data: artisanatData } = await supabase
+          .from("vue_artisanat_etat")
+          .select("niveau_alchimie, niveau_forge, niveau_joaillerie")
+          .eq("personnage_id", personnageId)
+          .maybeSingle();
+        if (artisanatData) setArtisanatEtat(artisanatData as ArtisanatEtat);
+
+        // Récupérer les manipulations alchimiques
+        const { data: manipData } = await supabase
+          .from("ingredients_alchimiques")
+          .select("id, nom, niveau, manipulations")
+          .order("niveau")
+          .order("nom");
+        setManipulations((manipData ?? []) as ManipulationAlchimique[]);
+
+        // Récupérer les objets de forge
+        const { data: forgeData } = await supabase
+          .from("objets_forge")
+          .select("*")
+          .eq("est_actif", true)
+          .order("difficulte")
+          .order("nom");
+        setObjetsForge((forgeData ?? []) as ObjetForge[]);
+
+        // Récupérer les réparations de forge
+        const { data: repData } = await supabase
+          .from("reparations_forge")
+          .select("id, nom_affichage, categorie, materiaux, materiaux_rares, temps_minutes")
+          .eq("est_actif", true)
+          .order("categorie")
+          .order("nom_affichage");
+        setReparationsForge((repData ?? []) as ReparationForge[]);
+
+        // Récupérer les objets de joaillerie
+        const { data: joaillerieData } = await supabase
+          .from("objets_joaillerie")
+          .select("*")
+          .eq("est_actif", true)
+          .order("difficulte")
+          .order("nom");
+        setObjetsJoaillerie((joaillerieData ?? []) as ObjetJoaillerie[]);
 
         setLoading(false);
       } catch (err: any) {
