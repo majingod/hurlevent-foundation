@@ -615,89 +615,123 @@ const Step10Recapitulatif = ({
           </Card>
         </TabsContent>
 
-        {/* Magie & Prières */}
-        <TabsContent value="magie" className="space-y-4 mt-6">
-          {sorts.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Sorts arcaniques</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {sorts.map((sort) => (
-                    <div key={sort.id} className="p-2 rounded border border-border/50 text-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
+        {/* Magie Arcane */}
+        {sorts.length > 0 && (
+          <TabsContent value="arcane" className="space-y-4 mt-6">
+            {Object.entries(
+              sorts.reduce((acc, s) => {
+                if (!acc[s.cercle]) acc[s.cercle] = [];
+                acc[s.cercle].push(s);
+                return acc;
+              }, {} as Record<string, PersonnageSort[]>)
+            ).map(([cercle, sortsDuCercle]) => (
+              <Card key={cercle}>
+                <CardHeader>
+                  <CardTitle className="text-base">{cercle}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {sortsDuCercle.map((sort) => (
+                    <div key={sort.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
                           <p className="font-medium text-foreground">{sort.nom_personnalise}</p>
-                          <p className="text-xs text-muted-foreground">{sort.cercle} — Niveau {sort.niveau_sort}</p>
+                          {sort.sort_nom_base && sort.sort_nom_base !== sort.nom_personnalise && (
+                            <p className="text-xs text-muted-foreground italic">Basé sur : {sort.sort_nom_base}</p>
+                          )}
                         </div>
-                        <Badge variant="secondary" className="text-xs">{calculerCoutPS(sort.cout_xp_base)} PS</Badge>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">{calculerCoutPS(sort.cout_xp_base)} PS</Badge>
                       </div>
+                      {sort.formule_magique && (
+                        <p className="text-xs text-amber-300 font-mono">Formule : {sort.formule_magique}</p>
+                      )}
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {sort.zone_choisie && <span>Zone : {sort.zone_choisie}</span>}
+                        {sort.portee_choisie && <span>Portée : {sort.portee_choisie}</span>}
+                        {sort.duree_choisie && <span>Durée : {sort.duree_choisie}</span>}
+                      </div>
+                      {sort.sort_description && (
+                        <p className="text-xs text-muted-foreground border-t border-border/30 pt-2">{sort.sort_description}</p>
+                      )}
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+        )}
 
-          {prieres.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Prières</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {prieres.map((priere) => (
-                    <div key={priere.id} className="p-2 rounded border border-border/50 text-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
-                          <p className="text-xs text-muted-foreground">{priere.domaine} — Niveau {priere.niveau_priere}</p>
-                        </div>
+        {/* Prières Divines */}
+        {prieres.length > 0 && (
+          <TabsContent value="prieres-div" className="space-y-4 mt-6">
+            {Object.entries(
+              prieres.reduce((acc, p) => {
+                if (!acc[p.domaine]) acc[p.domaine] = [];
+                acc[p.domaine].push(p);
+                return acc;
+              }, {} as Record<string, PersonnagePriere[]>)
+            ).map(([domaine, prieresDuDomaine]) => (
+              <Card key={domaine}>
+                <CardHeader>
+                  <CardTitle className="text-base">{domaine}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {prieresDuDomaine.map((priere) => (
+                    <div key={priere.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
+                        {priere.cout_xp_base != null && (
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">{calculerCoutPS(priere.cout_xp_base)} PS</Badge>
+                        )}
                       </div>
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {priere.duree_incantation && <span>Incantation : {priere.duree_incantation}</span>}
+                        {priere.zone_choisie && <span>Zone : {priere.zone_choisie}</span>}
+                        {priere.portee_choisie && <span>Portée : {priere.portee_choisie}</span>}
+                        {priere.duree_choisie && <span>Durée : {priere.duree_choisie}</span>}
+                      </div>
+                      {priere.priere_description && (
+                        <p className="text-xs text-muted-foreground border-t border-border/30 pt-2">{priere.priere_description}</p>
+                      )}
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+        )}
 
-          {assemblages.length > 0 && (
+        {/* Assemblages */}
+        {assemblages.length > 0 && (
+          <TabsContent value="assemblages" className="space-y-4 mt-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Assemblages de runes</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {assemblages.map((asm) => (
-                    <div key={asm.id} className="p-2 rounded border border-border/50 text-sm">
+              <CardContent className="space-y-3">
+                {assemblages.map((asm) => (
+                  <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                    <div className="flex items-start justify-between gap-2">
                       <p className="font-medium text-foreground">{asm.nom}</p>
-                      {asm.cout_ps && <p className="text-xs text-muted-foreground">Coût PS : {asm.cout_ps}</p>}
+                      {asm.cout_ps != null && (
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">{asm.cout_ps} PS</Badge>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    {asm.cible && <p className="text-xs text-muted-foreground">Cible : {asm.cible}</p>}
+                    {asm.runes_requises && asm.runes_requises.length > 0 && (
+                      <p className="text-xs text-muted-foreground">Runes : {asm.runes_requises.join(", ")}</p>
+                    )}
+                    {asm.description && (
+                      <p className="text-xs text-muted-foreground border-t border-border/30 pt-2">{asm.description}</p>
+                    )}
+                    {asm.effet && (
+                      <p className="text-xs text-foreground/80 font-medium">Effet : {asm.effet}</p>
+                    )}
+                  </div>
+                ))}
               </CardContent>
             </Card>
-          )}
-
-          {recettes.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Recettes alchimiques</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {recettes.map((recette) => (
-                    <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
-                      <p className="font-medium text-foreground">{recette.nom}</p>
-                      <p className="text-xs text-muted-foreground">{recette.type}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Historique et âme */}
