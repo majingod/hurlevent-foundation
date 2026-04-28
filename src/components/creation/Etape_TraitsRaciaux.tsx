@@ -39,64 +39,72 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
   const [sousTypeLocal, setSousTypeLocal] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!personnageId) return;
+    if (!personnageId) {
+      setChargement(false);
+      return;
+    }
     const fetchData = async () => {
       setChargement(true);
-      const { data: perso, error } = await supabase
-        .from("personnages")
-        .select("xp_total, xp_depense, traits_raciaux_choisis, race_id, sous_type_chimeride")
-        .eq("id", personnageId)
-        .single();
-      if (error || !perso) { setChargement(false); return; }
-
-      setXpTotal(perso.xp_total ?? 0);
-      const xpDep = perso.xp_depense ?? 0;
-      setXpDepense(xpDep);
-      onXpDepenseChange(xpDep);
-
-      const choisis = (perso.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
-      const gratuits = choisis.filter((t) => t.est_gratuit).map((t) => t.trait_id);
-      const achetes = choisis.filter((t) => !t.est_gratuit).map((t) => t.trait_id);
-      setTraitsGratuits(gratuits);
-      setTraitsAchetes(achetes);
-
-      setRaceIdLocal(perso.race_id ?? null);
-      setSousTypeLocal(perso.sous_type_chimeride ?? null);
-
-      // Charger nb_traits_raciaux depuis la race
-      if (perso.race_id) {
-        const { data: raceData } = await supabase
-          .from("races")
-          .select("nb_traits_raciaux")
-          .eq("id", perso.race_id)
+      try {
+        const { data: perso, error } = await supabase
+          .from("personnages")
+          .select("xp_total, xp_depense, traits_raciaux_choisis, race_id, sous_type_chimeride")
+          .eq("id", personnageId)
           .single();
-        const quota = raceData?.nb_traits_raciaux ?? 1;
-        setQuotaGratuit(quota);
-        onPeutPasser(gratuits.length >= quota);
+        if (error || !perso) { setChargement(false); return; }
 
-        // Charger les traits filtrés par race via vue_traits_par_race
-        const sousType = perso.sous_type_chimeride ?? null;
-        let query = supabase
-          .from("vue_traits_par_race" as any)
-          .select("trait_id, trait_nom, trait_description, cout_xp, est_actif, sous_type")
-          .eq("race_id", perso.race_id)
-          .eq("est_actif", true);
-        if (sousType) {
-          query = (query as any).or(`sous_type.eq.${sousType},sous_type.is.null`);
+        setXpTotal(perso.xp_total ?? 0);
+        const xpDep = perso.xp_depense ?? 0;
+        setXpDepense(xpDep);
+        onXpDepenseChange(xpDep);
+
+        const choisis = (perso.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
+        const gratuits = choisis.filter((t) => t.est_gratuit).map((t) => t.trait_id);
+        const achetes = choisis.filter((t) => !t.est_gratuit).map((t) => t.trait_id);
+        setTraitsGratuits(gratuits);
+        setTraitsAchetes(achetes);
+
+        setRaceIdLocal(perso.race_id ?? null);
+        setSousTypeLocal(perso.sous_type_chimeride ?? null);
+
+        // Charger nb_traits_raciaux depuis la race
+        if (perso.race_id) {
+          const { data: raceData } = await supabase
+            .from("races")
+            .select("nb_traits_raciaux")
+            .eq("id", perso.race_id)
+            .single();
+          const quota = raceData?.nb_traits_raciaux ?? 1;
+          setQuotaGratuit(quota);
+          onPeutPasser(gratuits.length >= quota);
+
+          // Charger les traits filtrés par race via vue_traits_par_race
+          const sousType = perso.sous_type_chimeride ?? null;
+          let query = supabase
+            .from("vue_traits_par_race" as any)
+            .select("trait_id, trait_nom, trait_description, cout_xp, est_actif, sous_type")
+            .eq("race_id", perso.race_id)
+            .eq("est_actif", true);
+          if (sousType) {
+            query = (query as any).or(`sous_type.eq.${sousType},sous_type.is.null`);
+          }
+          const { data: traitsData } = await query;
+          if (traitsData) {
+            setTraits(
+              (traitsData as any[]).map((t) => ({
+                trait_id: t.trait_id,
+                trait_nom: t.trait_nom,
+                trait_description: t.trait_description,
+                cout_xp: t.cout_xp,
+              }))
+            );
+          }
         }
-        const { data: traitsData } = await query;
-        if (traitsData) {
-          setTraits(
-            (traitsData as any[]).map((t) => ({
-              trait_id: t.trait_id,
-              trait_nom: t.trait_nom,
-              trait_description: t.trait_description,
-              cout_xp: t.cout_xp,
-            }))
-          );
-        }
+      } catch {
+        // intentionally ignored — fallback to empty state
+      } finally {
+        setChargement(false);
       }
-      setChargement(false);
     };
     fetchData();
   }, [personnageId]);
