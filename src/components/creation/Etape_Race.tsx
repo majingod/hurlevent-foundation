@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { AlertTriangle, Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import RaceCard from "@/components/encyclopedie/RaceCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,9 @@ interface Step2RaceProps {
   nomPersonnage: string;
   sousTypeChimeride: "carnivore" | "herbivore" | null;
   onSousTypeChange: (t: "carnivore" | "herbivore") => void;
+  backgroundDemande: string;
+  onBackgroundChange: (v: string) => void;
+  configJeu: Record<string, string>;
 }
 
 const Step2Race = ({
@@ -28,6 +32,9 @@ const Step2Race = ({
   nomPersonnage,
   sousTypeChimeride,
   onSousTypeChange,
+  backgroundDemande,
+  onBackgroundChange,
+  configJeu,
 }: Step2RaceProps) => {
   const { user } = useAuth();
 
@@ -54,7 +61,7 @@ const Step2Race = ({
 
   const sauvegarderSousType = async (type: "carnivore" | "herbivore") => {
     if (!personnageId || !user) return;
-    await (supabase as any)
+    await supabase
       .from("personnages")
       .update({ sous_type_chimeride: type, updated_at: new Date().toISOString() })
       .eq("id", personnageId);
@@ -64,6 +71,8 @@ const Step2Race = ({
     onRaceSelect(race.id);
     sauvegarderRace(race.id);
   };
+
+  const raceSpecialeSelectionnee = raceId ? RACES_VALIDATION_IDS.includes(raceId) : false;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
@@ -109,6 +118,7 @@ const Step2Race = ({
                 )}
               </div>
 
+              {/* Sélecteur sous-type Chiméride */}
               {estSelectionnee && estChimeride && (
                 <div className="mt-2 p-4 border border-amber-700 rounded bg-amber-900/20">
                   <p className="text-amber-300 font-semibold mb-3">
@@ -153,6 +163,62 @@ const Step2Race = ({
           );
         })}
       </div>
+
+      {/* Formulaire d'approbation — affiché dès qu'une race spéciale est sélectionnée */}
+      {raceSpecialeSelectionnee && (
+        <div className="space-y-4 rounded-lg border border-red-500/40 bg-red-900/10 p-5">
+          <div className="flex items-start gap-2 text-red-400">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+            <p className="text-sm font-semibold">Approbation requise — remplis les informations ci-dessous avant de continuer.</p>
+          </div>
+
+          {/* TextArea background */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-foreground">
+              Background du personnage <span className="text-red-400">*</span>
+            </label>
+            <Textarea
+              value={backgroundDemande}
+              onChange={(e) => onBackgroundChange(e.target.value)}
+              placeholder="Décris le background de ton personnage (minimum 100 caractères)..."
+              className="min-h-[120px] bg-background/50 border-white/20 text-foreground"
+            />
+            <p className={`text-xs ${backgroundDemande.length < 100 ? "text-amber-400" : "text-green-400"}`}>
+              {backgroundDemande.length} / 100 caractères minimum
+            </p>
+          </div>
+
+          {/* Liens et instructions photos */}
+          <div className="rounded border border-amber-700/50 bg-amber-900/20 p-3 space-y-2 text-sm">
+            <p className="font-semibold text-amber-300">Photos de costume requises</p>
+            {configJeu.texte_envoi_photos_race && (
+              <p className="text-amber-200/80">{configJeu.texte_envoi_photos_race}</p>
+            )}
+            <div className="flex gap-4 flex-wrap">
+              {configJeu.lien_facebook_hurlevent && (
+                <a
+                  href={configJeu.lien_facebook_hurlevent}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-blue-400 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" /> Facebook
+                </a>
+              )}
+              {configJeu.lien_discord_hurlevent && (
+                <a
+                  href={configJeu.lien_discord_hurlevent}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-indigo-400 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" /> Discord
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

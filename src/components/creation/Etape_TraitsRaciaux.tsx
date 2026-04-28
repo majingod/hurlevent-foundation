@@ -35,6 +35,8 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
   const [traits, setTraits] = useState<TraitRacial[]>([]);
   const [quotaGratuit, setQuotaGratuit] = useState<number>(1);
   const [chargement, setChargement] = useState(true);
+  const [raceIdLocal, setRaceIdLocal] = useState<string | null>(null);
+  const [sousTypeLocal, setSousTypeLocal] = useState<string | null>(null);
 
   useEffect(() => {
     if (!personnageId) return;
@@ -57,6 +59,9 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
       const achetes = choisis.filter((t) => !t.est_gratuit).map((t) => t.trait_id);
       setTraitsGratuits(gratuits);
       setTraitsAchetes(achetes);
+
+      setRaceIdLocal(perso.race_id ?? null);
+      setSousTypeLocal(perso.sous_type_chimeride ?? null);
 
       // Charger nb_traits_raciaux depuis la race
       if (perso.race_id) {
@@ -154,6 +159,8 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
       const { data: validation } = await supabase.rpc("peut_acheter_trait_racial" as any, {
         p_personnage_id: personnageId,
         p_trait_id: traitId,
+        p_race_id: raceIdLocal,
+        p_sous_type: sousTypeLocal,
       });
       if (validation === false) {
         toast.error("Ce trait ne peut pas être acheté pour ce personnage.");

@@ -6,8 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, ChevronRight, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -378,6 +377,9 @@ const PersonnageNouveau = () => {
             nomPersonnage={nom}
             sousTypeChimeride={sousTypeChimeride}
             onSousTypeChange={setSousTypeChimeride}
+            backgroundDemande={backgroundDemande}
+            onBackgroundChange={setBackgroundDemande}
+            configJeu={configJeu}
           />
         );
 
@@ -584,50 +586,8 @@ const PersonnageNouveau = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">
-                Background du personnage <span className="text-red-400">*</span>
-              </label>
-              <Textarea
-                value={backgroundDemande}
-                onChange={(e) => setBackgroundDemande(e.target.value)}
-                placeholder="Décris le background de ton personnage (min. 100 caractères)..."
-                className="min-h-[120px] bg-background/50 border-white/20 text-foreground"
-              />
-              <p className={`text-xs ${backgroundDemande.length < 100 ? "text-amber-400" : "text-green-400"}`}>
-                {backgroundDemande.length} / 100 caractères minimum
-              </p>
-            </div>
-
-            <div className="rounded border border-amber-700/50 bg-amber-900/20 p-3 space-y-2 text-sm">
-              <p className="font-semibold text-amber-300">Photos de costume requises</p>
-              {configJeu.texte_envoi_photos_race && (
-                <p className="text-amber-200/80">{configJeu.texte_envoi_photos_race}</p>
-              )}
-              <div className="flex gap-3 flex-wrap">
-                {configJeu.lien_facebook_hurlevent && (
-                  <a
-                    href={configJeu.lien_facebook_hurlevent}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-400 hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Facebook
-                  </a>
-                )}
-                {configJeu.lien_discord_hurlevent && (
-                  <a
-                    href={configJeu.lien_discord_hurlevent}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-indigo-400 hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Discord
-                  </a>
-                )}
-              </div>
-            </div>
+          <div className="py-2 text-sm text-foreground/70">
+            Background rempli à l'étape 2 ({backgroundDemande.length} caractères).
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
