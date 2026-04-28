@@ -27,86 +27,105 @@ interface Step3TraitsRaciauxProps {
 const COUT_TRAIT = 10;
 
 const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: Step3TraitsRaciauxProps) => {
-  const [traitGratuit, setTraitGratuit] = useState<string | null>(null);
+  const [traitsGratuits, setTraitsGratuits] = useState<string[]>([]);
   const [traitsAchetes, setTraitsAchetes] = useState<string[]>([]);
   const [xpTotal, setXpTotal] = useState<number>(0);
   const [xpDepense, setXpDepense] = useState<number>(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [traits, setTraits] = useState<TraitRacial[]>([]);
+  const [quotaGratuit, setQuotaGratuit] = useState<number>(1);
   const [chargement, setChargement] = useState(true);
+  const [raceIdLocal, setRaceIdLocal] = useState<string | null>(null);
+  const [sousTypeLocal, setSousTypeLocal] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!personnageId) return;
+    if (!personnageId) {
+      setChargement(false);
+      return;
+    }
     const fetchData = async () => {
       setChargement(true);
-      const { data: perso, error } = await supabase
-        .from("personnages")
-        .select("xp_total, xp_depense, traits_raciaux_choisis, race_id")
-        .eq("id", personnageId)
-        .single();
-      if (error || !perso) { setChargement(false); return; }
+      try {
+        const { data: perso, error } = await supabase
+          .from("personnages")
+          .select("xp_total, xp_depense, traits_raciaux_choisis, race_id, sous_type_chimeride")
+          .eq("id", personnageId)
+          .single();
+        if (error || !perso) { setChargement(false); return; }
 
-      setXpTotal(perso.xp_total ?? 0);
-      const xpDep = perso.xp_depense ?? 0;
-      setXpDepense(xpDep);
-      onXpDepenseChange(xpDep);
+        setXpTotal(perso.xp_total ?? 0);
+        const xpDep = perso.xp_depense ?? 0;
+        setXpDepense(xpDep);
+        onXpDepenseChange(xpDep);
 
-      const choisis = (perso.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
-      const gratuit = choisis.find((t) => t.est_gratuit);
-      const achetes = choisis.filter((t) => !t.est_gratuit).map((t) => t.trait_id);
-      const traitGratuitId = gratuit?.trait_id ?? null;
-      setTraitGratuit(traitGratuitId);
-      setTraitsAchetes(achetes);
-      onPeutPasser(traitGratuitId !== null);
+        const choisis = (perso.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
+        const gratuits = choisis.filter((t) => t.est_gratuit).map((t) => t.trait_id);
+        const achetes = choisis.filter((t) => !t.est_gratuit).map((t) => t.trait_id);
+        setTraitsGratuits(gratuits);
+        setTraitsAchetes(achetes);
 
-      // Charger les traits filtrés par race via vue_traits_par_race
-      if (perso.race_id) {
-        const sousType = (perso as any).sous_type_chimeride ?? null;
-        let query = (supabase as any)
-          .from("vue_traits_par_race")
-          .select("trait_id, trait_nom, trait_description, cout_xp, est_actif, sous_type")
-          .eq("race_id", perso.race_id)
-          .eq("est_actif", true);
-        if (sousType) {
-          query = query.eq("sous_type", sousType);
+        setRaceIdLocal(perso.race_id ?? null);
+        setSousTypeLocal(perso.sous_type_chimeride ?? null);
+
+        // Charger nb_traits_raciaux depuis la race
+        if (perso.race_id) {
+          const { data: raceData } = await supabase
+            .from("races")
+            .select("nb_traits_raciaux")
+            .eq("id", perso.race_id)
+            .single();
+          const quota = raceData?.nb_traits_raciaux ?? 1;
+          setQuotaGratuit(quota);
+          onPeutPasser(gratuits.length >= quota);
+
+          // Charger les traits filtrés par race via vue_traits_par_race
+          const sousType = perso.sous_type_chimeride ?? null;
+          let query = supabase
+            .from("vue_traits_par_race" as any)
+            .select("trait_id, trait_nom, trait_description, cout_xp, est_actif, sous_type")
+            .eq("race_id", perso.race_id)
+            .eq("est_actif", true);
+          if (sousType) {
+            query = (query as any).or(`sous_type.eq.${sousType},sous_type.is.null`);
+          }
+          const { data: traitsData } = await query;
+          if (traitsData) {
+            setTraits(
+              (traitsData as any[]).map((t) => ({
+                trait_id: t.trait_id,
+                trait_nom: t.trait_nom,
+                trait_description: t.trait_description,
+                cout_xp: t.cout_xp,
+              }))
+            );
+          }
         }
-        const { data: traitsData } = await query;
-        if (traitsData) {
-          setTraits(
-            (traitsData as any[]).map((t) => ({
-              trait_id: t.trait_id,
-              trait_nom: t.trait_nom,
-              trait_description: t.trait_description,
-              cout_xp: t.cout_xp,
-            }))
-          );
-        }
+      } catch {
+        // intentionally ignored — fallback to empty state
+      } finally {
+        setChargement(false);
       }
-      setChargement(false);
     };
     fetchData();
   }, [personnageId]);
 
-  // Notifier le parent quand traitGratuit change
+  // Notifier le parent quand traitsGratuits change
   useEffect(() => {
-    onPeutPasser(traitGratuit !== null);
-  }, [traitGratuit]);
+    onPeutPasser(traitsGratuits.length >= quotaGratuit);
+  }, [traitsGratuits, quotaGratuit]);
 
   const xpDisponible = xpTotal - xpDepense;
 
   const sauvegarderTraits = async (
-    newTraitGratuit: string | null,
+    newTraitsGratuits: string[],
     newTraitsAchetes: string[],
     newXpDepense: number,
   ) => {
     if (!personnageId) return;
-    const choisis: TraitChoisi[] = [];
-    if (newTraitGratuit) {
-      choisis.push({ trait_id: newTraitGratuit, est_gratuit: true, xp_depense: 0 });
-    }
-    for (const tid of newTraitsAchetes) {
-      choisis.push({ trait_id: tid, est_gratuit: false, xp_depense: COUT_TRAIT });
-    }
+    const choisis: TraitChoisi[] = [
+      ...newTraitsGratuits.map((id) => ({ trait_id: id, est_gratuit: true, xp_depense: 0 })),
+      ...newTraitsAchetes.map((id) => ({ trait_id: id, est_gratuit: false, xp_depense: COUT_TRAIT })),
+    ];
     await supabase
       .from("personnages")
       .update({
@@ -118,9 +137,17 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
   };
 
   const handleGratuit = async (traitId: string) => {
-    const newGratuit = traitGratuit === traitId ? null : traitId;
-    setTraitGratuit(newGratuit);
-    await sauvegarderTraits(newGratuit, traitsAchetes, xpDepense);
+    const estDeja = traitsGratuits.includes(traitId);
+    if (estDeja) {
+      const newGratuits = traitsGratuits.filter((id) => id !== traitId);
+      setTraitsGratuits(newGratuits);
+      await sauvegarderTraits(newGratuits, traitsAchetes, xpDepense);
+    } else {
+      if (traitsGratuits.length >= quotaGratuit) return;
+      const newGratuits = [...traitsGratuits, traitId];
+      setTraitsGratuits(newGratuits);
+      await sauvegarderTraits(newGratuits, traitsAchetes, xpDepense);
+    }
   };
 
   const handleAcheter = async (traitId: string) => {
@@ -130,10 +157,21 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
       setTraitsAchetes(newAchetes);
       setXpDepense(newXpDepense);
       onXpDepenseChange(newXpDepense);
-      await sauvegarderTraits(traitGratuit, newAchetes, newXpDepense);
+      await sauvegarderTraits(traitsGratuits, newAchetes, newXpDepense);
     } else {
       if (xpDisponible < COUT_TRAIT) {
         toast.error("XP insuffisant pour acheter ce trait");
+        return;
+      }
+      // Valider via la fonction PL/pgSQL
+      const { data: validation } = await supabase.rpc("peut_acheter_trait_racial" as any, {
+        p_personnage_id: personnageId,
+        p_trait_id: traitId,
+        p_race_id: raceIdLocal,
+        p_sous_type: sousTypeLocal,
+      });
+      if (validation === false) {
+        toast.error("Ce trait ne peut pas être acheté pour ce personnage.");
         return;
       }
       const newAchetes = [...traitsAchetes, traitId];
@@ -141,7 +179,7 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
       setTraitsAchetes(newAchetes);
       setXpDepense(newXpDepense);
       onXpDepenseChange(newXpDepense);
-      await sauvegarderTraits(traitGratuit, newAchetes, newXpDepense);
+      await sauvegarderTraits(traitsGratuits, newAchetes, newXpDepense);
     }
   };
 
@@ -162,19 +200,21 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
     );
   }
 
+  const quotaAtteint = traitsGratuits.length >= quotaGratuit;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-heading text-gold">Choisis tes traits raciaux</h2>
           <p className="mt-1 text-white/60">
-            Tu as droit à 1 trait racial gratuit. Tu peux en acheter des supplémentaires au coût de 10 XP chacun.
+            Tu dois choisir {quotaGratuit} trait{quotaGratuit > 1 ? "s" : ""} gratuit{quotaGratuit > 1 ? "s" : ""}.
+            Des traits supplémentaires coûtent {COUT_TRAIT} XP chacun.
           </p>
-          {!traitGratuit && (
-            <p className="mt-1 text-amber-400/80 text-sm">
-              ⚠️ Tu dois choisir au moins un trait gratuit pour continuer.
-            </p>
-          )}
+          <p className={`mt-1 text-sm font-semibold ${quotaAtteint ? "text-green-400" : "text-amber-400"}`}>
+            {traitsGratuits.length} / {quotaGratuit} trait{quotaGratuit > 1 ? "s" : ""} gratuit{quotaGratuit > 1 ? "s" : ""} choisi{quotaGratuit > 1 ? "s" : ""}
+            {!quotaAtteint && " — obligatoire pour continuer"}
+          </p>
         </div>
         <div className="shrink-0 rounded-lg border border-gold/30 bg-gold/10 px-4 py-2 text-right">
           <div className="text-xs uppercase tracking-widest text-gold/60">XP disponible</div>
@@ -184,9 +224,11 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
 
       <div className="grid gap-4 sm:grid-cols-2">
         {traits.map((trait) => {
-          const estGratuit = traitGratuit === trait.trait_id;
+          const estGratuit = traitsGratuits.includes(trait.trait_id);
           const estAchete = traitsAchetes.includes(trait.trait_id);
           const isOpen = expandedId === trait.trait_id;
+          const gratuitDisabled = estAchete || (!estGratuit && quotaAtteint);
+          const achatDisabled = estGratuit || (xpDisponible < COUT_TRAIT && !estAchete);
 
           return (
             <Card
@@ -225,7 +267,7 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
                   <Button
                     variant={estGratuit ? "default" : "outline"}
                     size="sm"
-                    disabled={estAchete || (traitGratuit !== null && !estGratuit)}
+                    disabled={gratuitDisabled}
                     onClick={() => handleGratuit(trait.trait_id)}
                     className={`flex-1 ${estGratuit ? "bg-gold text-black hover:bg-gold/90" : "border-white/20"}`}
                   >
@@ -235,7 +277,7 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={estGratuit || (xpDisponible < COUT_TRAIT && !estAchete)}
+                    disabled={achatDisabled}
                     onClick={() => handleAcheter(trait.trait_id)}
                     className={`flex-1 ${
                       estAchete

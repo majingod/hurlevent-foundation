@@ -7,10 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Sparkles, Hammer, Gem } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  QUOTA_RECETTES_TOTAL,
-  QUOTA_ASSEMBLAGES_TOTAL,
   COUT_RECETTE_SUPPLEMENTAIRE,
-  COUT_ASSEMBLAGE_SUPPLEMENTAIRE,
   NOTE_FORGE,
   NOTE_JOAILLERIE,
   LEGENDE_FORGE_DISPO,
@@ -29,8 +26,12 @@ interface ArtisanatState {
   niveau_runes: number;
   a_forge_legendaire: boolean;
   a_joaillerie_legendaire: boolean;
-  quota_recettes_total: number;
-  quota_assemblages_total: number;
+  quota_alchimie_mineure_total: number;
+  quota_alchimie_intermediaire_total: number;
+  quota_alchimie_majeure_total: number;
+  quota_alchimie_mineure_utilises: number;
+  quota_alchimie_intermediaire_utilises: number;
+  quota_alchimie_majeure_utilises: number;
 }
 
 interface Recette {
@@ -82,6 +83,7 @@ const Step7Artisanat = ({
   const [joaillerie, setJoaillerie] = useState<ObjetJoaillerie[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Sélections persistées en DB
   const [recettesGratuites, setRecettesGratuites] = useState<Set<string>>(new Set());
   const [recettesAchetees, setRecettesAchetees] = useState<Set<string>>(new Set());
   const [showLegendForgeModal, setShowLegendForgeModal] = useState(false);
@@ -90,48 +92,75 @@ const Step7Artisanat = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Récupérer l'état artisanat complet
-        const { data: artisanatData, error: artisanatError } = await supabase
-          .from("vue_artisanat_quotas")
-          .select("*")
-          .eq("personnage_id", personnageId)
-          .maybeSingle();
+        const [quotasRes, recettesRes, forgeRes, joaillerieRes, existingRecettesRes] = await Promise.all([
+          supabase
+            .from("vue_artisanat_quotas")
+            .select("*")
+            .eq("personnage_id", personnageId)
+            .maybeSingle(),
+          supabase
+            .from("recettes_alchimie")
+            .select("*")
+            .eq("est_actif", true)
+            .order("niveau_requis")
+            .order("nom"),
+          supabase
+            .from("objets_forge")
+            .select("*")
+            .eq("est_actif", true)
+            .order("difficulte")
+            .order("nom"),
+          supabase
+            .from("objets_joaillerie")
+            .select("*")
+            .eq("est_actif", true)
+            .order("difficulte")
+            .order("nom"),
+          supabase
+            .from("personnage_recettes")
+            .select("recette_id, est_gratuit")
+            .eq("personnage_id", personnageId),
+        ]);
 
-        if (artisanatError) throw artisanatError;
-        if (artisanatData) setArtisanat(artisanatData as ArtisanatState);
+        if (quotasRes.error) throw quotasRes.error;
+        if (quotasRes.data) {
+          const d = quotasRes.data as any;
+          setArtisanat({
+            niveau_alchimie: d.niveau_alchimie ?? 0,
+            niveau_forge: d.niveau_forge ?? 0,
+            niveau_joaillerie: d.niveau_joaillerie ?? 0,
+            niveau_runes: d.niveau_runes ?? 0,
+            a_forge_legendaire: d.a_forge_legendaire ?? false,
+            a_joaillerie_legendaire: d.a_joaillerie_legendaire ?? false,
+            quota_alchimie_mineure_total: d.quota_alchimie_mineure_total ?? 0,
+            quota_alchimie_intermediaire_total: d.quota_alchimie_intermediaire_total ?? 0,
+            quota_alchimie_majeure_total: d.quota_alchimie_majeure_total ?? 0,
+            quota_alchimie_mineure_utilises: d.quota_alchimie_mineure_utilises ?? 0,
+            quota_alchimie_intermediaire_utilises: d.quota_alchimie_intermediaire_utilises ?? 0,
+            quota_alchimie_majeure_utilises: d.quota_alchimie_majeure_utilises ?? 0,
+          });
+        }
 
-        // Récupérer les recettes d'alchimie
-        const { data: recettesData, error: recettesError } = await supabase
-          .from("recettes_alchimie")
-          .select("*")
-          .eq("est_actif", true)
-          .order("niveau_requis")
-          .order("nom");
+        if (recettesRes.error) throw recettesRes.error;
+        setRecettes((recettesRes.data ?? []) as Recette[]);
 
-        if (recettesError) throw recettesError;
-        setRecettes((recettesData ?? []) as Recette[]);
+        if (forgeRes.error) throw forgeRes.error;
+        setForge((forgeRes.data ?? []) as ObjetForge[]);
 
-        // Récupérer les objets de forge
-        const { data: forgeData, error: forgeError } = await supabase
-          .from("objets_forge")
-          .select("*")
-          .eq("est_actif", true)
-          .order("difficulte")
-          .order("nom");
+        if (joaillerieRes.error) throw joaillerieRes.error;
+        setJoaillerie((joaillerieRes.data ?? []) as ObjetJoaillerie[]);
 
-        if (forgeError) throw forgeError;
-        setForge((forgeData ?? []) as ObjetForge[]);
-
-        // Récupérer les objets de joaillerie
-        const { data: joaillerieData, error: joaillerieError } = await supabase
-          .from("objets_joaillerie")
-          .select("*")
-          .eq("est_actif", true)
-          .order("difficulte")
-          .order("nom");
-
-        if (joaillerieError) throw joaillerieError;
-        setJoaillerie((joaillerieData ?? []) as ObjetJoaillerie[]);
+        // Restaurer les sélections existantes
+        if (existingRecettesRes.data) {
+          const gratuits = new Set<string>();
+          const achetes = new Set<string>();
+          existingRecettesRes.data.forEach((r: any) => {
+            if (r.est_gratuit) gratuits.add(r.recette_id);
+            else achetes.add(r.recette_id);
+          });
+          setRecettesGratuites(gratuits);
+          setRecettesAchetees(achetes);
+        }
 
         setLoading(false);
       } catch (err: any) {
@@ -144,6 +173,77 @@ const Step7Artisanat = ({
     fetchData();
   }, [personnageId, toast]);
 
+  const handleToggleGratuit = async (recette: Recette) => {
+    const estGratuite = recettesGratuites.has(recette.id);
+    const niv = recette.niveau_requis;
+
+    if (estGratuite) {
+      // Désélectionner
+      const { error } = await supabase
+        .from("personnage_recettes")
+        .delete()
+        .eq("personnage_id", personnageId)
+        .eq("recette_id", recette.id);
+      if (error) { toast.error("Erreur lors de la suppression."); return; }
+      setRecettesGratuites((prev) => { const s = new Set(prev); s.delete(recette.id); return s; });
+      setArtisanat((prev) => {
+        if (!prev) return prev;
+        const key = niv === 1 ? "quota_alchimie_mineure_utilises"
+          : niv === 2 ? "quota_alchimie_intermediaire_utilises"
+          : "quota_alchimie_majeure_utilises";
+        return { ...prev, [key]: Math.max(0, prev[key] - 1) };
+      });
+    } else {
+      // Vérifier le quota
+      const utilises = niv === 1 ? (artisanat?.quota_alchimie_mineure_utilises ?? 0)
+        : niv === 2 ? (artisanat?.quota_alchimie_intermediaire_utilises ?? 0)
+        : (artisanat?.quota_alchimie_majeure_utilises ?? 0);
+      const total = niv === 1 ? (artisanat?.quota_alchimie_mineure_total ?? 0)
+        : niv === 2 ? (artisanat?.quota_alchimie_intermediaire_total ?? 0)
+        : (artisanat?.quota_alchimie_majeure_total ?? 0);
+      if (utilises >= total) return;
+
+      const { error } = await supabase
+        .from("personnage_recettes")
+        .insert({ personnage_id: personnageId, recette_id: recette.id, est_gratuit: true, xp_depense: 0 });
+      if (error) { toast.error("Erreur lors de la sélection."); return; }
+      setRecettesGratuites((prev) => new Set(prev).add(recette.id));
+      setArtisanat((prev) => {
+        if (!prev) return prev;
+        const key = niv === 1 ? "quota_alchimie_mineure_utilises"
+          : niv === 2 ? "quota_alchimie_intermediaire_utilises"
+          : "quota_alchimie_majeure_utilises";
+        return { ...prev, [key]: prev[key] + 1 };
+      });
+    }
+  };
+
+  const handleToggleAcheter = async (recette: Recette) => {
+    const estAchetee = recettesAchetees.has(recette.id);
+
+    if (estAchetee) {
+      const { error } = await supabase
+        .from("personnage_recettes")
+        .delete()
+        .eq("personnage_id", personnageId)
+        .eq("recette_id", recette.id);
+      if (error) { toast.error("Erreur lors de la suppression."); return; }
+      setRecettesAchetees((prev) => { const s = new Set(prev); s.delete(recette.id); return s; });
+      onXpSpent(-COUT_RECETTE_SUPPLEMENTAIRE);
+    } else {
+      if (xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE) {
+        toast.error("XP insuffisant pour acheter cette recette.");
+        return;
+      }
+      const { error } = await supabase
+        .from("personnage_recettes")
+        .insert({ personnage_id: personnageId, recette_id: recette.id, est_gratuit: false, xp_depense: COUT_RECETTE_SUPPLEMENTAIRE });
+      if (error) { toast.error("Erreur lors de l'achat."); return; }
+      setRecettesAchetees((prev) => new Set(prev).add(recette.id));
+      onXpSpent(COUT_RECETTE_SUPPLEMENTAIRE);
+    }
+  };
+
   if (loading || !artisanat) {
     return <p className="text-muted-foreground text-center py-8">Chargement…</p>;
   }
@@ -151,10 +251,6 @@ const Step7Artisanat = ({
   const hasAlchimie = artisanat.niveau_alchimie >= 1;
   const hasForge = artisanat.niveau_forge >= 1;
   const hasJoaillerie = artisanat.niveau_joaillerie >= 1;
-
-  const quotaMineur = recettes.filter(r => recettesGratuites.has(r.id) && r.niveau_requis === 1).length;
-  const quotaInter = recettes.filter(r => recettesGratuites.has(r.id) && r.niveau_requis === 2).length;
-  const quotaMajeur = recettes.filter(r => recettesGratuites.has(r.id) && r.niveau_requis === 3).length;
 
   if (!hasAlchimie && !hasForge && !hasJoaillerie) {
     return (
@@ -192,18 +288,18 @@ const Step7Artisanat = ({
                 Niveau d'Alchimie : <strong className="text-primary">{artisanat.niveau_alchimie}</strong>
               </p>
               {artisanat.niveau_alchimie >= 1 && (
-                <p className="text-sm text-muted-foreground">
-                  Quota de recettes Mineures gratuites : <strong className="text-primary">{quotaMineur} / 5</strong>
+                <p className={`text-sm font-medium ${artisanat.quota_alchimie_mineure_utilises >= artisanat.quota_alchimie_mineure_total ? "text-green-400" : "text-amber-400"}`}>
+                  Recettes Mineures gratuites : {artisanat.quota_alchimie_mineure_utilises} / {artisanat.quota_alchimie_mineure_total}
                 </p>
               )}
               {artisanat.niveau_alchimie >= 2 && (
-                <p className="text-sm text-muted-foreground">
-                  Quota de recettes Intermédiaires gratuites : <strong className="text-primary">{quotaInter} / 4</strong>
+                <p className={`text-sm font-medium ${artisanat.quota_alchimie_intermediaire_utilises >= artisanat.quota_alchimie_intermediaire_total ? "text-green-400" : "text-amber-400"}`}>
+                  Recettes Intermédiaires gratuites : {artisanat.quota_alchimie_intermediaire_utilises} / {artisanat.quota_alchimie_intermediaire_total}
                 </p>
               )}
               {artisanat.niveau_alchimie >= 3 && (
-                <p className="text-sm text-muted-foreground">
-                  Quota de recettes Majeures gratuites : <strong className="text-primary">{quotaMajeur} / 3</strong>
+                <p className={`text-sm font-medium ${artisanat.quota_alchimie_majeure_utilises >= artisanat.quota_alchimie_majeure_total ? "text-green-400" : "text-amber-400"}`}>
+                  Recettes Majeures gratuites : {artisanat.quota_alchimie_majeure_utilises} / {artisanat.quota_alchimie_majeure_total}
                 </p>
               )}
             </div>
@@ -219,9 +315,13 @@ const Step7Artisanat = ({
                     const estGratuite = recettesGratuites.has(recette.id);
                     const estAchetee = recettesAchetees.has(recette.id);
                     const niv = recette.niveau_requis;
-                    const quotaActuel = niv === 1 ? quotaMineur : niv === 2 ? quotaInter : quotaMajeur;
-                    const quotaMax = niv === 1 ? 5 : niv === 2 ? 4 : 3;
-                    const gratuitDisabled = estAchetee || (!estGratuite && quotaActuel >= quotaMax);
+                    const utilises = niv === 1 ? artisanat.quota_alchimie_mineure_utilises
+                      : niv === 2 ? artisanat.quota_alchimie_intermediaire_utilises
+                      : artisanat.quota_alchimie_majeure_utilises;
+                    const total = niv === 1 ? artisanat.quota_alchimie_mineure_total
+                      : niv === 2 ? artisanat.quota_alchimie_intermediaire_total
+                      : artisanat.quota_alchimie_majeure_total;
+                    const gratuitDisabled = estAchetee || (!estGratuite && utilises >= total);
                     const achatDisabled = estGratuite || (!estAchetee && xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE);
                     return (
                       <div key={recette.id} className="p-2 rounded border border-border/50 space-y-2">
@@ -241,13 +341,7 @@ const Step7Artisanat = ({
                             variant={estGratuite ? "default" : "outline"}
                             className={`text-xs flex-1${estGratuite ? " bg-green-700 hover:bg-green-800" : ""}`}
                             disabled={gratuitDisabled}
-                            onClick={() => {
-                              if (estGratuite) {
-                                setRecettesGratuites(prev => { const s = new Set(prev); s.delete(recette.id); return s; });
-                              } else {
-                                setRecettesGratuites(prev => new Set(prev).add(recette.id));
-                              }
-                            }}
+                            onClick={() => handleToggleGratuit(recette)}
                           >
                             {estGratuite ? "✓ Gratuit" : "Gratuit"}
                           </Button>
@@ -256,15 +350,7 @@ const Step7Artisanat = ({
                             variant={estAchetee ? "default" : "outline"}
                             className={`text-xs flex-1${estAchetee ? " bg-amber-700 hover:bg-amber-800" : ""}`}
                             disabled={achatDisabled}
-                            onClick={() => {
-                              if (estAchetee) {
-                                setRecettesAchetees(prev => { const s = new Set(prev); s.delete(recette.id); return s; });
-                                onXpSpent(-COUT_RECETTE_SUPPLEMENTAIRE);
-                              } else {
-                                setRecettesAchetees(prev => new Set(prev).add(recette.id));
-                                onXpSpent(COUT_RECETTE_SUPPLEMENTAIRE);
-                              }
-                            }}
+                            onClick={() => handleToggleAcheter(recette)}
                           >
                             {estAchetee ? `✓ Acheté (${COUT_RECETTE_SUPPLEMENTAIRE} XP)` : `Acheter (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`}
                           </Button>
@@ -298,10 +384,7 @@ const Step7Artisanat = ({
                   ) : (
                     <>
                       <p className="text-sm text-muted-foreground">{LEGENDE_FORGE_DISPO}</p>
-                      <Button
-                        onClick={() => setShowLegendForgeModal(true)}
-                        className="w-full"
-                      >
+                      <Button onClick={() => setShowLegendForgeModal(true)} className="w-full">
                         Utiliser mon droit légendaire
                       </Button>
                     </>
@@ -358,10 +441,7 @@ const Step7Artisanat = ({
                   ) : (
                     <>
                       <p className="text-sm text-muted-foreground">{LEGENDE_JOAILLERIE_DISPO}</p>
-                      <Button
-                        onClick={() => setShowLegendJoaillerieModal(true)}
-                        className="w-full"
-                      >
+                      <Button onClick={() => setShowLegendJoaillerieModal(true)} className="w-full">
                         Utiliser mon droit légendaire
                       </Button>
                     </>
@@ -402,9 +482,7 @@ const Step7Artisanat = ({
       {showLegendForgeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-96">
-            <CardHeader>
-              <CardTitle>Confirmation</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Confirmation</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">{CONFIRM_LEGENDE_FORGE}</p>
               <div className="flex gap-2 justify-end">
@@ -412,20 +490,13 @@ const Step7Artisanat = ({
                 <Button
                   onClick={async () => {
                     try {
-                      await supabase
-                        .from("personnages")
-                        .update({ a_forge_legendaire: true })
-                        .eq("id", personnageId);
+                      await supabase.from("personnages").update({ a_forge_legendaire: true }).eq("id", personnageId);
                       setArtisanat((prev) => prev ? { ...prev, a_forge_legendaire: true } : null);
                       setShowLegendForgeModal(false);
                       toast.success("Droit légendaire utilisé !");
-                    } catch (err) {
-                      toast.error("Erreur lors de la mise à jour.");
-                    }
+                    } catch { toast.error("Erreur lors de la mise à jour."); }
                   }}
-                >
-                  Confirmer
-                </Button>
+                >Confirmer</Button>
               </div>
             </CardContent>
           </Card>
@@ -435,9 +506,7 @@ const Step7Artisanat = ({
       {showLegendJoaillerieModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-96">
-            <CardHeader>
-              <CardTitle>Confirmation</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Confirmation</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">{CONFIRM_LEGENDE_JOAILLERIE}</p>
               <div className="flex gap-2 justify-end">
@@ -445,20 +514,13 @@ const Step7Artisanat = ({
                 <Button
                   onClick={async () => {
                     try {
-                      await supabase
-                        .from("personnages")
-                        .update({ a_joaillerie_legendaire: true })
-                        .eq("id", personnageId);
+                      await supabase.from("personnages").update({ a_joaillerie_legendaire: true }).eq("id", personnageId);
                       setArtisanat((prev) => prev ? { ...prev, a_joaillerie_legendaire: true } : null);
                       setShowLegendJoaillerieModal(false);
                       toast.success("Droit légendaire utilisé !");
-                    } catch (err) {
-                      toast.error("Erreur lors de la mise à jour.");
-                    }
+                    } catch { toast.error("Erreur lors de la mise à jour."); }
                   }}
-                >
-                  Confirmer
-                </Button>
+                >Confirmer</Button>
               </div>
             </CardContent>
           </Card>

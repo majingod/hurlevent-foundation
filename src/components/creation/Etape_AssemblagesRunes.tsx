@@ -32,6 +32,7 @@ const Step8Runes = ({
   const [assemblages, setAssemblages] = useState<Assemblage[]>([]);
   const [loading, setLoading] = useState(true);
   const [quotaTotal, setQuotaTotal] = useState(0);
+  const [quotaUtilises, setQuotaUtilises] = useState(0);
   const [niveauRunes, setNiveauRunes] = useState(0);
   const [xpDisponibleLocal, setXpDisponibleLocal] = useState(xpDisponible);
   const [assemblagesGratuits, setAssemblagesGratuits] = useState<string[]>([]);
@@ -48,7 +49,7 @@ const Step8Runes = ({
             .order("nom"),
           supabase
             .from("vue_artisanat_quotas")
-            .select("*")
+            .select("quota_assemblages_total, quota_assemblages_utilises, niveau_runes")
             .eq("personnage_id", personnageId)
             .maybeSingle(),
           supabase
@@ -62,19 +63,16 @@ const Step8Runes = ({
 
         if (quotasRes.data) {
           setQuotaTotal((quotasRes.data as any).quota_assemblages_total ?? 0);
+          setQuotaUtilises((quotasRes.data as any).quota_assemblages_utilises ?? 0);
           setNiveauRunes((quotasRes.data as any).niveau_runes ?? 0);
         }
 
         if (existingRes.data) {
           setAssemblagesGratuits(
-            existingRes.data
-              .filter((a: any) => a.est_gratuit)
-              .map((a: any) => a.assemblage_id)
+            existingRes.data.filter((a) => a.est_gratuit).map((a) => a.assemblage_id)
           );
           setAssemblagesAchetes(
-            existingRes.data
-              .filter((a: any) => !a.est_gratuit)
-              .map((a: any) => a.assemblage_id)
+            existingRes.data.filter((a) => !a.est_gratuit).map((a) => a.assemblage_id)
           );
         }
 
@@ -94,15 +92,16 @@ const Step8Runes = ({
 
     const dejaGratuit = assemblagesGratuits.includes(assemblageId);
     if (dejaGratuit) {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("personnage_assemblages")
         .delete()
         .eq("personnage_id", personnageId)
         .eq("assemblage_id", assemblageId);
       if (error) { toast.error("Erreur lors de la suppression."); return; }
       setAssemblagesGratuits((prev) => prev.filter((id) => id !== assemblageId));
+      setQuotaUtilises((prev) => Math.max(0, prev - 1));
     } else if (assemblagesGratuits.length < quotaTotal) {
-      const { error } = await (supabase as any).from("personnage_assemblages").insert({
+      const { error } = await supabase.from("personnage_assemblages").insert({
         personnage_id: personnageId,
         assemblage_id: assemblageId,
         est_gratuit: true,
@@ -110,6 +109,7 @@ const Step8Runes = ({
       });
       if (error) { toast.error("Erreur lors de la sélection."); return; }
       setAssemblagesGratuits((prev) => [...prev, assemblageId]);
+      setQuotaUtilises((prev) => prev + 1);
     }
   };
 
@@ -118,32 +118,24 @@ const Step8Runes = ({
 
     const dejaAchete = assemblagesAchetes.includes(assemblageId);
     if (dejaAchete) {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("personnage_assemblages")
         .delete()
         .eq("personnage_id", personnageId)
         .eq("assemblage_id", assemblageId);
       if (error) { toast.error("Erreur lors de la suppression."); return; }
-      await (supabase as any)
-        .from("personnages")
-        .update({ xp_disponible: xpDisponibleLocal + COUT_ASSEMBLAGE_SUPPLEMENTAIRE })
-        .eq("id", personnageId);
       setAssemblagesAchetes((prev) => prev.filter((id) => id !== assemblageId));
       setXpDisponibleLocal((prev) => prev + COUT_ASSEMBLAGE_SUPPLEMENTAIRE);
       onXpSpent(-COUT_ASSEMBLAGE_SUPPLEMENTAIRE);
     } else {
       if (xpDisponibleLocal < COUT_ASSEMBLAGE_SUPPLEMENTAIRE) return;
-      const { error } = await (supabase as any).from("personnage_assemblages").insert({
+      const { error } = await supabase.from("personnage_assemblages").insert({
         personnage_id: personnageId,
         assemblage_id: assemblageId,
         est_gratuit: false,
         xp_depense: COUT_ASSEMBLAGE_SUPPLEMENTAIRE,
       });
       if (error) { toast.error("Erreur lors de l'achat."); return; }
-      await (supabase as any)
-        .from("personnages")
-        .update({ xp_disponible: xpDisponibleLocal - COUT_ASSEMBLAGE_SUPPLEMENTAIRE })
-        .eq("id", personnageId);
       setAssemblagesAchetes((prev) => [...prev, assemblageId]);
       setXpDisponibleLocal((prev) => prev - COUT_ASSEMBLAGE_SUPPLEMENTAIRE);
       onXpSpent(COUT_ASSEMBLAGE_SUPPLEMENTAIRE);
@@ -174,8 +166,8 @@ const Step8Runes = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-amber-300 mb-4">
-            Assemblages gratuits : {assemblagesGratuits.length} / {quotaTotal} sélectionnés
+          <div className={`text-sm mb-4 font-medium ${quotaUtilises >= quotaTotal ? "text-green-400" : "text-amber-300"}`}>
+            Assemblages gratuits : {quotaUtilises} / {quotaTotal} sélectionnés
           </div>
           <div className="space-y-3">
             {assemblages.length === 0 ? (
@@ -203,7 +195,7 @@ const Step8Runes = ({
                           <p><span className="font-medium text-foreground">Cible :</span> {assemblage.cible}</p>
                         )}
                         {assemblage.runes_requises && (
-                          <p><span className="font-medium text-foreground">Runes requises :</span> {assemblage.runes_requises}</p>
+                          <p><span className="font-medium text-foreground">Runes requises :</span> {assemblage.runes_requises.join(", ")}</p>
                         )}
                         {assemblage.cout_ps != null && (
                           <p><span className="font-medium text-foreground">Coût PS :</span> {assemblage.cout_ps}</p>

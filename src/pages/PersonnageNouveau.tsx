@@ -27,6 +27,7 @@ import Step6Prieres from "@/components/creation/Etape_PrieresDivines";
 import Step7Artisanat from "@/components/creation/Etape_Artisanat";
 import Step8Runes from "@/components/creation/Etape_AssemblagesRunes";
 import Step9Historique from "@/components/creation/Etape_HistoriqueAme";
+import Step10Recapitulatif from "@/components/creation/Etape_Recapitulatif";
 
 const TOTAL_STEPS = 11;
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
@@ -52,8 +53,12 @@ const PersonnageNouveau = () => {
 
   // Étape 2 : Race
   const [raceId, setRaceId] = useState<string | null>(null);
+  const [raceNom, setRaceNom] = useState<string>("");
+  const [raceNomLatin, setRaceNomLatin] = useState<string | null>(null);
   const [sousTypeChimeride, setSousTypeChimeride] = useState<"carnivore" | "herbivore" | null>(null);
   const [showRaceValidationPopup, setShowRaceValidationPopup] = useState(false);
+  const [backgroundDemande, setBackgroundDemande] = useState("");
+  const [configJeu, setConfigJeu] = useState<Record<string, string>>({});
 
   // Étape 3 : Traits raciaux
   const [etape3PeutPasser, setEtape3PeutPasser] = useState(false);
@@ -69,7 +74,9 @@ const PersonnageNouveau = () => {
   // Étape 5 : Compétences
   const [classeNom, setClasseNom] = useState<string>('');
   const [familleCriminelleId, setFamilleCriminelleId] = useState<string | null>(null);
+  const [familleCriminelleNom, setFamilleCriminelleNom] = useState<string | null>(null);
   const [psMax, setPsMax] = useState<number>(0);
+  const [pvMax, setPvMax] = useState<number>(0);
   const [competencesGratuites, setCompetencesGratuites] = useState<string[]>([]);
 
   // XP global
@@ -118,23 +125,28 @@ const PersonnageNouveau = () => {
             if (data.classe_id) {
               const { data: classe } = await supabase
                 .from('classes')
-                .select('nom, ps_depart, competences_gratuites')
+                .select('nom, pv_depart, ps_depart, competences_gratuites')
                 .eq('id', data.classe_id)
                 .single();
               if (classe) {
                 setClasseNom((classe as any).nom);
                 setCompetencesGratuites(((classe as any).competences_gratuites as string[]) ?? []);
                 setPsMax((data as any).ps_max ?? (classe as any).ps_depart ?? 0);
+                setPvMax((data as any).pv_max ?? (classe as any).pv_depart ?? 0);
               }
             }
-            // Charger xp_depart de la race si elle est déjà choisie
+            // Charger xp_depart, nom et nom_latin de la race si elle est déjà choisie
             if (data.race_id) {
               const { data: raceData } = await supabase
                 .from("races")
-                .select("xp_depart")
+                .select("xp_depart, nom, nom_latin")
                 .eq("id", data.race_id)
                 .single();
-              if (raceData) setXpDepart(raceData.xp_depart);
+              if (raceData) {
+                setXpDepart(raceData.xp_depart);
+                setRaceNom(raceData.nom ?? "");
+                setRaceNomLatin(raceData.nom_latin ?? null);
+              }
             }
           }
         } catch (err) {
@@ -148,21 +160,27 @@ const PersonnageNouveau = () => {
     }
   }, [idParam]);
 
-  // Quand la race change, charger son xp_depart
+  // Quand la race change, charger ses données
   useEffect(() => {
     if (!raceId) {
       setXpDepart(null);
+      setRaceNom("");
+      setRaceNomLatin(null);
       return;
     }
-    const fetchRaceXp = async () => {
+    const fetchRaceData = async () => {
       const { data } = await supabase
         .from("races")
-        .select("xp_depart")
+        .select("xp_depart, nom, nom_latin")
         .eq("id", raceId)
         .single();
-      if (data) setXpDepart(data.xp_depart);
+      if (data) {
+        setXpDepart(data.xp_depart);
+        setRaceNom(data.nom ?? "");
+        setRaceNomLatin(data.nom_latin ?? null);
+      }
     };
-    fetchRaceXp();
+    fetchRaceData();
   }, [raceId]);
 
   // Quand la classe change, charger ses données pour l'étape 5
@@ -178,7 +196,7 @@ const PersonnageNouveau = () => {
     const fetchClasseData = async () => {
       const { data } = await supabase
         .from('classes')
-        .select('nom, ps_depart, competences_gratuites')
+        .select('nom, pv_depart, ps_depart, competences_gratuites')
         .eq('id', classeId)
         .single();
       if (data) {
@@ -186,11 +204,45 @@ const PersonnageNouveau = () => {
         setCompetencesGratuites(((data as any).competences_gratuites as string[]) ?? []);
         if (!idParam) {
           setPsMax((data as any).ps_depart ?? 0);
+          setPvMax((data as any).pv_depart ?? 0);
         }
       }
     };
     fetchClasseData();
   }, [classeId, idParam]);
+
+  // Charger la config_jeu (liens FB/Discord + texte photos)
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const { data } = await supabase
+        .from("config_jeu")
+        .select("cle, valeur")
+        .in("cle", ["lien_facebook_hurlevent", "lien_discord_hurlevent", "texte_envoi_photos_race"]);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((row: any) => { map[row.cle] = String(row.valeur ?? ""); });
+        setConfigJeu(map);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  // Quand la famille criminelle change, charger son nom
+  useEffect(() => {
+    if (!familleCriminelleId) {
+      setFamilleCriminelleNom(null);
+      return;
+    }
+    const fetchFamille = async () => {
+      const { data } = await supabase
+        .from("familles_criminelles")
+        .select("nom")
+        .eq("id", familleCriminelleId)
+        .single();
+      if (data) setFamilleCriminelleNom((data as any).nom ?? null);
+    };
+    fetchFamille();
+  }, [familleCriminelleId]);
 
   // Requêtes pour les données d'encyclopédie
   const { data: religions = [] } = useQuery({
@@ -246,27 +298,23 @@ const PersonnageNouveau = () => {
     }
   };
 
-  const creerNotificationRaceSpeciale = async () => {
-    if (!personnageId || !user || !raceId) return;
-
-    const { data: existant } = await (supabase as any)
-      .from("notifications")
-      .select("id")
-      .eq("type", "validation_race")
-      .eq("reference_id", personnageId)
-      .eq("statut", "non_traite")
-      .maybeSingle();
-
-    if (!existant) {
-      await (supabase as any).from("notifications").insert({
-        user_id: user.id,
-        message: `Demande de validation de race pour le personnage "${nom}".`,
-        lu: false,
-        type: "validation_race",
-        reference_id: personnageId,
-        statut: "non_traite",
-      });
+  const creerDemandeRace = async (): Promise<boolean> => {
+    if (!personnageId) return false;
+    const { data, error } = await supabase.rpc("creer_demande_race", {
+      p_personnage_id: personnageId,
+      p_background: backgroundDemande,
+    });
+    if (error) {
+      toast.error("Erreur lors de la soumission de la demande.");
+      return false;
     }
+    const result = data as any;
+    if (result?.succes === false) {
+      toast.error(result.erreur ?? "Erreur lors de la soumission.");
+      return false;
+    }
+    toast.success(result?.message ?? "Demande soumise avec succès !");
+    return true;
   };
 
   const naviguerEtapeSuivante = () => {
@@ -285,8 +333,10 @@ const PersonnageNouveau = () => {
   };
 
   const handleConfirmerRaceSpeciale = async () => {
-    await creerNotificationRaceSpeciale();
+    const ok = await creerDemandeRace();
+    if (!ok) return;
     setShowRaceValidationPopup(false);
+    setBackgroundDemande("");
     naviguerEtapeSuivante();
   };
 
@@ -327,6 +377,9 @@ const PersonnageNouveau = () => {
             nomPersonnage={nom}
             sousTypeChimeride={sousTypeChimeride}
             onSousTypeChange={setSousTypeChimeride}
+            backgroundDemande={backgroundDemande}
+            onBackgroundChange={setBackgroundDemande}
+            configJeu={configJeu}
           />
         );
 
@@ -424,8 +477,33 @@ const PersonnageNouveau = () => {
           />
         );
       case 11:
-      default:
-        return <div className="text-white">En construction...</div>;
+      default: {
+        if (!personnageId) return <div className="text-white">Sauvegarde en cours...</div>;
+        const religionNom = religions.find((r) => r.id === religionId)?.nom ?? null;
+        return (
+          <Step10Recapitulatif
+            personnageId={personnageId}
+            nomPersonnage={nom}
+            raceNom={raceNom}
+            raceNomLatin={raceNomLatin}
+            classeNom={classeNom}
+            niveau={1 + gnCompletes}
+            xpTotal={xpTotal ?? 0}
+            xpDepense={xpDepense}
+            religionNom={religionNom}
+            familleCriminelleNom={familleCriminelleNom}
+            gnCompletes={gnCompletes}
+            miniGnCompletes={miniGnCompletes}
+            ouverturesTerrain={ouverturesTerrain}
+            pvMax={pvMax}
+            psMax={psMax}
+            historique={historique}
+            amePersonnage={amePersonnage}
+            traitObligatoire={null}
+            traitsOptionnels={[]}
+          />
+        );
+      }
     }
   };
 
@@ -494,32 +572,38 @@ const PersonnageNouveau = () => {
         </div>
       </div>
 
-      {/* Correctif 4 : Dialog validation race spéciale (déclenché au clic Suivant) */}
-      <Dialog open={showRaceValidationPopup} onOpenChange={(open) => { if (!open) setShowRaceValidationPopup(false); }}>
-        <DialogContent className="sm:max-w-md bg-card border-gold/40">
+      {/* Dialog validation race spéciale — appelle creer_demande_race */}
+      <Dialog open={showRaceValidationPopup} onOpenChange={(open) => { if (!open) { setShowRaceValidationPopup(false); setBackgroundDemande(""); } }}>
+        <DialogContent className="sm:max-w-lg bg-card border-gold/40">
           <DialogHeader>
             <DialogTitle className="font-heading text-gold flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-400" />
-              Validation obligatoire
+              Approbation obligatoire
             </DialogTitle>
             <DialogDescription className="text-foreground/80 pt-2">
-              En choisissant cette race, ton personnage devra être validé par l'organisation
-              avant de pouvoir jouer. Une demande sera automatiquement envoyée à l'équipe.
+              Cette race nécessite une approbation de l'organisation. Tu peux continuer la création,
+              mais l'inscription à un événement sera bloquée jusqu'à l'approbation.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="py-2 text-sm text-foreground/70">
+            Background rempli à l'étape 2 ({backgroundDemande.length} caractères).
+          </div>
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
-              onClick={() => setShowRaceValidationPopup(false)}
+              onClick={() => { setShowRaceValidationPopup(false); setBackgroundDemande(""); }}
               className="border-white/20"
             >
               Annuler
             </Button>
             <Button
               onClick={handleConfirmerRaceSpeciale}
+              disabled={backgroundDemande.length < 100}
               className="bg-gold text-black hover:bg-gold/80 font-bold"
             >
-              Je comprends, continuer
+              Soumettre la demande
             </Button>
           </DialogFooter>
         </DialogContent>
