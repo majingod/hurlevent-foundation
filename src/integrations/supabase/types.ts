@@ -810,6 +810,7 @@ export type Database = {
         Row: {
           assemblage_id: string
           date_acquisition: string
+          est_gratuit: boolean
           id: string
           personnage_id: string
           xp_depense: number
@@ -817,6 +818,7 @@ export type Database = {
         Insert: {
           assemblage_id: string
           date_acquisition?: string
+          est_gratuit?: boolean
           id?: string
           personnage_id: string
           xp_depense?: number
@@ -824,6 +826,7 @@ export type Database = {
         Update: {
           assemblage_id?: string
           date_acquisition?: string
+          est_gratuit?: boolean
           id?: string
           personnage_id?: string
           xp_depense?: number
@@ -1317,6 +1320,7 @@ export type Database = {
       personnage_recettes: {
         Row: {
           date_acquisition: string
+          est_gratuit: boolean
           id: string
           personnage_id: string
           recette_id: string
@@ -1324,6 +1328,7 @@ export type Database = {
         }
         Insert: {
           date_acquisition?: string
+          est_gratuit?: boolean
           id?: string
           personnage_id: string
           recette_id: string
@@ -1331,6 +1336,7 @@ export type Database = {
         }
         Update: {
           date_acquisition?: string
+          est_gratuit?: boolean
           id?: string
           personnage_id?: string
           recette_id?: string
@@ -1549,6 +1555,7 @@ export type Database = {
           pv_max: number
           race_id: string | null
           religion_id: string | null
+          sous_type_chimeride: string | null
           traits_raciaux_choisis: Json | null
           updated_at: string | null
           xp_depense: number | null
@@ -1580,6 +1587,7 @@ export type Database = {
           pv_max?: number
           race_id?: string | null
           religion_id?: string | null
+          sous_type_chimeride?: string | null
           traits_raciaux_choisis?: Json | null
           updated_at?: string | null
           xp_depense?: number | null
@@ -1611,6 +1619,7 @@ export type Database = {
           pv_max?: number
           race_id?: string | null
           religion_id?: string | null
+          sous_type_chimeride?: string | null
           traits_raciaux_choisis?: Json | null
           updated_at?: string | null
           xp_depense?: number | null
@@ -2197,7 +2206,14 @@ export type Database = {
           niveau_joaillerie: number | null
           niveau_runes: number | null
           personnage_id: string | null
+          quota_alchimie_intermediaire_total: number | null
+          quota_alchimie_intermediaire_utilises: number | null
+          quota_alchimie_majeure_total: number | null
+          quota_alchimie_majeure_utilises: number | null
+          quota_alchimie_mineure_total: number | null
+          quota_alchimie_mineure_utilises: number | null
           quota_assemblages_total: number | null
+          quota_assemblages_utilises: number | null
           quota_recettes_total: number | null
         }
         Relationships: []
