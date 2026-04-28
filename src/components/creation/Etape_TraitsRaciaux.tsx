@@ -40,6 +40,7 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
 
   useEffect(() => {
     if (!personnageId) {
+      console.warn("[Etape_TraitsRaciaux] personnageId manquant — chargement annulé");
       setChargement(false);
       return;
     }
@@ -51,7 +52,26 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
           .select("xp_total, xp_depense, traits_raciaux_choisis, race_id, sous_type_chimeride")
           .eq("id", personnageId)
           .single();
-        if (error || !perso) { setChargement(false); return; }
+
+        if (error) {
+          console.error("[Etape_TraitsRaciaux] Erreur lecture personnages:", error);
+          toast.error(`Personnage non chargé : ${error.message}`);
+          setChargement(false);
+          return;
+        }
+        if (!perso) {
+          console.warn("[Etape_TraitsRaciaux] Personnage introuvable pour id:", personnageId);
+          setChargement(false);
+          return;
+        }
+
+        console.log("[Etape_TraitsRaciaux] perso chargé:", {
+          id: personnageId,
+          race_id: perso.race_id,
+          sous_type_chimeride: perso.sous_type_chimeride,
+          xp_total: perso.xp_total,
+          xp_depense: perso.xp_depense,
+        });
 
         setXpTotal(perso.xp_total ?? 0);
         const xpDep = perso.xp_depense ?? 0;
@@ -67,41 +87,65 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
         setRaceIdLocal(perso.race_id ?? null);
         setSousTypeLocal(perso.sous_type_chimeride ?? null);
 
-        // Charger nb_traits_raciaux depuis la race
-        if (perso.race_id) {
-          const { data: raceData } = await supabase
-            .from("races")
-            .select("nb_traits_raciaux")
-            .eq("id", perso.race_id)
-            .single();
-          const quota = raceData?.nb_traits_raciaux ?? 1;
-          setQuotaGratuit(quota);
-          onPeutPasser(gratuits.length >= quota);
-
-          // Charger les traits filtrés par race via vue_traits_par_race
-          const sousType = perso.sous_type_chimeride ?? null;
-          let query = supabase
-            .from("vue_traits_par_race" as any)
-            .select("trait_id, trait_nom, trait_description, cout_xp, est_actif, sous_type")
-            .eq("race_id", perso.race_id)
-            .eq("est_actif", true);
-          if (sousType) {
-            query = (query as any).or(`sous_type.eq.${sousType},sous_type.is.null`);
-          }
-          const { data: traitsData } = await query;
-          if (traitsData) {
-            setTraits(
-              (traitsData as any[]).map((t) => ({
-                trait_id: t.trait_id,
-                trait_nom: t.trait_nom,
-                trait_description: t.trait_description,
-                cout_xp: t.cout_xp,
-              }))
-            );
-          }
+        if (!perso.race_id) {
+          console.warn("[Etape_TraitsRaciaux] race_id NULL en DB — l'étape 2 n'a pas (encore) sauvegardé");
+          setChargement(false);
+          return;
         }
-      } catch {
-        // intentionally ignored — fallback to empty state
+
+        // Charger nb_traits_raciaux depuis la race
+        const { data: raceData, error: raceError } = await supabase
+          .from("races")
+          .select("nb_traits_raciaux, nom")
+          .eq("id", perso.race_id)
+          .single();
+
+        if (raceError) {
+          console.error("[Etape_TraitsRaciaux] Erreur lecture races:", raceError);
+        }
+
+        const quota = raceData?.nb_traits_raciaux ?? 1;
+        console.log("[Etape_TraitsRaciaux] race:", raceData?.nom, "→ quota gratuit:", quota);
+        setQuotaGratuit(quota);
+        onPeutPasser(gratuits.length >= quota);
+
+        // Charger les traits filtrés par race via vue_traits_par_race
+        const sousType = perso.sous_type_chimeride ?? null;
+        let query = supabase
+          .from("vue_traits_par_race" as any)
+          .select("trait_id, trait_nom, trait_description, cout_xp, est_actif, sous_type")
+          .eq("race_id", perso.race_id)
+          .eq("est_actif", true);
+        if (sousType) {
+          query = (query as any).or(`sous_type.eq.${sousType},sous_type.is.null`);
+        }
+        const { data: traitsData, error: traitsError } = await query;
+
+        if (traitsError) {
+          console.error("[Etape_TraitsRaciaux] Erreur vue_traits_par_race:", traitsError);
+          toast.error(`Traits non chargés : ${traitsError.message}`);
+        }
+
+        console.log("[Etape_TraitsRaciaux] requête vue_traits_par_race:", {
+          race_id: perso.race_id,
+          sous_type: sousType,
+          nb_traits_recus: traitsData?.length ?? 0,
+          traitsData,
+        });
+
+        if (traitsData) {
+          setTraits(
+            (traitsData as any[]).map((t) => ({
+              trait_id: t.trait_id,
+              trait_nom: t.trait_nom,
+              trait_description: t.trait_description,
+              cout_xp: t.cout_xp,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("[Etape_TraitsRaciaux] Exception inattendue:", err);
+        toast.error("Erreur inattendue lors du chargement des traits.");
       } finally {
         setChargement(false);
       }
@@ -126,7 +170,7 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
       ...newTraitsGratuits.map((id) => ({ trait_id: id, est_gratuit: true, xp_depense: 0 })),
       ...newTraitsAchetes.map((id) => ({ trait_id: id, est_gratuit: false, xp_depense: COUT_TRAIT })),
     ];
-    await supabase
+    const { error } = await supabase
       .from("personnages")
       .update({
         traits_raciaux_choisis: choisis as any,
@@ -134,6 +178,10 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
         updated_at: new Date().toISOString(),
       })
       .eq("id", personnageId);
+    if (error) {
+      console.error("[Etape_TraitsRaciaux] Erreur sauvegarde traits:", error);
+      toast.error("Erreur lors de la sauvegarde des traits.");
+    }
   };
 
   const handleGratuit = async (traitId: string) => {
@@ -164,12 +212,17 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
         return;
       }
       // Valider via la fonction PL/pgSQL
-      const { data: validation } = await supabase.rpc("peut_acheter_trait_racial" as any, {
+      const { data: validation, error: rpcError } = await supabase.rpc("peut_acheter_trait_racial" as any, {
         p_personnage_id: personnageId,
         p_trait_id: traitId,
         p_race_id: raceIdLocal,
         p_sous_type: sousTypeLocal,
       });
+      if (rpcError) {
+        console.error("[Etape_TraitsRaciaux] Erreur RPC peut_acheter_trait_racial:", rpcError);
+        toast.error("Erreur de validation du trait.");
+        return;
+      }
       if (validation === false) {
         toast.error("Ce trait ne peut pas être acheté pour ce personnage.");
         return;
@@ -192,10 +245,19 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
   }
 
   if (traits.length === 0) {
+    // Cas légitime : race sans traits configurés OU race_id pas encore propagé en DB
+    // → on autorise le passage pour ne pas bloquer le créateur
+    if (!chargement) onPeutPasser(true);
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
         <h2 className="text-2xl font-heading text-gold">Choisis tes traits raciaux</h2>
-        <p className="text-white/50 italic">Aucun trait racial disponible pour cette race.</p>
+        <p className="text-white/50 italic">
+          Aucun trait racial disponible pour cette race. Tu peux passer à l'étape suivante.
+        </p>
+        <p className="text-xs text-white/30 italic">
+          (Si tu vois ce message pour une race qui devrait avoir des traits, signale-le à l'organisation
+          ou reviens à l'étape précédente puis ré-avance.)
+        </p>
       </div>
     );
   }
