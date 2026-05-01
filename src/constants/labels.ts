@@ -105,15 +105,20 @@ export const RACE_ICONS = {
   XP_DEPART: '⭐',
 } as const;
 
+/**
+ * Mapping des Emojis par UUID de Race
+ * Utilise les UUIDs officiels de la base de données Supabase
+ */
 export const RACE_EMOJI_MAP: Record<string, string> = {
-  'Chiméride': '🐾',
-  'Demi-Elfe': '⚔️',
-  'Demi-Orc': '💪',
-  'Drow': '🌙',
-  'Fée': '✨',
-  'Gobelin': '🎭',
-  'Haut-Elfe': '👑',
-  'Humain': '👤',
-  'Myrvalk': '⛏️',
-  'Orc': '🗡️',
+  '926b6948-e192-4d41-9909-efabaa3059b5': '🐾', // Chiméride
+  'f6fb2d30-23d9-4c80-b7f5-ad495c1b222f': '⚔️', // Demi-Elfe
+  '824bd609-1ae4-436a-88b2-d74883377bae': '💪', // Demi-Orc
+  '963cc1f8-0b27-4a88-aa68-74d4af4ec153': '🌙', // Drow
+  'fd1f6125-d2bc-4be8-ac0c-426196a1eb43': '✨', // Fée
+  'e6fa1198-4acf-4854-bdc1-2174ecd3d6d4': '🎭', // Gobelin
+  'd9cfea0e-acbb-4f02-9eaa-12efa6fbf9b9': '👑', // Haut-Elfe
+  '561534b1-0375-41ce-b318-7a0e29a9d2b3': '👤', // Humain
+  '491495ec-e48f-48a5-b8ca-3798015bc336': '⛏️', // Myrvalk
+  '91181212-4a6d-4d59-b668-808f32dc46be': '🗡️', // Orc
+  '4d7e2226-76cb-4b94-9df4-b8f12ff486e1': '❓', // Les Non-Races
 } as const;

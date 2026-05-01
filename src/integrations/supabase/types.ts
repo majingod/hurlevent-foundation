@@ -1,3 +1,9 @@
+export type PersonnageTraitRacialChoisi = {
+  trait_id: string;
+  est_gratuit: boolean;
+  xp_depense: number;
+};
+
 export type Json =
   | string
   | number
@@ -907,7 +913,7 @@ export type Database = {
           niveau: number | null
           xp_total: number | null
           xp_depense: number | null
-          traits_raciaux_choisis: Json | null
+          traits_raciaux_choisis: PersonnageTraitRacialChoisi[] | null
           famille_criminelle_id: string | null
           religion_id: string | null
           historique: string | null
@@ -940,7 +946,7 @@ export type Database = {
           niveau?: number | null
           xp_total?: number | null
           xp_depense?: number | null
-          traits_raciaux_choisis?: Json | null
+          traits_raciaux_choisis?: PersonnageTraitRacialChoisi[] | null
           famille_criminelle_id?: string | null
           religion_id?: string | null
           historique?: string | null
@@ -973,7 +979,7 @@ export type Database = {
           niveau?: number | null
           xp_total?: number | null
           xp_depense?: number | null
-          traits_raciaux_choisis?: Json | null
+          traits_raciaux_choisis?: PersonnageTraitRacialChoisi[] | null
           famille_criminelle_id?: string | null
           religion_id?: string | null
           historique?: string | null
