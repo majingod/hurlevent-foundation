@@ -78,7 +78,15 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
         setXpDepense(xpDep);
         onXpDepenseChange(xpDep);
 
-        const choisis = (perso.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
+        const choisisRaw = (perso.traits_raciaux_choisis as any[] | null) ?? [];
+        
+        // Support du format Legacy (id, gratuit) et Nouveau (trait_id, est_gratuit)
+        const choisis: TraitChoisi[] = choisisRaw.map(t => ({
+          trait_id: t.trait_id || t.id,
+          est_gratuit: t.est_gratuit !== undefined ? t.est_gratuit : t.gratuit,
+          xp_depense: t.xp_depense ?? 0
+        }));
+
         const gratuits = choisis.filter((t) => t.est_gratuit).map((t) => t.trait_id);
         const achetes = choisis.filter((t) => !t.est_gratuit).map((t) => t.trait_id);
         setTraitsGratuits(gratuits);
