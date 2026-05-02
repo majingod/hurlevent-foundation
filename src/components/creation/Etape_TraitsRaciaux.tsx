@@ -120,36 +120,51 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
         // Charger les traits filtrés par race via vue_traits_par_race
         const sousType = perso.sous_type_chimeride ?? null;
         
-        // FORCE LOAD : On charge TOUS les traits liés à cette race sans aucun filtre
-        // pour diagnostiquer si c'est un problème de données ou de filtrage
-        console.log("[Etape_TraitsRaciaux] Tentative de chargement brut pour race_id:", perso.race_id);
-        const { data: traitsData, error: traitsError } = await supabase
-          .from("vue_traits_par_race" as any)
-          .select("*")
+        // Correction finale : On utilise directement les tables de base via une jointure
+        // car la vue semble poser problème en lecture via l'API PostgREST
+        console.log("[Etape_TraitsRaciaux] Chargement via race_traits pour race_id:", perso.race_id);
+        
+        let query = supabase
+          .from("race_traits")
+          .select(`
+            trait_id,
+            sous_type,
+            traits_raciaux (
+              nom,
+              description,
+              cout_xp,
+              est_actif
+            )
+          `)
           .eq("race_id", perso.race_id);
 
+        // Filtrage par sous-type
+        if (sousType) {
+          query = query.or(`sous_type.eq.${sousType},sous_type.is.null`);
+        } else {
+          query = query.is("sous_type", null);
+        }
+
+        const { data: rawData, error: traitsError } = await query;
+
         if (traitsError) {
-          console.error("[Etape_TraitsRaciaux] Erreur vue_traits_par_race:", traitsError);
+          console.error("[Etape_TraitsRaciaux] Erreur chargement traits:", traitsError);
           toast.error(`Traits non chargés : ${traitsError.message}`);
         }
 
-        console.log("[Etape_TraitsRaciaux] DEBUG requête:", {
-          race_id: perso.race_id,
-          sous_type: sousType,
-          nb_traits_recus: traitsData?.length ?? 0,
-          traitsData,
-          error: traitsError
-        });
-
-        if (traitsData) {
-          setTraits(
-            (traitsData as any[]).map((t) => ({
-              trait_id: t.trait_id,
-              trait_nom: t.trait_nom,
-              trait_description: t.trait_description,
-              cout_xp: t.cout_xp,
-            }))
-          );
+        if (rawData) {
+          // On filtre les traits actifs et on formate pour le state
+          const formattedTraits = (rawData as any[])
+            .filter(item => item.traits_raciaux?.est_actif !== false)
+            .map(item => ({
+              trait_id: item.trait_id,
+              trait_nom: item.traits_raciaux?.nom ?? "Sans nom",
+              trait_description: item.traits_raciaux?.description ?? "",
+              cout_xp: item.traits_raciaux?.cout_xp ?? 10
+            }));
+          
+          console.log("[Etape_TraitsRaciaux] Traits chargés:", formattedTraits.length);
+          setTraits(formattedTraits);
         }
       } catch (err) {
         console.error("[Etape_TraitsRaciaux] Exception inattendue:", err);
