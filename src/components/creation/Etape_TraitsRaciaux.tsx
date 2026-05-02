@@ -273,6 +273,15 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
     if (!chargement) onPeutPasser(true);
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+        {/* BANDEAU DE DIAGNOSTIC */}
+        <div className="mb-6 rounded-md border border-red-500/50 bg-red-500/10 p-3 text-xs font-mono text-red-400">
+          <p className="font-bold underline mb-1">DIAGNOSTIC TECHNIQUE :</p>
+          <p>Perso ID: {personnageId || "NULL"}</p>
+          <p>Race ID: {raceIdLocal || "NULL"}</p>
+          <p>Sous-type: {sousTypeLocal || "NULL"}</p>
+          <p>Traits chargés: {traits.length}</p>
+        </div>
+
         <h2 className="text-2xl font-heading text-gold">Choisis tes traits raciaux</h2>
         <p className="text-white/50 italic">
           Aucun trait racial disponible pour cette race. Tu peux passer à l'étape suivante.
