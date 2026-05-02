@@ -125,8 +125,11 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
           .eq("race_id", perso.race_id)
           .eq("est_actif", true);
         if (sousType) {
+          // Si on a un sous-type (ex: Chiméride Carnivore), on veut :
+          // (sous_type == 'carnivore' OR sous_type IS NULL)
           query = query.or(`sous_type.eq.${sousType},sous_type.is.null`);
         } else {
+          // Si pas de sous-type (ex: Humain), on ne veut QUE les traits où sous_type IS NULL
           query = query.is("sous_type", null);
         }
         const { data: traitsData, error: traitsError } = await query;
@@ -136,11 +139,12 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
           toast.error(`Traits non chargés : ${traitsError.message}`);
         }
 
-        console.log("[Etape_TraitsRaciaux] requête vue_traits_par_race:", {
+        console.log("[Etape_TraitsRaciaux] DEBUG requête:", {
           race_id: perso.race_id,
           sous_type: sousType,
           nb_traits_recus: traitsData?.length ?? 0,
           traitsData,
+          error: traitsError
         });
 
         if (traitsData) {
