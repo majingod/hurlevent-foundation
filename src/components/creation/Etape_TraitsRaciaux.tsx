@@ -125,7 +125,9 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
           .eq("race_id", perso.race_id)
           .eq("est_actif", true);
         if (sousType) {
-          query = (query as any).or(`sous_type.eq.${sousType},sous_type.is.null`);
+          query = query.or(`sous_type.eq.${sousType},sous_type.is.null`);
+        } else {
+          query = query.is("sous_type", null);
         }
         const { data: traitsData, error: traitsError } = await query;
 
