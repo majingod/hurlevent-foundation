@@ -120,37 +120,13 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
         // Charger les traits filtrés par race via vue_traits_par_race
         const sousType = perso.sous_type_chimeride ?? null;
         
-        // On commence par une requête de base sur la race
-        let query = supabase
+        // FORCE LOAD : On charge TOUS les traits liés à cette race sans aucun filtre
+        // pour diagnostiquer si c'est un problème de données ou de filtrage
+        console.log("[Etape_TraitsRaciaux] Tentative de chargement brut pour race_id:", perso.race_id);
+        const { data: traitsData, error: traitsError } = await supabase
           .from("vue_traits_par_race" as any)
           .select("*")
-          .eq("race_id", perso.race_id)
-          .eq("est_actif", true);
-
-        // On applique le filtre de sous-type uniquement si nécessaire
-        // Pour un Humain (sousType null), on filtre explicitement sur sous_type IS NULL
-        if (sousType) {
-          query = query.or(`sous_type.eq.${sousType},sous_type.is.null`);
-        } else {
-          query = query.is("sous_type", null);
-        }
-
-        let { data: traitsData, error: traitsError } = await query;
-
-        // FALLBACK : Si aucun trait n'est trouvé avec le filtre sous_type, 
-        // on essaie de charger TOUS les traits actifs de la race pour éviter l'écran vide
-        if (!traitsError && (!traitsData || traitsData.length === 0)) {
-          console.log("[Etape_TraitsRaciaux] Aucun trait trouvé avec filtre sous_type, tentative sans filtre...");
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from("vue_traits_par_race" as any)
-            .select("*")
-            .eq("race_id", perso.race_id)
-            .eq("est_actif", true);
-          
-          if (!fallbackError && fallbackData && fallbackData.length > 0) {
-            traitsData = fallbackData;
-          }
-        }
+          .eq("race_id", perso.race_id);
 
         if (traitsError) {
           console.error("[Etape_TraitsRaciaux] Erreur vue_traits_par_race:", traitsError);
