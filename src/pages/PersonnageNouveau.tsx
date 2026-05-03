@@ -317,10 +317,15 @@ const PersonnageNouveau = () => {
     return true;
   };
 
-  const naviguerEtapeSuivante = () => {
-    sauvegarderEtape(etape);
-    setEtape(Math.min(etape + 1, TOTAL_STEPS));
-    window.scrollTo(0, 0);
+  const naviguerEtapeSuivante = async () => {
+    setChargementDonnees(true);
+    try {
+      await sauvegarderEtape(etape);
+      setEtape(Math.min(etape + 1, TOTAL_STEPS));
+      window.scrollTo(0, 0);
+    } finally {
+      setChargementDonnees(false);
+    }
   };
 
   const etapeSuivante = async () => {
@@ -329,7 +334,7 @@ const PersonnageNouveau = () => {
       setShowRaceValidationPopup(true);
       return;
     }
-    naviguerEtapeSuivante();
+    await naviguerEtapeSuivante();
   };
 
   const handleConfirmerRaceSpeciale = async () => {
