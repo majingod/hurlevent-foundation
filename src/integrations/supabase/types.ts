@@ -1602,6 +1602,42 @@ export type Database = {
         }
         Relationships: []
       }
+      vue_assemblages_personnage: {
+        Row: {
+          id: string | null
+          personnage_id: string | null
+          nom: string | null
+          cible: string | null
+          description: string | null
+          effet: string | null
+          xp_depense: number | null
+          cout_ps: number | null
+          runes_requises: string[] | null
+        }
+        Insert: {
+          id?: string | null
+          personnage_id?: string | null
+          nom?: string | null
+          cible?: string | null
+          description?: string | null
+          effet?: string | null
+          xp_depense?: number | null
+          cout_ps?: number | null
+          runes_requises?: string[] | null
+        }
+        Update: {
+          id?: string | null
+          personnage_id?: string | null
+          nom?: string | null
+          cible?: string | null
+          description?: string | null
+          effet?: string | null
+          xp_depense?: number | null
+          cout_ps?: number | null
+          runes_requises?: string[] | null
+        }
+        Relationships: []
+      }
       vue_cercles_disponibles: {
         Row: {
           personnage_id: string | null
@@ -1695,6 +1731,48 @@ export type Database = {
           personnage_niveau?: number | null
           joueur_nom?: string | null
           joueur_id?: string | null
+        }
+        Relationships: []
+      }
+      vue_competences_personnage: {
+        Row: {
+          id: string | null
+          personnage_id: string | null
+          choix_achat: string | null
+          nom_maitre: string | null
+          statut_maitre: string | null
+          nom: string | null
+          categorie: string | null
+          competence_description: string | null
+          niveau_acquis: number | null
+          xp_depense: number | null
+          appris_via_maitre: boolean | null
+        }
+        Insert: {
+          id?: string | null
+          personnage_id?: string | null
+          choix_achat?: string | null
+          nom_maitre?: string | null
+          statut_maitre?: string | null
+          nom?: string | null
+          categorie?: string | null
+          competence_description?: string | null
+          niveau_acquis?: number | null
+          xp_depense?: number | null
+          appris_via_maitre?: boolean | null
+        }
+        Update: {
+          id?: string | null
+          personnage_id?: string | null
+          choix_achat?: string | null
+          nom_maitre?: string | null
+          statut_maitre?: string | null
+          nom?: string | null
+          categorie?: string | null
+          competence_description?: string | null
+          niveau_acquis?: number | null
+          xp_depense?: number | null
+          appris_via_maitre?: boolean | null
         }
         Relationships: []
       }
@@ -1851,6 +1929,120 @@ export type Database = {
           lieu?: string | null
           nb_participants?: number | null
           est_publie?: boolean | null
+        }
+        Relationships: []
+      }
+      vue_evenements_publies: {
+        Row: {
+          id: string | null
+          titre: string | null
+          date_evenement: string | null
+          date_fin: string | null
+          lieu: string | null
+          type_evenement: string | null
+          xp_recompense: number | null
+          max_participants: number | null
+          description: string | null
+          nb_inscrits: number | null
+        }
+        Insert: {
+          id?: string | null
+          titre?: string | null
+          date_evenement?: string | null
+          date_fin?: string | null
+          lieu?: string | null
+          type_evenement?: string | null
+          xp_recompense?: number | null
+          max_participants?: number | null
+          description?: string | null
+          nb_inscrits?: number | null
+        }
+        Update: {
+          id?: string | null
+          titre?: string | null
+          date_evenement?: string | null
+          date_fin?: string | null
+          lieu?: string | null
+          type_evenement?: string | null
+          xp_recompense?: number | null
+          max_participants?: number | null
+          description?: string | null
+          nb_inscrits?: number | null
+        }
+        Relationships: []
+      }
+      vue_fiche_personnage: {
+        Row: {
+          id: string | null
+          joueur_id: string | null
+          nom: string | null
+          niveau: number | null
+          xp_total: number | null
+          xp_depense: number | null
+          pv_max: number | null
+          ps_max: number | null
+          est_mort: boolean | null
+          est_actif: boolean | null
+          etape_creation: number | null
+          race_id: string | null
+          classe_id: string | null
+          religion_id: string | null
+          sous_type_chimeride: string | null
+          traits_raciaux_choisis: Json | null
+          created_at: string | null
+          updated_at: string | null
+          race_nom: string | null
+          race_nom_latin: string | null
+          classe_nom: string | null
+          religion_nom: string | null
+        }
+        Insert: {
+          id?: string | null
+          joueur_id?: string | null
+          nom?: string | null
+          niveau?: number | null
+          xp_total?: number | null
+          xp_depense?: number | null
+          pv_max?: number | null
+          ps_max?: number | null
+          est_mort?: boolean | null
+          est_actif?: boolean | null
+          etape_creation?: number | null
+          race_id?: string | null
+          classe_id?: string | null
+          religion_id?: string | null
+          sous_type_chimeride?: string | null
+          traits_raciaux_choisis?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          race_nom?: string | null
+          race_nom_latin?: string | null
+          classe_nom?: string | null
+          religion_nom?: string | null
+        }
+        Update: {
+          id?: string | null
+          joueur_id?: string | null
+          nom?: string | null
+          niveau?: number | null
+          xp_total?: number | null
+          xp_depense?: number | null
+          pv_max?: number | null
+          ps_max?: number | null
+          est_mort?: boolean | null
+          est_actif?: boolean | null
+          etape_creation?: number | null
+          race_id?: string | null
+          classe_id?: string | null
+          religion_id?: string | null
+          sous_type_chimeride?: string | null
+          traits_raciaux_choisis?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          race_nom?: string | null
+          race_nom_latin?: string | null
+          classe_nom?: string | null
+          religion_nom?: string | null
         }
         Relationships: []
       }
@@ -2157,6 +2349,90 @@ export type Database = {
         }
         Relationships: []
       }
+      vue_personnages_joueur: {
+        Row: {
+          id: string | null
+          joueur_id: string | null
+          nom: string | null
+          niveau: number | null
+          xp_total: number | null
+          xp_depense: number | null
+          etape_creation: number | null
+          est_actif: boolean | null
+          created_at: string | null
+          race_nom: string | null
+          classe_nom: string | null
+        }
+        Insert: {
+          id?: string | null
+          joueur_id?: string | null
+          nom?: string | null
+          niveau?: number | null
+          xp_total?: number | null
+          xp_depense?: number | null
+          etape_creation?: number | null
+          est_actif?: boolean | null
+          created_at?: string | null
+          race_nom?: string | null
+          classe_nom?: string | null
+        }
+        Update: {
+          id?: string | null
+          joueur_id?: string | null
+          nom?: string | null
+          niveau?: number | null
+          xp_total?: number | null
+          xp_depense?: number | null
+          etape_creation?: number | null
+          est_actif?: boolean | null
+          created_at?: string | null
+          race_nom?: string | null
+          classe_nom?: string | null
+        }
+        Relationships: []
+      }
+      vue_prieres_personnage: {
+        Row: {
+          id: string | null
+          personnage_id: string | null
+          nom_personnalise: string | null
+          zone_choisie: string | null
+          portee_choisie: string | null
+          duree_choisie: string | null
+          domaine: string | null
+          priere_description: string | null
+          duree_incantation: string | null
+          niveau_priere: number | null
+          cout_xp_base: number | null
+        }
+        Insert: {
+          id?: string | null
+          personnage_id?: string | null
+          nom_personnalise?: string | null
+          zone_choisie?: string | null
+          portee_choisie?: string | null
+          duree_choisie?: string | null
+          domaine?: string | null
+          priere_description?: string | null
+          duree_incantation?: string | null
+          niveau_priere?: number | null
+          cout_xp_base?: number | null
+        }
+        Update: {
+          id?: string | null
+          personnage_id?: string | null
+          nom_personnalise?: string | null
+          zone_choisie?: string | null
+          portee_choisie?: string | null
+          duree_choisie?: string | null
+          domaine?: string | null
+          priere_description?: string | null
+          duree_incantation?: string | null
+          niveau_priere?: number | null
+          cout_xp_base?: number | null
+        }
+        Relationships: []
+      }
       vue_prochain_evenement: {
         Row: {
           id: string | null
@@ -2202,6 +2478,84 @@ export type Database = {
           created_by?: string | null
           nb_inscrits?: number | null
           places_restantes?: number | null
+        }
+        Relationships: []
+      }
+      vue_recettes_personnage: {
+        Row: {
+          id: string | null
+          personnage_id: string | null
+          nom: string | null
+          type: string | null
+          description: string | null
+          effet: string | null
+          xp_depense: number | null
+          niveau_requis: number | null
+        }
+        Insert: {
+          id?: string | null
+          personnage_id?: string | null
+          nom?: string | null
+          type?: string | null
+          description?: string | null
+          effet?: string | null
+          xp_depense?: number | null
+          niveau_requis?: number | null
+        }
+        Update: {
+          id?: string | null
+          personnage_id?: string | null
+          nom?: string | null
+          type?: string | null
+          description?: string | null
+          effet?: string | null
+          xp_depense?: number | null
+          niveau_requis?: number | null
+        }
+        Relationships: []
+      }
+      vue_sorts_personnage: {
+        Row: {
+          id: string | null
+          personnage_id: string | null
+          nom_personnalise: string | null
+          formule_magique: string | null
+          zone_choisie: string | null
+          portee_choisie: string | null
+          duree_choisie: string | null
+          cercle: string | null
+          sort_nom_base: string | null
+          sort_description: string | null
+          niveau_sort: number | null
+          cout_xp_base: number | null
+        }
+        Insert: {
+          id?: string | null
+          personnage_id?: string | null
+          nom_personnalise?: string | null
+          formule_magique?: string | null
+          zone_choisie?: string | null
+          portee_choisie?: string | null
+          duree_choisie?: string | null
+          cercle?: string | null
+          sort_nom_base?: string | null
+          sort_description?: string | null
+          niveau_sort?: number | null
+          cout_xp_base?: number | null
+        }
+        Update: {
+          id?: string | null
+          personnage_id?: string | null
+          nom_personnalise?: string | null
+          formule_magique?: string | null
+          zone_choisie?: string | null
+          portee_choisie?: string | null
+          duree_choisie?: string | null
+          cercle?: string | null
+          sort_nom_base?: string | null
+          sort_description?: string | null
+          niveau_sort?: number | null
+          cout_xp_base?: number | null
         }
         Relationships: []
       }
@@ -2282,37 +2636,28 @@ export type Database = {
       }
       vue_traits_par_race: {
         Row: {
-          race_trait_id: string | null
           race_id: string | null
           trait_id: string | null
           sous_type: string | null
-          race_nom: string | null
           trait_nom: string | null
           trait_description: string | null
           cout_xp: number | null
-          est_actif: boolean | null
         }
         Insert: {
-          race_trait_id?: string | null
           race_id?: string | null
           trait_id?: string | null
           sous_type?: string | null
-          race_nom?: string | null
           trait_nom?: string | null
           trait_description?: string | null
           cout_xp?: number | null
-          est_actif?: boolean | null
         }
         Update: {
-          race_trait_id?: string | null
           race_id?: string | null
           trait_id?: string | null
           sous_type?: string | null
-          race_nom?: string | null
           trait_nom?: string | null
           trait_description?: string | null
           cout_xp?: number | null
-          est_actif?: boolean | null
         }
         Relationships: []
       }
