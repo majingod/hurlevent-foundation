@@ -276,25 +276,35 @@ const PersonnageNouveau = () => {
       };
 
       if (personnageId) {
-        await supabase.from("personnages").update(payload).eq("id", personnageId);
+        const { error } = await supabase.from("personnages").update(payload).eq("id", personnageId);
+        if (error) throw error;
       } else {
         const { data, error } = await supabase.from("personnages").insert([payload]).select().single();
         if (error) throw error;
         setPersonnageId(data.id);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erreur sauvegarde étape:", err);
+      toast.error("Erreur lors de la sauvegarde : " + (err.message || "Inconnue"));
+      throw err; // Re-throw pour bloquer la navigation
     }
   };
 
   const sauvegarderCroyance = async (croyant: boolean | null, relId: string | null) => {
     if (!personnageId || !user) return;
     try {
-      await (supabase.from("personnages") as any)
-        .update({ est_croyant: croyant, religion_id: relId, updated_at: new Date().toISOString() })
+      const { error } = await supabase
+        .from("personnages")
+        .update({ 
+          est_croyant: croyant, 
+          religion_id: relId, 
+          updated_at: new Date().toISOString() 
+        })
         .eq("id", personnageId);
-    } catch (err) {
+      if (error) throw error;
+    } catch (err: any) {
       console.error("Erreur sauvegarde croyance:", err);
+      toast.error("Erreur lors de la mise à jour de la croyance : " + (err.message || "Inconnue"));
     }
   };
 
