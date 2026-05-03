@@ -14,7 +14,9 @@ import { calculerCoutPS } from "@/utils/calculsMagie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import type { Json } from "@/integrations/supabase/types";
 
-interface Personnage {
+// ── Interfaces alignées sur les vues SQL ──────────────────────
+
+interface FichePersonnage {
   id: string;
   nom: string;
   niveau: number;
@@ -32,22 +34,10 @@ interface Personnage {
   mini_gn_completes: number;
   ouvertures_terrain: number;
   traits_raciaux_choisis: Json | null;
-}
-
-interface Race {
-  id: string;
-  nom: string;
-  nom_latin: string | null;
-}
-
-interface Classe {
-  id: string;
-  nom: string;
-}
-
-interface Religion {
-  id: string;
-  nom: string;
+  race_nom: string | null;
+  race_nom_latin: string | null;
+  classe_nom: string | null;
+  religion_nom: string | null;
 }
 
 interface Trait {
@@ -58,6 +48,7 @@ interface Trait {
 
 interface Competence {
   id: string;
+  personnage_id: string;
   nom: string;
   niveau_acquis: number;
   xp_depense: number;
@@ -70,6 +61,7 @@ interface Competence {
 
 interface Sort {
   id: string;
+  personnage_id: string;
   nom_personnalise: string;
   formule_magique: string | null;
   niveau_sort: number;
@@ -84,6 +76,7 @@ interface Sort {
 
 interface Priere {
   id: string;
+  personnage_id: string;
   nom_personnalise: string;
   niveau_priere: number;
   zone_choisie: string | null;
@@ -97,6 +90,7 @@ interface Priere {
 
 interface Assemblage {
   id: string;
+  personnage_id: string;
   nom: string;
   cible: string | null;
   cout_ps: number | null;
@@ -107,6 +101,7 @@ interface Assemblage {
 
 interface Recette {
   id: string;
+  personnage_id: string;
   nom: string;
   type: string;
   niveau_requis: number;
@@ -165,227 +160,110 @@ const PersonnageFiche = () => {
   const [ameTmp, setAmeTmp] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Personnage
-  const { data: personnage, isLoading: personnageLoading } = useQuery({
-    queryKey: ["personnage", id],
+  // DATA-FIRST : vue_fiche_personnage joint personnages + races + classes + religions
+  // Remplace 3 requêtes en cascade (personnage → race → classe → religion)
+  const { data: fiche, isLoading: ficheLoading } = useQuery({
+    queryKey: ["fiche-personnage", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("personnages")
+        .from("vue_fiche_personnage")
         .select("*")
         .eq("id", id!)
         .single();
-      return data as Personnage;
+      return data as FichePersonnage;
     },
     enabled: !!id,
   });
 
-  // Race
-  const { data: race } = useQuery({
-    queryKey: ["race", personnage?.race_id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("races")
-        .select("*")
-        .eq("id", personnage!.race_id)
-        .single();
-      return data as Race;
-    },
-    enabled: !!personnage?.race_id,
-  });
+  // Toutes les requêtes suivantes dépendent uniquement de l'id URL (connu immédiatement),
+  // elles démarrent toutes en parallèle sans attendre la fiche.
 
-  // Classe
-  const { data: classe } = useQuery({
-    queryKey: ["classe", personnage?.classe_id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("classes")
-        .select("*")
-        .eq("id", personnage!.classe_id)
-        .single();
-      return data as Classe;
-    },
-    enabled: !!personnage?.classe_id,
-  });
-
-  // Religion
-  const { data: religion } = useQuery({
-    queryKey: ["religion", personnage?.religion_id],
-    queryFn: async () => {
-      if (!personnage?.religion_id) return null;
-      const { data } = await supabase
-        .from("religions")
-        .select("*")
-        .eq("id", personnage.religion_id)
-        .single();
-      return data as Religion;
-    },
-    enabled: !!personnage?.religion_id,
-  });
-
-  const traits = Array.isArray(personnage?.traits_raciaux_choisis)
-    ? (personnage.traits_raciaux_choisis as unknown as Trait[])
-    : [];
-
-  // Compétences
+  // DATA-FIRST : vue_competences_personnage — plus de jointure ni de .map() frontend
   const { data: competences } = useQuery({
-    queryKey: ["competences-personnage", personnage?.id],
+    queryKey: ["competences-personnage", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("personnage_competences")
-        .select(
-          `
-          id, niveau_acquis, xp_depense, choix_achat, appris_via_maitre, nom_maitre, statut_maitre,
-          competences!inner(nom, categorie)
-        `
-        )
-        .eq("personnage_id", personnage!.id)
-        .order("competences.categorie")
-        .order("competences.nom");
-      return (data ?? []).map((c: any) => ({
-        id: c.id,
-        nom: c.competences.nom,
-        niveau_acquis: c.niveau_acquis,
-        xp_depense: c.xp_depense,
-        choix_achat: c.choix_achat,
-        appris_via_maitre: c.appris_via_maitre,
-        nom_maitre: c.nom_maitre,
-        statut_maitre: c.statut_maitre,
-        categorie: c.competences.categorie,
-      })) as Competence[];
+        .from("vue_competences_personnage")
+        .select("*")
+        .eq("personnage_id", id!)
+        .order("categorie")
+        .order("nom");
+      return (data ?? []) as Competence[];
     },
-    enabled: !!personnage?.id,
+    enabled: !!id,
   });
 
-  // Sorts
+  // DATA-FIRST : vue_sorts_personnage — plus de jointure ni de .map() frontend
   const { data: sorts } = useQuery({
-    queryKey: ["sorts-personnage", personnage?.id],
+    queryKey: ["sorts-personnage", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("personnage_sorts")
-        .select(
-          `
-          id, nom_personnalise, formule_magique, niveau_sort, zone_choisie, portee_choisie, duree_choisie,
-          sorts!inner(cercle, cout_xp_base, nom, description)
-        `
-        )
-        .eq("personnage_id", personnage!.id)
-        .order("sorts.cercle")
+        .from("vue_sorts_personnage")
+        .select("*")
+        .eq("personnage_id", id!)
+        .order("cercle")
         .order("nom_personnalise");
-      return (data ?? []).map((s: any) => ({
-        id: s.id,
-        nom_personnalise: s.nom_personnalise,
-        formule_magique: s.formule_magique,
-        niveau_sort: s.niveau_sort,
-        zone_choisie: s.zone_choisie,
-        portee_choisie: s.portee_choisie,
-        duree_choisie: s.duree_choisie,
-        cercle: s.sorts.cercle,
-        cout_xp_base: s.sorts.cout_xp_base,
-        sort_nom_base: s.sorts.nom,
-        sort_description: s.sorts.description,
-      })) as Sort[];
+      return (data ?? []) as Sort[];
     },
-    enabled: !!personnage?.id,
+    enabled: !!id,
   });
 
-  // Prières
+  // DATA-FIRST : vue_prieres_personnage — plus de jointure ni de .map() frontend
   const { data: prieres } = useQuery({
-    queryKey: ["prieres-personnage", personnage?.id],
+    queryKey: ["prieres-personnage", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("personnage_prieres")
-        .select(
-          `
-          id, nom_personnalise, niveau_priere, zone_choisie, portee_choisie, duree_choisie,
-          prieres!inner(domaine, description, duree_incantation, cout_xp_base)
-        `
-        )
-        .eq("personnage_id", personnage!.id)
-        .order("prieres.domaine")
+        .from("vue_prieres_personnage")
+        .select("*")
+        .eq("personnage_id", id!)
+        .order("domaine")
         .order("nom_personnalise");
-      return (data ?? []).map((p: any) => ({
-        id: p.id,
-        nom_personnalise: p.nom_personnalise,
-        niveau_priere: p.niveau_priere,
-        zone_choisie: p.zone_choisie,
-        portee_choisie: p.portee_choisie,
-        duree_choisie: p.duree_choisie,
-        domaine: p.prieres.domaine,
-        priere_description: p.prieres.description,
-        duree_incantation: p.prieres.duree_incantation,
-        cout_xp_base: p.prieres.cout_xp_base,
-      })) as Priere[];
+      return (data ?? []) as Priere[];
     },
-    enabled: !!personnage?.id,
+    enabled: !!id,
   });
 
-  // Assemblages
+  // DATA-FIRST : vue_assemblages_personnage — plus de jointure ni de .map() frontend
   const { data: assemblages } = useQuery({
-    queryKey: ["assemblages-personnage", personnage?.id],
+    queryKey: ["assemblages-personnage", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("personnage_assemblages")
-        .select(
-          `
-          id,
-          assemblages_runes!inner(nom, cible, cout_ps, description, effet, runes_requises)
-        `
-        )
-        .eq("personnage_id", personnage!.id)
-        .order("assemblages_runes.nom");
-      return (data ?? []).map((a: any) => ({
-        id: a.id,
-        nom: a.assemblages_runes.nom,
-        cible: a.assemblages_runes.cible,
-        cout_ps: a.assemblages_runes.cout_ps,
-        description: a.assemblages_runes.description,
-        effet: a.assemblages_runes.effet,
-        runes_requises: a.assemblages_runes.runes_requises,
-      })) as Assemblage[];
+        .from("vue_assemblages_personnage")
+        .select("*")
+        .eq("personnage_id", id!)
+        .order("nom");
+      return (data ?? []) as Assemblage[];
     },
-    enabled: !!personnage?.id,
+    enabled: !!id,
   });
 
-  // Recettes
+  // DATA-FIRST : vue_recettes_personnage — plus de jointure ni de .map() frontend
   const { data: recettes } = useQuery({
-    queryKey: ["recettes-personnage", personnage?.id],
+    queryKey: ["recettes-personnage", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("personnage_recettes")
-        .select(
-          `
-          id,
-          recettes_alchimie!inner(nom, type, niveau_requis, description, effet)
-        `
-        )
-        .eq("personnage_id", personnage!.id)
-        .order("recettes_alchimie.type")
-        .order("recettes_alchimie.niveau_requis")
-        .order("recettes_alchimie.nom");
-      return (data ?? []).map((r: any) => ({
-        id: r.id,
-        nom: r.recettes_alchimie.nom,
-        type: r.recettes_alchimie.type,
-        niveau_requis: r.recettes_alchimie.niveau_requis,
-        description: r.recettes_alchimie.description,
-        effet: r.recettes_alchimie.effet,
-      })) as Recette[];
+        .from("vue_recettes_personnage")
+        .select("*")
+        .eq("personnage_id", id!)
+        .order("type")
+        .order("niveau_requis")
+        .order("nom");
+      return (data ?? []) as Recette[];
     },
-    enabled: !!personnage?.id,
+    enabled: !!id,
   });
 
-  // Artisanat
   const { data: artisanatEtat } = useQuery({
-    queryKey: ["artisanat-etat", personnage?.id],
+    queryKey: ["artisanat-etat", id],
     queryFn: async () => {
       const { data } = await supabase
         .from("vue_artisanat_etat")
         .select("niveau_alchimie, niveau_forge, niveau_joaillerie")
-        .eq("personnage_id", personnage!.id)
+        .eq("personnage_id", id!)
         .maybeSingle();
       return (data as ArtisanatEtat) ?? null;
     },
-    enabled: !!personnage?.id,
+    enabled: !!id,
   });
 
   const { data: manipulations } = useQuery({
@@ -443,17 +321,21 @@ const PersonnageFiche = () => {
     enabled: !!(artisanatEtat?.niveau_joaillerie && artisanatEtat.niveau_joaillerie >= 1),
   });
 
-  const isOwner = user?.id === personnage?.joueur_id;
-  const xpDisponible = (personnage?.xp_total ?? 0) - (personnage?.xp_depense ?? 0);
+  const isOwner = user?.id === fiche?.joueur_id;
+  const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
+
+  const traits = Array.isArray(fiche?.traits_raciaux_choisis)
+    ? (fiche.traits_raciaux_choisis as unknown as Trait[])
+    : [];
 
   const handleEditHistorique = () => {
-    setHistoriqueTmp(personnage?.historique ?? "");
-    setAmeTmp(personnage?.ame_personnage ?? "");
+    setHistoriqueTmp(fiche?.historique ?? "");
+    setAmeTmp(fiche?.ame_personnage ?? "");
     setEditingHistorique(true);
   };
 
   const handleSaveHistorique = async () => {
-    if (!personnage) return;
+    if (!fiche) return;
     setSaving(true);
     try {
       const { error } = await supabase
@@ -462,7 +344,7 @@ const PersonnageFiche = () => {
           historique: historiqueTmp.trim(),
           ame_personnage: ameTmp.trim(),
         })
-        .eq("id", personnage.id);
+        .eq("id", fiche.id);
 
       if (error) throw error;
       toast.success("Historique et âme sauvegardés !");
@@ -484,7 +366,7 @@ const PersonnageFiche = () => {
       .replace(/'/g, "&#039;");
 
   const handlePrint = () => {
-    if (!personnage) return;
+    if (!fiche) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -521,7 +403,7 @@ const PersonnageFiche = () => {
       <html lang="fr">
       <head>
         <meta charset="UTF-8">
-        <title>Fiche de ${escapeHtml(personnage.nom)}</title>
+        <title>Fiche de ${escapeHtml(fiche.nom)}</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; color: #111; }
           h1 { font-size: 24px; margin-bottom: 4px; }
@@ -548,20 +430,20 @@ const PersonnageFiche = () => {
         </style>
       </head>
       <body>
-        <h1>Fiche de ${escapeHtml(personnage.nom)}</h1>
-        <p class="muted">${escapeHtml(race?.nom ?? "")}${race?.nom_latin ? ` (${escapeHtml(race.nom_latin)})` : ""} — ${escapeHtml(classe?.nom ?? "")} — Niveau ${personnage.niveau}</p>
+        <h1>Fiche de ${escapeHtml(fiche.nom)}</h1>
+        <p class="muted">${escapeHtml(fiche.race_nom ?? "")}${fiche.race_nom_latin ? ` (${escapeHtml(fiche.race_nom_latin)})` : ""} — ${escapeHtml(fiche.classe_nom ?? "")} — Niveau ${fiche.niveau}</p>
 
         <h2>Informations générales</h2>
         <div class="grid">
-          <div class="item"><span class="label">PV Max :</span> ${personnage.pv_max}</div>
-          <div class="item"><span class="label">PS Max :</span> ${personnage.ps_max}</div>
-          <div class="item"><span class="label">XP Total :</span> ${personnage.xp_total}</div>
-          <div class="item"><span class="label">XP Dépensé :</span> ${personnage.xp_depense}</div>
+          <div class="item"><span class="label">PV Max :</span> ${fiche.pv_max}</div>
+          <div class="item"><span class="label">PS Max :</span> ${fiche.ps_max}</div>
+          <div class="item"><span class="label">XP Total :</span> ${fiche.xp_total}</div>
+          <div class="item"><span class="label">XP Dépensé :</span> ${fiche.xp_depense}</div>
           <div class="item"><span class="label">XP Disponible :</span> ${xpDisponible}</div>
-          ${religion ? `<div class="item"><span class="label">Religion :</span> ${escapeHtml(religion.nom)}</div>` : ""}
-          <div class="item"><span class="label">GN complétés :</span> ${personnage.gn_completes}</div>
-          <div class="item"><span class="label">Mini-GN :</span> ${personnage.mini_gn_completes}</div>
-          <div class="item"><span class="label">Ouvertures terrain :</span> ${personnage.ouvertures_terrain}</div>
+          ${fiche.religion_nom ? `<div class="item"><span class="label">Religion :</span> ${escapeHtml(fiche.religion_nom)}</div>` : ""}
+          <div class="item"><span class="label">GN complétés :</span> ${fiche.gn_completes}</div>
+          <div class="item"><span class="label">Mini-GN :</span> ${fiche.mini_gn_completes}</div>
+          <div class="item"><span class="label">Ouvertures terrain :</span> ${fiche.ouvertures_terrain}</div>
         </div>
 
         ${traits && traits.length > 0 ? `
@@ -719,10 +601,10 @@ const PersonnageFiche = () => {
         ` : ""}
         ` : ""}
 
-        ${personnage.historique || personnage.ame_personnage ? `
+        ${fiche.historique || fiche.ame_personnage ? `
         <h2>Historique et âme</h2>
-        ${personnage.historique ? `<h3>Historique</h3><p>${escapeHtml(personnage.historique).replace(/\n/g, "<br>")}</p>` : ""}
-        ${personnage.ame_personnage ? `<h3>Âme</h3><p>${escapeHtml(personnage.ame_personnage).replace(/\n/g, "<br>")}</p>` : ""}
+        ${fiche.historique ? `<h3>Historique</h3><p>${escapeHtml(fiche.historique).replace(/\n/g, "<br>")}</p>` : ""}
+        ${fiche.ame_personnage ? `<h3>Âme</h3><p>${escapeHtml(fiche.ame_personnage).replace(/\n/g, "<br>")}</p>` : ""}
         ` : ""}
       </body>
       </html>
@@ -731,11 +613,11 @@ const PersonnageFiche = () => {
     printWindow.print();
   };
 
-  if (personnageLoading) {
+  if (ficheLoading) {
     return <p className="text-center py-12 text-muted-foreground">Chargement…</p>;
   }
 
-  if (!personnage) {
+  if (!fiche) {
     return <p className="text-center py-12 text-muted-foreground">Personnage non trouvé.</p>;
   }
 
@@ -743,9 +625,9 @@ const PersonnageFiche = () => {
     <div className="container max-w-6xl py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-4xl font-bold text-primary">{personnage.nom}</h1>
+          <h1 className="font-heading text-4xl font-bold text-primary">{fiche.nom}</h1>
           <p className="text-muted-foreground mt-1">
-            {race?.nom} {race?.nom_latin && <span className="italic">({race.nom_latin})</span>} • {classe?.nom} • Niveau {personnage.niveau}
+            {fiche.race_nom} {fiche.race_nom_latin && <span className="italic">({fiche.race_nom_latin})</span>} • {fiche.classe_nom} • Niveau {fiche.niveau}
           </p>
         </div>
         <Button onClick={handlePrint} variant="outline" size="sm" className="gap-2">
@@ -775,23 +657,23 @@ const PersonnageFiche = () => {
             <CardContent className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Race</p>
-                <p className="font-medium text-foreground">{race?.nom}</p>
+                <p className="font-medium text-foreground">{fiche.race_nom}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Classe</p>
-                <p className="font-medium text-foreground">{classe?.nom}</p>
+                <p className="font-medium text-foreground">{fiche.classe_nom}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Niveau</p>
-                <p className="font-medium text-foreground">{personnage.niveau}</p>
+                <p className="font-medium text-foreground">{fiche.niveau}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">XP Total</p>
-                <p className="font-medium text-foreground">{personnage.xp_total}</p>
+                <p className="font-medium text-foreground">{fiche.xp_total}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">XP Dépensé</p>
-                <p className="font-medium text-foreground">{personnage.xp_depense}</p>
+                <p className="font-medium text-foreground">{fiche.xp_depense}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">XP Disponible</p>
@@ -799,21 +681,21 @@ const PersonnageFiche = () => {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">PV Max</p>
-                <p className="font-medium text-foreground">{personnage.pv_max}</p>
+                <p className="font-medium text-foreground">{fiche.pv_max}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">PS Max</p>
-                <p className="font-medium text-foreground">{personnage.ps_max}</p>
+                <p className="font-medium text-foreground">{fiche.ps_max}</p>
               </div>
-              {religion && (
+              {fiche.religion_nom && (
                 <div>
                   <p className="text-xs text-muted-foreground">Religion</p>
-                  <p className="font-medium text-foreground">{religion.nom}</p>
+                  <p className="font-medium text-foreground">{fiche.religion_nom}</p>
                 </div>
               )}
               <div>
                 <p className="text-xs text-muted-foreground">GN Complétés</p>
-                <p className="font-medium text-foreground">{personnage.gn_completes}</p>
+                <p className="font-medium text-foreground">{fiche.gn_completes}</p>
               </div>
             </CardContent>
           </Card>
@@ -1004,55 +886,43 @@ const PersonnageFiche = () => {
             </Card>
           ) : (
             <>
-              {personnage.historique && (
+              {fiche.historique && (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-base">Historique</CardTitle>
                     {isOwner && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleEditHistorique}
-                      >
+                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
                         <Edit2 className="h-4 w-4" />
                       </Button>
                     )}
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{personnage.historique}</p>
+                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.historique}</p>
                   </CardContent>
                 </Card>
               )}
 
-              {personnage.ame_personnage && (
+              {fiche.ame_personnage && (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-base">Âme</CardTitle>
-                    {isOwner && !personnage.historique && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleEditHistorique}
-                      >
+                    {isOwner && !fiche.historique && (
+                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
                         <Edit2 className="h-4 w-4" />
                       </Button>
                     )}
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{personnage.ame_personnage}</p>
+                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.ame_personnage}</p>
                   </CardContent>
                 </Card>
               )}
 
-              {!personnage.historique && !personnage.ame_personnage && (
+              {!fiche.historique && !fiche.ame_personnage && (
                 <p className="text-center py-8 text-muted-foreground">
                   {isOwner ? "Aucun historique ou âme renseigné. " : "Aucun historique ou âme renseigné."}
                   {isOwner && (
-                    <Button
-                      size="sm"
-                      variant="link"
-                      onClick={handleEditHistorique}
-                    >
+                    <Button size="sm" variant="link" onClick={handleEditHistorique}>
                       Ajouter
                     </Button>
                   )}
