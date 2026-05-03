@@ -92,18 +92,13 @@ const Step7Artisanat = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [quotasRes, recettesRes, forgeRes, joaillerieRes, existingRecettesRes] = await Promise.all([
+        // Étape 1 : récupérer les quotas + données statiques en parallèle
+        const [quotasRes, forgeRes, joaillerieRes, existingRecettesRes] = await Promise.all([
           supabase
             .from("vue_artisanat_quotas")
             .select("*")
             .eq("personnage_id", personnageId)
             .maybeSingle(),
-          supabase
-            .from("recettes_alchimie")
-            .select("*")
-            .eq("est_actif", true)
-            .order("niveau_requis")
-            .order("nom"),
           supabase
             .from("objets_forge")
             .select("*")
@@ -123,10 +118,15 @@ const Step7Artisanat = ({
         ]);
 
         if (quotasRes.error) throw quotasRes.error;
-        if (quotasRes.data) {
-          const d = quotasRes.data as any;
+        if (forgeRes.error) throw forgeRes.error;
+        if (joaillerieRes.error) throw joaillerieRes.error;
+
+        const d = quotasRes.data as any;
+        const niveauAlchimie: number = d?.niveau_alchimie ?? 0;
+
+        if (d) {
           setArtisanat({
-            niveau_alchimie: d.niveau_alchimie ?? 0,
+            niveau_alchimie: niveauAlchimie,
             niveau_forge: d.niveau_forge ?? 0,
             niveau_joaillerie: d.niveau_joaillerie ?? 0,
             niveau_runes: d.niveau_runes ?? 0,
@@ -141,13 +141,7 @@ const Step7Artisanat = ({
           });
         }
 
-        if (recettesRes.error) throw recettesRes.error;
-        setRecettes((recettesRes.data ?? []) as Recette[]);
-
-        if (forgeRes.error) throw forgeRes.error;
         setForge((forgeRes.data ?? []) as ObjetForge[]);
-
-        if (joaillerieRes.error) throw joaillerieRes.error;
         setJoaillerie((joaillerieRes.data ?? []) as ObjetJoaillerie[]);
 
         // Restaurer les sélections existantes
@@ -160,6 +154,20 @@ const Step7Artisanat = ({
           });
           setRecettesGratuites(gratuits);
           setRecettesAchetees(achetes);
+        }
+
+        // Étape 2 : DATA-FIRST — filtrage par niveau délégué à la DB
+        // On ne charge que les recettes accessibles selon le niveau du personnage
+        if (niveauAlchimie >= 1) {
+          const recettesRes = await supabase
+            .from("recettes_alchimie")
+            .select("*")
+            .eq("est_actif", true)
+            .lte("niveau_requis", niveauAlchimie)
+            .order("niveau_requis")
+            .order("nom");
+          if (recettesRes.error) throw recettesRes.error;
+          setRecettes((recettesRes.data ?? []) as Recette[]);
         }
 
         setLoading(false);
@@ -310,7 +318,6 @@ const Step7Artisanat = ({
               </CardHeader>
               <CardContent className="space-y-3">
                 {recettes
-                  .filter((r) => r.niveau_requis <= artisanat.niveau_alchimie)
                   .map((recette) => {
                     const estGratuite = recettesGratuites.has(recette.id);
                     const estAchetee = recettesAchetees.has(recette.id);

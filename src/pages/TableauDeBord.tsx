@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,49 +16,44 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
+interface PersonnageResume {
+  id: string;
+  joueur_id: string;
+  nom: string | null;
+  niveau: number;
+  xp_total: number;
+  xp_depense: number;
+  etape_creation: number;
+  created_at: string;
+  race_nom: string;
+  classe_nom: string;
+}
+
 const TableauDeBord = () => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [personnages, setPersonnages] = useState<any[]>([]);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [personnageASupprimer, setPersonnageASupprimer] = useState<any | null>(null);
+  const queryClient = useQueryClient();
+  const [personnageASupprimer, setPersonnageASupprimer] = useState<PersonnageResume | null>(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { data: sessionData } = await supabase.auth.getSession();
-        const sessionUser = sessionData.session?.user;
-        setUserEmail(sessionUser?.email || null);
-
-        if (!sessionUser) {
-          setError("Vous devez être connecté pour accéder au tableau de bord.");
-          return;
-        }
-
-        const { data, error: fetchError } = await supabase
-          .from("personnages")
-          .select("*")
-          .eq("joueur_id", sessionUser.id)
-          .eq("est_actif", true)
-          .order("created_at", { ascending: false });
-
-        if (fetchError) throw fetchError;
-        setPersonnages(data || []);
-      } catch (err: any) {
-        console.error("Erreur lors du chargement :", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [user]);
+  // DATA-FIRST : vue_personnages_joueur retourne directement race_nom / classe_nom
+  // Remplace la requête sur la table brute personnages qui affichait des UUIDs
+  const {
+    data: personnages = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["mes-personnages", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vue_personnages_joueur")
+        .select("*")
+        .eq("joueur_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as PersonnageResume[];
+    },
+    enabled: !!user,
+  });
 
   const supprimerPersonnage = async () => {
     if (!personnageASupprimer) return;
@@ -71,7 +67,10 @@ const TableauDeBord = () => {
 
       if (deleteError) throw deleteError;
 
-      setPersonnages(personnages.filter((p) => p.id !== personnageASupprimer.id));
+      queryClient.setQueryData<PersonnageResume[]>(
+        ["mes-personnages", user?.id],
+        (prev) => (prev ?? []).filter((p) => p.id !== personnageASupprimer.id)
+      );
       toast({
         title: "Personnage supprimé",
         description: `Le personnage «${personnageASupprimer.nom}» a été supprimé.`,
@@ -88,7 +87,7 @@ const TableauDeBord = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -101,7 +100,7 @@ const TableauDeBord = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading text-gold">Tableau de bord</h1>
-          <p className="text-muted-foreground">{userEmail}</p>
+          <p className="text-muted-foreground">{user?.email}</p>
         </div>
         <Link to="/personnage/nouveau">
           <Button className="bg-gold hover:bg-gold/80 text-black font-bold">
@@ -114,7 +113,7 @@ const TableauDeBord = () => {
       {error && (
         <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-destructive">{error}</p>
+            <p className="text-destructive">{(error as Error).message}</p>
           </CardContent>
         </Card>
       )}
@@ -146,10 +145,11 @@ const TableauDeBord = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm text-muted-foreground">
-                  <p><span className="text-white/60">Race:</span> {p.race_id || "Non définie"}</p>
-                  <p><span className="text-white/60">Classe:</span> {p.classe_id || "Non définie"}</p>
+                  <p><span className="text-white/60">Race :</span> {p.race_nom}</p>
+                  <p><span className="text-white/60">Classe :</span> {p.classe_nom}</p>
+                  <p><span className="text-white/60">Niveau :</span> {p.niveau}</p>
                 </div>
-                
+
                 <div className="mt-6 flex flex-col gap-2">
                   <Link to={`/personnage/${p.id}`} className="w-full">
                     <Button variant="outline" size="sm" className="w-full border-white/20 hover:bg-white/5">
@@ -157,7 +157,7 @@ const TableauDeBord = () => {
                       Voir la fiche
                     </Button>
                   </Link>
-                  
+
                   <Link
                     to={`/personnage/nouveau?id=${p.id}&etape=${(p.etape_creation ?? 0) >= 11 ? 11 : Math.max(1, (p.etape_creation ?? 0) + 1)}`}
                     className="w-full"

@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CalendarDays, MapPin, Users, Sparkles } from "lucide-react";
+import { useState } from "react";
 
 /* ---------- types ---------- */
 interface Evenement {
@@ -69,71 +71,71 @@ const xpLabel = (ev: Evenement) => {
 const Evenements = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  const [evenements, setEvenements] = useState<Evenement[]>([]);
-  const [inscriptions, setInscriptions] = useState<Set<string>>(new Set());
-  const [personnages, setPersonnages] = useState<Personnage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Evenement | null>(null);
   const [selectedPersonnage, setSelectedPersonnage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // DATA-FIRST : vue_evenements_publies calcule nb_inscrits côté DB
+  // Remplace la boucle N+1 (1 requête events + N requêtes COUNT)
+  const { data: evenements = [], isLoading } = useQuery({
+    queryKey: ["evenements-publies"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vue_evenements_publies")
+        .select("*");
+      if (error) throw error;
+      return (data ?? []) as Evenement[];
+    },
+  });
+
+  const { data: inscriptions } = useQuery({
+    queryKey: ["mes-inscriptions", user?.id],
+    queryFn: async () => {
+      if (!user) return new Set<string>();
+      const { data } = await supabase
+        .from("inscriptions_evenements")
+        .select("evenement_id")
+        .eq("joueur_id", user.id);
+      return new Set((data ?? []).map((i) => i.evenement_id!));
+    },
+    enabled: !!user,
+  });
+
+  const { data: personnages = [] } = useQuery({
+    queryKey: ["mes-personnages-actifs", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("personnages")
+        .select("id, nom")
+        .eq("joueur_id", user!.id)
+        .eq("est_actif", true)
+        .eq("est_mort", false);
+      return (data ?? []) as Personnage[];
+    },
+    enabled: !!user,
+  });
+
+  // Realtime : invalide le cache quand les inscriptions changent
   useEffect(() => {
-    const load = async () => {
-      // Fetch events with inscription count
-      const { data: evData } = await supabase
-        .from("evenements")
-        .select("*")
-        .eq("est_publie", true)
-        .order("date_evenement", { ascending: true });
-
-      const events: Evenement[] = [];
-      for (const ev of evData ?? []) {
-        const { count } = await supabase
-          .from("inscriptions_evenements")
-          .select("*", { count: "exact", head: true })
-          .eq("evenement_id", ev.id)
-          .in("statut", ["en_attente", "present"]);
-        events.push({ ...ev, nb_inscrits: count ?? 0 });
-      }
-      setEvenements(events);
-
-      if (user) {
-        const { data: inscData } = await supabase
-          .from("inscriptions_evenements")
-          .select("evenement_id")
-          .eq("joueur_id", user.id);
-        setInscriptions(new Set((inscData ?? []).map((i) => i.evenement_id!)));
-
-        const { data: persoData } = await supabase
-          .from("personnages")
-          .select("id, nom")
-          .eq("joueur_id", user.id)
-          .eq("est_actif", true)
-          .eq("est_mort", false);
-        setPersonnages((persoData ?? []) as Personnage[]);
-      }
-
-      setLoading(false);
-    };
-
-    load();
-
     const channel = supabase
       .channel("inscriptions-evenements")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "inscriptions_evenements" },
-        () => load()
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["evenements-publies"] });
+          if (user) {
+            queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
+          }
+        }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
 
   const openModal = (ev: Evenement) => {
     if (!user) {
@@ -172,14 +174,14 @@ const Evenements = () => {
     setSubmitting(false);
     if (error) {
       if (error.code === "23505") {
-        setInscriptions((prev) => new Set(prev).add(selectedEvent.id));
+        queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
         setModalOpen(false);
       } else {
         toast.error("Erreur lors de l'inscription.");
       }
     } else {
       toast.success("Inscription envoyée ! En attente de confirmation.");
-      setInscriptions((prev) => new Set(prev).add(selectedEvent.id));
+      queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
       setModalOpen(false);
     }
   };
@@ -193,7 +195,7 @@ const Evenements = () => {
         Événements
       </h1>
 
-      {loading ? (
+      {isLoading ? (
         <p className="text-muted-foreground">Chargement…</p>
       ) : evenements.length === 0 ? (
         <p className="text-muted-foreground">Aucun événement publié pour le moment.</p>
@@ -201,7 +203,7 @@ const Evenements = () => {
         <div className="space-y-6">
           {evenements.map((ev) => {
             const complet = isComplet(ev);
-            const dejaInscrit = inscriptions.has(ev.id);
+            const dejaInscrit = inscriptions?.has(ev.id) ?? false;
 
             return (
               <Card key={ev.id} className="border-primary/10">
@@ -307,4 +309,3 @@ const Evenements = () => {
 };
 
 export default Evenements;
-
