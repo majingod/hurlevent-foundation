@@ -39,7 +39,7 @@ interface PersonnageCompetence {
   statut_maitre: string;
   xp_depense: number;
   choix_achat: string | null;
-  competence_nom: string;
+  nom: string;
   categorie: string;
   competence_description: string | null;
 }
@@ -171,129 +171,52 @@ const Step10Recapitulatif = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Récupérer les compétences
-        const { data: compData, error: compError } = await supabase
-          .from("personnage_competences")
-          .select(
-            `
-            id, niveau_acquis, appris_via_maitre, nom_maitre, statut_maitre, xp_depense, choix_achat,
-            competences!inner(nom, categorie, description)
-          `
-          )
-          .eq("personnage_id", personnageId)
-          .order("competences.categorie")
-          .order("competences.nom");
+        // DATA-FIRST : toutes les jointures sont déléguées aux vues SQL.
+        // Plus de select('!inner(...)') ni de .map() de flattenage.
+        const [compRes, sortRes, prieRes, assemRes, recetRes] = await Promise.all([
+          supabase
+            .from("vue_competences_personnage")
+            .select("*")
+            .eq("personnage_id", personnageId)
+            .order("categorie")
+            .order("nom"),
+          supabase
+            .from("vue_sorts_personnage")
+            .select("*")
+            .eq("personnage_id", personnageId)
+            .order("cercle")
+            .order("nom_personnalise"),
+          supabase
+            .from("vue_prieres_personnage")
+            .select("*")
+            .eq("personnage_id", personnageId)
+            .order("domaine")
+            .order("nom_personnalise"),
+          supabase
+            .from("vue_assemblages_personnage")
+            .select("*")
+            .eq("personnage_id", personnageId)
+            .order("nom"),
+          supabase
+            .from("vue_recettes_personnage")
+            .select("*")
+            .eq("personnage_id", personnageId)
+            .order("type")
+            .order("niveau_requis")
+            .order("nom"),
+        ]);
 
-        if (compError) throw compError;
-        setCompetences(
-          (compData ?? []).map((c: any) => ({
-            ...c,
-            competence_nom: c.competences.nom,
-            categorie: c.competences.categorie,
-            competence_description: c.competences.description,
-          }))
-        );
+        if (compRes.error) throw compRes.error;
+        if (sortRes.error) throw sortRes.error;
+        if (prieRes.error) throw prieRes.error;
+        if (assemRes.error) throw assemRes.error;
+        if (recetRes.error) throw recetRes.error;
 
-        // Récupérer les sorts
-        const { data: sortData, error: sortError } = await supabase
-          .from("personnage_sorts")
-          .select(
-            `
-            id, nom_personnalise, formule_magique, niveau_sort, zone_choisie, portee_choisie, duree_choisie,
-            sorts!inner(cercle, cout_xp_base, nom, description)
-          `
-          )
-          .eq("personnage_id", personnageId)
-          .order("sorts.cercle")
-          .order("nom_personnalise");
-
-        if (sortError) throw sortError;
-        setSorts(
-          (sortData ?? []).map((s: any) => ({
-            ...s,
-            cercle: s.sorts.cercle,
-            cout_xp_base: s.sorts.cout_xp_base,
-            sort_nom_base: s.sorts.nom,
-            sort_description: s.sorts.description,
-          }))
-        );
-
-        // Récupérer les prières
-        const { data: prieData, error: prieError } = await supabase
-          .from("personnage_prieres")
-          .select(
-            `
-            id, nom_personnalise, niveau_priere, zone_choisie, portee_choisie, duree_choisie,
-            prieres!inner(domaine, description, duree_incantation, cout_xp_base)
-          `
-          )
-          .eq("personnage_id", personnageId)
-          .order("prieres.domaine")
-          .order("nom_personnalise");
-
-        if (prieError) throw prieError;
-        setPrieres(
-          (prieData ?? []).map((p: any) => ({
-            ...p,
-            domaine: p.prieres.domaine,
-            priere_description: p.prieres.description,
-            duree_incantation: p.prieres.duree_incantation,
-            cout_xp_base: p.prieres.cout_xp_base,
-          }))
-        );
-
-        // Récupérer les assemblages
-        const { data: assemData, error: assemError } = await supabase
-          .from("personnage_assemblages")
-          .select(
-            `
-            id, xp_depense,
-            assemblages_runes!inner(nom, cible, cout_ps, description, effet, runes_requises)
-          `
-          )
-          .eq("personnage_id", personnageId)
-          .order("assemblages_runes.nom");
-
-        if (assemError) throw assemError;
-        setAssemblages(
-          (assemData ?? []).map((a: any) => ({
-            id: a.id,
-            nom: a.assemblages_runes.nom,
-            cible: a.assemblages_runes.cible,
-            cout_ps: a.assemblages_runes.cout_ps,
-            xp_depense: a.xp_depense,
-            description: a.assemblages_runes.description,
-            effet: a.assemblages_runes.effet,
-            runes_requises: a.assemblages_runes.runes_requises,
-          }))
-        );
-
-        // Récupérer les recettes
-        const { data: recetData, error: recetError } = await supabase
-          .from("personnage_recettes")
-          .select(
-            `
-            id, xp_depense,
-            recettes_alchimie!inner(nom, type, niveau_requis, description, effet)
-          `
-          )
-          .eq("personnage_id", personnageId)
-          .order("recettes_alchimie.type")
-          .order("recettes_alchimie.niveau_requis")
-          .order("recettes_alchimie.nom");
-
-        if (recetError) throw recetError;
-        setRecettes(
-          (recetData ?? []).map((r: any) => ({
-            id: r.id,
-            nom: r.recettes_alchimie.nom,
-            type: r.recettes_alchimie.type,
-            niveau_requis: r.recettes_alchimie.niveau_requis,
-            xp_depense: r.xp_depense,
-            description: r.recettes_alchimie.description,
-            effet: r.recettes_alchimie.effet,
-          }))
-        );
+        setCompetences((compRes.data ?? []) as PersonnageCompetence[]);
+        setSorts((sortRes.data ?? []) as PersonnageSort[]);
+        setPrieres((prieRes.data ?? []) as PersonnagePriere[]);
+        setAssemblages((assemRes.data ?? []) as PersonnageAssemblage[]);
+        setRecettes((recetRes.data ?? []) as PersonnageRecette[]);
 
         // Récupérer l'état artisanat
         const { data: artisanatData } = await supabase
@@ -474,7 +397,7 @@ const Step10Recapitulatif = ({
           ${competences.map((c) => `
             <tr>
               <td>
-                ${escapeHtml(c.competence_nom)}${c.choix_achat ? ` <span class="muted">(${escapeHtml(c.choix_achat)})</span>` : ""}
+                ${escapeHtml(c.nom)}${c.choix_achat ? ` <span class="muted">(${escapeHtml(c.choix_achat)})</span>` : ""}
                 ${c.competence_description ? `<br><span class="muted">${escapeHtml(c.competence_description)}</span>` : ""}
               </td>
               <td>${escapeHtml(c.categorie)}</td>
@@ -787,7 +710,7 @@ const Step10Recapitulatif = ({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className="font-medium text-foreground">
-                            {comp.competence_nom}
+                            {comp.nom}
                             {comp.choix_achat && <span className="text-muted-foreground ml-1">({comp.choix_achat})</span>}
                           </p>
                           {comp.competence_description && (

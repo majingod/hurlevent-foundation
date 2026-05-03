@@ -101,68 +101,52 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
           return;
         }
 
-        // Charger nb_traits_raciaux depuis la race
-        const { data: raceData, error: raceError } = await supabase
-          .from("races")
-          .select("nb_traits_raciaux, nom")
-          .eq("id", perso.race_id)
-          .single();
+        const sousType = perso.sous_type_chimeride ?? null;
 
-        if (raceError) {
-          console.error("[Etape_TraitsRaciaux] Erreur lecture races:", raceError);
+        // DATA-FIRST : race + traits en parallèle (plus de cascade).
+        // vue_traits_par_race joint race_traits + traits_raciaux et filtre
+        // est_actif = true directement en SQL — plus de .filter() côté JS.
+        let traitsQuery = supabase
+          .from("vue_traits_par_race")
+          .select("trait_id, sous_type, trait_nom, trait_description, cout_xp")
+          .eq("race_id", perso.race_id);
+
+        if (sousType) {
+          traitsQuery = traitsQuery.or(`sous_type.eq.${sousType},sous_type.is.null`);
+        } else {
+          traitsQuery = traitsQuery.is("sous_type", null);
         }
 
-        const quota = raceData?.nb_traits_raciaux ?? 1;
-        console.log("[Etape_TraitsRaciaux] race:", raceData?.nom, "→ quota gratuit:", quota);
+        const [raceRes, traitsRes] = await Promise.all([
+          supabase
+            .from("races")
+            .select("nb_traits_raciaux, nom")
+            .eq("id", perso.race_id)
+            .single(),
+          traitsQuery,
+        ]);
+
+        if (raceRes.error) {
+          console.error("[Etape_TraitsRaciaux] Erreur lecture races:", raceRes.error);
+        }
+
+        const quota = raceRes.data?.nb_traits_raciaux ?? 1;
+        console.log("[Etape_TraitsRaciaux] race:", raceRes.data?.nom, "→ quota gratuit:", quota);
         setQuotaGratuit(quota);
         onPeutPasser(gratuits.length >= quota);
 
-        // Charger les traits filtrés par race via vue_traits_par_race
-        const sousType = perso.sous_type_chimeride ?? null;
-        
-        // Correction finale : On utilise directement les tables de base via une jointure
-        // car la vue semble poser problème en lecture via l'API PostgREST
-        console.log("[Etape_TraitsRaciaux] Chargement via race_traits pour race_id:", perso.race_id);
-        
-        let query = supabase
-          .from("race_traits")
-          .select(`
-            trait_id,
-            sous_type,
-            traits_raciaux (
-              nom,
-              description,
-              cout_xp,
-              est_actif
-            )
-          `)
-          .eq("race_id", perso.race_id);
-
-        // Filtrage par sous-type
-        if (sousType) {
-          query = query.or(`sous_type.eq.${sousType},sous_type.is.null`);
-        } else {
-          query = query.is("sous_type", null);
+        if (traitsRes.error) {
+          console.error("[Etape_TraitsRaciaux] Erreur chargement traits:", traitsRes.error);
+          toast.error(`Traits non chargés : ${traitsRes.error.message}`);
         }
 
-        const { data: rawData, error: traitsError } = await query;
-
-        if (traitsError) {
-          console.error("[Etape_TraitsRaciaux] Erreur chargement traits:", traitsError);
-          toast.error(`Traits non chargés : ${traitsError.message}`);
-        }
-
-        if (rawData) {
-          // On filtre les traits actifs et on formate pour le state
-          const formattedTraits = (rawData as any[])
-            .filter(item => item.traits_raciaux?.est_actif !== false)
-            .map(item => ({
-              trait_id: item.trait_id,
-              trait_nom: item.traits_raciaux?.nom ?? "Sans nom",
-              trait_description: item.traits_raciaux?.description ?? "",
-              cout_xp: item.traits_raciaux?.cout_xp ?? 10
-            }));
-          
+        if (traitsRes.data) {
+          const formattedTraits = (traitsRes.data as any[]).map(item => ({
+            trait_id: item.trait_id,
+            trait_nom: item.trait_nom ?? "Sans nom",
+            trait_description: item.trait_description ?? "",
+            cout_xp: item.cout_xp ?? 10,
+          }));
           console.log("[Etape_TraitsRaciaux] Traits chargés:", formattedTraits.length);
           setTraits(formattedTraits);
         }
