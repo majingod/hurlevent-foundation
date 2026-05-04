@@ -571,3 +571,56 @@ CREATE TABLE IF NOT EXISTS public.personnage_sorts (
   formule_magique text,
   PRIMARY KEY (id)
 );
+
+-- ---------------------------------------------------------------------------
+-- Fonction helper RLS et stubs RPC
+-- ---------------------------------------------------------------------------
+-- Ces objets sont référencés par les migrations entre le 20 avril et le 3 mai
+-- (RLS policies, REVOKE/GRANT, vues admin) mais leur définition complète n'arrive
+-- que dans le baseline du 3 mai (20260503000000_baseline_pre_reconstruction.sql).
+--
+-- En prod : pas d'impact (la migration est marquée appliquée par sa version,
+-- son contenu n'est pas re-vérifié).
+-- En Preview : ces définitions précoces débloquent le rejeu chronologique.
+--
+-- Le baseline du 3 mai redéfinira tout proprement via CREATE OR REPLACE
+-- (signatures identiques garanties), donc les stubs sont remplacés sans conflit.
+
+-- Helper RLS — copie exacte du baseline du 3 mai
+CREATE OR REPLACE FUNCTION public.est_animateur_ou_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid()
+      AND role IN ('animateur', 'admin')
+  );
+END;
+$function$;
+
+-- Stubs RPC : signatures exactes du baseline. Corps minimal (sera remplacé
+-- par les vraies implémentations dans le baseline du 3 mai).
+CREATE OR REPLACE FUNCTION public.attribuer_xp_evenement(p_inscription_id uuid, p_xp_montant integer)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT jsonb_build_object('succes', false, 'raison', 'Stub bootstrap'); $$;
+
+CREATE OR REPLACE FUNCTION public.donner_xp_bonus(p_personnage_id uuid, p_montant integer, p_raison text DEFAULT NULL::text)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT jsonb_build_object('succes', false, 'raison', 'Stub bootstrap'); $$;
+
+CREATE OR REPLACE FUNCTION public.verrouiller_personnage(p_personnage_id uuid)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT jsonb_build_object('succes', false, 'raison', 'Stub bootstrap'); $$;
+
+CREATE OR REPLACE FUNCTION public.deverrouiller_personnage(p_personnage_id uuid)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT jsonb_build_object('succes', false, 'raison', 'Stub bootstrap'); $$;
+
+CREATE OR REPLACE FUNCTION public.archiver_personnage(p_personnage_id uuid)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT jsonb_build_object('succes', false, 'raison', 'Stub bootstrap'); $$;
+
+CREATE OR REPLACE FUNCTION public.approuver_maitre_competence(p_personnage_competence_id uuid)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT jsonb_build_object('succes', false, 'raison', 'Stub bootstrap'); $$;
+
+CREATE OR REPLACE FUNCTION public.marquer_absent(p_inscription_id uuid)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT jsonb_build_object('succes', false, 'raison', 'Stub bootstrap'); $$;
