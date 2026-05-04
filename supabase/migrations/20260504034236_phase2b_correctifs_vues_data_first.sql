@@ -70,24 +70,29 @@ JOIN recettes_alchimie ra ON ra.id = pr.recette_id;
 ALTER VIEW public.vue_recettes_personnage SET (security_invoker = true);
 
 -- ============================================================
--- 4. vue_traits_par_race
---    Remplace la jointure frontend race_traits + traits_raciaux
---    avec filtrage client .filter(tr.est_actif !== false)
---    dans Etape_TraitsRaciaux.tsx.
---    Filtre est_actif directement en SQL.
+-- 4. vue_traits_par_race — version enrichie
+--    Préserve les colonnes race_trait_id, race_nom et est_actif
+--    pour ne pas casser le code existant.
+--    Ajoute JOIN races pour race_nom, expose est_actif,
+--    et ORDER BY pour la cohérence d'affichage.
 -- ============================================================
 DROP VIEW IF EXISTS public.vue_traits_par_race CASCADE;
 
 CREATE VIEW public.vue_traits_par_race AS
 SELECT
+  rt.id     AS race_trait_id,
   rt.race_id,
   rt.trait_id,
   rt.sous_type,
+  r.nom     AS race_nom,
   tr.nom    AS trait_nom,
   tr.description AS trait_description,
-  tr.cout_xp
+  tr.cout_xp,
+  tr.est_actif
 FROM race_traits rt
+JOIN races r ON r.id = rt.race_id
 JOIN traits_raciaux tr ON tr.id = rt.trait_id
-WHERE tr.est_actif = true;
+WHERE tr.est_actif = true
+ORDER BY r.nom, rt.sous_type, tr.nom;
 
 ALTER VIEW public.vue_traits_par_race SET (security_invoker = true);
