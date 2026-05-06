@@ -279,7 +279,17 @@ const PersonnageNouveau = () => {
         const { error } = await supabase.from("personnages").update(payload).eq("id", personnageId);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from("personnages").insert([payload]).select().single();
+        // Génère l'UUID côté client pour éviter l'erreur "null value in column id"
+        // si la colonne personnages.id n'a pas de DEFAULT gen_random_uuid() en base.
+        const newId =
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const { data, error } = await supabase
+          .from("personnages")
+          .insert([{ ...payload, id: newId }])
+          .select()
+          .single();
         if (error) throw error;
         setPersonnageId(data.id);
       }
