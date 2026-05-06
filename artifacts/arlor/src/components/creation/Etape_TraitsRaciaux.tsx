@@ -37,6 +37,8 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
   const [chargement, setChargement] = useState(true);
   const [raceIdLocal, setRaceIdLocal] = useState<string | null>(null);
   const [sousTypeLocal, setSousTypeLocal] = useState<string | null>(null);
+  const [raceNomLocal, setRaceNomLocal] = useState<string | null>(null);
+  const [erreurChargement, setErreurChargement] = useState<string | null>(null);
 
   useEffect(() => {
     if (!personnageId) {
@@ -46,6 +48,7 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
     }
     const fetchData = async () => {
       setChargement(true);
+      setErreurChargement(null);
       try {
         const { data: perso, error } = await supabase
           .from("personnages")
@@ -128,27 +131,46 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
 
         if (raceRes.error) {
           console.error("[Etape_TraitsRaciaux] Erreur lecture races:", raceRes.error);
+          setErreurChargement(`Impossible de charger la race : ${raceRes.error.message}`);
+          return;
         }
 
         const quota = raceRes.data?.nb_traits_raciaux ?? 1;
-        console.log("[Etape_TraitsRaciaux] race:", raceRes.data?.nom, "→ quota gratuit:", quota);
+        const raceNom = raceRes.data?.nom ?? null;
+        console.log("[Etape_TraitsRaciaux] race:", raceNom, "→ quota gratuit:", quota);
         setQuotaGratuit(quota);
+        setRaceNomLocal(raceNom);
         onPeutPasser(gratuits.length >= quota);
 
         if (traitsRes.error) {
           console.error("[Etape_TraitsRaciaux] Erreur chargement traits:", traitsRes.error);
+          setErreurChargement(
+            `Erreur lors de la lecture de vue_traits_par_race : ${traitsRes.error.message}`,
+          );
           toast.error(`Traits non chargés : ${traitsRes.error.message}`);
+          return;
         }
 
-        if (traitsRes.data) {
-          const formattedTraits = (traitsRes.data as any[]).map(item => ({
-            trait_id: item.trait_id,
-            trait_nom: item.trait_nom ?? "Sans nom",
-            trait_description: item.trait_description ?? "",
-            cout_xp: item.cout_xp ?? 10,
-          }));
-          console.log("[Etape_TraitsRaciaux] Traits chargés:", formattedTraits.length);
-          setTraits(formattedTraits);
+        const rows = (traitsRes.data as any[] | null) ?? [];
+        const formattedTraits = rows.map((item) => ({
+          trait_id: item.trait_id,
+          trait_nom: item.trait_nom ?? "Sans nom",
+          trait_description: item.trait_description ?? "",
+          cout_xp: item.cout_xp ?? 10,
+        }));
+        console.log("[Etape_TraitsRaciaux] Traits chargés:", formattedTraits.length);
+        setTraits(formattedTraits);
+
+        // Erreur explicite : la race exige des traits mais la vue n'en renvoie aucun
+        if (formattedTraits.length === 0 && quota > 0) {
+          const sousTypeMsg = sousType ? ` (sous-type « ${sousType} »)` : "";
+          setErreurChargement(
+            `Aucun trait racial trouvé dans vue_traits_par_race pour la race « ${raceNom ?? perso.race_id} »${sousTypeMsg}, ` +
+              `alors que cette race exige ${quota} trait${quota > 1 ? "s" : ""} gratuit${quota > 1 ? "s" : ""}. ` +
+              `Vérifie que les traits sont bien associés via la table race_traits et que est_actif = true. ` +
+              `Tu ne peux pas continuer la création tant que ce problème n'est pas corrigé.`,
+          );
+          onPeutPasser(false);
         }
       } catch (err) {
         console.error("[Etape_TraitsRaciaux] Exception inattendue:", err);
@@ -251,19 +273,27 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
     );
   }
 
+  if (erreurChargement) {
+    return (
+      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+        <h2 className="text-2xl font-heading text-gold">Choisis tes traits raciaux</h2>
+        <div className="rounded-lg border border-red-700/60 bg-red-950/40 p-4 text-red-200">
+          <p className="font-semibold mb-2">⚠️ Erreur de chargement des traits raciaux</p>
+          <p className="text-sm whitespace-pre-line">{erreurChargement}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (traits.length === 0) {
-    // Cas légitime : race sans traits configurés OU race_id pas encore propagé en DB
-    // → on autorise le passage pour ne pas bloquer le créateur
+    // Aucun trait ET aucune erreur ET quota = 0 : race vraiment sans traits configurés
     if (!chargement) onPeutPasser(true);
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
         <h2 className="text-2xl font-heading text-gold">Choisis tes traits raciaux</h2>
         <p className="text-white/50 italic">
-          Aucun trait racial disponible pour cette race. Tu peux passer à l'étape suivante.
-        </p>
-        <p className="text-xs text-white/30 italic">
-          (Si tu vois ce message pour une race qui devrait avoir des traits, signale-le à l'organisation
-          ou reviens à l'étape précédente puis ré-avance.)
+          Aucun trait racial à choisir pour la race « {raceNomLocal ?? "inconnue"} ».
+          Tu peux passer à l'étape suivante.
         </p>
       </div>
     );
