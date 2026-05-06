@@ -7,8 +7,8 @@ A French LARP (Live Action Role Play) character management and event platform fo
 - `pnpm --filter @workspace/arlor run dev` — run the frontend (reads PORT + BASE_PATH from workflow)
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
-- Required env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase project credentials
-- Required env: `DATABASE_URL` — Replit Postgres (used by api-server)
+- Required env: `VITE_SUPABASE_URL` — Supabase project URL (add in Replit Secrets)
+- Required env: `VITE_SUPABASE_ANON_KEY` — Supabase anon/public key (add in Replit Secrets). `VITE_SUPABASE_PUBLISHABLE_KEY` is accepted as a fallback.
 
 ## Stack
 
@@ -51,7 +51,7 @@ A French LARP (Live Action Role Play) character management and event platform fo
 
 ## Gotchas
 
-- Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) must be set as Replit secrets for the app to load
+- Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) must be set as Replit secrets for the app to load. The frontend also accepts `VITE_SUPABASE_PUBLISHABLE_KEY` as a fallback for the anon key.
 - Tailwind v3 content paths in `tailwind.config.ts` must include `./src/**/*.{ts,tsx}`
 - The `lovable-tagger` Vite plugin was dropped (Lovable-only tooling, not needed on Replit)
 

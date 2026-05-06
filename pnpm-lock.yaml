@@ -169,12 +169,6 @@ importers:
 
   artifacts/api-server:
     dependencies:
-      '@clerk/express':
-        specifier: ^2.1.12
-        version: 2.1.12(express@5.2.1)
-      '@clerk/shared':
-        specifier: ^4.9.0
-        version: 4.9.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
@@ -193,9 +187,6 @@ importers:
       express:
         specifier: ^5
         version: 5.2.1
-      http-proxy-middleware:
-        specifier: ^4.0.0
-        version: 4.0.0
       pino:
         specifier: ^9
         version: 9.14.0
@@ -775,16 +766,6 @@ packages:
   '@babel/types@7.29.0':
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
-
-  '@clerk/backend@3.4.4':
-    resolution: {integrity: sha512-EGdpxBG1joIYzRBtpzTq2FGyM2ErSSF2UB7FZXrHiSb6V/uRUcvVcX7IWvYeEyg1AG100gJWr0KpbutajVCLMA==}
-    engines: {node: '>=20.9.0'}
-
-  '@clerk/express@2.1.12':
-    resolution: {integrity: sha512-FE6yE98qI0XiTOr2PJmqa7vU+cbOy6qujznJkKof4OcMpd8aZlvLPif10O2gDStyw7BlSdOAXjev+/1xUeYGMQ==}
-    engines: {node: '>=20.9.0'}
-    peerDependencies:
-      express: ^4.17.0 || ^5.0.0
 
   '@clerk/react@6.5.0':
     resolution: {integrity: sha512-TXYxlJ9EvPvJo6NKTy//RlqoZ4nhvmIjlU9cp9KG3buHD7UCby0It9dtaPHbAu5h4s426C7F6GID47LolaLEbg==}
@@ -1650,9 +1631,6 @@ packages:
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
 
-  '@stablelib/base64@1.0.1':
-    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
-
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
@@ -2473,9 +2451,6 @@ packages:
   fast-safe-stringify@2.1.1:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
 
-  fast-sha256@1.3.0:
-    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
-
   fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
 
@@ -2620,13 +2595,6 @@ packages:
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
     engines: {node: '>= 0.8'}
-
-  http-proxy-middleware@4.0.0:
-    resolution: {integrity: sha512-wuHwaUtmC0XzJNHqRp41zXtt5ojpHbusXGhq6781VvnjWUYPu7opmOF3eomGNujT07kEOnHWZyV9UZzKimVCKA==}
-    engines: {node: ^22.15.0 || ^24.0.0 || >=26.0.0}
-
-  httpxy@0.5.1:
-    resolution: {integrity: sha512-JPhqYiixe1A1I+MXDewWDZqeudBGU8Q9jCHYN8ML+779RQzLjTi78HBvWz4jMxUD6h2/vUL12g4q/mFM0OUw1A==}
 
   human-signals@8.0.1:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
@@ -3567,9 +3535,6 @@ packages:
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
-  standardwebhooks@1.0.0:
-    resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
-
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
     engines: {node: '>= 0.8'}
@@ -4083,25 +4048,6 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
-
-  '@clerk/backend@3.4.4':
-    dependencies:
-      '@clerk/shared': 4.9.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      standardwebhooks: 1.0.0
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@clerk/express@2.1.12(express@5.2.1)':
-    dependencies:
-      '@clerk/backend': 3.4.4
-      '@clerk/shared': 4.9.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      express: 5.2.1
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - react
-      - react-dom
 
   '@clerk/react@6.5.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
@@ -5095,8 +5041,6 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@stablelib/base64@1.0.1': {}
-
   '@standard-schema/spec@1.1.0': {}
 
   '@supabase/auth-js@2.105.3':
@@ -5850,8 +5794,6 @@ snapshots:
 
   fast-safe-stringify@2.1.1: {}
 
-  fast-sha256@1.3.0: {}
-
   fast-uri@3.1.0: {}
 
   fastq@1.20.1:
@@ -6013,18 +5955,6 @@ snapshots:
       setprototypeof: 1.2.0
       statuses: 2.0.2
       toidentifier: 1.0.1
-
-  http-proxy-middleware@4.0.0:
-    dependencies:
-      debug: 4.4.3
-      httpxy: 0.5.1
-      is-glob: 4.0.3
-      is-plain-obj: 4.1.0
-      micromatch: 4.0.8
-    transitivePeerDependencies:
-      - supports-color
-
-  httpxy@0.5.1: {}
 
   human-signals@8.0.1: {}
 
@@ -7172,11 +7102,6 @@ snapshots:
   split2@4.2.0: {}
 
   stackback@0.0.2: {}
-
-  standardwebhooks@1.0.0:
-    dependencies:
-      '@stablelib/base64': 1.0.1
-      fast-sha256: 1.3.0
 
   statuses@2.0.2: {}
 
