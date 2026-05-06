@@ -109,7 +109,7 @@ const Accueil = () => {
         supabase
           .from("inscriptions_evenements")
           .select("id")
-          .eq("evenement_id", evenement.id)
+          .eq("evenement_id", evenement.id ?? "")
           .eq("joueur_id", user.id)
           .limit(1),
       ]);

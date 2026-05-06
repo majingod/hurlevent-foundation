@@ -102,7 +102,7 @@ const PersonnageNouveau = () => {
           if (error) throw error;
           if (data) {
             setPersonnageId(data.id);
-            setNom(data.nom);
+            setNom(data.nom ?? "");
             setGnCompletes(data.gn_completes ?? 0);
             setMiniGnCompletes(data.mini_gn_completes ?? 0);
             setOuverturesTerrain(data.ouvertures_terrain ?? 0);
@@ -306,7 +306,7 @@ const PersonnageNouveau = () => {
       const { error } = await supabase
         .from("personnages")
         .update({ 
-          est_croyant: croyant, 
+          est_croyant: croyant ?? false, 
           religion_id: relId, 
           updated_at: new Date().toISOString() 
         })
