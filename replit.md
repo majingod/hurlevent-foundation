@@ -1,45 +1,61 @@
-# [Project name]
+# Hurlevent — GN Médiéval-Fantastique de Destéa
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A French LARP (Live Action Role Play) character management and event platform for the Hurlevent medieval-fantasy game set in the world of Destéa. Players create and manage characters, browse the encyclopaedia, register for events, and admins manage all game data.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/arlor run dev` — run the frontend (reads PORT + BASE_PATH from workflow)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase project credentials
+- Required env: `DATABASE_URL` — Replit Postgres (used by api-server)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Frontend: React 18 + Vite + react-router-dom v6, Tailwind v3 + shadcn/ui
+- Fonts: Cinzel (headings) + Inter (body) via Google Fonts
+- Auth & Data: Supabase (supabase-js v2) — auth, 25+ tables, RPC calls
+- API: Express 5 (scaffolded, minimal usage)
+- DB: PostgreSQL + Drizzle ORM (scaffolded, not yet used by frontend)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/arlor/` — main frontend artifact (previewPath `/`)
+- `artifacts/arlor/src/integrations/supabase/` — Supabase client + full TypeScript DB types
+- `artifacts/arlor/src/contexts/AuthContext.tsx` — auth state (Supabase auth)
+- `artifacts/arlor/src/pages/` — all pages (Accueil, Encyclopedie, Evenements, Connexion, admin/*)
+- `artifacts/arlor/src/components/creation/` — multi-step character creation wizard
+- `artifacts/arlor/src/constants/colors.ts` — Base44 color palette (gold/dark-brown theme)
+- `artifacts/arlor/tailwind.config.ts` — Tailwind v3 config referencing color constants
+- `artifacts/api-server/` — Express backend (scaffolded, running on /api)
+- `lib/db/src/schema/` — Drizzle schema (empty — app uses Supabase directly)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Supabase as primary backend**: The app uses Supabase directly from the frontend (auth, 25+ tables, RPC calls like `creer_demande_race`, `peut_acheter_trait_racial`, `get_joueurs_avec_count`). Replacing this would be a large migration project.
+- **Tailwind v3 + postcss**: Uses Tailwind v3 (not v4) with postcss/autoprefixer, configured via `tailwind.config.ts`. The `@tailwindcss/vite` plugin was removed in favour of `css.postcss.plugins`.
+- **react-router-dom v6**: Uses `BrowserRouter` with `basename={import.meta.env.BASE_URL}` for correct Replit path-based routing.
+- **Replit api-server scaffolded but minimal**: The Express server exists and runs, but the frontend talks to Supabase directly — not through the api-server.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Public pages: Home (next event, feature cards), Rules, Encyclopaedia (races/classes/spells/bestiary/lore/etc.), Events, Login
+- Authenticated: Player dashboard, character creation wizard (multi-step: race → class → skills → spells → prayers → runic assemblages → crafting → summary), character sheet
+- Admin: Dashboard, player management, character management, event management, master skills, data overview
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- App language: French
+- Theme: Dark medieval fantasy — black backgrounds, gold (#d4af37) accents, Cinzel serif headings
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) must be set as Replit secrets for the app to load
+- Tailwind v3 content paths in `tailwind.config.ts` must include `./src/**/*.{ts,tsx}`
+- The `lovable-tagger` Vite plugin was dropped (Lovable-only tooling, not needed on Replit)
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- See the `pnpm-workspace` skill for workspace structure
+- Supabase DB types: `artifacts/arlor/src/integrations/supabase/types.ts` (2778 lines, full schema)
