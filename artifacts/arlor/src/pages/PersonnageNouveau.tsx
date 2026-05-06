@@ -333,6 +333,10 @@ const PersonnageNouveau = () => {
       await sauvegarderEtape(etape);
       setEtape(Math.min(etape + 1, TOTAL_STEPS));
       window.scrollTo(0, 0);
+    } catch (err) {
+      // L'erreur est déjà signalée à l'utilisateur via toast dans sauvegarderEtape.
+      // On l'absorbe ici pour éviter l'overlay Vite "(unknown runtime error)".
+      console.error("[PersonnageNouveau] Navigation bloquée par sauvegarde:", err);
     } finally {
       setChargementDonnees(false);
     }
@@ -528,7 +532,9 @@ const PersonnageNouveau = () => {
 
   const suivantDisabled =
     !nom ||
+    nom.trim().length < 2 ||
     (etape === 1 && estCroyant === null) ||
+    (etape === 1 && estCroyant === true && !religionId) ||
     (etape === 2 && !raceId) ||
     (etape === 2 && raceId === CHIMERIDE_ID && !sousTypeChimeride) ||
     (etape === 3 && !etape3PeutPasser) ||
