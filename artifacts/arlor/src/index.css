@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 36 33% 93%;
+
+    --card: 0 0% 7%;
+    --card-foreground: 36 33% 93%;
+
+    --popover: 0 0% 7%;
+    --popover-foreground: 36 33% 93%;
+
+    --primary: 43 51% 54%;
+    --primary-foreground: 0 0% 4%;
+
+    --secondary: 348 55% 27%;
+    --secondary-foreground: 36 33% 93%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 36 15% 60%;
+
+    --accent: 348 55% 27%;
+    --accent-foreground: 36 33% 93%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 36 33% 93%;
+
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 43 51% 54%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 36 33% 93%;
+    --sidebar-primary: 43 51% 54%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 36 33% 93%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 43 51% 54%;
+
+    --font-heading: 'Cinzel', serif;
+    --font-body: 'Inter', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
