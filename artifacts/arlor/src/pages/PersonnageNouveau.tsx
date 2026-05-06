@@ -325,7 +325,8 @@ const PersonnageNouveau = () => {
       p_background: backgroundDemande,
     });
     if (error) {
-      toast.error("Erreur lors de la soumission de la demande.");
+      console.error("[creerDemandeRace] RPC error:", error);
+      toast.error(error.message || "Erreur lors de la soumission de la demande.");
       return false;
     }
     const result = data as any;
