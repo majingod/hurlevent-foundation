@@ -1,9 +1,3 @@
-export type PersonnageTraitRacialChoisi = {
-  trait_id: string;
-  est_gratuit: boolean;
-  xp_depense: number;
-};
-
 export type Json =
   | string
   | number
@@ -13,1127 +7,2679 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       assemblages_runes: {
         Row: {
-          id: string
-          nom: string | null
-          description: string | null
-          runes_requises: string[] | null
-          effet: string | null
-          cout_xp: number | null
-          est_actif: boolean | null
-          description_longue: string | null
           cible: string | null
           cout_ps: number | null
-          effet_maitrise: string | null
           cout_ps_maitrise: number | null
+          cout_xp: number | null
+          description: string | null
+          description_longue: string | null
+          effet: string | null
+          effet_maitrise: string | null
+          est_actif: boolean | null
+          id: string
+          nom: string | null
+          runes_requises: string[] | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          runes_requises?: string[] | null
-          effet?: string | null
-          cout_xp?: number | null
-          est_actif?: boolean | null
-          description_longue?: string | null
           cible?: string | null
           cout_ps?: number | null
-          effet_maitrise?: string | null
           cout_ps_maitrise?: number | null
+          cout_xp?: number | null
+          description?: string | null
+          description_longue?: string | null
+          effet?: string | null
+          effet_maitrise?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string | null
+          runes_requises?: string[] | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          runes_requises?: string[] | null
-          effet?: string | null
-          cout_xp?: number | null
-          est_actif?: boolean | null
-          description_longue?: string | null
           cible?: string | null
           cout_ps?: number | null
-          effet_maitrise?: string | null
           cout_ps_maitrise?: number | null
+          cout_xp?: number | null
+          description?: string | null
+          description_longue?: string | null
+          effet?: string | null
+          effet_maitrise?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string | null
+          runes_requises?: string[] | null
         }
         Relationships: []
       }
       bestiaire: {
         Row: {
-          id: string
-          nom: string
-          categorie: string
-          pv_formule: string | null
-          description: string
-          immunites: string | null
           capacites_speciales: string | null
-          est_actif: boolean | null
+          categorie: string
           created_at: string | null
+          description: string
+          est_actif: boolean | null
+          id: string
+          immunites: string | null
+          nom: string
+          pv_formule: string | null
           updated_at: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          categorie?: string | null
-          pv_formule?: string | null
-          description?: string | null
-          immunites?: string | null
           capacites_speciales?: string | null
-          est_actif?: boolean | null
+          categorie: string
           created_at?: string | null
+          description: string
+          est_actif?: boolean | null
+          id?: string
+          immunites?: string | null
+          nom: string
+          pv_formule?: string | null
           updated_at?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          categorie?: string | null
-          pv_formule?: string | null
-          description?: string | null
-          immunites?: string | null
           capacites_speciales?: string | null
-          est_actif?: boolean | null
+          categorie?: string
           created_at?: string | null
+          description?: string
+          est_actif?: boolean | null
+          id?: string
+          immunites?: string | null
+          nom?: string
+          pv_formule?: string | null
           updated_at?: string | null
         }
         Relationships: []
       }
       cartes_accueil: {
         Row: {
-          id: string
-          emoji: string
-          titre: string
-          description: string
-          tab_cible: string
-          ordre: number
-          est_actif: boolean
           created_at: string | null
+          description: string
+          emoji: string
+          est_actif: boolean
+          id: string
+          ordre: number
+          tab_cible: string
+          titre: string
           updated_at: string | null
         }
         Insert: {
-          id?: string | null
-          emoji?: string | null
-          titre?: string | null
-          description?: string | null
-          tab_cible?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
           created_at?: string | null
+          description: string
+          emoji: string
+          est_actif?: boolean
+          id?: string
+          ordre?: number
+          tab_cible: string
+          titre: string
           updated_at?: string | null
         }
         Update: {
-          id?: string | null
-          emoji?: string | null
-          titre?: string | null
-          description?: string | null
-          tab_cible?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
           created_at?: string | null
+          description?: string
+          emoji?: string
+          est_actif?: boolean
+          id?: string
+          ordre?: number
+          tab_cible?: string
+          titre?: string
           updated_at?: string | null
         }
         Relationships: []
       }
       categories_creatures: {
         Row: {
+          created_at: string | null
+          est_actif: boolean
           id: string
           nom: string
           ordre: number
-          est_actif: boolean
-          created_at: string | null
           updated_at: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
           created_at?: string | null
+          est_actif?: boolean
+          id?: string
+          nom: string
+          ordre?: number
           updated_at?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
           created_at?: string | null
+          est_actif?: boolean
+          id?: string
+          nom?: string
+          ordre?: number
           updated_at?: string | null
         }
         Relationships: []
       }
       classes: {
         Row: {
+          competences_gratuites: Json | null
+          description: string | null
+          emoji: string | null
+          est_actif: boolean | null
           id: string
           nom: string | null
-          description: string | null
-          role_combat: string | null
-          pv_depart: number | null
-          ps_depart: number | null
-          competences_gratuites: Json | null
-          est_actif: boolean | null
           peut_utiliser_armes_deux_mains: boolean | null
-          emoji: string | null
+          ps_depart: number | null
+          pv_depart: number | null
+          role_combat: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          role_combat?: string | null
-          pv_depart?: number | null
-          ps_depart?: number | null
           competences_gratuites?: Json | null
-          est_actif?: boolean | null
-          peut_utiliser_armes_deux_mains?: boolean | null
+          description?: string | null
           emoji?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string | null
+          peut_utiliser_armes_deux_mains?: boolean | null
+          ps_depart?: number | null
+          pv_depart?: number | null
+          role_combat?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          role_combat?: string | null
-          pv_depart?: number | null
-          ps_depart?: number | null
           competences_gratuites?: Json | null
-          est_actif?: boolean | null
-          peut_utiliser_armes_deux_mains?: boolean | null
+          description?: string | null
           emoji?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string | null
+          peut_utiliser_armes_deux_mains?: boolean | null
+          ps_depart?: number | null
+          pv_depart?: number | null
+          role_combat?: string | null
         }
         Relationships: []
       }
       competences: {
         Row: {
-          id: string
-          nom: string | null
-          description: string | null
           categorie: string | null
-          niveaux: Json | null
-          est_general: boolean | null
+          description: string | null
           est_actif: boolean | null
+          est_general: boolean | null
+          id: string
+          niveaux: Json | null
+          nom: string | null
           type_achat: string
           type_choix: string | null
           verrouillage_croise: boolean
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
           categorie?: string | null
-          niveaux?: Json | null
-          est_general?: boolean | null
+          description?: string | null
           est_actif?: boolean | null
-          type_achat?: string | null
+          est_general?: boolean | null
+          id?: string
+          niveaux?: Json | null
+          nom?: string | null
+          type_achat?: string
           type_choix?: string | null
-          verrouillage_croise?: boolean | null
+          verrouillage_croise?: boolean
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
           categorie?: string | null
-          niveaux?: Json | null
-          est_general?: boolean | null
+          description?: string | null
           est_actif?: boolean | null
-          type_achat?: string | null
+          est_general?: boolean | null
+          id?: string
+          niveaux?: Json | null
+          nom?: string | null
+          type_achat?: string
           type_choix?: string | null
-          verrouillage_croise?: boolean | null
+          verrouillage_croise?: boolean
         }
         Relationships: []
       }
       config_jeu: {
         Row: {
-          id: string
           cle: string | null
+          id: string
           valeur: Json | null
         }
         Insert: {
-          id?: string | null
           cle?: string | null
+          id?: string
           valeur?: Json | null
         }
         Update: {
-          id?: string | null
           cle?: string | null
+          id?: string
           valeur?: Json | null
         }
         Relationships: []
       }
       effets_combat: {
         Row: {
-          id: string
-          nom: string | null
+          conditions: string | null
           description: string | null
           duree: string | null
-          conditions: string | null
-          type: string | null
+          id: string
+          nom: string | null
           source: string | null
+          type: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
+          conditions?: string | null
           description?: string | null
           duree?: string | null
-          conditions?: string | null
-          type?: string | null
+          id?: string
+          nom?: string | null
           source?: string | null
+          type?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
+          conditions?: string | null
           description?: string | null
           duree?: string | null
-          conditions?: string | null
-          type?: string | null
+          id?: string
+          nom?: string | null
           source?: string | null
+          type?: string | null
         }
         Relationships: []
       }
       evenements: {
         Row: {
-          id: string
-          titre: string | null
-          description: string | null
-          date_evenement: string | null
-          lieu: string | null
-          xp_recompense: number | null
-          max_participants: number | null
-          est_publie: boolean | null
-          created_by: string | null
           created_at: string | null
-          updated_at: string | null
+          created_by: string | null
+          date_evenement: string | null
           date_fin: string | null
+          description: string | null
+          est_publie: boolean | null
+          id: string
+          lieu: string | null
+          max_participants: number | null
+          titre: string | null
           type_evenement: string | null
+          updated_at: string | null
+          xp_recompense: number | null
         }
         Insert: {
-          id?: string | null
-          titre?: string | null
-          description?: string | null
-          date_evenement?: string | null
-          lieu?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          est_publie?: boolean | null
-          created_by?: string | null
           created_at?: string | null
-          updated_at?: string | null
+          created_by?: string | null
+          date_evenement?: string | null
           date_fin?: string | null
+          description?: string | null
+          est_publie?: boolean | null
+          id?: string
+          lieu?: string | null
+          max_participants?: number | null
+          titre?: string | null
           type_evenement?: string | null
+          updated_at?: string | null
+          xp_recompense?: number | null
         }
         Update: {
-          id?: string | null
-          titre?: string | null
-          description?: string | null
-          date_evenement?: string | null
-          lieu?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          est_publie?: boolean | null
-          created_by?: string | null
           created_at?: string | null
-          updated_at?: string | null
+          created_by?: string | null
+          date_evenement?: string | null
           date_fin?: string | null
+          description?: string | null
+          est_publie?: boolean | null
+          id?: string
+          lieu?: string | null
+          max_participants?: number | null
+          titre?: string | null
           type_evenement?: string | null
+          updated_at?: string | null
+          xp_recompense?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
       }
       familles_criminelles: {
         Row: {
+          avantages: string | null
+          description: string | null
+          description_longue: string | null
+          est_actif: boolean | null
           id: string
           nom: string | null
-          description: string | null
-          avantages: string | null
-          est_actif: boolean | null
-          description_longue: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
           avantages?: string | null
-          est_actif?: boolean | null
+          description?: string | null
           description_longue?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
           avantages?: string | null
-          est_actif?: boolean | null
+          description?: string | null
           description_longue?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string | null
         }
         Relationships: []
+      }
+      historique_xp: {
+        Row: {
+          acteur_id: string | null
+          assemblage_id: string | null
+          competence_id: string | null
+          created_at: string
+          description: string
+          evenement_id: string | null
+          id: string
+          inscription_id: string | null
+          montant: number
+          objet_forge_id: string | null
+          objet_joaillerie_id: string | null
+          personnage_id: string
+          personnage_source_id: string | null
+          priere_id: string | null
+          recette_id: string | null
+          sort_id: string | null
+          trait_id: string | null
+          type_mouvement: string
+        }
+        Insert: {
+          acteur_id?: string | null
+          assemblage_id?: string | null
+          competence_id?: string | null
+          created_at?: string
+          description: string
+          evenement_id?: string | null
+          id?: string
+          inscription_id?: string | null
+          montant: number
+          objet_forge_id?: string | null
+          objet_joaillerie_id?: string | null
+          personnage_id: string
+          personnage_source_id?: string | null
+          priere_id?: string | null
+          recette_id?: string | null
+          sort_id?: string | null
+          trait_id?: string | null
+          type_mouvement: string
+        }
+        Update: {
+          acteur_id?: string | null
+          assemblage_id?: string | null
+          competence_id?: string | null
+          created_at?: string
+          description?: string
+          evenement_id?: string | null
+          id?: string
+          inscription_id?: string | null
+          montant?: number
+          objet_forge_id?: string | null
+          objet_joaillerie_id?: string | null
+          personnage_id?: string
+          personnage_source_id?: string | null
+          priere_id?: string | null
+          recette_id?: string | null
+          sort_id?: string | null
+          trait_id?: string | null
+          type_mouvement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historique_xp_assemblage_id_fkey"
+            columns: ["assemblage_id"]
+            isOneToOne: false
+            referencedRelation: "assemblages_runes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: false
+            referencedRelation: "competences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_publies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_prochain_evenement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["inscription_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_resumees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_objet_forge_id_fkey"
+            columns: ["objet_forge_id"]
+            isOneToOne: false
+            referencedRelation: "objets_forge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_objet_joaillerie_id_fkey"
+            columns: ["objet_joaillerie_id"]
+            isOneToOne: false
+            referencedRelation: "objets_joaillerie"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_priere_id_fkey"
+            columns: ["priere_id"]
+            isOneToOne: false
+            referencedRelation: "prieres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_recette_id_fkey"
+            columns: ["recette_id"]
+            isOneToOne: false
+            referencedRelation: "recettes_alchimie"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_sort_id_fkey"
+            columns: ["sort_id"]
+            isOneToOne: false
+            referencedRelation: "sorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_trait_id_fkey"
+            columns: ["trait_id"]
+            isOneToOne: false
+            referencedRelation: "traits_raciaux"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ingredients_alchimiques: {
         Row: {
           id: string
-          nom: string | null
           manipulations: string | null
           niveau: number | null
+          nom: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
+          id: string
           manipulations?: string | null
           niveau?: number | null
+          nom?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
+          id?: string
           manipulations?: string | null
           niveau?: number | null
+          nom?: string | null
         }
         Relationships: []
       }
       inscriptions_evenements: {
         Row: {
-          id: string
-          evenement_id: string | null
-          personnage_id: string | null
-          joueur_id: string | null
-          statut: string | null
-          date_inscription: string | null
           date_confirmation: string | null
+          date_inscription: string | null
+          evenement_id: string | null
+          id: string
+          joueur_id: string | null
+          personnage_id: string | null
+          statut: string | null
           updated_at: string | null
           xp_attribue: number | null
         }
         Insert: {
-          id?: string | null
-          evenement_id?: string | null
-          personnage_id?: string | null
-          joueur_id?: string | null
-          statut?: string | null
-          date_inscription?: string | null
           date_confirmation?: string | null
+          date_inscription?: string | null
+          evenement_id?: string | null
+          id?: string
+          joueur_id?: string | null
+          personnage_id?: string | null
+          statut?: string | null
           updated_at?: string | null
           xp_attribue?: number | null
         }
         Update: {
-          id?: string | null
-          evenement_id?: string | null
-          personnage_id?: string | null
-          joueur_id?: string | null
-          statut?: string | null
-          date_inscription?: string | null
           date_confirmation?: string | null
+          date_inscription?: string | null
+          evenement_id?: string | null
+          id?: string
+          joueur_id?: string | null
+          personnage_id?: string | null
+          statut?: string | null
           updated_at?: string | null
           xp_attribue?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_publies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_prochain_evenement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       langues: {
         Row: {
+          created_at: string | null
+          est_actif: boolean
+          est_ancienne: boolean
           id: string
           nom: string
-          est_ancienne: boolean
           ordre: number
-          est_actif: boolean
-          created_at: string | null
           updated_at: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          est_ancienne?: boolean | null
-          ordre?: number | null
-          est_actif?: boolean | null
           created_at?: string | null
+          est_actif?: boolean
+          est_ancienne?: boolean
+          id?: string
+          nom: string
+          ordre?: number
           updated_at?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          est_ancienne?: boolean | null
-          ordre?: number | null
-          est_actif?: boolean | null
           created_at?: string | null
+          est_actif?: boolean
+          est_ancienne?: boolean
+          id?: string
+          nom?: string
+          ordre?: number
           updated_at?: string | null
         }
         Relationships: []
       }
       lore: {
         Row: {
-          id: string
           categorie: string
-          nom: string
-          sous_titre: string | null
-          embleme: string | null
-          description: string
-          ordre: number | null
-          est_actif: boolean | null
           created_at: string | null
+          description: string
+          embleme: string | null
+          est_actif: boolean | null
+          id: string
+          nom: string
+          ordre: number | null
+          sous_titre: string | null
           updated_at: string | null
         }
         Insert: {
-          id?: string | null
-          categorie?: string | null
-          nom?: string | null
-          sous_titre?: string | null
-          embleme?: string | null
-          description?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          categorie: string
           created_at?: string | null
+          description: string
+          embleme?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom: string
+          ordre?: number | null
+          sous_titre?: string | null
           updated_at?: string | null
         }
         Update: {
-          id?: string | null
-          categorie?: string | null
-          nom?: string | null
-          sous_titre?: string | null
-          embleme?: string | null
-          description?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          categorie?: string
           created_at?: string | null
+          description?: string
+          embleme?: string | null
+          est_actif?: boolean | null
+          id?: string
+          nom?: string
+          ordre?: number | null
+          sous_titre?: string | null
           updated_at?: string | null
         }
         Relationships: []
       }
       menu_navigation: {
         Row: {
+          afficher_footer: boolean
+          afficher_navbar: boolean
+          created_at: string | null
+          est_actif: boolean
           id: string
           libelle: string
-          url: string
-          roles_autorises: string[] | null
-          afficher_navbar: boolean
-          afficher_footer: boolean
           ordre: number
-          est_actif: boolean
-          created_at: string | null
+          roles_autorises: string[] | null
           updated_at: string | null
+          url: string
         }
         Insert: {
-          id?: string | null
-          libelle?: string | null
-          url?: string | null
-          roles_autorises?: string[] | null
-          afficher_navbar?: boolean | null
-          afficher_footer?: boolean | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          afficher_footer?: boolean
+          afficher_navbar?: boolean
           created_at?: string | null
+          est_actif?: boolean
+          id?: string
+          libelle: string
+          ordre?: number
+          roles_autorises?: string[] | null
           updated_at?: string | null
+          url: string
         }
         Update: {
-          id?: string | null
-          libelle?: string | null
-          url?: string | null
-          roles_autorises?: string[] | null
-          afficher_navbar?: boolean | null
-          afficher_footer?: boolean | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          afficher_footer?: boolean
+          afficher_navbar?: boolean
           created_at?: string | null
+          est_actif?: boolean
+          id?: string
+          libelle?: string
+          ordre?: number
+          roles_autorises?: string[] | null
           updated_at?: string | null
+          url?: string
         }
         Relationships: []
       }
       notifications: {
         Row: {
-          id: string
-          user_id: string | null
-          message: string | null
-          lu: boolean | null
           created_at: string | null
-          updated_at: string | null
-          type: string
+          id: string
+          lu: boolean | null
+          message: string | null
           reference_id: string | null
           statut: string
+          type: string
+          updated_at: string | null
+          user_id: string | null
         }
         Insert: {
-          id?: string | null
-          user_id?: string | null
-          message?: string | null
-          lu?: boolean | null
           created_at?: string | null
-          updated_at?: string | null
-          type?: string | null
+          id?: string
+          lu?: boolean | null
+          message?: string | null
           reference_id?: string | null
-          statut?: string | null
+          statut?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
-          id?: string | null
-          user_id?: string | null
-          message?: string | null
-          lu?: boolean | null
           created_at?: string | null
-          updated_at?: string | null
-          type?: string | null
+          id?: string
+          lu?: boolean | null
+          message?: string | null
           reference_id?: string | null
-          statut?: string | null
+          statut?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
       }
       objets_forge: {
         Row: {
-          id: string
-          nom: string | null
-          description: string | null
-          type: string | null
-          stats: Json | null
-          difficulte: number | null
           cout_xp: number | null
+          description: string | null
+          difficulte: number | null
           est_actif: boolean | null
+          id: string
           materiaux_communs: string | null
           materiaux_rares: string | null
+          nom: string | null
+          stats: Json | null
+          type: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          type?: string | null
-          stats?: Json | null
-          difficulte?: number | null
           cout_xp?: number | null
+          description?: string | null
+          difficulte?: number | null
           est_actif?: boolean | null
+          id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
+          nom?: string | null
+          stats?: Json | null
+          type?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          type?: string | null
-          stats?: Json | null
-          difficulte?: number | null
           cout_xp?: number | null
+          description?: string | null
+          difficulte?: number | null
           est_actif?: boolean | null
+          id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
+          nom?: string | null
+          stats?: Json | null
+          type?: string | null
         }
         Relationships: []
       }
       objets_joaillerie: {
         Row: {
-          id: string
-          nom: string | null
-          description: string | null
-          effet: string | null
-          difficulte: number | null
           cout_xp: number | null
+          description: string | null
+          difficulte: number | null
+          effet: string | null
           est_actif: boolean | null
+          id: string
           materiaux_communs: string | null
           materiaux_rares: string | null
+          nom: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          effet?: string | null
-          difficulte?: number | null
           cout_xp?: number | null
+          description?: string | null
+          difficulte?: number | null
+          effet?: string | null
           est_actif?: boolean | null
+          id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
+          nom?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          effet?: string | null
-          difficulte?: number | null
           cout_xp?: number | null
+          description?: string | null
+          difficulte?: number | null
+          effet?: string | null
           est_actif?: boolean | null
+          id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
+          nom?: string | null
         }
         Relationships: []
       }
       personnage_assemblages: {
         Row: {
-          id: string
-          personnage_id: string
           assemblage_id: string
-          xp_depense: number
           date_acquisition: string
           est_gratuit: boolean
+          id: string
+          personnage_id: string
+          xp_depense: number
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          assemblage_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          est_gratuit?: boolean | null
+          assemblage_id: string
+          date_acquisition?: string
+          est_gratuit?: boolean
+          id?: string
+          personnage_id: string
+          xp_depense?: number
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          assemblage_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          est_gratuit?: boolean | null
+          assemblage_id?: string
+          date_acquisition?: string
+          est_gratuit?: boolean
+          id?: string
+          personnage_id?: string
+          xp_depense?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_assemblages_assemblage_id_fkey"
+            columns: ["assemblage_id"]
+            isOneToOne: false
+            referencedRelation: "assemblages_runes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnage_competences: {
         Row: {
-          id: string
-          personnage_id: string
-          competence_id: string
-          niveau_acquis: number
           appris_via_maitre: boolean
-          xp_depense: number
-          date_acquisition: string
-          nom_maitre: string | null
-          statut_maitre: string | null
           choix_achat: string | null
+          competence_id: string
+          date_acquisition: string
+          id: string
+          niveau_acquis: number
+          nom_maitre: string | null
+          personnage_id: string
+          statut_maitre: string | null
+          xp_depense: number
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          competence_id?: string | null
-          niveau_acquis?: number | null
-          appris_via_maitre?: boolean | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
+          appris_via_maitre?: boolean
           choix_achat?: string | null
+          competence_id: string
+          date_acquisition?: string
+          id?: string
+          niveau_acquis?: number
+          nom_maitre?: string | null
+          personnage_id: string
+          statut_maitre?: string | null
+          xp_depense?: number
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          competence_id?: string | null
-          niveau_acquis?: number | null
-          appris_via_maitre?: boolean | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
+          appris_via_maitre?: boolean
           choix_achat?: string | null
+          competence_id?: string
+          date_acquisition?: string
+          id?: string
+          niveau_acquis?: number
+          nom_maitre?: string | null
+          personnage_id?: string
+          statut_maitre?: string | null
+          xp_depense?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_competences_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: false
+            referencedRelation: "competences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnage_objets_forge: {
         Row: {
-          id: string
-          personnage_id: string
-          objet_id: string
-          xp_depense: number
           date_acquisition: string
+          id: string
+          objet_id: string
+          personnage_id: string
+          xp_depense: number
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          objet_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
+          date_acquisition?: string
+          id?: string
+          objet_id: string
+          personnage_id: string
+          xp_depense?: number
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          objet_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
+          date_acquisition?: string
+          id?: string
+          objet_id?: string
+          personnage_id?: string
+          xp_depense?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_objets_forge_objet_id_fkey"
+            columns: ["objet_id"]
+            isOneToOne: false
+            referencedRelation: "objets_forge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnage_objets_joaillerie: {
         Row: {
-          id: string
-          personnage_id: string
-          objet_id: string
-          xp_depense: number
           date_acquisition: string
+          id: string
+          objet_id: string
+          personnage_id: string
+          xp_depense: number
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          objet_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
+          date_acquisition?: string
+          id?: string
+          objet_id: string
+          personnage_id: string
+          xp_depense?: number
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          objet_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
+          date_acquisition?: string
+          id?: string
+          objet_id?: string
+          personnage_id?: string
+          xp_depense?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_objets_joaillerie_objet_id_fkey"
+            columns: ["objet_id"]
+            isOneToOne: false
+            referencedRelation: "objets_joaillerie"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnage_prieres: {
         Row: {
-          id: string
-          personnage_id: string
-          priere_id: string
-          niveau_priere: number
-          xp_depense: number
           date_acquisition: string
-          nom_personnalise: string | null
-          zone_choisie: string | null
-          portee_choisie: string | null
           duree_choisie: string | null
           duree_incantation_calculee: number | null
+          id: string
+          niveau_priere: number
+          nom_personnalise: string | null
+          personnage_id: string
+          portee_choisie: string | null
+          priere_id: string
+          xp_depense: number
+          zone_choisie: string | null
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          priere_id?: string | null
-          niveau_priere?: number | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          nom_personnalise?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
+          date_acquisition?: string
           duree_choisie?: string | null
           duree_incantation_calculee?: number | null
+          id?: string
+          niveau_priere?: number
+          nom_personnalise?: string | null
+          personnage_id: string
+          portee_choisie?: string | null
+          priere_id: string
+          xp_depense?: number
+          zone_choisie?: string | null
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          priere_id?: string | null
-          niveau_priere?: number | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          nom_personnalise?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
+          date_acquisition?: string
           duree_choisie?: string | null
           duree_incantation_calculee?: number | null
+          id?: string
+          niveau_priere?: number
+          nom_personnalise?: string | null
+          personnage_id?: string
+          portee_choisie?: string | null
+          priere_id?: string
+          xp_depense?: number
+          zone_choisie?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_priere_id_fkey"
+            columns: ["priere_id"]
+            isOneToOne: false
+            referencedRelation: "prieres"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnage_races_demandes: {
         Row: {
+          approuve_par: string | null
+          background: string
+          created_at: string
+          date_approbation: string | null
           id: string
           personnage_id: string
           race_id: string
-          background: string
-          statut: string
           raison_refus: string | null
-          approuve_par: string | null
-          created_at: string
+          statut: string
           updated_at: string
-          date_approbation: string | null
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          race_id?: string | null
-          background?: string | null
-          statut?: string | null
-          raison_refus?: string | null
           approuve_par?: string | null
-          created_at?: string | null
-          updated_at?: string | null
+          background: string
+          created_at?: string
           date_approbation?: string | null
+          id?: string
+          personnage_id: string
+          race_id: string
+          raison_refus?: string | null
+          statut?: string
+          updated_at?: string
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          race_id?: string | null
-          background?: string | null
-          statut?: string | null
-          raison_refus?: string | null
           approuve_par?: string | null
-          created_at?: string | null
-          updated_at?: string | null
+          background?: string
+          created_at?: string
           date_approbation?: string | null
+          id?: string
+          personnage_id?: string
+          race_id?: string
+          raison_refus?: string | null
+          statut?: string
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_attente"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_complet"
+            referencedColumns: ["race_id"]
+          },
+        ]
       }
       personnage_recettes: {
         Row: {
+          date_acquisition: string
+          est_gratuit: boolean
           id: string
           personnage_id: string
           recette_id: string
           xp_depense: number
-          date_acquisition: string
-          est_gratuit: boolean
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          recette_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          est_gratuit?: boolean | null
+          date_acquisition?: string
+          est_gratuit?: boolean
+          id?: string
+          personnage_id: string
+          recette_id: string
+          xp_depense?: number
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          recette_id?: string | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          est_gratuit?: boolean | null
+          date_acquisition?: string
+          est_gratuit?: boolean
+          id?: string
+          personnage_id?: string
+          recette_id?: string
+          xp_depense?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_recette_id_fkey"
+            columns: ["recette_id"]
+            isOneToOne: false
+            referencedRelation: "recettes_alchimie"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnage_sorts: {
         Row: {
-          id: string
-          personnage_id: string
-          sort_id: string
-          niveau_sort: number
-          xp_depense: number
           date_acquisition: string
-          nom_personnalise: string | null
-          zone_choisie: string | null
-          portee_choisie: string | null
           duree_choisie: string | null
           formule_magique: string | null
+          id: string
+          niveau_sort: number
+          nom_personnalise: string | null
+          personnage_id: string
+          portee_choisie: string | null
+          sort_id: string
+          xp_depense: number
+          zone_choisie: string | null
         }
         Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          sort_id?: string | null
-          niveau_sort?: number | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          nom_personnalise?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
+          date_acquisition?: string
           duree_choisie?: string | null
           formule_magique?: string | null
+          id?: string
+          niveau_sort?: number
+          nom_personnalise?: string | null
+          personnage_id: string
+          portee_choisie?: string | null
+          sort_id: string
+          xp_depense?: number
+          zone_choisie?: string | null
         }
         Update: {
-          id?: string | null
-          personnage_id?: string | null
-          sort_id?: string | null
-          niveau_sort?: number | null
-          xp_depense?: number | null
-          date_acquisition?: string | null
-          nom_personnalise?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
+          date_acquisition?: string
           duree_choisie?: string | null
           formule_magique?: string | null
+          id?: string
+          niveau_sort?: number
+          nom_personnalise?: string | null
+          personnage_id?: string
+          portee_choisie?: string | null
+          sort_id?: string
+          xp_depense?: number
+          zone_choisie?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_sort_id_fkey"
+            columns: ["sort_id"]
+            isOneToOne: false
+            referencedRelation: "sorts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personnages: {
         Row: {
-          id: string
-          joueur_id: string
-          nom: string | null
-          race_id: string | null
-          classe_id: string | null
-          niveau: number | null
-          xp_total: number | null
-          xp_depense: number | null
-          traits_raciaux_choisis: PersonnageTraitRacialChoisi[] | null
-          famille_criminelle_id: string | null
-          religion_id: string | null
-          historique: string | null
-          ame_personnage: string | null
-          est_verrouille: boolean | null
-          etape_creation: number
-          date_creation: string | null
-          date_modification: string | null
-          gn_completes: number | null
-          mini_gn_completes: number | null
-          ouvertures_terrain: number | null
-          created_at: string | null
-          updated_at: string | null
-          pv_max: number
-          ps_max: number
-          est_actif: boolean
-          est_mort: boolean
-          classe_secondaire_id: string | null
           a_forge_legendaire: boolean
           a_joaillerie_legendaire: boolean
-          sous_type_chimeride: string | null
+          ame_personnage: string | null
+          classe_id: string | null
+          classe_secondaire_id: string | null
+          created_at: string | null
+          date_creation: string | null
+          date_modification: string | null
+          est_actif: boolean
           est_croyant: boolean
+          est_mort: boolean
+          est_verrouille: boolean | null
+          etape_creation: number
+          famille_criminelle_id: string | null
+          gn_completes: number | null
+          historique: string | null
+          id: string
+          joueur_id: string
+          mini_gn_completes: number | null
+          niveau: number | null
+          nom: string | null
+          ouvertures_terrain: number | null
+          ps_max: number
+          pv_max: number
+          race_id: string | null
+          religion_id: string | null
+          sous_type_chimeride: string | null
+          traits_raciaux_choisis: Json | null
+          updated_at: string | null
+          xp_depense: number | null
+          xp_total: number | null
         }
         Insert: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          race_id?: string | null
-          classe_id?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          traits_raciaux_choisis?: PersonnageTraitRacialChoisi[] | null
-          famille_criminelle_id?: string | null
-          religion_id?: string | null
-          historique?: string | null
+          a_forge_legendaire?: boolean
+          a_joaillerie_legendaire?: boolean
           ame_personnage?: string | null
-          est_verrouille?: boolean | null
-          etape_creation?: number | null
+          classe_id?: string | null
+          classe_secondaire_id?: string | null
+          created_at?: string | null
           date_creation?: string | null
           date_modification?: string | null
+          est_actif?: boolean
+          est_croyant?: boolean
+          est_mort?: boolean
+          est_verrouille?: boolean | null
+          etape_creation?: number
+          famille_criminelle_id?: string | null
           gn_completes?: number | null
+          historique?: string | null
+          id: string
+          joueur_id: string
           mini_gn_completes?: number | null
+          niveau?: number | null
+          nom?: string | null
           ouvertures_terrain?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_actif?: boolean | null
-          est_mort?: boolean | null
-          classe_secondaire_id?: string | null
-          a_forge_legendaire?: boolean | null
-          a_joaillerie_legendaire?: boolean | null
+          ps_max?: number
+          pv_max?: number
+          race_id?: string | null
+          religion_id?: string | null
           sous_type_chimeride?: string | null
-          est_croyant?: boolean | null
+          traits_raciaux_choisis?: Json | null
+          updated_at?: string | null
+          xp_depense?: number | null
+          xp_total?: number | null
         }
         Update: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          race_id?: string | null
-          classe_id?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          traits_raciaux_choisis?: PersonnageTraitRacialChoisi[] | null
-          famille_criminelle_id?: string | null
-          religion_id?: string | null
-          historique?: string | null
+          a_forge_legendaire?: boolean
+          a_joaillerie_legendaire?: boolean
           ame_personnage?: string | null
-          est_verrouille?: boolean | null
-          etape_creation?: number | null
+          classe_id?: string | null
+          classe_secondaire_id?: string | null
+          created_at?: string | null
           date_creation?: string | null
           date_modification?: string | null
+          est_actif?: boolean
+          est_croyant?: boolean
+          est_mort?: boolean
+          est_verrouille?: boolean | null
+          etape_creation?: number
+          famille_criminelle_id?: string | null
           gn_completes?: number | null
+          historique?: string | null
+          id?: string
+          joueur_id?: string
           mini_gn_completes?: number | null
+          niveau?: number | null
+          nom?: string | null
           ouvertures_terrain?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_actif?: boolean | null
-          est_mort?: boolean | null
-          classe_secondaire_id?: string | null
-          a_forge_legendaire?: boolean | null
-          a_joaillerie_legendaire?: boolean | null
+          ps_max?: number
+          pv_max?: number
+          race_id?: string | null
+          religion_id?: string | null
           sous_type_chimeride?: string | null
-          est_croyant?: boolean | null
+          traits_raciaux_choisis?: Json | null
+          updated_at?: string | null
+          xp_depense?: number | null
+          xp_total?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnages_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_classe_secondaire_id_fkey"
+            columns: ["classe_secondaire_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_famille_criminelle_id_fkey"
+            columns: ["famille_criminelle_id"]
+            isOneToOne: false
+            referencedRelation: "familles_criminelles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_attente"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_complet"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "personnages_religion_id_fkey"
+            columns: ["religion_id"]
+            isOneToOne: false
+            referencedRelation: "religions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pieges: {
         Row: {
-          id: string
-          nom: string
-          niveau: number
-          cout_xp: number
           cible: string
+          construction: string | null
+          cout_xp: number
+          created_at: string
           duree: string
           effets: string
-          niveau_effet: number | null
-          type_piege: string
           est_actif: boolean
-          created_at: string
+          id: string
+          niveau: number
+          niveau_effet: number | null
+          nom: string
+          type_piege: string
           updated_at: string
-          construction: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          cout_xp?: number | null
-          cible?: string | null
-          duree?: string | null
-          effets?: string | null
-          niveau_effet?: number | null
-          type_piege?: string | null
-          est_actif?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
+          cible: string
           construction?: string | null
+          cout_xp: number
+          created_at?: string
+          duree: string
+          effets: string
+          est_actif?: boolean
+          id?: string
+          niveau: number
+          niveau_effet?: number | null
+          nom: string
+          type_piege?: string
+          updated_at?: string
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          cout_xp?: number | null
-          cible?: string | null
-          duree?: string | null
-          effets?: string | null
-          niveau_effet?: number | null
-          type_piege?: string | null
-          est_actif?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
+          cible?: string
           construction?: string | null
+          cout_xp?: number
+          created_at?: string
+          duree?: string
+          effets?: string
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          niveau_effet?: number | null
+          nom?: string
+          type_piege?: string
+          updated_at?: string
         }
         Relationships: []
       }
       prieres: {
         Row: {
-          id: string
-          nom: string
-          domaine: string
-          niveau: number
+          cout_xp_base: number | null
           description: string | null
-          type_priere: string | null
-          zone_effet: string | null
-          portee: string | null
+          domaine: string
           duree: string | null
           duree_incantation: string | null
-          cout_xp_base: number | null
-          religion_id: string | null
           est_actif: boolean
+          id: string
+          niveau: number
+          nom: string
+          portee: string | null
+          religion_id: string | null
+          type_priere: string | null
+          zone_effet: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          domaine?: string | null
-          niveau?: number | null
+          cout_xp_base?: number | null
           description?: string | null
-          type_priere?: string | null
-          zone_effet?: string | null
-          portee?: string | null
+          domaine: string
           duree?: string | null
           duree_incantation?: string | null
-          cout_xp_base?: number | null
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          nom: string
+          portee?: string | null
           religion_id?: string | null
-          est_actif?: boolean | null
+          type_priere?: string | null
+          zone_effet?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          domaine?: string | null
-          niveau?: number | null
+          cout_xp_base?: number | null
           description?: string | null
-          type_priere?: string | null
-          zone_effet?: string | null
-          portee?: string | null
+          domaine?: string
           duree?: string | null
           duree_incantation?: string | null
-          cout_xp_base?: number | null
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          nom?: string
+          portee?: string | null
           religion_id?: string | null
-          est_actif?: boolean | null
+          type_priere?: string | null
+          zone_effet?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "prieres_religion_id_fkey"
+            columns: ["religion_id"]
+            isOneToOne: false
+            referencedRelation: "religions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
-          id: string
-          username: string | null
-          email: string | null
-          role: string | null
-          created_at: string | null
-          is_active: boolean | null
-          updated_at: string | null
-          nom_affichage: string | null
           avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          nom_affichage: string | null
+          role: string | null
+          updated_at: string | null
+          username: string | null
         }
         Insert: {
-          id?: string | null
-          username?: string | null
-          email?: string | null
-          role?: string | null
-          created_at?: string | null
-          is_active?: boolean | null
-          updated_at?: string | null
-          nom_affichage?: string | null
           avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id: string
+          is_active?: boolean | null
+          nom_affichage?: string | null
+          role?: string | null
+          updated_at?: string | null
+          username?: string | null
         }
         Update: {
-          id?: string | null
-          username?: string | null
-          email?: string | null
-          role?: string | null
-          created_at?: string | null
-          is_active?: boolean | null
-          updated_at?: string | null
-          nom_affichage?: string | null
           avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          nom_affichage?: string | null
+          role?: string | null
+          updated_at?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -1141,1639 +2687,2841 @@ export type Database = {
         Row: {
           id: string
           race_id: string
-          trait_id: string
           sous_type: string | null
+          trait_id: string
         }
         Insert: {
-          id?: string | null
-          race_id?: string | null
-          trait_id?: string | null
+          id?: string
+          race_id: string
           sous_type?: string | null
+          trait_id: string
         }
         Update: {
-          id?: string | null
-          race_id?: string | null
-          trait_id?: string | null
+          id?: string
+          race_id?: string
           sous_type?: string | null
+          trait_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "race_traits_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_traits_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_attente"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "race_traits_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_complet"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "race_traits_trait_id_fkey"
+            columns: ["trait_id"]
+            isOneToOne: false
+            referencedRelation: "traits_raciaux"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       races: {
         Row: {
-          id: string
-          nom: string | null
           description: string | null
-          restrictions_classes: string[] | null
-          image_url: string | null
-          est_actif: boolean | null
-          nom_latin: string | null
-          xp_depart: number
-          esperance_vie: string | null
-          exigences_costume: string | null
-          nb_traits_raciaux: number
-          est_jouable: boolean
           emoji: string | null
+          esperance_vie: string | null
+          est_actif: boolean | null
+          est_jouable: boolean
+          exigences_costume: string | null
+          id: string
+          image_url: string | null
+          nb_traits_raciaux: number
+          nom: string | null
+          nom_latin: string | null
+          restrictions_classes: string[] | null
+          xp_depart: number
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
           description?: string | null
-          restrictions_classes?: string[] | null
-          image_url?: string | null
-          est_actif?: boolean | null
-          nom_latin?: string | null
-          xp_depart?: number | null
-          esperance_vie?: string | null
-          exigences_costume?: string | null
-          nb_traits_raciaux?: number | null
-          est_jouable?: boolean | null
           emoji?: string | null
+          esperance_vie?: string | null
+          est_actif?: boolean | null
+          est_jouable?: boolean
+          exigences_costume?: string | null
+          id?: string
+          image_url?: string | null
+          nb_traits_raciaux?: number
+          nom?: string | null
+          nom_latin?: string | null
+          restrictions_classes?: string[] | null
+          xp_depart?: number
         }
         Update: {
-          id?: string | null
-          nom?: string | null
           description?: string | null
-          restrictions_classes?: string[] | null
-          image_url?: string | null
-          est_actif?: boolean | null
-          nom_latin?: string | null
-          xp_depart?: number | null
-          esperance_vie?: string | null
-          exigences_costume?: string | null
-          nb_traits_raciaux?: number | null
-          est_jouable?: boolean | null
           emoji?: string | null
+          esperance_vie?: string | null
+          est_actif?: boolean | null
+          est_jouable?: boolean
+          exigences_costume?: string | null
+          id?: string
+          image_url?: string | null
+          nb_traits_raciaux?: number
+          nom?: string | null
+          nom_latin?: string | null
+          restrictions_classes?: string[] | null
+          xp_depart?: number
         }
         Relationships: []
       }
       recettes_alchimie: {
         Row: {
-          id: string
-          nom: string | null
+          cout_xp: number | null
           description: string | null
-          formule: string | null
           effet: string | null
+          est_actif: boolean | null
+          formule: string | null
+          id: string
           ingredients: Json | null
           niveau_requis: number | null
-          cout_xp: number | null
-          est_actif: boolean | null
+          nom: string | null
           type: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
+          cout_xp?: number | null
           description?: string | null
-          formule?: string | null
           effet?: string | null
+          est_actif?: boolean | null
+          formule?: string | null
+          id?: string
           ingredients?: Json | null
           niveau_requis?: number | null
-          cout_xp?: number | null
-          est_actif?: boolean | null
+          nom?: string | null
           type?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
+          cout_xp?: number | null
           description?: string | null
-          formule?: string | null
           effet?: string | null
+          est_actif?: boolean | null
+          formule?: string | null
+          id?: string
           ingredients?: Json | null
           niveau_requis?: number | null
-          cout_xp?: number | null
-          est_actif?: boolean | null
+          nom?: string | null
           type?: string | null
         }
         Relationships: []
       }
       religions: {
         Row: {
-          id: string
-          nom: string | null
-          dirigeant: string | null
-          fondateur: string | null
           description: string | null
+          description_longue: string | null
+          dirigeant: string | null
           domaines_principaux: string[] | null
           domaines_proscrits: string[] | null
-          symbole_sacre: string | null
-          pouvoir_symbole: string | null
           est_actif: boolean | null
-          description_longue: string | null
+          fondateur: string | null
+          id: string
+          nom: string | null
+          pouvoir_symbole: string | null
+          symbole_sacre: string | null
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          dirigeant?: string | null
-          fondateur?: string | null
           description?: string | null
+          description_longue?: string | null
+          dirigeant?: string | null
           domaines_principaux?: string[] | null
           domaines_proscrits?: string[] | null
-          symbole_sacre?: string | null
-          pouvoir_symbole?: string | null
           est_actif?: boolean | null
-          description_longue?: string | null
+          fondateur?: string | null
+          id?: string
+          nom?: string | null
+          pouvoir_symbole?: string | null
+          symbole_sacre?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          dirigeant?: string | null
-          fondateur?: string | null
           description?: string | null
+          description_longue?: string | null
+          dirigeant?: string | null
           domaines_principaux?: string[] | null
           domaines_proscrits?: string[] | null
-          symbole_sacre?: string | null
-          pouvoir_symbole?: string | null
           est_actif?: boolean | null
-          description_longue?: string | null
+          fondateur?: string | null
+          id?: string
+          nom?: string | null
+          pouvoir_symbole?: string | null
+          symbole_sacre?: string | null
         }
         Relationships: []
       }
       reparations_forge: {
         Row: {
-          id: string
           categorie: string
-          nom_affichage: string
-          temps_minutes: number
-          temps_rare_minutes: number
+          created_at: string
+          est_actif: boolean
+          id: string
           materiaux: string
           materiaux_rares: string
+          nom_affichage: string
           notes: string | null
-          est_actif: boolean
-          created_at: string
+          temps_minutes: number
+          temps_rare_minutes: number
           updated_at: string
         }
         Insert: {
-          id?: string | null
-          categorie?: string | null
-          nom_affichage?: string | null
-          temps_minutes?: number | null
-          temps_rare_minutes?: number | null
-          materiaux?: string | null
-          materiaux_rares?: string | null
+          categorie: string
+          created_at?: string
+          est_actif?: boolean
+          id?: string
+          materiaux: string
+          materiaux_rares: string
+          nom_affichage: string
           notes?: string | null
-          est_actif?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
+          temps_minutes: number
+          temps_rare_minutes: number
+          updated_at?: string
         }
         Update: {
-          id?: string | null
-          categorie?: string | null
-          nom_affichage?: string | null
-          temps_minutes?: number | null
-          temps_rare_minutes?: number | null
-          materiaux?: string | null
-          materiaux_rares?: string | null
+          categorie?: string
+          created_at?: string
+          est_actif?: boolean
+          id?: string
+          materiaux?: string
+          materiaux_rares?: string
+          nom_affichage?: string
           notes?: string | null
-          est_actif?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
+          temps_minutes?: number
+          temps_rare_minutes?: number
+          updated_at?: string
         }
         Relationships: []
       }
       sections_encyclopedie: {
         Row: {
-          id: string
           cle: string
-          label: string
-          icon_nom: string
-          url_key: string
-          ordre: number
-          est_actif: boolean
           created_at: string | null
+          est_actif: boolean
+          icon_nom: string
+          id: string
+          label: string
+          ordre: number
           updated_at: string | null
+          url_key: string
         }
         Insert: {
-          id?: string | null
-          cle?: string | null
-          label?: string | null
-          icon_nom?: string | null
-          url_key?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          cle: string
           created_at?: string | null
+          est_actif?: boolean
+          icon_nom: string
+          id?: string
+          label: string
+          ordre?: number
           updated_at?: string | null
+          url_key: string
         }
         Update: {
-          id?: string | null
-          cle?: string | null
-          label?: string | null
-          icon_nom?: string | null
-          url_key?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          cle?: string
           created_at?: string | null
+          est_actif?: boolean
+          icon_nom?: string
+          id?: string
+          label?: string
+          ordre?: number
           updated_at?: string | null
+          url_key?: string
         }
         Relationships: []
       }
       sections_regles: {
         Row: {
-          id: string
           categorie: string
-          titre: string
           contenu: string
-          ordre: number
-          est_actif: boolean | null
           created_at: string | null
+          est_actif: boolean | null
+          id: string
+          ordre: number
+          titre: string
           updated_at: string | null
         }
         Insert: {
-          id?: string | null
-          categorie?: string | null
-          titre?: string | null
-          contenu?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          categorie: string
+          contenu: string
           created_at?: string | null
+          est_actif?: boolean | null
+          id?: string
+          ordre?: number
+          titre: string
           updated_at?: string | null
         }
         Update: {
-          id?: string | null
-          categorie?: string | null
-          titre?: string | null
-          contenu?: string | null
-          ordre?: number | null
-          est_actif?: boolean | null
+          categorie?: string
+          contenu?: string
           created_at?: string | null
+          est_actif?: boolean | null
+          id?: string
+          ordre?: number
+          titre?: string
           updated_at?: string | null
         }
         Relationships: []
       }
       sorts: {
         Row: {
-          id: string
-          nom: string
           cercle: string
-          niveau: number
+          cout_xp_base: number | null
           description: string | null
+          duree: string | null
+          est_actif: boolean
+          id: string
+          niveau: number
+          nom: string
+          portee: string | null
           type_sort: string | null
           zone_effet: string | null
-          portee: string | null
-          duree: string | null
-          cout_xp_base: number | null
-          est_actif: boolean
         }
         Insert: {
-          id?: string | null
-          nom?: string | null
-          cercle?: string | null
-          niveau?: number | null
+          cercle: string
+          cout_xp_base?: number | null
           description?: string | null
+          duree?: string | null
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          nom: string
+          portee?: string | null
           type_sort?: string | null
           zone_effet?: string | null
-          portee?: string | null
-          duree?: string | null
-          cout_xp_base?: number | null
-          est_actif?: boolean | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          cercle?: string | null
-          niveau?: number | null
+          cercle?: string
+          cout_xp_base?: number | null
           description?: string | null
+          duree?: string | null
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          nom?: string
+          portee?: string | null
           type_sort?: string | null
           zone_effet?: string | null
-          portee?: string | null
-          duree?: string | null
-          cout_xp_base?: number | null
-          est_actif?: boolean | null
         }
         Relationships: []
       }
       traits_raciaux: {
         Row: {
+          cout_xp: number
+          created_at: string | null
+          description: string
+          est_actif: boolean | null
           id: string
           nom: string
+          updated_at: string | null
+        }
+        Insert: {
+          cout_xp?: number
+          created_at?: string | null
           description: string
-          cout_xp: number
-          est_actif: boolean | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          cout_xp?: number | null
           est_actif?: boolean | null
-          created_at?: string | null
+          id?: string
+          nom: string
           updated_at?: string | null
         }
         Update: {
-          id?: string | null
-          nom?: string | null
-          description?: string | null
-          cout_xp?: number | null
-          est_actif?: boolean | null
+          cout_xp?: number
           created_at?: string | null
+          description?: string
+          est_actif?: boolean | null
+          id?: string
+          nom?: string
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      vue_admin_joueurs: {
-        Row: {
-          joueur_id: string | null
-          username: string | null
-          email: string | null
-          nom_affichage: string | null
-          role: string | null
-          is_active: boolean | null
-          compte_cree_le: string | null
-          nb_personnages_actifs: number | null
-          nb_personnages_morts: number | null
-          nb_personnages_archives: number | null
-          nb_personnages_total: number | null
-          personnage_actif_principal: string | null
-        }
-        Insert: {
-          joueur_id?: string | null
-          username?: string | null
-          email?: string | null
-          nom_affichage?: string | null
-          role?: string | null
-          is_active?: boolean | null
-          compte_cree_le?: string | null
-          nb_personnages_actifs?: number | null
-          nb_personnages_morts?: number | null
-          nb_personnages_archives?: number | null
-          nb_personnages_total?: number | null
-          personnage_actif_principal?: string | null
-        }
-        Update: {
-          joueur_id?: string | null
-          username?: string | null
-          email?: string | null
-          nom_affichage?: string | null
-          role?: string | null
-          is_active?: boolean | null
-          compte_cree_le?: string | null
-          nb_personnages_actifs?: number | null
-          nb_personnages_morts?: number | null
-          nb_personnages_archives?: number | null
-          nb_personnages_total?: number | null
-          personnage_actif_principal?: string | null
-        }
-        Relationships: []
-      }
-      vue_artisanat_etat: {
-        Row: {
-          personnage_id: string | null
-          niveau_alchimie: number | null
-          niveau_forge: number | null
-          niveau_joaillerie: number | null
-          niveau_runes: number | null
-          a_forge_legendaire: boolean | null
-          a_joaillerie_legendaire: boolean | null
-        }
-        Insert: {
-          personnage_id?: string | null
-          niveau_alchimie?: number | null
-          niveau_forge?: number | null
-          niveau_joaillerie?: number | null
-          niveau_runes?: number | null
-          a_forge_legendaire?: boolean | null
-          a_joaillerie_legendaire?: boolean | null
-        }
-        Update: {
-          personnage_id?: string | null
-          niveau_alchimie?: number | null
-          niveau_forge?: number | null
-          niveau_joaillerie?: number | null
-          niveau_runes?: number | null
-          a_forge_legendaire?: boolean | null
-          a_joaillerie_legendaire?: boolean | null
-        }
-        Relationships: []
-      }
-      vue_artisanat_quotas: {
-        Row: {
-          personnage_id: string | null
-          niveau_alchimie: number | null
-          niveau_forge: number | null
-          niveau_joaillerie: number | null
-          niveau_runes: number | null
-          a_forge_legendaire: boolean | null
-          a_joaillerie_legendaire: boolean | null
-          quota_recettes_total: number | null
-          quota_assemblages_total: number | null
-          quota_alchimie_mineure_total: number | null
-          quota_alchimie_intermediaire_total: number | null
-          quota_alchimie_majeure_total: number | null
-          quota_alchimie_mineure_utilises: number | null
-          quota_alchimie_intermediaire_utilises: number | null
-          quota_alchimie_majeure_utilises: number | null
-          quota_assemblages_utilises: number | null
-        }
-        Insert: {
-          personnage_id?: string | null
-          niveau_alchimie?: number | null
-          niveau_forge?: number | null
-          niveau_joaillerie?: number | null
-          niveau_runes?: number | null
-          a_forge_legendaire?: boolean | null
-          a_joaillerie_legendaire?: boolean | null
-          quota_recettes_total?: number | null
-          quota_assemblages_total?: number | null
-          quota_alchimie_mineure_total?: number | null
-          quota_alchimie_intermediaire_total?: number | null
-          quota_alchimie_majeure_total?: number | null
-          quota_alchimie_mineure_utilises?: number | null
-          quota_alchimie_intermediaire_utilises?: number | null
-          quota_alchimie_majeure_utilises?: number | null
-          quota_assemblages_utilises?: number | null
-        }
-        Update: {
-          personnage_id?: string | null
-          niveau_alchimie?: number | null
-          niveau_forge?: number | null
-          niveau_joaillerie?: number | null
-          niveau_runes?: number | null
-          a_forge_legendaire?: boolean | null
-          a_joaillerie_legendaire?: boolean | null
-          quota_recettes_total?: number | null
-          quota_assemblages_total?: number | null
-          quota_alchimie_mineure_total?: number | null
-          quota_alchimie_intermediaire_total?: number | null
-          quota_alchimie_majeure_total?: number | null
-          quota_alchimie_mineure_utilises?: number | null
-          quota_alchimie_intermediaire_utilises?: number | null
-          quota_alchimie_majeure_utilises?: number | null
-          quota_assemblages_utilises?: number | null
-        }
-        Relationships: []
-      }
-      vue_assemblages_personnage: {
-        Row: {
-          id: string | null
-          personnage_id: string | null
-          nom: string | null
-          cible: string | null
-          description: string | null
-          effet: string | null
-          xp_depense: number | null
-          cout_ps: number | null
-          runes_requises: string[] | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          nom?: string | null
-          cible?: string | null
-          description?: string | null
-          effet?: string | null
-          xp_depense?: number | null
-          cout_ps?: number | null
-          runes_requises?: string[] | null
-        }
-        Update: {
-          id?: string | null
-          personnage_id?: string | null
-          nom?: string | null
-          cible?: string | null
-          description?: string | null
-          effet?: string | null
-          xp_depense?: number | null
-          cout_ps?: number | null
-          runes_requises?: string[] | null
-        }
-        Relationships: []
-      }
-      vue_cercles_disponibles: {
-        Row: {
-          personnage_id: string | null
-          cercle: string | null
-          niveau_max_sorts: number | null
-        }
-        Insert: {
-          personnage_id?: string | null
-          cercle?: string | null
-          niveau_max_sorts?: number | null
-        }
-        Update: {
-          personnage_id?: string | null
-          cercle?: string | null
-          niveau_max_sorts?: number | null
-        }
-        Relationships: []
-      }
-      vue_competences_maitre_admin: {
-        Row: {
-          id: string | null
-          personnage_nom: string | null
-          joueur_nom: string | null
-          competence_nom: string | null
-          niveau_acquis: number | null
-          nom_maitre: string | null
-          statut_maitre: string | null
-          date_demande: string | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_nom?: string | null
-          joueur_nom?: string | null
-          competence_nom?: string | null
-          niveau_acquis?: number | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
-          date_demande?: string | null
-        }
-        Update: {
-          id?: string | null
-          personnage_nom?: string | null
-          joueur_nom?: string | null
-          competence_nom?: string | null
-          niveau_acquis?: number | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
-          date_demande?: string | null
-        }
-        Relationships: []
-      }
-      vue_competences_maitre_attente: {
-        Row: {
-          id: string | null
-          niveau_acquis: number | null
-          nom_maitre: string | null
-          statut_maitre: string | null
-          xp_depense: number | null
-          personnage_id: string | null
-          competence_nom: string | null
-          competence_description: string | null
-          personnage_nom: string | null
-          personnage_niveau: number | null
-          joueur_nom: string | null
-          joueur_id: string | null
-        }
-        Insert: {
-          id?: string | null
-          niveau_acquis?: number | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
-          xp_depense?: number | null
-          personnage_id?: string | null
-          competence_nom?: string | null
-          competence_description?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          joueur_nom?: string | null
-          joueur_id?: string | null
-        }
-        Update: {
-          id?: string | null
-          niveau_acquis?: number | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
-          xp_depense?: number | null
-          personnage_id?: string | null
-          competence_nom?: string | null
-          competence_description?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          joueur_nom?: string | null
-          joueur_id?: string | null
-        }
-        Relationships: []
-      }
-      vue_competences_personnage: {
-        Row: {
-          id: string | null
-          personnage_id: string | null
-          choix_achat: string | null
-          nom_maitre: string | null
-          statut_maitre: string | null
-          nom: string | null
-          categorie: string | null
-          competence_description: string | null
-          niveau_acquis: number | null
-          xp_depense: number | null
-          appris_via_maitre: boolean | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          choix_achat?: string | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
-          nom?: string | null
-          categorie?: string | null
-          competence_description?: string | null
-          niveau_acquis?: number | null
-          xp_depense?: number | null
-          appris_via_maitre?: boolean | null
-        }
-        Update: {
-          id?: string | null
-          personnage_id?: string | null
-          choix_achat?: string | null
-          nom_maitre?: string | null
-          statut_maitre?: string | null
-          nom?: string | null
-          categorie?: string | null
-          competence_description?: string | null
-          niveau_acquis?: number | null
-          xp_depense?: number | null
-          appris_via_maitre?: boolean | null
-        }
-        Relationships: []
-      }
-      vue_demandes_races_attente: {
-        Row: {
-          id: string | null
-          personnage_id: string | null
-          personnage_nom: string | null
-          personnage_niveau: number | null
-          joueur_id: string | null
-          joueur_nom: string | null
-          joueur_email: string | null
-          race_id: string | null
-          race_nom: string | null
-          race_nom_latin: string | null
-          background: string | null
-          date_demande: string | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          joueur_email?: string | null
-          race_id?: string | null
-          race_nom?: string | null
-          race_nom_latin?: string | null
-          background?: string | null
-          date_demande?: string | null
-        }
-        Update: {
-          id?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          joueur_email?: string | null
-          race_id?: string | null
-          race_nom?: string | null
-          race_nom_latin?: string | null
-          background?: string | null
-          date_demande?: string | null
-        }
-        Relationships: []
-      }
-      vue_demandes_races_complet: {
-        Row: {
-          id: string | null
-          personnage_id: string | null
-          personnage_nom: string | null
-          personnage_niveau: number | null
-          joueur_id: string | null
-          joueur_nom: string | null
-          joueur_email: string | null
-          race_id: string | null
-          race_nom: string | null
-          race_nom_latin: string | null
-          background: string | null
-          statut: string | null
-          raison_refus: string | null
-          approuve_par: string | null
-          approuve_par_nom: string | null
-          date_demande: string | null
-          date_approbation: string | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          joueur_email?: string | null
-          race_id?: string | null
-          race_nom?: string | null
-          race_nom_latin?: string | null
-          background?: string | null
-          statut?: string | null
-          raison_refus?: string | null
-          approuve_par?: string | null
-          approuve_par_nom?: string | null
-          date_demande?: string | null
-          date_approbation?: string | null
-        }
-        Update: {
-          id?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          joueur_email?: string | null
-          race_id?: string | null
-          race_nom?: string | null
-          race_nom_latin?: string | null
-          background?: string | null
-          statut?: string | null
-          raison_refus?: string | null
-          approuve_par?: string | null
-          approuve_par_nom?: string | null
-          date_demande?: string | null
-          date_approbation?: string | null
-        }
-        Relationships: []
-      }
-      vue_domaines_disponibles: {
-        Row: {
-          personnage_id: string | null
-          domaine: string | null
-          niveau_max_prieres: number | null
-        }
-        Insert: {
-          personnage_id?: string | null
-          domaine?: string | null
-          niveau_max_prieres?: number | null
-        }
-        Update: {
-          personnage_id?: string | null
-          domaine?: string | null
-          niveau_max_prieres?: number | null
-        }
-        Relationships: []
-      }
-      vue_evenements_admin: {
-        Row: {
-          id: string | null
-          titre: string | null
-          description: string | null
-          date_debut: string | null
-          date_fin: string | null
-          lieu: string | null
-          nb_participants: number | null
-          est_publie: boolean | null
-        }
-        Insert: {
-          id?: string | null
-          titre?: string | null
-          description?: string | null
-          date_debut?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          nb_participants?: number | null
-          est_publie?: boolean | null
-        }
-        Update: {
-          id?: string | null
-          titre?: string | null
-          description?: string | null
-          date_debut?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          nb_participants?: number | null
-          est_publie?: boolean | null
-        }
-        Relationships: []
-      }
-      vue_evenements_publies: {
-        Row: {
-          id: string | null
-          titre: string | null
-          date_evenement: string | null
-          date_fin: string | null
-          lieu: string | null
-          type_evenement: string | null
-          xp_recompense: number | null
-          max_participants: number | null
-          description: string | null
-          nb_inscrits: number | null
-        }
-        Insert: {
-          id?: string | null
-          titre?: string | null
-          date_evenement?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          type_evenement?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          description?: string | null
-          nb_inscrits?: number | null
-        }
-        Update: {
-          id?: string | null
-          titre?: string | null
-          date_evenement?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          type_evenement?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          description?: string | null
-          nb_inscrits?: number | null
-        }
-        Relationships: []
-      }
-      vue_fiche_personnage: {
-        Row: {
-          id: string | null
-          joueur_id: string | null
-          nom: string | null
-          niveau: number | null
-          xp_total: number | null
-          xp_depense: number | null
-          pv_max: number | null
-          ps_max: number | null
-          est_mort: boolean | null
-          est_actif: boolean | null
-          etape_creation: number | null
-          race_id: string | null
-          classe_id: string | null
-          religion_id: string | null
-          sous_type_chimeride: string | null
-          traits_raciaux_choisis: Json | null
-          created_at: string | null
-          updated_at: string | null
-          race_nom: string | null
-          race_nom_latin: string | null
-          classe_nom: string | null
-          religion_nom: string | null
-        }
-        Insert: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_mort?: boolean | null
-          est_actif?: boolean | null
-          etape_creation?: number | null
-          race_id?: string | null
-          classe_id?: string | null
-          religion_id?: string | null
-          sous_type_chimeride?: string | null
-          traits_raciaux_choisis?: Json | null
-          created_at?: string | null
-          updated_at?: string | null
-          race_nom?: string | null
-          race_nom_latin?: string | null
-          classe_nom?: string | null
-          religion_nom?: string | null
-        }
-        Update: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_mort?: boolean | null
-          est_actif?: boolean | null
-          etape_creation?: number | null
-          race_id?: string | null
-          classe_id?: string | null
-          religion_id?: string | null
-          sous_type_chimeride?: string | null
-          traits_raciaux_choisis?: Json | null
-          created_at?: string | null
-          updated_at?: string | null
-          race_nom?: string | null
-          race_nom_latin?: string | null
-          classe_nom?: string | null
-          religion_nom?: string | null
-        }
-        Relationships: []
-      }
-      vue_inscriptions_par_evenement: {
-        Row: {
-          inscription_id: string | null
-          evenement_id: string | null
-          statut: string | null
-          xp_attribue: number | null
-          date_inscription: string | null
-          date_confirmation: string | null
-          evenement_titre: string | null
-          date_evenement: string | null
-          type_evenement: string | null
-          personnage_id: string | null
-          personnage_nom: string | null
-          personnage_niveau: number | null
-          pv_max: number | null
-          ps_max: number | null
-          est_mort: boolean | null
-          est_actif: boolean | null
-          est_verrouille: boolean | null
-          race_nom: string | null
-          classe_nom: string | null
-          joueur_id: string | null
-          joueur_nom: string | null
-          joueur_email: string | null
-          joueur_username: string | null
-        }
-        Insert: {
-          inscription_id?: string | null
-          evenement_id?: string | null
-          statut?: string | null
-          xp_attribue?: number | null
-          date_inscription?: string | null
-          date_confirmation?: string | null
-          evenement_titre?: string | null
-          date_evenement?: string | null
-          type_evenement?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_mort?: boolean | null
-          est_actif?: boolean | null
-          est_verrouille?: boolean | null
-          race_nom?: string | null
-          classe_nom?: string | null
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          joueur_email?: string | null
-          joueur_username?: string | null
-        }
-        Update: {
-          inscription_id?: string | null
-          evenement_id?: string | null
-          statut?: string | null
-          xp_attribue?: number | null
-          date_inscription?: string | null
-          date_confirmation?: string | null
-          evenement_titre?: string | null
-          date_evenement?: string | null
-          type_evenement?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          personnage_niveau?: number | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_mort?: boolean | null
-          est_actif?: boolean | null
-          est_verrouille?: boolean | null
-          race_nom?: string | null
-          classe_nom?: string | null
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          joueur_email?: string | null
-          joueur_username?: string | null
-        }
-        Relationships: []
-      }
-      vue_inscriptions_resumees: {
-        Row: {
-          id: string | null
-          joueur_id: string | null
-          personnage_id: string | null
-          evenement_id: string | null
-          statut: string | null
-          xp_attribue: number | null
-          date_inscription: string | null
-          evenement_titre: string | null
-          date_evenement: string | null
-          date_fin: string | null
-          lieu: string | null
-          type_evenement: string | null
-          xp_recompense: number | null
-          max_participants: number | null
-          personnage_nom: string | null
-          joueur_nom: string | null
-          nb_inscrits_confirmes: number | null
-        }
-        Insert: {
-          id?: string | null
-          joueur_id?: string | null
-          personnage_id?: string | null
-          evenement_id?: string | null
-          statut?: string | null
-          xp_attribue?: number | null
-          date_inscription?: string | null
-          evenement_titre?: string | null
-          date_evenement?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          type_evenement?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          personnage_nom?: string | null
-          joueur_nom?: string | null
-          nb_inscrits_confirmes?: number | null
-        }
-        Update: {
-          id?: string | null
-          joueur_id?: string | null
-          personnage_id?: string | null
-          evenement_id?: string | null
-          statut?: string | null
-          xp_attribue?: number | null
-          date_inscription?: string | null
-          evenement_titre?: string | null
-          date_evenement?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          type_evenement?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          personnage_nom?: string | null
-          joueur_nom?: string | null
-          nb_inscrits_confirmes?: number | null
-        }
-        Relationships: []
-      }
-      vue_joueurs_complete: {
-        Row: {
-          joueur_id: string | null
-          username: string | null
-          email: string | null
-          nom_affichage: string | null
-          role: string | null
-          is_active: boolean | null
-          compte_cree_le: string | null
-          nb_personnages_actifs: number | null
-          nb_personnages_morts: number | null
-          nb_personnages_archives: number | null
-          nb_personnages_total: number | null
-          personnage_actif_principal: string | null
-        }
-        Insert: {
-          joueur_id?: string | null
-          username?: string | null
-          email?: string | null
-          nom_affichage?: string | null
-          role?: string | null
-          is_active?: boolean | null
-          compte_cree_le?: string | null
-          nb_personnages_actifs?: number | null
-          nb_personnages_morts?: number | null
-          nb_personnages_archives?: number | null
-          nb_personnages_total?: number | null
-          personnage_actif_principal?: string | null
-        }
-        Update: {
-          joueur_id?: string | null
-          username?: string | null
-          email?: string | null
-          nom_affichage?: string | null
-          role?: string | null
-          is_active?: boolean | null
-          compte_cree_le?: string | null
-          nb_personnages_actifs?: number | null
-          nb_personnages_morts?: number | null
-          nb_personnages_archives?: number | null
-          nb_personnages_total?: number | null
-          personnage_actif_principal?: string | null
-        }
-        Relationships: []
-      }
-      vue_joueurs_maitres: {
-        Row: {
-          joueur_id: string | null
-          joueur_nom: string | null
-          personnage_id: string | null
-          personnage_nom: string | null
-          race: string | null
-          classe: string | null
-          niveau: number | null
-          xp_total: number | null
-        }
-        Insert: {
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          race?: string | null
-          classe?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-        }
-        Update: {
-          joueur_id?: string | null
-          joueur_nom?: string | null
-          personnage_id?: string | null
-          personnage_nom?: string | null
-          race?: string | null
-          classe?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-        }
-        Relationships: []
-      }
-      vue_personnage_etat: {
-        Row: {
-          personnage_id: string | null
-          joueur_id: string | null
-          xp_disponible: number | null
-          niveau: number | null
-          niveau_alchimie: number | null
-          niveau_forge: number | null
-          niveau_joaillerie: number | null
-          niveau_runes: number | null
-          niveau_cercle: number | null
-          niveau_domaine: number | null
-          a_connaissance_religions: boolean | null
-          a_premiers_soins: boolean | null
-          a_connaissance_creatures_1: boolean | null
-          a_connaissance_creatures_2: boolean | null
-        }
-        Insert: {
-          personnage_id?: string | null
-          joueur_id?: string | null
-          xp_disponible?: number | null
-          niveau?: number | null
-          niveau_alchimie?: number | null
-          niveau_forge?: number | null
-          niveau_joaillerie?: number | null
-          niveau_runes?: number | null
-          niveau_cercle?: number | null
-          niveau_domaine?: number | null
-          a_connaissance_religions?: boolean | null
-          a_premiers_soins?: boolean | null
-          a_connaissance_creatures_1?: boolean | null
-          a_connaissance_creatures_2?: boolean | null
-        }
-        Update: {
-          personnage_id?: string | null
-          joueur_id?: string | null
-          xp_disponible?: number | null
-          niveau?: number | null
-          niveau_alchimie?: number | null
-          niveau_forge?: number | null
-          niveau_joaillerie?: number | null
-          niveau_runes?: number | null
-          niveau_cercle?: number | null
-          niveau_domaine?: number | null
-          a_connaissance_religions?: boolean | null
-          a_premiers_soins?: boolean | null
-          a_connaissance_creatures_1?: boolean | null
-          a_connaissance_creatures_2?: boolean | null
-        }
-        Relationships: []
-      }
-      vue_personnages_admin: {
-        Row: {
-          id: string | null
-          nom: string | null
-          joueur_nom: string | null
-          race_nom: string | null
-          classe_nom: string | null
-          niveau: number | null
-          est_actif: boolean | null
-          etape_creation: number | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string | null
-          nom?: string | null
-          joueur_nom?: string | null
-          race_nom?: string | null
-          classe_nom?: string | null
-          niveau?: number | null
-          est_actif?: boolean | null
-          etape_creation?: number | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string | null
-          nom?: string | null
-          joueur_nom?: string | null
-          race_nom?: string | null
-          classe_nom?: string | null
-          niveau?: number | null
-          est_actif?: boolean | null
-          etape_creation?: number | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      vue_personnages_joueur: {
-        Row: {
-          id: string | null
-          joueur_id: string | null
-          nom: string | null
-          niveau: number | null
-          xp_total: number | null
-          xp_depense: number | null
-          etape_creation: number | null
-          est_actif: boolean | null
-          created_at: string | null
-          race_nom: string | null
-          classe_nom: string | null
-        }
-        Insert: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          etape_creation?: number | null
-          est_actif?: boolean | null
-          created_at?: string | null
-          race_nom?: string | null
-          classe_nom?: string | null
-        }
-        Update: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          etape_creation?: number | null
-          est_actif?: boolean | null
-          created_at?: string | null
-          race_nom?: string | null
-          classe_nom?: string | null
-        }
-        Relationships: []
-      }
-      vue_prieres_personnage: {
-        Row: {
-          id: string | null
-          personnage_id: string | null
-          nom_personnalise: string | null
-          zone_choisie: string | null
-          portee_choisie: string | null
-          duree_choisie: string | null
-          domaine: string | null
-          priere_description: string | null
-          duree_incantation: string | null
-          niveau_priere: number | null
-          cout_xp_base: number | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          nom_personnalise?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
-          duree_choisie?: string | null
-          domaine?: string | null
-          priere_description?: string | null
-          duree_incantation?: string | null
-          niveau_priere?: number | null
-          cout_xp_base?: number | null
-        }
-        Update: {
-          id?: string | null
-          personnage_id?: string | null
-          nom_personnalise?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
-          duree_choisie?: string | null
-          domaine?: string | null
-          priere_description?: string | null
-          duree_incantation?: string | null
-          niveau_priere?: number | null
-          cout_xp_base?: number | null
-        }
-        Relationships: []
-      }
-      vue_prochain_evenement: {
-        Row: {
-          id: string | null
-          titre: string | null
-          description: string | null
-          date_evenement: string | null
-          date_fin: string | null
-          lieu: string | null
-          xp_recompense: number | null
-          max_participants: number | null
-          type_evenement: string | null
-          est_publie: boolean | null
-          created_by: string | null
-          nb_inscrits: number | null
-          places_restantes: number | null
-        }
-        Insert: {
-          id?: string | null
-          titre?: string | null
-          description?: string | null
-          date_evenement?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          type_evenement?: string | null
-          est_publie?: boolean | null
-          created_by?: string | null
-          nb_inscrits?: number | null
-          places_restantes?: number | null
-        }
-        Update: {
-          id?: string | null
-          titre?: string | null
-          description?: string | null
-          date_evenement?: string | null
-          date_fin?: string | null
-          lieu?: string | null
-          xp_recompense?: number | null
-          max_participants?: number | null
-          type_evenement?: string | null
-          est_publie?: boolean | null
-          created_by?: string | null
-          nb_inscrits?: number | null
-          places_restantes?: number | null
-        }
-        Relationships: []
-      }
-      vue_recettes_personnage: {
-        Row: {
-          id: string | null
-          personnage_id: string | null
-          nom: string | null
-          type: string | null
-          description: string | null
-          effet: string | null
-          xp_depense: number | null
-          niveau_requis: number | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          nom?: string | null
-          type?: string | null
-          description?: string | null
-          effet?: string | null
-          xp_depense?: number | null
-          niveau_requis?: number | null
-        }
-        Update: {
-          id?: string | null
-          personnage_id?: string | null
-          nom?: string | null
-          type?: string | null
-          description?: string | null
-          effet?: string | null
-          xp_depense?: number | null
-          niveau_requis?: number | null
-        }
-        Relationships: []
-      }
-      vue_sorts_personnage: {
-        Row: {
-          id: string | null
-          personnage_id: string | null
-          nom_personnalise: string | null
-          formule_magique: string | null
-          zone_choisie: string | null
-          portee_choisie: string | null
-          duree_choisie: string | null
-          cercle: string | null
-          sort_nom_base: string | null
-          sort_description: string | null
-          niveau_sort: number | null
-          cout_xp_base: number | null
-        }
-        Insert: {
-          id?: string | null
-          personnage_id?: string | null
-          nom_personnalise?: string | null
-          formule_magique?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
-          duree_choisie?: string | null
-          cercle?: string | null
-          sort_nom_base?: string | null
-          sort_description?: string | null
-          niveau_sort?: number | null
-          cout_xp_base?: number | null
-        }
-        Update: {
-          id?: string | null
-          personnage_id?: string | null
-          nom_personnalise?: string | null
-          formule_magique?: string | null
-          zone_choisie?: string | null
-          portee_choisie?: string | null
-          duree_choisie?: string | null
-          cercle?: string | null
-          sort_nom_base?: string | null
-          sort_description?: string | null
-          niveau_sort?: number | null
-          cout_xp_base?: number | null
-        }
-        Relationships: []
-      }
-      vue_stats_admin: {
-        Row: {
-          nb_joueurs: number | null
-          nb_personnages_actifs: number | null
-          nb_presences_attente: number | null
-          nb_competences_attente: number | null
-          prochain_evenement_titre: string | null
-          prochain_evenement_date: string | null
-        }
-        Insert: {
-          nb_joueurs?: number | null
-          nb_personnages_actifs?: number | null
-          nb_presences_attente?: number | null
-          nb_competences_attente?: number | null
-          prochain_evenement_titre?: string | null
-          prochain_evenement_date?: string | null
-        }
-        Update: {
-          nb_joueurs?: number | null
-          nb_personnages_actifs?: number | null
-          nb_presences_attente?: number | null
-          nb_competences_attente?: number | null
-          prochain_evenement_titre?: string | null
-          prochain_evenement_date?: string | null
-        }
-        Relationships: []
-      }
-      vue_tableau_de_bord: {
-        Row: {
-          id: string | null
-          joueur_id: string | null
-          nom: string | null
-          niveau: number | null
-          xp_total: number | null
-          xp_depense: number | null
-          est_mort: boolean | null
-          est_actif: boolean | null
-          date_creation: string | null
-          race_nom: string | null
-          classe_nom: string | null
-          classe_secondaire_nom: string | null
-          joueur_email: string | null
-        }
-        Insert: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          est_mort?: boolean | null
-          est_actif?: boolean | null
-          date_creation?: string | null
-          race_nom?: string | null
-          classe_nom?: string | null
-          classe_secondaire_nom?: string | null
-          joueur_email?: string | null
-        }
-        Update: {
-          id?: string | null
-          joueur_id?: string | null
-          nom?: string | null
-          niveau?: number | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          est_mort?: boolean | null
-          est_actif?: boolean | null
-          date_creation?: string | null
-          race_nom?: string | null
-          classe_nom?: string | null
-          classe_secondaire_nom?: string | null
-          joueur_email?: string | null
-        }
-        Relationships: []
-      }
-      vue_traits_par_race: {
-        Row: {
-          race_id: string | null
-          trait_id: string | null
-          sous_type: string | null
-          trait_nom: string | null
-          trait_description: string | null
-          cout_xp: number | null
-        }
-        Insert: {
-          race_id?: string | null
-          trait_id?: string | null
-          sous_type?: string | null
-          trait_nom?: string | null
-          trait_description?: string | null
-          cout_xp?: number | null
-        }
-        Update: {
-          race_id?: string | null
-          trait_id?: string | null
-          sous_type?: string | null
-          trait_nom?: string | null
-          trait_description?: string | null
-          cout_xp?: number | null
-        }
-        Relationships: []
-      }
-      vue_verrou_competences: {
-        Row: {
-          personnage_id: string | null
-          runes_verrouillees: boolean | null
-          dev_spirituel_verrouille: boolean | null
-          dev_spirituel_sup_verrouille: boolean | null
-          canalisation_verrouillee: boolean | null
-        }
-        Insert: {
-          personnage_id?: string | null
-          runes_verrouillees?: boolean | null
-          dev_spirituel_verrouille?: boolean | null
-          dev_spirituel_sup_verrouille?: boolean | null
-          canalisation_verrouillee?: boolean | null
-        }
-        Update: {
-          personnage_id?: string | null
-          runes_verrouillees?: boolean | null
-          dev_spirituel_verrouille?: boolean | null
-          dev_spirituel_sup_verrouille?: boolean | null
-          canalisation_verrouillee?: boolean | null
-        }
-        Relationships: []
-      }
-      vue_xp_personnage: {
-        Row: {
-          id: string | null
-          nom: string | null
-          joueur_id: string | null
-          xp_total: number | null
-          xp_depense: number | null
-          xp_disponible: number | null
-          niveau: number | null
-          pv_max: number | null
-          ps_max: number | null
-          est_actif: boolean | null
-          est_mort: boolean | null
-          est_verrouille: boolean | null
-          etape_creation: number | null
-          gn_completes: number | null
-          mini_gn_completes: number | null
-          ouvertures_terrain: number | null
-          race_nom: string | null
-          race_latin: string | null
-          classe_nom: string | null
-          pv_depart: number | null
-          ps_depart: number | null
-          religion_nom: string | null
-          famille_nom: string | null
-          joueur_nom: string | null
-        }
-        Insert: {
-          id?: string | null
-          nom?: string | null
-          joueur_id?: string | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          xp_disponible?: number | null
-          niveau?: number | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_actif?: boolean | null
-          est_mort?: boolean | null
-          est_verrouille?: boolean | null
-          etape_creation?: number | null
-          gn_completes?: number | null
-          mini_gn_completes?: number | null
-          ouvertures_terrain?: number | null
-          race_nom?: string | null
-          race_latin?: string | null
-          classe_nom?: string | null
-          pv_depart?: number | null
-          ps_depart?: number | null
-          religion_nom?: string | null
-          famille_nom?: string | null
-          joueur_nom?: string | null
-        }
-        Update: {
-          id?: string | null
-          nom?: string | null
-          joueur_id?: string | null
-          xp_total?: number | null
-          xp_depense?: number | null
-          xp_disponible?: number | null
-          niveau?: number | null
-          pv_max?: number | null
-          ps_max?: number | null
-          est_actif?: boolean | null
-          est_mort?: boolean | null
-          est_verrouille?: boolean | null
-          etape_creation?: number | null
-          gn_completes?: number | null
-          mini_gn_completes?: number | null
-          ouvertures_terrain?: number | null
-          race_nom?: string | null
-          race_latin?: string | null
-          classe_nom?: string | null
-          pv_depart?: number | null
-          ps_depart?: number | null
-          religion_nom?: string | null
-          famille_nom?: string | null
-          joueur_nom?: string | null
         }
         Relationships: []
       }
     }
     Views: {
+      vue_admin_joueurs: {
+        Row: {
+          compte_cree_le: string | null
+          email: string | null
+          is_active: boolean | null
+          joueur_id: string | null
+          nb_personnages_actifs: number | null
+          nb_personnages_archives: number | null
+          nb_personnages_morts: number | null
+          nb_personnages_total: number | null
+          nom_affichage: string | null
+          personnage_actif_principal: string | null
+          role: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
+      vue_artisanat_etat: {
+        Row: {
+          a_forge_legendaire: boolean | null
+          a_joaillerie_legendaire: boolean | null
+          niveau_alchimie: number | null
+          niveau_forge: number | null
+          niveau_joaillerie: number | null
+          niveau_runes: number | null
+          personnage_id: string | null
+        }
+        Relationships: []
+      }
+      vue_artisanat_quotas: {
+        Row: {
+          a_forge_legendaire: boolean | null
+          a_joaillerie_legendaire: boolean | null
+          niveau_alchimie: number | null
+          niveau_forge: number | null
+          niveau_joaillerie: number | null
+          niveau_runes: number | null
+          personnage_id: string | null
+          quota_alchimie_intermediaire_total: number | null
+          quota_alchimie_intermediaire_utilises: number | null
+          quota_alchimie_majeure_total: number | null
+          quota_alchimie_majeure_utilises: number | null
+          quota_alchimie_mineure_total: number | null
+          quota_alchimie_mineure_utilises: number | null
+          quota_assemblages_total: number | null
+          quota_assemblages_utilises: number | null
+          quota_recettes_total: number | null
+        }
+        Relationships: []
+      }
+      vue_assemblages_personnage: {
+        Row: {
+          cible: string | null
+          cout_ps: number | null
+          description: string | null
+          effet: string | null
+          id: string | null
+          nom: string | null
+          personnage_id: string | null
+          runes_requises: string[] | null
+          xp_depense: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_cercles_disponibles: {
+        Row: {
+          cercle: string | null
+          niveau_max_sorts: number | null
+          personnage_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_competences_maitre_admin: {
+        Row: {
+          competence_nom: string | null
+          date_demande: string | null
+          id: string | null
+          joueur_nom: string | null
+          niveau_acquis: number | null
+          nom_maitre: string | null
+          personnage_nom: string | null
+          statut_maitre: string | null
+        }
+        Relationships: []
+      }
+      vue_competences_maitre_attente: {
+        Row: {
+          competence_description: string | null
+          competence_nom: string | null
+          id: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          niveau_acquis: number | null
+          nom_maitre: string | null
+          personnage_id: string | null
+          personnage_niveau: number | null
+          personnage_nom: string | null
+          statut_maitre: string | null
+          xp_depense: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_competences_personnage: {
+        Row: {
+          appris_via_maitre: boolean | null
+          categorie: string | null
+          choix_achat: string | null
+          competence_description: string | null
+          id: string | null
+          niveau_acquis: number | null
+          nom: string | null
+          nom_maitre: string | null
+          personnage_id: string | null
+          statut_maitre: string | null
+          xp_depense: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_demandes_races_attente: {
+        Row: {
+          background: string | null
+          date_demande: string | null
+          id: string | null
+          joueur_email: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          personnage_id: string | null
+          personnage_niveau: number | null
+          personnage_nom: string | null
+          race_id: string | null
+          race_nom: string | null
+          race_nom_latin: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
+      }
+      vue_demandes_races_complet: {
+        Row: {
+          approuve_par: string | null
+          approuve_par_nom: string | null
+          background: string | null
+          date_approbation: string | null
+          date_demande: string | null
+          id: string | null
+          joueur_email: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          personnage_id: string | null
+          personnage_niveau: number | null
+          personnage_nom: string | null
+          race_id: string | null
+          race_nom: string | null
+          race_nom_latin: string | null
+          raison_refus: string | null
+          statut: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
+      }
+      vue_domaines_disponibles: {
+        Row: {
+          domaine: string | null
+          niveau_max_prieres: number | null
+          personnage_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_evenements_admin: {
+        Row: {
+          date_debut: string | null
+          date_fin: string | null
+          description: string | null
+          est_publie: boolean | null
+          id: string | null
+          lieu: string | null
+          nb_participants: number | null
+          titre: string | null
+        }
+        Relationships: []
+      }
+      vue_evenements_publies: {
+        Row: {
+          date_evenement: string | null
+          date_fin: string | null
+          description: string | null
+          id: string | null
+          lieu: string | null
+          max_participants: number | null
+          nb_inscrits: number | null
+          titre: string | null
+          type_evenement: string | null
+          xp_recompense: number | null
+        }
+        Insert: {
+          date_evenement?: string | null
+          date_fin?: string | null
+          description?: string | null
+          id?: string | null
+          lieu?: string | null
+          max_participants?: number | null
+          nb_inscrits?: never
+          titre?: string | null
+          type_evenement?: string | null
+          xp_recompense?: number | null
+        }
+        Update: {
+          date_evenement?: string | null
+          date_fin?: string | null
+          description?: string | null
+          id?: string | null
+          lieu?: string | null
+          max_participants?: number | null
+          nb_inscrits?: never
+          titre?: string | null
+          type_evenement?: string | null
+          xp_recompense?: number | null
+        }
+        Relationships: []
+      }
+      vue_fiche_personnage: {
+        Row: {
+          ame_personnage: string | null
+          classe_id: string | null
+          classe_nom: string | null
+          est_actif: boolean | null
+          est_mort: boolean | null
+          gn_completes: number | null
+          historique: string | null
+          id: string | null
+          joueur_id: string | null
+          mini_gn_completes: number | null
+          niveau: number | null
+          nom: string | null
+          ouvertures_terrain: number | null
+          ps_max: number | null
+          pv_max: number | null
+          race_id: string | null
+          race_nom: string | null
+          race_nom_latin: string | null
+          religion_id: string | null
+          religion_nom: string | null
+          traits_raciaux_choisis: Json | null
+          xp_depense: number | null
+          xp_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnages_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_attente"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_complet"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "personnages_religion_id_fkey"
+            columns: ["religion_id"]
+            isOneToOne: false
+            referencedRelation: "religions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_inscriptions_par_evenement: {
+        Row: {
+          classe_nom: string | null
+          date_confirmation: string | null
+          date_evenement: string | null
+          date_inscription: string | null
+          est_actif: boolean | null
+          est_mort: boolean | null
+          est_verrouille: boolean | null
+          evenement_id: string | null
+          evenement_titre: string | null
+          inscription_id: string | null
+          joueur_email: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          joueur_username: string | null
+          personnage_id: string | null
+          personnage_niveau: number | null
+          personnage_nom: string | null
+          ps_max: number | null
+          pv_max: number | null
+          race_nom: string | null
+          statut: string | null
+          type_evenement: string | null
+          xp_attribue: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_publies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_prochain_evenement"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_inscriptions_resumees: {
+        Row: {
+          date_evenement: string | null
+          date_fin: string | null
+          date_inscription: string | null
+          evenement_id: string | null
+          evenement_titre: string | null
+          id: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          lieu: string | null
+          max_participants: number | null
+          nb_inscrits_confirmes: number | null
+          personnage_id: string | null
+          personnage_nom: string | null
+          statut: string | null
+          type_evenement: string | null
+          xp_attribue: number | null
+          xp_recompense: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_publies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_prochain_evenement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_joueurs_complete: {
+        Row: {
+          compte_cree_le: string | null
+          email: string | null
+          is_active: boolean | null
+          joueur_id: string | null
+          nb_personnages_actifs: number | null
+          nb_personnages_archives: number | null
+          nb_personnages_morts: number | null
+          nb_personnages_total: number | null
+          nom_affichage: string | null
+          personnage_actif_principal: string | null
+          role: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
+      vue_joueurs_maitres: {
+        Row: {
+          classe: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          niveau: number | null
+          personnage_id: string | null
+          personnage_nom: string | null
+          race: string | null
+          xp_total: number | null
+        }
+        Relationships: []
+      }
+      vue_personnage_creation_complet: {
+        Row: {
+          a_forge_legendaire: boolean | null
+          a_joaillerie_legendaire: boolean | null
+          ame_personnage: string | null
+          assemblages: Json | null
+          cercles_acquis: Json | null
+          classe_id: string | null
+          classe_nom: string | null
+          classe_ps_depart: number | null
+          classe_pv_depart: number | null
+          classe_secondaire_id: string | null
+          classe_secondaire_nom: string | null
+          competences: Json | null
+          created_at: string | null
+          demande_race_background: string | null
+          demande_race_statut: string | null
+          domaines_acquis: Json | null
+          est_actif: boolean | null
+          est_croyant: boolean | null
+          est_mort: boolean | null
+          est_verrouille: boolean | null
+          etape_creation: number | null
+          gn_completes: number | null
+          historique: string | null
+          id: string | null
+          joueur_id: string | null
+          mini_gn_completes: number | null
+          niveau: number | null
+          nom: string | null
+          objets_forge: Json | null
+          objets_joaillerie: Json | null
+          ouvertures_terrain: number | null
+          peut_sinscrire_evenement: boolean | null
+          prieres: Json | null
+          ps_max: number | null
+          pv_max: number | null
+          quotas_artisanat: Json | null
+          race_est_jouable: boolean | null
+          race_id: string | null
+          race_nom: string | null
+          race_nom_latin: string | null
+          race_xp_depart: number | null
+          recettes: Json | null
+          religion_id: string | null
+          religion_nom: string | null
+          sorts: Json | null
+          sous_type_chimeride: string | null
+          traits_raciaux: Json | null
+          updated_at: string | null
+          xp_depense: number | null
+          xp_disponible: number | null
+          xp_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnages_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_classe_secondaire_id_fkey"
+            columns: ["classe_secondaire_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_attente"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "personnages_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_complet"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "personnages_religion_id_fkey"
+            columns: ["religion_id"]
+            isOneToOne: false
+            referencedRelation: "religions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_personnage_etat: {
+        Row: {
+          a_connaissance_creatures_1: boolean | null
+          a_connaissance_creatures_2: boolean | null
+          a_connaissance_religions: boolean | null
+          a_premiers_soins: boolean | null
+          joueur_id: string | null
+          niveau: number | null
+          niveau_alchimie: number | null
+          niveau_cercle: number | null
+          niveau_domaine: number | null
+          niveau_forge: number | null
+          niveau_joaillerie: number | null
+          niveau_runes: number | null
+          personnage_id: string | null
+          xp_disponible: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
+      }
+      vue_personnages_admin: {
+        Row: {
+          classe_nom: string | null
+          created_at: string | null
+          est_actif: boolean | null
+          etape_creation: number | null
+          id: string | null
+          joueur_nom: string | null
+          niveau: number | null
+          nom: string | null
+          race_nom: string | null
+        }
+        Relationships: []
+      }
+      vue_personnages_joueur: {
+        Row: {
+          classe_nom: string | null
+          created_at: string | null
+          est_actif: boolean | null
+          etape_creation: number | null
+          id: string | null
+          joueur_id: string | null
+          niveau: number | null
+          nom: string | null
+          race_nom: string | null
+          xp_depense: number | null
+          xp_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
+      }
+      vue_prieres_personnage: {
+        Row: {
+          cout_xp_base: number | null
+          domaine: string | null
+          duree_choisie: string | null
+          duree_incantation: string | null
+          id: string | null
+          niveau_priere: number | null
+          nom_personnalise: string | null
+          personnage_id: string | null
+          portee_choisie: string | null
+          priere_description: string | null
+          zone_choisie: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_prochain_evenement: {
+        Row: {
+          created_by: string | null
+          date_evenement: string | null
+          date_fin: string | null
+          description: string | null
+          est_publie: boolean | null
+          id: string | null
+          lieu: string | null
+          max_participants: number | null
+          nb_inscrits: number | null
+          places_restantes: number | null
+          titre: string | null
+          type_evenement: string | null
+          xp_recompense: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
+      }
+      vue_recettes_personnage: {
+        Row: {
+          description: string | null
+          effet: string | null
+          id: string | null
+          niveau_requis: number | null
+          nom: string | null
+          personnage_id: string | null
+          type: string | null
+          xp_depense: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_sorts_personnage: {
+        Row: {
+          cercle: string | null
+          cout_xp_base: number | null
+          duree_choisie: string | null
+          formule_magique: string | null
+          id: string | null
+          niveau_sort: number | null
+          nom_personnalise: string | null
+          personnage_id: string | null
+          portee_choisie: string | null
+          sort_description: string | null
+          sort_nom_base: string | null
+          zone_choisie: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_stats_admin: {
+        Row: {
+          nb_competences_attente: number | null
+          nb_joueurs: number | null
+          nb_personnages_actifs: number | null
+          nb_presences_attente: number | null
+          prochain_evenement_date: string | null
+          prochain_evenement_titre: string | null
+        }
+        Relationships: []
+      }
+      vue_tableau_de_bord: {
+        Row: {
+          classe_nom: string | null
+          classe_secondaire_nom: string | null
+          date_creation: string | null
+          est_actif: boolean | null
+          est_mort: boolean | null
+          id: string | null
+          joueur_email: string | null
+          joueur_id: string | null
+          niveau: number | null
+          nom: string | null
+          race_nom: string | null
+          xp_depense: number | null
+          xp_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
+      }
+      vue_traits_par_race: {
+        Row: {
+          cout_xp: number | null
+          est_actif: boolean | null
+          race_id: string | null
+          race_nom: string | null
+          race_trait_id: string | null
+          sous_type: string | null
+          trait_description: string | null
+          trait_id: string | null
+          trait_nom: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_traits_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_traits_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_attente"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "race_traits_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "vue_demandes_races_complet"
+            referencedColumns: ["race_id"]
+          },
+          {
+            foreignKeyName: "race_traits_trait_id_fkey"
+            columns: ["trait_id"]
+            isOneToOne: false
+            referencedRelation: "traits_raciaux"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_verrou_competences: {
+        Row: {
+          canalisation_verrouillee: boolean | null
+          dev_spirituel_sup_verrouille: boolean | null
+          dev_spirituel_verrouille: boolean | null
+          personnage_id: string | null
+          runes_verrouillees: boolean | null
+        }
+        Relationships: []
+      }
+      vue_xp_personnage: {
+        Row: {
+          classe_nom: string | null
+          est_actif: boolean | null
+          est_mort: boolean | null
+          est_verrouille: boolean | null
+          etape_creation: number | null
+          famille_nom: string | null
+          gn_completes: number | null
+          id: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          mini_gn_completes: number | null
+          niveau: number | null
+          nom: string | null
+          ouvertures_terrain: number | null
+          ps_depart: number | null
+          ps_max: number | null
+          pv_depart: number | null
+          pv_max: number | null
+          race_latin: string | null
+          race_nom: string | null
+          religion_nom: string | null
+          xp_depense: number | null
+          xp_disponible: number | null
+          xp_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
+      }
     }
     Functions: {
+      approuver_maitre_competence: {
+        Args: { p_personnage_competence_id: string }
+        Returns: Json
+      }
+      approuver_race_demande: { Args: { p_demande_id: string }; Returns: Json }
+      archiver_personnage: { Args: { p_personnage_id: string }; Returns: Json }
+      attribuer_xp_evenement: {
+        Args: { p_inscription_id: string; p_xp_montant: number }
+        Returns: Json
+      }
+      changer_role_utilisateur: {
+        Args: { p_nouveau_role: string; p_user_id: string }
+        Returns: Json
+      }
+      creer_demande_race: {
+        Args: { p_background: string; p_personnage_id: string }
+        Returns: Json
+      }
+      demarrer_creation_personnage: { Args: never; Returns: Json }
+      deverrouiller_personnage: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
+      donner_xp_bonus: {
+        Args: { p_montant: number; p_personnage_id: string; p_raison?: string }
+        Returns: Json
+      }
+      est_animateur_ou_admin: { Args: never; Returns: boolean }
+      get_joueurs_avec_count: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          nb_personnages: number
+          nom_affichage: string
+          role: string
+        }[]
+      }
+      get_stats_admin: { Args: never; Returns: Json }
+      marquer_absent: { Args: { p_inscription_id: string }; Returns: Json }
+      marquer_present: { Args: { p_inscription_id: string }; Returns: Json }
+      personnage_a_des_prieres: {
+        Args: { p_personnage_id: string }
+        Returns: boolean
+      }
+      personnage_a_des_sorts: {
+        Args: { p_personnage_id: string }
+        Returns: boolean
+      }
+      personnage_est_runiste: {
+        Args: { p_personnage_id: string }
+        Returns: boolean
+      }
+      peut_acheter_competence: {
+        Args: {
+          p_choix_achat?: string
+          p_competence_id: string
+          p_niveau_desire: number
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
+      peut_acheter_trait_racial: {
+        Args: {
+          p_personnage_id: string
+          p_race_id: string
+          p_sous_type?: string
+          p_trait_id: string
+        }
+        Returns: Json
+      }
+      refuser_maitre_competence: {
+        Args: { p_personnage_competence_id: string; p_raison?: string }
+        Returns: Json
+      }
+      refuser_race_demande: {
+        Args: { p_demande_id: string; p_raison: string }
+        Returns: Json
+      }
+      role_du_profil: { Args: { _user_id: string }; Returns: string }
+      sauvegarder_etape_1: {
+        Args: {
+          p_est_croyant: boolean
+          p_gn_completes: number
+          p_mini_gn_completes: number
+          p_nom: string
+          p_ouvertures_terrain: number
+          p_personnage_id: string
+          p_religion_id: string
+        }
+        Returns: Json
+      }
+      update_user_role: {
+        Args: { new_role: string; user_id: string }
+        Returns: undefined
+      }
+      valider_etape: {
+        Args: { p_etape: number; p_personnage_id: string }
+        Returns: Json
+      }
+      valider_etape_1: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_10: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_11: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_2: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_3: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_4: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_5: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_6: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_7: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_8: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_etape_9: { Args: { p_personnage_id: string }; Returns: Json }
+      valider_format_traits_raciaux: {
+        Args: { p_traits: Json }
+        Returns: boolean
+      }
+      valider_personnage_final: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
+      verrouiller_personnage: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
     }
     Enums: {
+      [_ in never]: never
     }
     CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
