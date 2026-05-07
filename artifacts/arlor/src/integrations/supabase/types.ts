@@ -5362,6 +5362,31 @@ export type Database = {
         }
         Returns: Json
       }
+      sauvegarder_etape_10: {
+        Args: {
+          p_ame_personnage: string
+          p_historique: string
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
+      sauvegarder_etape_2: {
+        Args: {
+          p_justification?: string
+          p_personnage_id: string
+          p_race_id: string
+          p_sous_type_chimeride?: string
+        }
+        Returns: Json
+      }
+      sauvegarder_etape_3: {
+        Args: { p_personnage_id: string; p_traits_raciaux_choisis: Json }
+        Returns: Json
+      }
+      sauvegarder_etape_4: {
+        Args: { p_classe_id: string; p_personnage_id: string }
+        Returns: Json
+      }
       update_user_role: {
         Args: { new_role: string; user_id: string }
         Returns: undefined
