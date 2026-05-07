@@ -13,8 +13,15 @@ import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
 import Etape3_V2 from "@/components/createur/etapes/Etape3_V2";
 import Etape4_V2 from "@/components/createur/etapes/Etape4_V2";
+import Etape5_Competences_V2 from "@/components/createur/etapes/Etape5_Competences_V2";
+import Etape6_Sorts_V2 from "@/components/createur/etapes/Etape6_Sorts_V2";
+import Etape7_Prieres_V2 from "@/components/createur/etapes/Etape7_Prieres_V2";
+import Etape8_Artisanat_V2 from "@/components/createur/etapes/Etape8_Artisanat_V2";
+import Etape9_Assemblages_V2 from "@/components/createur/etapes/Etape9_Assemblages_V2";
+import Etape10_Historique_V2 from "@/components/createur/etapes/Etape10_Historique_V2";
+import Etape11_Recapitulatif_V2 from "@/components/createur/etapes/Etape11_Recapitulatif_V2";
 
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 11;
 
 interface PersonnageRow {
   id: string;
@@ -224,25 +231,54 @@ const PersonnageNouveauV2 = () => {
             onPrevious={handlePrevious}
           />
         )}
-
-        {etape > 4 && (
-          <div className="space-y-4 text-center">
-            <h2 className="font-heading text-2xl text-gold">
-              Étapes 5 à {TOTAL_STEPS} à venir
-            </h2>
-            <p className="text-white/60">
-              Le créateur V2 s'arrête pour le moment à l'étape 4. Les étapes
-              suivantes seront ajoutées prochainement.
-            </p>
-            <div className="flex justify-center gap-3">
-              <Button variant="outline" onClick={handlePrevious}>
-                Étape précédente
-              </Button>
-              <Button onClick={() => navigate("/tableau-de-bord")}>
-                Retour au tableau de bord
-              </Button>
-            </div>
-          </div>
+        {etape === 5 && (
+          <Etape5_Competences_V2
+            personnageId={personnageId}
+            onSuccess={handleEtapeSuccess}
+            onPrevious={handlePrevious}
+          />
+        )}
+        {etape === 6 && (
+          <Etape6_Sorts_V2
+            personnageId={personnageId}
+            onSuccess={handleEtapeSuccess}
+            onPrevious={handlePrevious}
+          />
+        )}
+        {etape === 7 && (
+          <Etape7_Prieres_V2
+            personnageId={personnageId}
+            onSuccess={handleEtapeSuccess}
+            onPrevious={handlePrevious}
+          />
+        )}
+        {etape === 8 && (
+          <Etape8_Artisanat_V2
+            personnageId={personnageId}
+            onSuccess={handleEtapeSuccess}
+            onPrevious={handlePrevious}
+          />
+        )}
+        {etape === 9 && (
+          <Etape9_Assemblages_V2
+            personnageId={personnageId}
+            onSuccess={handleEtapeSuccess}
+            onPrevious={handlePrevious}
+          />
+        )}
+        {etape === 10 && (
+          <Etape10_Historique_V2
+            personnageId={personnageId}
+            onSuccess={handleEtapeSuccess}
+            onPrevious={handlePrevious}
+          />
+        )}
+        {etape === 11 && (
+          <Etape11_Recapitulatif_V2
+            personnageId={personnageId}
+            onSuccess={handleEtapeSuccess}
+            onPrevious={handlePrevious}
+          />
         )}
       </main>
     </div>
