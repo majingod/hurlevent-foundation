@@ -5269,6 +5269,83 @@ export type Database = {
       }
     }
     Functions: {
+      acheter_assemblage: {
+        Args: {
+          p_assemblage_id: string
+          p_personnage_id: string
+          p_xp_depense?: number
+        }
+        Returns: Json
+      }
+      acheter_competence: {
+        Args: {
+          p_appris_via_maitre?: boolean
+          p_choix_achat?: string
+          p_competence_id: string
+          p_niveau_desire: number
+          p_nom_maitre?: string
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
+      acheter_objet_forge: {
+        Args: {
+          p_objet_id: string
+          p_personnage_id: string
+          p_xp_depense: number
+        }
+        Returns: Json
+      }
+      acheter_objet_joaillerie: {
+        Args: {
+          p_objet_id: string
+          p_personnage_id: string
+          p_xp_depense: number
+        }
+        Returns: Json
+      }
+      acheter_priere: {
+        Args: {
+          p_duree_choisie: string
+          p_niveau_priere: number
+          p_nom_personnalise: string
+          p_personnage_id: string
+          p_portee_choisie: string
+          p_priere_id: string
+          p_xp_depense: number
+          p_zone_choisie: string
+        }
+        Returns: Json
+      }
+      acheter_recette: {
+        Args: {
+          p_personnage_id: string
+          p_recette_id: string
+          p_xp_depense?: number
+        }
+        Returns: Json
+      }
+      acheter_sort: {
+        Args: {
+          p_duree_choisie: string
+          p_niveau_sort: number
+          p_nom_personnalise: string
+          p_personnage_id: string
+          p_portee_choisie: string
+          p_sort_id: string
+          p_xp_depense: number
+          p_zone_choisie: string
+        }
+        Returns: Json
+      }
+      acheter_trait_racial: {
+        Args: {
+          p_est_gratuit: boolean
+          p_personnage_id: string
+          p_trait_id: string
+        }
+        Returns: Json
+      }
       approuver_maitre_competence: {
         Args: { p_personnage_competence_id: string }
         Returns: Json
