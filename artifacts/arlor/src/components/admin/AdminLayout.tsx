@@ -22,7 +22,7 @@ const ADMIN_SECTIONS: AdminSection[] = [
   { id: "dashboard", label: "Tableau de bord", icon: BarChart3, path: "/administration/tableau-de-bord" },
   { id: "joueurs", label: "Joueurs", icon: Users, path: "/administration/joueurs" },
   { id: "personnages", label: "Personnages", icon: Shield, path: "/administration/personnages" },
-  { id: "evenements", label: "Événements", icon: Calendar, path: "/administration/evenements-admin" },
+  { id: "evenements", label: "Événements", icon: Calendar, path: "/administration/evenements" },
   { id: "competences", label: "Compétences maître", icon: CheckCircle, path: "/administration/competences-maitre" },
   { id: "donnees", label: "Données de jeu", icon: Database, path: "/administration/donnees" },
 ];
