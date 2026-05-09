@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       assemblages_runes: {
@@ -289,45 +314,54 @@ export type Database = {
       }
       evenements: {
         Row: {
+          adresse_physique: string | null
           created_at: string | null
           created_by: string | null
           date_evenement: string | null
           date_fin: string | null
           description: string | null
           est_publie: boolean | null
+          est_termine: boolean | null
           id: string
           lieu: string | null
           max_participants: number | null
+          niveaux_recompense: number | null
           titre: string | null
           type_evenement: string | null
           updated_at: string | null
           xp_recompense: number | null
         }
         Insert: {
+          adresse_physique?: string | null
           created_at?: string | null
           created_by?: string | null
           date_evenement?: string | null
           date_fin?: string | null
           description?: string | null
           est_publie?: boolean | null
+          est_termine?: boolean | null
           id?: string
           lieu?: string | null
           max_participants?: number | null
+          niveaux_recompense?: number | null
           titre?: string | null
           type_evenement?: string | null
           updated_at?: string | null
           xp_recompense?: number | null
         }
         Update: {
+          adresse_physique?: string | null
           created_at?: string | null
           created_by?: string | null
           date_evenement?: string | null
           date_fin?: string | null
           description?: string | null
           est_publie?: boolean | null
+          est_termine?: boolean | null
           id?: string
           lieu?: string | null
           max_participants?: number | null
+          niveaux_recompense?: number | null
           titre?: string | null
           type_evenement?: string | null
           updated_at?: string | null
@@ -785,6 +819,7 @@ export type Database = {
           id: string
           joueur_id: string | null
           personnage_id: string | null
+          recompense_distribuee: boolean | null
           statut: string | null
           updated_at: string | null
           xp_attribue: number | null
@@ -796,6 +831,7 @@ export type Database = {
           id?: string
           joueur_id?: string | null
           personnage_id?: string | null
+          recompense_distribuee?: boolean | null
           statut?: string | null
           updated_at?: string | null
           xp_attribue?: number | null
@@ -807,6 +843,7 @@ export type Database = {
           id?: string
           joueur_id?: string | null
           personnage_id?: string | null
+          recompense_distribuee?: boolean | null
           statut?: string | null
           updated_at?: string | null
           xp_attribue?: number | null
@@ -5346,6 +5383,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ajouter_presence_tardive: {
+        Args: { p_evenement_id: string; p_personnage_id: string }
+        Returns: Json
+      }
       approuver_maitre_competence: {
         Args: { p_personnage_competence_id: string }
         Returns: Json
@@ -5360,6 +5401,11 @@ export type Database = {
         Args: { p_nouveau_role: string; p_user_id: string }
         Returns: Json
       }
+      changer_statut_inscription: {
+        Args: { p_inscription_id: string; p_nouveau_statut: string }
+        Returns: Json
+      }
+      cloturer_evenement: { Args: { p_evenement_id: string }; Returns: Json }
       creer_demande_race: {
         Args: { p_background: string; p_personnage_id: string }
         Returns: Json
@@ -5623,6 +5669,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
