@@ -173,8 +173,8 @@ const AdminEvenements = () => {
   // Cast `as any` requis tant que les nouvelles colonnes/RPC ne sont pas
   // remontées dans `types.ts` (la migration phase_2_evenements_admin.sql doit
   // être appliquée et les types Supabase régénérés).
-  const fromEvts = () => (supabase.from as any)("evenements");
-  const fromInscr = () => (supabase.from as any)("inscriptions_evenements");
+  const fromEvts = () => supabase.from("evenements");
+  const fromInscr = () => supabase.from("inscriptions_evenements");
 
   const { data: evenements, isLoading } = useQuery({
     queryKey: ["admin-evenements-full"],
@@ -228,7 +228,7 @@ const AdminEvenements = () => {
 
   const cloturerMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await (supabase.rpc as any)("cloturer_evenement", {
+      const { data, error } = await supabase.rpc("cloturer_evenement", {
         p_evenement_id: id,
       });
       if (error) throw error;
@@ -697,7 +697,7 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
   const { data, isLoading } = useQuery({
     queryKey: ["inscriptions", eventId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("inscriptions_evenements")
+      const { data, error } = await supabase.from("inscriptions_evenements")
         .select(
           `id, statut, evenement_id, personnage_id, joueur_id,
            personnages(nom),
@@ -725,7 +725,7 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
       inscriptionId: string;
       nouveau: StatutInscription;
     }) => {
-      const { data, error } = await (supabase.rpc as any)("changer_statut_inscription", {
+      const { data, error } = await supabase.rpc("changer_statut_inscription", {
         p_inscription_id: inscriptionId,
         p_nouveau_statut: nouveau,
       });
@@ -830,7 +830,7 @@ const PresenceTardiveDialog = ({ open, eventId, onClose }: PresenceTardiveDialog
   const { data: personnages, isLoading } = useQuery({
     queryKey: ["personnages-actifs-pour-presence"],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("personnages")
+      const { data, error } = await supabase.from("personnages")
         .select("id, nom, profiles(nom_affichage)")
         .eq("est_actif", true)
         .order("nom");
@@ -847,7 +847,7 @@ const PresenceTardiveDialog = ({ open, eventId, onClose }: PresenceTardiveDialog
   const mutation = useMutation({
     mutationFn: async () => {
       if (!selected) throw new Error("Aucun personnage sélectionné");
-      const { data, error } = await (supabase.rpc as any)("ajouter_presence_tardive", {
+      const { data, error } = await supabase.rpc("ajouter_presence_tardive", {
         p_evenement_id: eventId,
         p_personnage_id: selected.id,
       });
@@ -1052,12 +1052,12 @@ const EventFormDialog = ({ open, evenement, onClose, onSaved }: EventFormDialogP
       };
 
       if (isEdit && evenement) {
-        const { error } = await (supabase.from as any)("evenements")
+        const { error } = await supabase.from("evenements")
           .update(payload)
           .eq("id", evenement.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from as any)("evenements").insert({
+        const { error } = await supabase.from("evenements").insert({
           ...payload,
           est_publie: false,
           est_termine: false,
