@@ -170,9 +170,6 @@ const AdminEvenements = () => {
   const [creating, setCreating] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
 
-  // Cast `as any` requis tant que les nouvelles colonnes/RPC ne sont pas
-  // remontées dans `types.ts` (la migration phase_2_evenements_admin.sql doit
-  // être appliquée et les types Supabase régénérés).
   const fromEvts = () => supabase.from("evenements");
   const fromInscr = () => supabase.from("inscriptions_evenements");
 
