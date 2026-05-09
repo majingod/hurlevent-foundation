@@ -139,7 +139,7 @@ const AdminDashboard = () => {
               🛡️ Gérer les personnages
             </Button>
             <Button
-              onClick={() => navigate("/administration/evenements-admin")}
+              onClick={() => navigate("/administration/evenements")}
               variant="outline"
               className="justify-start"
             >
