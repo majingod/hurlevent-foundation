@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 import {
   Card,
   CardContent,
@@ -23,14 +23,16 @@ type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
 interface Etape9Props {
   personnageId: string;
-  onSuccess?: (data: Json) => void;
+  onSuccess?: () => void;
   onError?: (error: Error) => void;
+  onPrevious?: () => void;
 }
 
 const Etape9_Assemblages_V2 = ({
   personnageId,
   onSuccess,
   onError,
+  onPrevious,
 }: Etape9Props) => {
   const queryClient = useQueryClient();
 
@@ -114,7 +116,7 @@ const Etape9_Assemblages_V2 = ({
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["personnage-assemblages", personnageId],
       });
@@ -123,7 +125,6 @@ const Etape9_Assemblages_V2 = ({
       });
       queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       toast.success("Assemblage acquis !");
-      onSuccess?.(data);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -313,6 +314,17 @@ const Etape9_Assemblages_V2 = ({
           )}
         </CardContent>
       </Card>
+
+      <div className="flex justify-between pt-4">
+        {onPrevious && (
+          <Button variant="outline" onClick={onPrevious}>
+            ← Précédent
+          </Button>
+        )}
+        <Button className="ml-auto" onClick={() => onSuccess?.()}>
+          Suivant →
+        </Button>
+      </div>
     </div>
   );
 };

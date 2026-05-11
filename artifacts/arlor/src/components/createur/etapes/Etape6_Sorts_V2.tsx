@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 import {
   Card,
   CardContent,
@@ -40,8 +40,9 @@ type CercleDispo =
 
 interface Etape6Props {
   personnageId: string;
-  onSuccess?: (data: Json) => void;
+  onSuccess?: () => void;
   onError?: (error: Error) => void;
+  onPrevious?: () => void;
 }
 
 interface AcheterSortParams {
@@ -54,7 +55,7 @@ interface AcheterSortParams {
   p_nom_personnalise: string;
 }
 
-const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError }: Etape6Props) => {
+const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError, onPrevious }: Etape6Props) => {
   const queryClient = useQueryClient();
 
   const [cercleSelectionne, setCercleSelectionne] = useState<string | null>(null);
@@ -200,7 +201,7 @@ const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError }: Etape6Props) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["personnage-sorts", personnageId],
       });
@@ -211,7 +212,6 @@ const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError }: Etape6Props) => {
       toast.success("Sort acheté !");
       setSortId(null);
       setCercleSelectionne(null);
-      onSuccess?.(data);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -527,6 +527,17 @@ const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError }: Etape6Props) => {
           )}
         </CardContent>
       </Card>
+
+      <div className="flex justify-between pt-4">
+        {onPrevious && (
+          <Button variant="outline" onClick={onPrevious}>
+            ← Précédent
+          </Button>
+        )}
+        <Button className="ml-auto" onClick={() => onSuccess?.()}>
+          Suivant →
+        </Button>
+      </div>
     </div>
   );
 };

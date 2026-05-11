@@ -47,8 +47,9 @@ interface AcheterCompetenceParams {
 
 interface Etape5Props {
   personnageId: string;
-  onSuccess?: (data: Json) => void;
+  onSuccess?: () => void;
   onError?: (error: Error) => void;
+  onPrevious?: () => void;
 }
 
 const TAB_CONFIG: { key: string; label: string; categories: string[] }[] = [
@@ -85,7 +86,7 @@ function normalizeCategorie(value: string | null | undefined): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError }: Etape5Props) => {
+const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError, onPrevious }: Etape5Props) => {
   const queryClient = useQueryClient();
 
   const [masterDialog, setMasterDialog] = useState<{
@@ -191,13 +192,12 @@ const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError }: Etape5Props
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       queryClient.invalidateQueries({
         queryKey: ["personnage-competences", personnageId],
       });
       toast.success("Compétence achetée !");
-      onSuccess?.(data);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -395,6 +395,17 @@ const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError }: Etape5Props
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <div className="flex justify-between pt-4">
+        {onPrevious && (
+          <Button variant="outline" onClick={onPrevious}>
+            ← Précédent
+          </Button>
+        )}
+        <Button className="ml-auto" onClick={() => onSuccess?.()}>
+          Suivant →
+        </Button>
+      </div>
     </div>
   );
 };

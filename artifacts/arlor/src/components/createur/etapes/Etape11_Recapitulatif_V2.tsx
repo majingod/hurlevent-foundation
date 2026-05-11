@@ -31,7 +31,8 @@ type VueRecap =
 
 interface Etape11Props {
   personnageId: string;
-  onComplete: () => void;
+  onSuccess?: () => void;
+  onPrevious?: () => void;
 }
 
 interface TraitRacial {
@@ -106,7 +107,8 @@ const asArray = <T,>(value: Json | null | undefined): T[] => {
 
 const Etape11_Recapitulatif_V2 = ({
   personnageId,
-  onComplete,
+  onSuccess,
+  onPrevious,
 }: Etape11Props) => {
   const {
     data: recap,
@@ -142,7 +144,7 @@ const Etape11_Recapitulatif_V2 = ({
         toast.success(
           result.message ?? "Personnage finalisé et verrouillé !",
         );
-        onComplete();
+        onSuccess?.();
         return;
       }
 
@@ -562,9 +564,15 @@ const Etape11_Recapitulatif_V2 = ({
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        {onPrevious && (
+          <Button variant="outline" onClick={onPrevious}>
+            ← Précédent
+          </Button>
+        )}
         <Button
           size="lg"
+          className="ml-auto"
           onClick={() => finaliserMutation.mutate()}
           disabled={finaliserMutation.isPending}
         >

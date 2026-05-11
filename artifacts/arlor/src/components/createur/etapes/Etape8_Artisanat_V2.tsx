@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 import {
   Card,
   CardContent,
@@ -28,14 +28,16 @@ type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
 interface Etape8Props {
   personnageId: string;
-  onSuccess?: (data: Json) => void;
+  onSuccess?: () => void;
   onError?: (error: Error) => void;
+  onPrevious?: () => void;
 }
 
 const Etape8_Artisanat_V2 = ({
   personnageId,
   onSuccess,
   onError,
+  onPrevious,
 }: Etape8Props) => {
   const queryClient = useQueryClient();
 
@@ -158,7 +160,7 @@ const Etape8_Artisanat_V2 = ({
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["personnage-recettes", personnageId],
       });
@@ -167,7 +169,6 @@ const Etape8_Artisanat_V2 = ({
       });
       queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       toast.success("Recette acquise !");
-      onSuccess?.(data);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -554,6 +555,17 @@ const Etape8_Artisanat_V2 = ({
           </TabsContent>
         )}
       </Tabs>
+
+      <div className="flex justify-between pt-4">
+        {onPrevious && (
+          <Button variant="outline" onClick={onPrevious}>
+            ← Précédent
+          </Button>
+        )}
+        <Button className="ml-auto" onClick={() => onSuccess?.()}>
+          Suivant →
+        </Button>
+      </div>
     </div>
   );
 };
