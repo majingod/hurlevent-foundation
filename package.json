@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "cd artifacts/arlor && vite --config vite.config.ts --host 0.0.0.0",
-    "build": "cd artifacts/arlor && vite build --config vite.config.ts",
-    "typecheck": "cd artifacts/arlor && tsc -p tsconfig.json --noEmit"
+    "dev": "cd artifacts/arlor && bunx vite --config vite.config.ts --host 0.0.0.0",
+    "build": "cd artifacts/arlor && bunx vite build --config vite.config.ts",
+    "typecheck": "cd artifacts/arlor && bunx tsc -p tsconfig.json --noEmit"
   },
   "private": true,
   "devDependencies": {
