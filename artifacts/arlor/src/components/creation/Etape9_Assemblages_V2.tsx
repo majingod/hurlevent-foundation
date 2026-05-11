@@ -109,7 +109,6 @@ const Etape9_Assemblages_V2 = ({
     mutationFn: async (params: {
       p_personnage_id: string;
       p_assemblage_id: string;
-      p_xp_depense?: number;
     }) => {
       const { data, error } = await supabase.rpc("acheter_assemblage", params);
       if (error) throw error;
@@ -140,7 +139,6 @@ const Etape9_Assemblages_V2 = ({
     acheterMutation.mutate({
       p_personnage_id: personnageId,
       p_assemblage_id: assemblage.id,
-      p_xp_depense: undefined,
     });
   };
 
@@ -148,7 +146,6 @@ const Etape9_Assemblages_V2 = ({
     acheterMutation.mutate({
       p_personnage_id: personnageId,
       p_assemblage_id: assemblage.id,
-      p_xp_depense: COUT_ASSEMBLAGE_SUPPLEMENTAIRE,
     });
   };
 
