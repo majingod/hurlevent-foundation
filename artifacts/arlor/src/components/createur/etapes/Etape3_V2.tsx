@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { QueryState } from "@/components/ui/QueryState";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 interface TraitChoisi {
@@ -60,7 +61,7 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   });
 
   // Charger tous les traits raciaux actifs (le backend filtre par race au besoin)
-  const { data: traits = [] } = useQuery<TraitDispo[]>({
+  const { data: traits, isLoading: traitsLoading, error: traitsError, refetch } = useQuery<TraitDispo[]>({
     queryKey: ["v2-traits-raciaux"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -93,7 +94,7 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const xpTraits = useMemo(() => {
     let total = 0;
     achetes.forEach((id) => {
-      const t = traits.find((x) => x.id === id);
+      const t = (traits ?? []).find((x) => x.id === id);
       if (t) total += t.cout_xp;
     });
     return total;
@@ -151,7 +152,7 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         xp_depense: 0,
       })),
       ...Array.from(achetes).map((id) => {
-        const t = traits.find((x) => x.id === id);
+        const t = (traits ?? []).find((x) => x.id === id);
         return {
           trait_id: id,
           est_gratuit: false,
@@ -184,16 +185,7 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     onSuccess();
   };
 
-  if (chargementInit) {
-    return (
-      <div className="flex items-center justify-center py-16 text-white/50">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Chargement des traits…
-      </div>
-    );
-  }
-
-  if (!raceId) {
+  if (!chargementInit && !raceId) {
     return (
       <div className="space-y-4">
         <p className="text-amber-300">
@@ -207,85 +199,97 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="font-heading text-2xl text-gold">Traits raciaux</h2>
-        <p className="text-sm text-white/60">
-          Choisis {quotaGratuits} trait(s) gratuit(s). Tu peux en acheter
-          d'autres avec ton XP.
-        </p>
-        <div className="flex gap-4 text-sm">
-          <span
-            className={
-              gratuits.size === quotaGratuits
-                ? "text-green-400"
-                : "text-amber-400"
-            }
-          >
-            Gratuits : {gratuits.size} / {quotaGratuits}
-          </span>
-          <span className="text-white/60">
-            Achetés : {achetes.size} ({xpTraits} XP)
-          </span>
-        </div>
-      </div>
+    <QueryState<TraitDispo[]>
+      isLoading={chargementInit || traitsLoading}
+      error={traitsError as Error | null}
+      data={traits ?? null}
+      loadingLabel="Chargement des traits raciaux..."
+      emptyLabel="Aucun trait disponible pour cette race"
+      onRetry={() => refetch()}
+      isEmpty={(d) => Array.isArray(d) && d.length === 0}
+    >
+      {(traitsDispo) => (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="font-heading text-2xl text-gold">Traits raciaux</h2>
+            <p className="text-sm text-white/60">
+              Choisis {quotaGratuits} trait(s) gratuit(s). Tu peux en acheter
+              d'autres avec ton XP.
+            </p>
+            <div className="flex gap-4 text-sm">
+              <span
+                className={
+                  gratuits.size === quotaGratuits
+                    ? "text-green-400"
+                    : "text-amber-400"
+                }
+              >
+                Gratuits : {gratuits.size} / {quotaGratuits}
+              </span>
+              <span className="text-white/60">
+                Achetés : {achetes.size} ({xpTraits} XP)
+              </span>
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {traits.map((t) => {
-          const estGratuit = gratuits.has(t.id);
-          const estAchete = achetes.has(t.id);
-          const selectionne = estGratuit || estAchete;
-          return (
-            <Card
-              key={t.id}
-              className={`border-white/10 bg-black/30 transition-colors ${
-                selectionne ? "border-gold/50 bg-gold/5" : ""
-              }`}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {traitsDispo.map((t) => {
+              const estGratuit = gratuits.has(t.id);
+              const estAchete = achetes.has(t.id);
+              const selectionne = estGratuit || estAchete;
+              return (
+                <Card
+                  key={t.id}
+                  className={`border-white/10 bg-black/30 transition-colors ${
+                    selectionne ? "border-gold/50 bg-gold/5" : ""
+                  }`}
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center justify-between text-base text-gold">
+                      <span>{t.nom}</span>
+                      <span className="text-xs text-white/50">{t.cout_xp} XP</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-white/70">{t.description}</p>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={estGratuit}
+                          onCheckedChange={() => toggleGratuit(t.id)}
+                        />
+                        Gratuit
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={estAchete}
+                          onCheckedChange={() => toggleAchete(t.id)}
+                        />
+                        Acheter ({t.cout_xp} XP)
+                      </label>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-between pt-2">
+            <Button type="button" variant="outline" onClick={onPrevious}>
+              Étape précédente
+            </Button>
+            <Button
+              onClick={onSubmit}
+              disabled={submitting}
+              className="bg-gold text-black hover:bg-gold/90"
             >
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-base text-gold">
-                  <span>{t.nom}</span>
-                  <span className="text-xs text-white/50">{t.cout_xp} XP</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-white/70">{t.description}</p>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={estGratuit}
-                      onCheckedChange={() => toggleGratuit(t.id)}
-                    />
-                    Gratuit
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={estAchete}
-                      onCheckedChange={() => toggleAchete(t.id)}
-                    />
-                    Acheter ({t.cout_xp} XP)
-                  </label>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="flex justify-between pt-2">
-        <Button type="button" variant="outline" onClick={onPrevious}>
-          Étape précédente
-        </Button>
-        <Button
-          onClick={onSubmit}
-          disabled={submitting}
-          className="bg-gold text-black hover:bg-gold/90"
-        >
-          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Suivant
-        </Button>
-      </div>
-    </div>
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Suivant
+            </Button>
+          </div>
+        </div>
+      )}
+    </QueryState>
   );
 };
 

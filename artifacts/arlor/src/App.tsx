@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -30,7 +31,22 @@ import AdminEvenements from "@/pages/admin/AdminEvenements";
 import AdminCompetencesMaitre from "@/pages/admin/AdminCompetencesMaitre";
 import AdminDonnees from "@/pages/admin/AdminDonnees";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      if (query.meta?.skipGlobalErrorToast === true) return;
+      toast.error(`Erreur de chargement: ${error.message}`);
+      console.error('[Query Error]', query.queryKey, error);
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error, _vars, _ctx, mutation) => {
+      if (mutation.meta?.skipGlobalErrorToast === true) return;
+      toast.error(`Erreur: ${error.message}`);
+      console.error('[Mutation Error]', mutation.options.mutationKey, error);
+    },
+  }),
+});
 
 const AppRoutes = () => (
   <Routes>
