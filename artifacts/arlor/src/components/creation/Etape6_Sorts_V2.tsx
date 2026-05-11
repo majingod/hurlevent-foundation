@@ -52,7 +52,6 @@ interface AcheterSortParams {
   p_duree_choisie: string;
   p_niveau_sort: number;
   p_nom_personnalise: string;
-  p_xp_depense: number;
 }
 
 const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError }: Etape6Props) => {
@@ -238,7 +237,6 @@ const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError }: Etape6Props) => {
       p_duree_choisie: dureeChoisie,
       p_niveau_sort: niveauSort,
       p_nom_personnalise: nomPersonnalise.trim(),
-      p_xp_depense: coutXp,
     });
   };
 

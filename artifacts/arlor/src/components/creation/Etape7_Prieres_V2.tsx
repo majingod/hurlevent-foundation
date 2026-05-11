@@ -53,7 +53,6 @@ interface AcheterPriereParams {
   p_duree_choisie: string;
   p_niveau_priere: number;
   p_nom_personnalise: string;
-  p_xp_depense: number;
 }
 
 const Etape7_Prieres_V2 = ({
@@ -310,7 +309,6 @@ const Etape7_Prieres_V2 = ({
       p_duree_choisie: dureeChoisie,
       p_niveau_priere: niveauPriere,
       p_nom_personnalise: nomPersonnalise.trim(),
-      p_xp_depense: coutXp,
     });
   };
 

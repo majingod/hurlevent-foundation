@@ -153,7 +153,6 @@ const Etape8_Artisanat_V2 = ({
     mutationFn: async (params: {
       p_personnage_id: string;
       p_recette_id: string;
-      p_xp_depense?: number;
     }) => {
       const { data, error } = await supabase.rpc("acheter_recette", params);
       if (error) throw error;
@@ -184,7 +183,6 @@ const Etape8_Artisanat_V2 = ({
     acheterMutation.mutate({
       p_personnage_id: personnageId,
       p_recette_id: recette.id,
-      p_xp_depense: undefined,
     });
   };
 
@@ -192,7 +190,6 @@ const Etape8_Artisanat_V2 = ({
     acheterMutation.mutate({
       p_personnage_id: personnageId,
       p_recette_id: recette.id,
-      p_xp_depense: COUT_RECETTE_SUPPLEMENTAIRE,
     });
   };
 

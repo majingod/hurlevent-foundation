@@ -5310,7 +5310,6 @@ export type Database = {
         Args: {
           p_assemblage_id: string
           p_personnage_id: string
-          p_xp_depense?: number
         }
         Returns: Json
       }
@@ -5329,7 +5328,6 @@ export type Database = {
         Args: {
           p_objet_id: string
           p_personnage_id: string
-          p_xp_depense: number
         }
         Returns: Json
       }
@@ -5337,7 +5335,6 @@ export type Database = {
         Args: {
           p_objet_id: string
           p_personnage_id: string
-          p_xp_depense: number
         }
         Returns: Json
       }
@@ -5349,7 +5346,6 @@ export type Database = {
           p_personnage_id: string
           p_portee_choisie: string
           p_priere_id: string
-          p_xp_depense: number
           p_zone_choisie: string
         }
         Returns: Json
@@ -5358,7 +5354,6 @@ export type Database = {
         Args: {
           p_personnage_id: string
           p_recette_id: string
-          p_xp_depense?: number
         }
         Returns: Json
       }
@@ -5370,14 +5365,12 @@ export type Database = {
           p_personnage_id: string
           p_portee_choisie: string
           p_sort_id: string
-          p_xp_depense: number
           p_zone_choisie: string
         }
         Returns: Json
       }
       acheter_trait_racial: {
         Args: {
-          p_est_gratuit: boolean
           p_personnage_id: string
           p_trait_id: string
         }
