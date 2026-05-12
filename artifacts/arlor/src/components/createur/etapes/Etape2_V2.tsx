@@ -52,6 +52,7 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         .from("races")
         .select("id, nom, description, xp_depart, est_jouable")
         .eq("est_actif", true)
+        .eq("est_jouable", true)
         .order("nom");
       if (error) throw error;
       return data ?? [];
