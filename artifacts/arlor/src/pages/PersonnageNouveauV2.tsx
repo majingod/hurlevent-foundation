@@ -244,6 +244,7 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
+            onXpDeltaChange={setXpDeltaCourant}
           />
         )}
         {etape === 6 && (

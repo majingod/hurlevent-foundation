@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,8 @@ type PersonnageCompetenceRow =
   Database["public"]["Tables"]["personnage_competences"]["Row"];
 type PersonnageRow = Database["public"]["Tables"]["personnages"]["Row"];
 type ClasseRow = Database["public"]["Tables"]["classes"]["Row"];
+type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
+type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
 
 interface NiveauInfo {
   niveau: number;
@@ -50,6 +52,7 @@ interface Etape5Props {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
+  onXpDeltaChange?: (delta: number) => void;
 }
 
 const TAB_CONFIG: { key: string; label: string; categories: string[] }[] = [
@@ -86,7 +89,28 @@ function normalizeCategorie(value: string | null | undefined): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError, onPrevious }: Etape5Props) => {
+function resoudreChoixAffichage(
+  choixAchat: string | null,
+  typeChoix: string | null,
+  religions: Pick<ReligionRow, "id" | "nom">[],
+  _langues: Pick<LangueRow, "id" | "nom" | "est_ancienne">[],
+): string | null {
+  if (!choixAchat || !typeChoix) return null;
+  if (typeChoix === "religion") {
+    return religions.find((r) => r.id === choixAchat)?.nom ?? choixAchat;
+  }
+  // langue, langue_ancienne, categorie_creature, cercle, domaine,
+  // famille_criminelle, categorie_depecage : valeur stock\u00e9e directement affichable.
+  return choixAchat;
+}
+
+const Etape5_Competences_V2 = ({
+  personnageId,
+  onSuccess,
+  onError,
+  onPrevious,
+  onXpDeltaChange,
+}: Etape5Props) => {
   const queryClient = useQueryClient();
 
   const [masterDialog, setMasterDialog] = useState<{
@@ -157,6 +181,33 @@ const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError, onPrevious }:
     enabled: !!personnageId,
   });
 
+  // Langues (petite table, ~11 lignes)
+  const { data: langues } = useQuery({
+    queryKey: ["langues-actives"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("langues")
+        .select("id, nom, est_ancienne")
+        .eq("est_actif", true)
+        .order("ordre");
+      if (error) throw error;
+      return (data ?? []) as Pick<LangueRow, "id" | "nom" | "est_ancienne">[];
+    },
+  });
+
+  // Religions (petite table, ~15 lignes)
+  const { data: religions } = useQuery({
+    queryKey: ["religions-actives"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("religions")
+        .select("id, nom")
+        .eq("est_actif", true);
+      if (error) throw error;
+      return (data ?? []) as Pick<ReligionRow, "id" | "nom">[];
+    },
+  });
+
   const niveauxAchetes = useMemo(() => {
     const map = new Map<string, Set<number>>();
     (achats ?? []).forEach((a) => {
@@ -165,6 +216,24 @@ const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError, onPrevious }:
     });
     return map;
   }, [achats]);
+
+  const achatsParCompetence = useMemo(() => {
+    const map = new Map<string, PersonnageCompetenceRow[]>();
+    (achats ?? []).forEach((a) => {
+      if (!map.has(a.competence_id)) map.set(a.competence_id, []);
+      map.get(a.competence_id)!.push(a);
+    });
+    return map;
+  }, [achats]);
+
+  // L'achat de compétence est immédiat (RPC acheter_competence + refetch parent),
+  // donc le delta XP de cette étape est toujours 0. On reset à l'arrivée et au démontage.
+  useEffect(() => {
+    onXpDeltaChange?.(0);
+    return () => {
+      onXpDeltaChange?.(0);
+    };
+  }, [onXpDeltaChange]);
 
   const competencesParTab = useMemo(() => {
     const grouped: Record<string, CompetenceWithNiveaux[]> = {};
@@ -240,6 +309,7 @@ const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError, onPrevious }:
     const maxAchete = niveauxAchetesPourComp.size
       ? Math.max(...niveauxAchetesPourComp)
       : 0;
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
 
     return (
       <Card key={comp.id}>
@@ -254,6 +324,40 @@ const Etape5_Competences_V2 = ({ personnageId, onSuccess, onError, onPrevious }:
           </div>
           {comp.description && (
             <p className="text-xs text-muted-foreground">{comp.description}</p>
+          )}
+          {achatsPourComp.length > 0 && (
+            <div className="flex flex-col gap-1 pt-1">
+              {achatsPourComp.map((achat) => {
+                const choixAffiche = resoudreChoixAffichage(
+                  achat.choix_achat,
+                  comp.type_choix,
+                  religions ?? [],
+                  langues ?? [],
+                );
+                const estGratuit = achat.xp_depense === 0;
+                return (
+                  <div
+                    key={achat.id}
+                    className="flex flex-wrap items-center gap-2 text-xs"
+                  >
+                    {estGratuit ? (
+                      <Badge className="bg-green-600/20 text-green-400 border border-green-600/30">
+                        Acquis gratuitement
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-blue-600/20 text-blue-400 border border-blue-600/30">
+                        Acheté niveau {achat.niveau_acquis}
+                      </Badge>
+                    )}
+                    {choixAffiche && (
+                      <span className="text-muted-foreground">
+                        : <strong className="text-foreground">{choixAffiche}</strong>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardHeader>
         <CardContent className="space-y-2">
