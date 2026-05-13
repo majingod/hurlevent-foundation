@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, Sparkles, ExternalLink, Loader2 } from "lucide-react";
@@ -43,7 +43,7 @@ interface Etape2Form {
 const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, reset, setValue, register } =
+  const { handleSubmit, watch, reset, setValue, register } =
     useForm<Etape2Form>({
       defaultValues: { race_id: "", sous_type_chimeride: "", justification: "" },
     });
@@ -51,7 +51,6 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const raceId = watch("race_id");
   const sousTypeChimeride = watch("sous_type_chimeride");
   const justification = watch("justification");
-  const estChimeride = raceId === CHIMERIDE_ID;
   const raceSpecialeSelectionnee = raceId
     ? RACES_VALIDATION_IDS.includes(raceId)
     : false;
@@ -190,12 +189,8 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         </div>
       )}
 
-      <Controller
-        control={control}
-        name="race_id"
-        render={() => (
-          <div className="grid gap-6">
-            {races.map((race) => {
+      <div className="grid gap-6">
+        {races.map((race) => {
               const estSpeciale = RACES_VALIDATION_IDS.includes(race.id);
               const estSelectionnee = raceId === race.id;
               const estChimerideCard = race.id === CHIMERIDE_ID;
@@ -282,8 +277,6 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
               );
             })}
           </div>
-        )}
-      />
 
       {raceSpecialeSelectionnee && (
         <div className="space-y-4 rounded-lg border border-red-500/40 bg-red-900/10 p-5">
