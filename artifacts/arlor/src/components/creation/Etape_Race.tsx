@@ -45,6 +45,7 @@ const Step2Race = ({
         .from("races")
         .select("*")
         .eq("est_actif", true)
+        .eq("est_jouable", true)
         .order("nom");
       if (error) throw error;
       return data;
