@@ -23,19 +23,19 @@ interface TraitDispo {
   cout_xp: number;
 }
 
-const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
+const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [gratuits, setGratuits] = useState<Set<string>>(new Set());
   const [achetes, setAchetes] = useState<Set<string>>(new Set());
   const [chargementInit, setChargementInit] = useState(true);
 
-  // Charger l'état du personnage (race + traits déjà choisis)
+  // Charger l'état du personnage (race + sous-type + traits déjà choisis)
   const { data: perso } = useQuery({
     queryKey: ["v2-perso-traits", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnages")
-        .select("race_id, traits_raciaux_choisis")
+        .select("race_id, sous_type_chimeride, traits_raciaux_choisis")
         .eq("id", personnageId)
         .single();
       if (error) throw error;
@@ -44,6 +44,8 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   });
 
   const raceId = perso?.race_id ?? null;
+  const sousType =
+    (perso?.sous_type_chimeride as "carnivore" | "herbivore" | null) ?? null;
 
   // Charger la race (pour quota nb_traits_raciaux)
   const { data: race } = useQuery({
@@ -60,17 +62,30 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     },
   });
 
-  // Charger tous les traits raciaux actifs (le backend filtre par race au besoin)
+  // Traits filtrés par race + sous-type via la vue dédiée
   const { data: traits, isLoading: traitsLoading, error: traitsError, refetch } = useQuery<TraitDispo[]>({
-    queryKey: ["v2-traits-raciaux"],
+    queryKey: ["v2-traits-par-race", raceId, sousType],
+    enabled: !!raceId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("traits_raciaux")
-        .select("id, nom, description, cout_xp")
-        .eq("est_actif", true)
-        .order("nom");
+      let q = supabase
+        .from("vue_traits_par_race")
+        .select("trait_id, sous_type, trait_nom, trait_description, cout_xp")
+        .eq("race_id", raceId!)
+        .order("trait_nom");
+
+      if (sousType) {
+        q = q.or(`sous_type.eq.${sousType},sous_type.is.null`);
+      } else {
+        q = q.is("sous_type", null);
+      }
+      const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as TraitDispo[];
+      return (data ?? []).map((t: any) => ({
+        id: t.trait_id as string,
+        nom: t.trait_nom as string,
+        description: t.trait_description as string,
+        cout_xp: t.cout_xp as number,
+      })) as TraitDispo[];
     },
   });
 
@@ -99,6 +114,13 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     });
     return total;
   }, [achetes, traits]);
+
+  useEffect(() => {
+    onXpDeltaChange?.(xpTraits);
+    return () => {
+      onXpDeltaChange?.(0);
+    };
+  }, [xpTraits, onXpDeltaChange]);
 
   const toggleGratuit = (id: string) => {
     setGratuits((prev) => {
@@ -174,9 +196,17 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       return;
     }
     const resp = (data ?? {}) as Record<string, unknown>;
-    if (resp.succes === false) {
-      const code = (resp.code as string) ?? "erreur";
-      const message = (resp.message as string) ?? "Sauvegarde refusée.";
+    const erreurs =
+      (resp.erreurs as Array<Record<string, unknown>> | undefined) ?? [];
+    const premiereErreur = erreurs[0] ?? {};
+    const succes = resp.succes !== false;
+    if (!succes) {
+      const code =
+        (premiereErreur.code as string) ?? (resp.code as string) ?? "erreur";
+      const message =
+        (premiereErreur.message as string) ??
+        (resp.message as string) ??
+        "Sauvegarde refusée.";
       toast.error(`[${code}] ${message}`);
       return;
     }

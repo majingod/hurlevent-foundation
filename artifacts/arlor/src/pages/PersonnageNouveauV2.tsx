@@ -35,6 +35,7 @@ export interface EtapeProps {
   personnageId: string;
   onSuccess: () => void;
   onPrevious?: () => void;
+  onXpDeltaChange?: (delta: number) => void;
 }
 
 const PersonnageNouveauV2 = () => {
@@ -44,6 +45,7 @@ const PersonnageNouveauV2 = () => {
 
   const [personnageId, setPersonnageId] = useState<string | null>(null);
   const [etape, setEtape] = useState<number>(1);
+  const [xpDeltaCourant, setXpDeltaCourant] = useState<number>(0);
   const [demarrage, setDemarrage] = useState(true);
   const [erreurDemarrage, setErreurDemarrage] = useState<string | null>(null);
 
@@ -116,9 +118,13 @@ const PersonnageNouveauV2 = () => {
     },
   });
 
+  useEffect(() => {
+    setXpDeltaCourant(0);
+  }, [etape]);
+
   const xpTotal = personnage?.xp_total ?? 0;
   const xpDepense = personnage?.xp_depense ?? 0;
-  const xpDisponible = xpTotal - xpDepense;
+  const xpDisponible = xpTotal - xpDepense - xpDeltaCourant;
 
   const progression = useMemo(
     () => Math.round((etape / TOTAL_STEPS) * 100),
@@ -223,6 +229,7 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
+            onXpDeltaChange={setXpDeltaCourant}
           />
         )}
         {etape === 4 && (
