@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ReligionCard from "@/components/encyclopedie/ReligionCard";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 interface Etape4Form {
@@ -116,27 +117,65 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     return Array.isArray(raw) ? (raw as CompetenceGratuite[]) : [];
   }, [classeSelectionnee]);
 
-  const competencesGratuitesIds = useMemo(
-    () => competencesGratuites.map((g) => g.competence_id),
-    [competencesGratuites]
-  );
+  const tousLesCompetenceIds = useMemo(() => {
+    const ids = new Set<string>();
+    classes.forEach((c: any) => {
+      const raw = c.competences_gratuites;
+      if (Array.isArray(raw)) {
+        raw.forEach((g: any) => {
+          if (g?.competence_id) ids.add(g.competence_id);
+        });
+      }
+    });
+    return Array.from(ids);
+  }, [classes]);
 
   const { data: infosCompetences = [] } = useQuery({
-    queryKey: ["v2-infos-comp-gratuites", competencesGratuitesIds.join(",")],
-    enabled: competencesGratuitesIds.length > 0,
+    queryKey: [
+      "v2-infos-comp-gratuites-all-classes",
+      tousLesCompetenceIds.join(","),
+    ],
+    enabled: tousLesCompetenceIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("competences")
         .select("id, nom, type_choix")
-        .in("id", competencesGratuitesIds);
+        .in("id", tousLesCompetenceIds);
       if (error) throw error;
       return (data ?? []) as CompetenceInfo[];
     },
   });
 
+  const infosCompetencesMap = useMemo(() => {
+    const map = new Map<string, CompetenceInfo>();
+    infosCompetences.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [infosCompetences]);
+
+  const competencesParClasseId = useMemo(() => {
+    const result: Record<string, CompetenceInfo[]> = {};
+    classes.forEach((c: any) => {
+      const raw = c.competences_gratuites;
+      const liste: CompetenceInfo[] = [];
+      if (Array.isArray(raw)) {
+        raw.forEach((g: any) => {
+          const info = infosCompetencesMap.get(g?.competence_id);
+          if (info) liste.push(info);
+        });
+      }
+      result[c.id] = liste;
+    });
+    return result;
+  }, [classes, infosCompetencesMap]);
+
   const competencesAvecChoix = useMemo(
-    () => infosCompetences.filter((c) => c.type_choix !== null),
-    [infosCompetences]
+    () =>
+      competencesGratuites
+        .map((g) => infosCompetencesMap.get(g.competence_id))
+        .filter(
+          (c): c is CompetenceInfo => !!c && c.type_choix !== null
+        ),
+    [competencesGratuites, infosCompetencesMap]
   );
 
   const aBesoinChoixReligion = competencesAvecChoix.some(
@@ -163,12 +202,12 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   });
 
   const { data: religions = [] } = useQuery({
-    queryKey: ["v2-religions"],
+    queryKey: ["v2-religions-full"],
     enabled: aBesoinChoixReligion,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("religions")
-        .select("id, nom")
+        .select("*")
         .eq("est_actif", true)
         .order("nom");
       if (error) throw error;
@@ -338,6 +377,32 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                       <p className="text-xs text-white/50">
                         PV {c.pv_depart ?? "?"} · PS {c.ps_depart ?? "?"}
                       </p>
+                      {competencesParClasseId[c.id]?.length > 0 && (
+                        <div className="pt-1 text-xs text-white/60">
+                          <p className="mb-1 font-semibold text-white/70">
+                            Compétences gratuites :
+                          </p>
+                          <ul className="space-y-0.5">
+                            {competencesParClasseId[c.id].map((comp) => (
+                              <li key={comp.id}>
+                                • {comp.nom}
+                                {comp.type_choix === "langue_ancienne" && (
+                                  <span className="italic text-white/40">
+                                    {" "}
+                                    (au choix : langue ancienne)
+                                  </span>
+                                )}
+                                {comp.type_choix === "religion" && (
+                                  <span className="italic text-white/40">
+                                    {" "}
+                                    (au choix : religion)
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </Label>
@@ -390,6 +455,12 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
             }
 
             if (c.type_choix === "religion") {
+              const religionChoisieId = choixParCompetence[c.id];
+              const religionChoisie = religionChoisieId
+                ? (religions as Array<any>).find(
+                    (r) => r.id === religionChoisieId
+                  )
+                : null;
               return (
                 <div key={c.id} className="space-y-3">
                   <Label className="text-sm text-gold">
@@ -415,6 +486,12 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {religionChoisie && (
+                    <ReligionCard
+                      religion={religionChoisie}
+                      isSelected={false}
+                    />
+                  )}
                   {!dejaCroyant && (
                     <label className="flex items-start gap-2 text-xs text-white/70">
                       <Checkbox
