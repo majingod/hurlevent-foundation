@@ -213,28 +213,19 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       }
     }
 
-    setSubmitting(true);
-
-    // UPDATE personnage si Prêtre + nouveau croyant
     const compReligion = competencesAvecChoix.find(
       (c) => c.type_choix === "religion"
     );
-    const religionChoisie = compReligion
-      ? choixParCompetence[compReligion.id]
-      : null;
 
-    if (compReligion && religionChoisie && !dejaCroyant && devenirCroyant) {
-      const { error: errUpdate } = await supabase
-        .from("personnages")
-        .update({ religion_id: religionChoisie, est_croyant: true })
-        .eq("id", personnageId);
-      if (errUpdate) {
-        setSubmitting(false);
-        console.error("[V2 Etape4] UPDATE personnage error:", errUpdate);
-        toast.error(`Erreur : ${errUpdate.message}`);
-        return;
-      }
+    // Pour un perso non-croyant, exiger le consentement explicite à devenir croyant.
+    if (compReligion && !dejaCroyant && !devenirCroyant) {
+      toast.error(
+        "Tu dois accepter de devenir croyant pour valider le choix de religion."
+      );
+      return;
     }
+
+    setSubmitting(true);
 
     // Construire un objet de choix propre (filtré sur les compétences pertinentes)
     const choixFinaux: Record<string, string> = {};
@@ -243,6 +234,9 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         choixFinaux[c.id] = choixParCompetence[c.id];
       }
     }
+
+    const religionChoisie = compReligion ? choixFinaux[compReligion.id] : null;
+    const religionInitiale = perso?.religion_id ?? null;
 
     const { data, error } = await supabase.rpc("sauvegarder_etape_4", {
       p_personnage_id: personnageId,
@@ -266,6 +260,21 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     }
 
     toast.success("Classe enregistrée.");
+
+    if (
+      dejaCroyant &&
+      religionChoisie &&
+      religionChoisie !== religionInitiale
+    ) {
+      const nomReligion = (religions as Array<{ id: string; nom: string }>)
+        .find((r) => r.id === religionChoisie)?.nom;
+      if (nomReligion) {
+        toast.info(
+          `Religion mise à jour : tu es maintenant croyant de ${nomReligion}`
+        );
+      }
+    }
+
     onSuccess();
   };
 
@@ -386,46 +395,40 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                   <Label className="text-sm text-gold">
                     {c.nom} — religion
                   </Label>
-                  {dejaCroyant ? (
-                    <p className="rounded-md border border-sky-500/30 bg-sky-500/10 p-2 text-xs text-sky-100">
-                      Ta religion actuelle sera utilisée automatiquement.
-                    </p>
-                  ) : (
-                    <>
-                      <Select
-                        value={choixParCompetence[c.id] ?? ""}
-                        onValueChange={(v) =>
-                          setChoixParCompetence((prev) => ({
-                            ...prev,
-                            [c.id]: v,
-                          }))
+                  <Select
+                    value={choixParCompetence[c.id] ?? ""}
+                    onValueChange={(v) =>
+                      setChoixParCompetence((prev) => ({
+                        ...prev,
+                        [c.id]: v,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10">
+                      <SelectValue placeholder="Choisis une religion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {religions.map((r: any) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.nom}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!dejaCroyant && (
+                    <label className="flex items-start gap-2 text-xs text-white/70">
+                      <Checkbox
+                        checked={devenirCroyant}
+                        onCheckedChange={(v) =>
+                          setDevenirCroyant(v === true)
                         }
-                      >
-                        <SelectTrigger className="bg-white/5 border-white/10">
-                          <SelectValue placeholder="Choisis une religion" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {religions.map((r: any) => (
-                            <SelectItem key={r.id} value={r.id}>
-                              {r.nom}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <label className="flex items-start gap-2 text-xs text-white/70">
-                        <Checkbox
-                          checked={devenirCroyant}
-                          onCheckedChange={(v) =>
-                            setDevenirCroyant(v === true)
-                          }
-                          className="mt-0.5"
-                        />
-                        <span>
-                          Mon personnage devient croyant de cette religion
-                          (modifie aussi son statut de croyance).
-                        </span>
-                      </label>
-                    </>
+                        className="mt-0.5"
+                      />
+                      <span>
+                        Mon personnage devient croyant de cette religion
+                        (modifie aussi son statut de croyance).
+                      </span>
+                    </label>
                   )}
                 </div>
               );
