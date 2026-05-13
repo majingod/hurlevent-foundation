@@ -50,6 +50,7 @@ const PersonnageNouveauV2 = () => {
   // 1) Démarrage : créer ou récupérer le brouillon
   useEffect(() => {
     if (authLoading || !user) return;
+    if (personnageId) return; // garde anti double-démarrage : si on a déjà un perso, ne pas relancer la RPC
     let annule = false;
 
     const demarrer = async () => {
@@ -68,11 +69,11 @@ const PersonnageNouveauV2 = () => {
         return;
       }
 
-      const payload = (data ?? {}) as Record<string, unknown>;
-      const succes = payload.succes as boolean | undefined;
-      const code = payload.code as string | undefined;
-      const personnage_id = payload.personnage_id as string | undefined;
-      const etape_courante = payload.etape_creation as number | undefined;
+      const payload = (data ?? {}) as Record<string, any>;
+      const succes = payload.succes === true;
+      const code = (payload.erreurs?.[0]?.code ?? payload.code) as string | undefined;
+      const personnage_id = payload.donnees?.personnage_id as string | undefined;
+      const etape_courante = (payload.donnees?.etape_creation as number | undefined) ?? 1;
 
       // On accepte uniquement : succès explicite OU brouillon existant.
       const succesExplicite = succes === true && !!personnage_id;
@@ -81,7 +82,7 @@ const PersonnageNouveauV2 = () => {
 
       if (succesExplicite || brouillonExistant) {
         setPersonnageId(personnage_id!);
-        setEtape(Math.max(1, Math.min(etape_courante ?? 1, TOTAL_STEPS)));
+        setEtape(Math.max(1, Math.min(etape_courante, TOTAL_STEPS)));
         setDemarrage(false);
         return;
       }
@@ -98,7 +99,7 @@ const PersonnageNouveauV2 = () => {
     return () => {
       annule = true;
     };
-  }, [authLoading, user]);
+  }, [authLoading, user?.id]);
 
   // 2) État du personnage (XP, étape) — rafraîchi après chaque mutation
   const { data: personnage } = useQuery<PersonnageRow | null>({
