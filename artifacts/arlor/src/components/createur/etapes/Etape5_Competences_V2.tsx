@@ -93,14 +93,17 @@ function resoudreChoixAffichage(
   choixAchat: string | null,
   typeChoix: string | null,
   religions: Pick<ReligionRow, "id" | "nom">[],
-  _langues: Pick<LangueRow, "id" | "nom" | "est_ancienne">[],
+  langues: Pick<LangueRow, "id" | "nom" | "est_ancienne">[],
 ): string | null {
   if (!choixAchat || !typeChoix) return null;
   if (typeChoix === "religion") {
     return religions.find((r) => r.id === choixAchat)?.nom ?? choixAchat;
   }
-  // langue, langue_ancienne, categorie_creature, cercle, domaine,
-  // famille_criminelle, categorie_depecage : valeur stock\u00e9e directement affichable.
+  if (typeChoix === "langue" || typeChoix === "langue_ancienne") {
+    return langues.find((l) => l.id === choixAchat)?.nom ?? choixAchat;
+  }
+  // categorie_creature, cercle, domaine, famille_criminelle, categorie_depecage :
+  // valeur stock\u00e9e directement affichable (nom litt\u00e9ral).
   return choixAchat;
 }
 
@@ -259,12 +262,24 @@ const Etape5_Competences_V2 = ({
     mutationFn: async (params: AcheterCompetenceParams) => {
       const { data, error } = await supabase.rpc("acheter_competence", params);
       if (error) throw error;
-      return data;
+      // Format standard {succes, erreurs, avertissements, donnees}
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        const msg =
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          (payload.erreurs?.[0]?.code as string | undefined) ??
+          "L'achat a échoué.";
+        throw new Error(msg);
+      }
+      return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
+      // Invalide TOUTES les queries dont la queryKey contient personnageId.
+      // Couvre la query locale ["personnage-competences", id] ET la query
+      // du wizard parent ["v2-personnage", id] qui alimente le header XP.
       queryClient.invalidateQueries({
-        queryKey: ["personnage-competences", personnageId],
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
       toast.success("Compétence achetée !");
     },
@@ -370,8 +385,15 @@ const Etape5_Competences_V2 = ({
             const dejaAchete = niveauxAchetesPourComp.has(niv.niveau);
             const niveauPrecedentRequis = niv.niveau > 1 && niv.niveau - 1 > maxAchete;
             const requiresMaster = needsMaster(comp, niv.niveau);
+            // unique_avec_choix : un seul achat possible pour cette compétence,
+            // peu importe le niveau (cas de "Connaissances des Religions").
+            const uniqueDejaAchete =
+              comp.type_achat === "unique_avec_choix" && achatsPourComp.length >= 1;
             const disabled =
-              dejaAchete || niveauPrecedentRequis || mutation.isPending;
+              dejaAchete ||
+              niveauPrecedentRequis ||
+              uniqueDejaAchete ||
+              mutation.isPending;
 
             return (
               <div
@@ -408,7 +430,7 @@ const Etape5_Competences_V2 = ({
                     </p>
                   )}
                 </div>
-                {!dejaAchete && (
+                {!dejaAchete && !uniqueDejaAchete && (
                   <Button
                     size="sm"
                     onClick={() => handleBuy(comp, niv)}
