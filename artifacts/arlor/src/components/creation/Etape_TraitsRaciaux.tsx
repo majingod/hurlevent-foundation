@@ -368,7 +368,11 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
                     size="sm"
                     disabled={gratuitDisabled}
                     onClick={() => handleGratuit(trait.trait_id)}
-                    className={`flex-1 ${estGratuit ? "bg-gold text-black hover:bg-gold/90" : "border-white/20"}`}
+                    className={`flex-1 transition-colors ${
+                      estGratuit
+                        ? "bg-gold text-black hover:bg-gold/90"
+                        : "border-gold/40 bg-gold/5 text-gold/90 hover:bg-gold/15 hover:border-gold"
+                    }`}
                   >
                     {estGratuit ? "Gratuit ✓" : "Gratuit"}
                   </Button>
@@ -378,10 +382,10 @@ const Step3TraitsRaciaux = ({ personnageId, onPeutPasser, onXpDepenseChange }: S
                     size="sm"
                     disabled={achatDisabled}
                     onClick={() => handleAcheter(trait.trait_id)}
-                    className={`flex-1 ${
+                    className={`flex-1 transition-colors ${
                       estAchete
                         ? "bg-green-900/50 text-green-300 border border-green-700 hover:bg-green-800/50"
-                        : "border-white/20"
+                        : "border-gold/25 text-gold/70 hover:bg-gold/10 hover:border-gold/60 hover:text-gold/90"
                     }`}
                   >
                     {estAchete ? "✅ Acquis 10 xp" : `Acheter (${COUT_TRAIT} xp)`}
