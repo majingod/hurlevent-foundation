@@ -44,7 +44,7 @@ interface Etape1Form {
   religion_id: string;
 }
 
-const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
+const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -76,6 +76,12 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
   const xpGn = gnCompletes * XP_GN_REGULIER;
   const xpMiniGn = miniGnCompletes * XP_MINI_GN;
   const xpOuvertures = ouverturesTerrain * XP_OUVERTURE_TERRAIN;
+
+  // Remonte l'XP gagné estimé au header parent, en temps réel
+  useEffect(() => {
+    const gainEstime = xpGn + xpMiniGn + xpOuvertures;
+    onXpGainChange?.(gainEstime);
+  }, [xpGn, xpMiniGn, xpOuvertures, onXpGainChange]);
 
   // Charger les religions actives
   const { data: religions = [], isLoading: loadingReligions } = useQuery({
@@ -200,7 +206,15 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
             id="gn"
             type="number"
             min={0}
-            {...register("gn_completes", { valueAsNumber: true, min: 0 })}
+            {...register("gn_completes", {
+              valueAsNumber: true,
+              min: 0,
+              setValueAs: (v) => {
+                const n = Number(v);
+                if (Number.isNaN(n) || n < 0) return 0;
+                return Math.floor(n);
+              },
+            })}
             className="bg-white/5 border-white/10"
           />
         </div>
@@ -213,7 +227,15 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
             id="mini"
             type="number"
             min={0}
-            {...register("mini_gn_completes", { valueAsNumber: true, min: 0 })}
+            {...register("mini_gn_completes", {
+              valueAsNumber: true,
+              min: 0,
+              setValueAs: (v) => {
+                const n = Number(v);
+                if (Number.isNaN(n) || n < 0) return 0;
+                return Math.floor(n);
+              },
+            })}
             className="bg-white/5 border-white/10"
           />
         </div>
@@ -229,6 +251,11 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
             {...register("ouvertures_terrain", {
               valueAsNumber: true,
               min: 0,
+              setValueAs: (v) => {
+                const n = Number(v);
+                if (Number.isNaN(n) || n < 0) return 0;
+                return Math.floor(n);
+              },
             })}
             className="bg-white/5 border-white/10"
           />
