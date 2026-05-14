@@ -498,6 +498,18 @@ const Etape5_Competences_V2 = ({
     };
   };
 
+  /**
+   * True si TOUS les niveaux de la compétence sont bloqués par un prérequis
+   * inter-compétence manquant (niveau_max_achetable === 0). Dans ce cas, la
+   * compétence est traitée comme un blocage tout-ou-rien, comme classeBloque.
+   * Un blocage PARTIEL (certains niveaux achetables) renvoie false ici : il
+   * est géré ligne par ligne.
+   */
+  const prereqBloqueTotal = (comp: CompetenceWithNiveaux): boolean => {
+    const info = getPrereqInfo(comp);
+    return !!info && info.niveauMaxAchetable === 0;
+  };
+
   // =======================================================================
   // OPTIONS DE DROPDOWN PAR type_choix
   // =======================================================================
@@ -939,7 +951,7 @@ const Etape5_Competences_V2 = ({
               Niveau {niv.niveau} inaccessible hors de votre classe (max : {niveauMax})
             </p>
           )}
-          {!compBloqueeClasse && prereqBloque && !niveauHorsClasse && !dejaAchete && raisonPrereq && (
+          {!compBloqueeClasse && !prereqBloqueTotal(comp) && prereqBloque && !niveauHorsClasse && !dejaAchete && raisonPrereq && (
             <MessageBlocage
               {...parsePrereqRaison(raisonPrereq)}
             />
@@ -969,8 +981,8 @@ const Etape5_Competences_V2 = ({
 
     const prereqInfo = getPrereqInfo(comp);
     const prereqBloque = !!prereqInfo && prereqInfo.niveauMaxAchetable < 1;
-    const raisonPrereq = prereqInfo?.raisonPourNiveau(1) ?? null;
     const compBloqueeClasse = classeBloque(comp);
+    const prereqCompBloquee = prereqBloqueTotal(comp);
 
     const key = `${comp.id}_1`;
     const panneauOuvert = key in pendingChoix;
@@ -980,7 +992,7 @@ const Etape5_Competences_V2 = ({
     return (
       <div
         className={`flex flex-col gap-2 rounded border border-border p-2 ${
-          compBloqueeClasse ? "opacity-50" : ""
+          compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
         }`}
       >
         <div className="flex flex-wrap items-center gap-3">
@@ -1047,13 +1059,8 @@ const Etape5_Competences_V2 = ({
               <p className="text-muted-foreground">{niv1.description_niveau}</p>
             )}
           </Label>
-          {!compBloqueeClasse && prereqBloque && !dejaAchete && raisonPrereq && (
-            <div className="w-full pl-7">
-              <MessageBlocage {...parsePrereqRaison(raisonPrereq)} />
-            </div>
-          )}
         </div>
-        {!dejaAchete && panneauOuvert && !compBloqueeClasse && (
+        {!dejaAchete && panneauOuvert && !compBloqueeClasse && !prereqCompBloquee && (
           <div className="flex flex-wrap items-center gap-2 pl-7">
             <Select
               value={choixSelectionne}
@@ -1105,17 +1112,15 @@ const Etape5_Competences_V2 = ({
     const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
-    const prereqInfo = getPrereqInfo(comp);
-    const prereqBloque = !!prereqInfo && prereqInfo.niveauMaxAchetable < 1;
-    const raisonPrereq = prereqInfo?.raisonPourNiveau(1) ?? null;
     const compBloqueeClasse = classeBloque(comp);
+    const prereqCompBloquee = prereqBloqueTotal(comp);
     const addOpen = pendingAddCompId === comp.id;
     const keyAdd = `${comp.id}_add`;
     const choixAdd = pendingChoix[keyAdd] ?? "";
     const options = getOptionsDropdown(comp, 1);
 
     return (
-      <div className={`space-y-2 ${compBloqueeClasse ? "opacity-50" : ""}`}>
+      <div className={`space-y-2 ${compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""}`}>
         {/* Liste des achats existants : chacun avec checkbox cochée et décrochable */}
         {achatsPourComp.map((achat) => {
           const choixAffiche = resoudreChoixAffichage(
@@ -1156,22 +1161,19 @@ const Etape5_Competences_V2 = ({
         })}
 
         {/* Panneau "+ Ajouter une autre" */}
-        {!compBloqueeClasse && prereqBloque && raisonPrereq && (
-          <MessageBlocage {...parsePrereqRaison(raisonPrereq)} />
-        )}
-        {!addOpen && !prereqBloque && !compBloqueeClasse && options.length > 0 && (
+        {!addOpen && !prereqCompBloquee && !compBloqueeClasse && options.length > 0 && (
           <Button
             size="sm"
             variant="outline"
             onClick={() => setPendingAddCompId(comp.id)}
-            disabled={compBloqueeClasse || mutationEnCours || prereqBloque}
+            disabled={compBloqueeClasse || prereqCompBloquee || mutationEnCours}
             className="text-xs"
           >
             <Plus className="mr-1 h-3 w-3" />
             Ajouter une autre ({niv1.cout_xp} XP)
           </Button>
         )}
-        {addOpen && !compBloqueeClasse && (
+        {addOpen && !compBloqueeClasse && !prereqCompBloquee && (
           <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
             <Select
               value={choixAdd}
@@ -1242,9 +1244,10 @@ const Etape5_Competences_V2 = ({
     const optionsAdd = getOptionsDropdown(comp, 1);
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     const compBloqueeClasse = classeBloque(comp);
+    const prereqCompBloquee = prereqBloqueTotal(comp);
 
     return (
-      <div className={`space-y-3 ${compBloqueeClasse ? "opacity-50" : ""}`}>
+      <div className={`space-y-3 ${compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""}`}>
         {/* Pour chaque choix existant, afficher les niveaux possibles */}
         {Array.from(parChoix.entries()).map(([choixKey, achatsDuChoix]) => {
           const niveauxDuChoix = new Set(achatsDuChoix.map((a) => a.niveau_acquis));
@@ -1307,7 +1310,7 @@ const Etape5_Competences_V2 = ({
                       />
                       <Label
                         htmlFor={`${comp.id}-${choixKey}-${niv.niveau}`}
-                        className="flex-1 cursor-pointer text-xs"
+                        className="flex-1 cursor-pointer space-y-1 text-xs"
                       >
                         <div className="flex flex-wrap items-center gap-2">
                           <span>Niveau {niv.niveau}</span>
@@ -1332,17 +1335,15 @@ const Etape5_Competences_V2 = ({
                               <Lock className="h-3 w-3" /> Hors classe (max : {niveauMax})
                             </span>
                           )}
-                          {!compBloqueeClasse && prereqBloque && !niveauHorsClasse && !dejaAchete && raisonPrereq && (
-                            <span className="flex items-center gap-1 text-red-400">
-                              <Lock className="h-3 w-3" /> {raisonPrereq}
-                            </span>
-                          )}
                           {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && !compBloqueeClasse && (
                             <span className="flex items-center gap-1 text-muted-foreground">
                               <Lock className="h-3 w-3" /> Niveau {niv.niveau - 1} requis
                             </span>
                           )}
                         </div>
+                        {!compBloqueeClasse && !prereqCompBloquee && prereqBloque && !niveauHorsClasse && !dejaAchete && raisonPrereq && (
+                          <MessageBlocage {...parsePrereqRaison(raisonPrereq)} />
+                        )}
                       </Label>
                     </div>
                   );
@@ -1353,19 +1354,19 @@ const Etape5_Competences_V2 = ({
         })}
 
         {/* "+ Ajouter une autre" */}
-        {!addOpen && !compBloqueeClasse && optionsAdd.length > 0 && niv1 && (
+        {!addOpen && !compBloqueeClasse && !prereqCompBloquee && optionsAdd.length > 0 && niv1 && (
           <Button
             size="sm"
             variant="outline"
             onClick={() => setPendingAddCompId(comp.id)}
-            disabled={compBloqueeClasse || mutationEnCours}
+            disabled={compBloqueeClasse || prereqCompBloquee || mutationEnCours}
             className="text-xs"
           >
             <Plus className="mr-1 h-3 w-3" />
             Ajouter une autre ({niv1.cout_xp} XP)
           </Button>
         )}
-        {addOpen && !compBloqueeClasse && niv1 && (
+        {addOpen && !compBloqueeClasse && !prereqCompBloquee && niv1 && (
           <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
             <Select
               value={choixAdd}
@@ -1433,10 +1434,8 @@ const Etape5_Competences_V2 = ({
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
 
-    const prereqInfo = getPrereqInfo(comp);
-    const prereqBloque = !!prereqInfo && prereqInfo.niveauMaxAchetable < 1;
-    const raisonPrereq = prereqInfo?.raisonPourNiveau(1) ?? null;
     const compBloqueeClasse = classeBloque(comp);
+    const prereqCompBloquee = prereqBloqueTotal(comp);
 
     // Détection Dév. Spirituel basique vs Supérieur
     const estBasique = comp.nom === "Développement Spirituel";
@@ -1469,7 +1468,7 @@ const Etape5_Competences_V2 = ({
     return (
       <div
         className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
-          compBloqueeClasse ? "opacity-50" : ""
+          compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
         }`}
       >
         <Button
@@ -1494,16 +1493,11 @@ const Etape5_Competences_V2 = ({
         <Button
           size="sm"
           onClick={handlePlus}
-          disabled={compBloqueeClasse || mutationEnCours || prereqBloque}
+          disabled={compBloqueeClasse || prereqCompBloquee || mutationEnCours}
         >
           {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
           <Plus className="h-3 w-3" />
         </Button>
-        {!compBloqueeClasse && prereqBloque && raisonPrereq && (
-          <div className="w-full">
-            <MessageBlocage {...parsePrereqRaison(raisonPrereq)} />
-          </div>
-        )}
       </div>
     );
   };
@@ -1553,6 +1547,11 @@ const Etape5_Competences_V2 = ({
     }
 
     const compBloqueeClasse = classeBloque(comp);
+    const prereqCompBloquee = prereqBloqueTotal(comp);
+    const raisonPrereqGlobal =
+      prereqCompBloquee
+        ? getPrereqInfo(comp)?.raisonPourNiveau(1) ?? "Prérequis non rempli."
+        : null;
 
     return (
       <Card key={comp.id}>
@@ -1573,6 +1572,9 @@ const Etape5_Competences_V2 = ({
               label="Réservé aux classes :"
               items={comp.classes_requises ?? []}
             />
+          )}
+          {!compBloqueeClasse && prereqCompBloquee && raisonPrereqGlobal && (
+            <MessageBlocage {...parsePrereqRaison(raisonPrereqGlobal)} />
           )}
         </CardHeader>
         <CardContent className="space-y-2">{body}</CardContent>
