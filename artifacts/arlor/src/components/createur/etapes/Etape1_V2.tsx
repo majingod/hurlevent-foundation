@@ -21,6 +21,20 @@ import {
 } from "@/components/ui/radio-group";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
+// =========================================================================
+// CONSTANTES DE CALCUL XP/NIVEAU
+// Valeurs par défaut conventionnelles du manuel. NOTE : ces défauts ne sont
+// pas stockés en base aujourd'hui (evenements.xp_recompense est nullable sans
+// défaut). Le bloc récapitulatif ci-dessous est donc un ESTIMATIF indicatif —
+// l'XP réel est attribué par un animateur via attribuer_xp_evenement.
+// Dette technique : si l'animateur surcharge l'XP d'un événement, l'estimatif
+// sera désynchronisé. À terme, sourcer ces valeurs depuis la DB.
+// =========================================================================
+const XP_GN_REGULIER = 15;
+const XP_MINI_GN = 15;
+const XP_OUVERTURE_TERRAIN = 10;
+const NIVEAU_BASE = 1;
+
 interface Etape1Form {
   nom: string;
   gn_completes: number;
@@ -52,6 +66,16 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
   });
 
   const estCroyant = watch("est_croyant");
+
+  // Watch temps réel des compteurs d'événements pour le bloc récapitulatif
+  const gnCompletes = Number(watch("gn_completes")) || 0;
+  const miniGnCompletes = Number(watch("mini_gn_completes")) || 0;
+  const ouverturesTerrain = Number(watch("ouvertures_terrain")) || 0;
+
+  const niveauActuel = NIVEAU_BASE + gnCompletes;
+  const xpGn = gnCompletes * XP_GN_REGULIER;
+  const xpMiniGn = miniGnCompletes * XP_MINI_GN;
+  const xpOuvertures = ouverturesTerrain * XP_OUVERTURE_TERRAIN;
 
   // Charger les religions actives
   const { data: religions = [], isLoading: loadingReligions } = useQuery({
@@ -169,7 +193,8 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="gn" className="text-sm text-white/70">
-            GN réguliers complétés
+            GN réguliers complétés{" "}
+            <span className="text-white/40">(+15 XP et +1 niveau par GN)</span>
           </Label>
           <Input
             id="gn"
@@ -181,7 +206,8 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
         </div>
         <div className="space-y-2">
           <Label htmlFor="mini" className="text-sm text-white/70">
-            Mini-GN complétés
+            Mini-GN complétés{" "}
+            <span className="text-white/40">(+15 XP par mini-GN)</span>
           </Label>
           <Input
             id="mini"
@@ -193,7 +219,8 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
         </div>
         <div className="space-y-2">
           <Label htmlFor="ouv" className="text-sm text-white/70">
-            Ouvertures de terrain
+            Ouvertures de terrain{" "}
+            <span className="text-white/40">(+10 XP par ouverture)</span>
           </Label>
           <Input
             id="ouv"
@@ -206,6 +233,32 @@ const Etape1_V2 = ({ personnageId, onSuccess }: EtapeProps) => {
             className="bg-white/5 border-white/10"
           />
         </div>
+      </div>
+
+      {/* Bloc récapitulatif XP/niveau — estimatif temps réel */}
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 space-y-1.5 text-sm">
+        <p className="text-white/70">
+          Niveau actuel :{" "}
+          <strong className="text-gold">{niveauActuel}</strong>{" "}
+          <span className="text-white/40">
+            ({NIVEAU_BASE} niveau de base + {gnCompletes} GN régulier
+            {gnCompletes > 1 ? "s" : ""})
+          </span>
+        </p>
+        <p className="text-white/70">
+          XP de GN : <strong className="text-green-400">+{xpGn}</strong>
+        </p>
+        <p className="text-white/70">
+          XP de mini-GN :{" "}
+          <strong className="text-green-400">+{xpMiniGn}</strong>
+        </p>
+        <p className="text-white/70">
+          XP d'ouvertures :{" "}
+          <strong className="text-green-400">+{xpOuvertures}</strong>
+        </p>
+        <p className="text-xs italic text-white/40 pt-1">
+          XP total : sera calculé à l'étape suivante après le choix de la race.
+        </p>
       </div>
 
       <div className="space-y-3">
