@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +25,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2, Lock, Minus, Plus, X } from "lucide-react";
+
+// =========================================================================
+// TYPES
+// =========================================================================
 
 type CompetenceRow = Database["public"]["Tables"]["competences"]["Row"];
 type PersonnageCompetenceRow =
@@ -26,6 +38,10 @@ type PersonnageRow = Database["public"]["Tables"]["personnages"]["Row"];
 type ClasseRow = Database["public"]["Tables"]["classes"]["Row"];
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
+type CategorieCreatureRow =
+  Database["public"]["Tables"]["categories_creatures"]["Row"];
+type FamilleCriminelleRow =
+  Database["public"]["Tables"]["familles_criminelles"]["Row"];
 
 interface NiveauInfo {
   niveau: number;
@@ -47,6 +63,18 @@ interface AcheterCompetenceParams {
   p_choix_achat?: string;
 }
 
+interface DropdownOption {
+  value: string;
+  label: string;
+}
+
+interface CascadeContext {
+  competence: CompetenceWithNiveaux;
+  achatCible: PersonnageCompetenceRow;
+  achatsAnnules: PersonnageCompetenceRow[];
+  xpTotalRembourse: number;
+}
+
 interface Etape5Props {
   personnageId: string;
   onSuccess?: () => void;
@@ -55,6 +83,10 @@ interface Etape5Props {
   onXpDeltaChange?: (delta: number) => void;
 }
 
+// =========================================================================
+// CONSTANTES
+// =========================================================================
+
 const TAB_CONFIG: { key: string; label: string; categories: string[] }[] = [
   { key: "generale", label: "Générales", categories: ["generale", "générale"] },
   { key: "guerrier", label: "Guerrier", categories: ["guerrier"] },
@@ -62,6 +94,17 @@ const TAB_CONFIG: { key: string; label: string; categories: string[] }[] = [
   { key: "mage", label: "Mage", categories: ["mage"] },
   { key: "pretre", label: "Prêtre", categories: ["pretre", "prêtre"] },
 ];
+
+// type_achat qui cascade en DB (suppression ascendante des niveaux >= N)
+const TYPES_ACHAT_CASCADE = new Set([
+  "simple",
+  "unique_avec_choix",
+  "multiple_avec_choix_par_niveau",
+]);
+
+// =========================================================================
+// HELPERS
+// =========================================================================
 
 function parseNiveaux(raw: Json | null): NiveauInfo[] {
   if (!raw || !Array.isArray(raw)) return [];
@@ -103,9 +146,13 @@ function resoudreChoixAffichage(
     return langues.find((l) => l.id === choixAchat)?.nom ?? choixAchat;
   }
   // categorie_creature, cercle, domaine, famille_criminelle, categorie_depecage :
-  // valeur stock\u00e9e directement affichable (nom litt\u00e9ral).
+  // valeur stockée directement affichable (nom littéral).
   return choixAchat;
 }
+
+// =========================================================================
+// COMPOSANT
+// =========================================================================
 
 const Etape5_Competences_V2 = ({
   personnageId,
@@ -116,13 +163,33 @@ const Etape5_Competences_V2 = ({
 }: Etape5Props) => {
   const queryClient = useQueryClient();
 
+  // =======================================================================
+  // ÉTATS LOCAUX
+  // =======================================================================
+
+  // Dialog "apprentissage avec maître" (existant)
   const [masterDialog, setMasterDialog] = useState<{
     competence: CompetenceWithNiveaux;
     niveau: NiveauInfo;
+    choixAchat?: string;
   } | null>(null);
   const [masterName, setMasterName] = useState("");
 
-  // Personnage (pour connaître la classe)
+  // Pré-sélection de choix dans les dropdowns avant validation
+  // Clé : `${comp.id}_${niveau}` pour validation directe au cochage
+  //   ou : `${comp.id}_add` pour le panneau "+ Ajouter une autre"
+  const [pendingChoix, setPendingChoix] = useState<Record<string, string>>({});
+
+  // Compétence dont le panneau "+ Ajouter une autre" est ouvert
+  const [pendingAddCompId, setPendingAddCompId] = useState<string | null>(null);
+
+  // Confirmation cascade de décochage
+  const [cascadeDialog, setCascadeDialog] = useState<CascadeContext | null>(null);
+
+  // =======================================================================
+  // QUERIES
+  // =======================================================================
+
   const { data: personnage } = useQuery({
     queryKey: ["personnage", personnageId],
     queryFn: async () => {
@@ -153,7 +220,6 @@ const Etape5_Competences_V2 = ({
 
   const classeNom = normalizeCategorie(classe?.nom ?? null);
 
-  // Compétences actives
   const { data: competences, isLoading: loadingCompetences } = useQuery({
     queryKey: ["competences-actives"],
     queryFn: async () => {
@@ -170,7 +236,6 @@ const Etape5_Competences_V2 = ({
     },
   });
 
-  // Compétences déjà achetées
   const { data: achats, isLoading: loadingAchats } = useQuery({
     queryKey: ["personnage-competences", personnageId],
     queryFn: async () => {
@@ -184,7 +249,6 @@ const Etape5_Competences_V2 = ({
     enabled: !!personnageId,
   });
 
-  // Langues (petite table, ~11 lignes)
   const { data: langues } = useQuery({
     queryKey: ["langues-actives"],
     queryFn: async () => {
@@ -198,7 +262,6 @@ const Etape5_Competences_V2 = ({
     },
   });
 
-  // Religions (petite table, ~15 lignes)
   const { data: religions } = useQuery({
     queryKey: ["religions-actives"],
     queryFn: async () => {
@@ -210,6 +273,66 @@ const Etape5_Competences_V2 = ({
       return (data ?? []) as Pick<ReligionRow, "id" | "nom">[];
     },
   });
+
+  const { data: categoriesCreatures } = useQuery({
+    queryKey: ["categories-creatures-actives"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories_creatures")
+        .select("id, nom, ordre")
+        .eq("est_actif", true)
+        .order("ordre");
+      if (error) throw error;
+      return (data ?? []) as Pick<CategorieCreatureRow, "id" | "nom" | "ordre">[];
+    },
+  });
+
+  const { data: famillesCriminelles } = useQuery({
+    queryKey: ["familles-criminelles-actives"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("familles_criminelles")
+        .select("id, nom")
+        .eq("est_actif", true)
+        .order("nom");
+      if (error) throw error;
+      return (data ?? []) as Pick<FamilleCriminelleRow, "id" | "nom">[];
+    },
+  });
+
+  const { data: cercles } = useQuery({
+    queryKey: ["cercles-actifs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sorts")
+        .select("cercle")
+        .eq("est_actif", true)
+        .not("cercle", "is", null);
+      if (error) throw error;
+      const unique = Array.from(new Set((data ?? []).map((r) => r.cercle as string)));
+      unique.sort((a, b) => a.localeCompare(b, "fr"));
+      return unique;
+    },
+  });
+
+  const { data: domaines } = useQuery({
+    queryKey: ["domaines-actifs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("prieres")
+        .select("domaine")
+        .eq("est_actif", true)
+        .not("domaine", "is", null);
+      if (error) throw error;
+      const unique = Array.from(new Set((data ?? []).map((r) => r.domaine as string)));
+      unique.sort((a, b) => a.localeCompare(b, "fr"));
+      return unique;
+    },
+  });
+
+  // =======================================================================
+  // DÉRIVÉES MEMOIZED
+  // =======================================================================
 
   const niveauxAchetes = useMemo(() => {
     const map = new Map<string, Set<number>>();
@@ -229,8 +352,8 @@ const Etape5_Competences_V2 = ({
     return map;
   }, [achats]);
 
-  // L'achat de compétence est immédiat (RPC acheter_competence + refetch parent),
-  // donc le delta XP de cette étape est toujours 0. On reset à l'arrivée et au démontage.
+  // L'achat est immédiat (RPC + refetch parent), le delta XP de cette étape
+  // reste à 0. On reset à l'arrivée et au démontage.
   useEffect(() => {
     onXpDeltaChange?.(0);
     return () => {
@@ -258,11 +381,155 @@ const Etape5_Competences_V2 = ({
     return niveau >= 2;
   };
 
-  const mutation = useMutation({
+  // =======================================================================
+  // OPTIONS DE DROPDOWN PAR type_choix
+  // =======================================================================
+
+  /**
+   * Retourne les options disponibles pour le dropdown selon `type_choix`.
+   * Filtre les options déjà choisies (pour multiple_langue et
+   * multiple_avec_choix_par_niveau au niveau 1, où un choix doit être unique).
+   * `categorie_depecage` est filtrée aux catégories où le perso a déjà acheté
+   * Connaissance des Créatures.
+   */
+  const getOptionsDropdown = (
+    comp: CompetenceWithNiveaux,
+    niveau: number,
+  ): DropdownOption[] => {
+    const typeChoix = comp.type_choix;
+    if (!typeChoix) return [];
+
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    const dejaPris = new Set(
+      achatsPourComp.map((a) => a.choix_achat).filter(Boolean) as string[],
+    );
+
+    if (typeChoix === "religion") {
+      return (religions ?? []).map((r) => ({ value: r.id, label: r.nom }));
+    }
+
+    if (typeChoix === "langue") {
+      return (langues ?? [])
+        .filter((l) => !dejaPris.has(l.id))
+        .map((l) => ({ value: l.id, label: l.nom }));
+    }
+
+    if (typeChoix === "langue_ancienne") {
+      return (langues ?? [])
+        .filter((l) => l.est_ancienne)
+        .filter((l) => !dejaPris.has(l.id))
+        .map((l) => ({ value: l.id, label: l.nom }));
+    }
+
+    if (typeChoix === "categorie_creature") {
+      // Au niveau 1 d'un multiple_avec_choix_par_niveau, le choix doit être nouveau.
+      // Au niveau N>1, le choix doit être parmi ceux déjà pris au niveau N-1
+      // (logique gérée par la RPC, mais on aide l'utilisateur côté UI).
+      if (comp.type_achat === "multiple_avec_choix_par_niveau" && niveau > 1) {
+        const choixDejaAuNiveauPrecedent = new Set(
+          achatsPourComp
+            .filter((a) => a.niveau_acquis === niveau - 1)
+            .map((a) => a.choix_achat)
+            .filter(Boolean) as string[],
+        );
+        const dejaPrisAuNiveau = new Set(
+          achatsPourComp
+            .filter((a) => a.niveau_acquis === niveau)
+            .map((a) => a.choix_achat)
+            .filter(Boolean) as string[],
+        );
+        return (categoriesCreatures ?? [])
+          .filter((c) => choixDejaAuNiveauPrecedent.has(c.nom))
+          .filter((c) => !dejaPrisAuNiveau.has(c.nom))
+          .map((c) => ({ value: c.nom, label: c.nom }));
+      }
+      // Niveau 1 : filtrer ce qui est déjà pris au niveau 1
+      const dejaPrisAuNiv1 = new Set(
+        achatsPourComp
+          .filter((a) => a.niveau_acquis === 1)
+          .map((a) => a.choix_achat)
+          .filter(Boolean) as string[],
+      );
+      return (categoriesCreatures ?? [])
+        .filter((c) => !dejaPrisAuNiv1.has(c.nom))
+        .map((c) => ({ value: c.nom, label: c.nom }));
+    }
+
+    if (typeChoix === "categorie_depecage") {
+      // Liste filtrée aux catégories où le perso a Connaissance des Créatures.
+      const connaissanceCreatures = (achats ?? []).filter((a) => {
+        const c = (competences ?? []).find((cc) => cc.id === a.competence_id);
+        return c?.nom === "Connaissance des Créatures";
+      });
+      const categoriesAccessibles = new Set(
+        connaissanceCreatures.map((a) => a.choix_achat).filter(Boolean) as string[],
+      );
+      const dejaPrisAuNiveau = new Set(
+        achatsPourComp
+          .filter((a) => a.niveau_acquis === niveau)
+          .map((a) => a.choix_achat)
+          .filter(Boolean) as string[],
+      );
+      return (categoriesCreatures ?? [])
+        .filter((c) => categoriesAccessibles.has(c.nom))
+        .filter((c) => !dejaPrisAuNiveau.has(c.nom))
+        .map((c) => ({ value: c.nom, label: c.nom }));
+    }
+
+    if (typeChoix === "cercle") {
+      const dejaPrisAuNiveau = new Set(
+        achatsPourComp
+          .filter((a) => a.niveau_acquis === niveau)
+          .map((a) => a.choix_achat)
+          .filter(Boolean) as string[],
+      );
+      return (cercles ?? [])
+        .filter((c) => !dejaPrisAuNiveau.has(c))
+        .map((c) => ({ value: c, label: c }));
+    }
+
+    if (typeChoix === "domaine") {
+      const dejaPrisAuNiveau = new Set(
+        achatsPourComp
+          .filter((a) => a.niveau_acquis === niveau)
+          .map((a) => a.choix_achat)
+          .filter(Boolean) as string[],
+      );
+      return (domaines ?? [])
+        .filter((d) => !dejaPrisAuNiveau.has(d))
+        .map((d) => ({ value: d, label: d }));
+    }
+
+    if (typeChoix === "famille_criminelle") {
+      const dejaPrisAuNiveau = new Set(
+        achatsPourComp
+          .filter((a) => a.niveau_acquis === niveau)
+          .map((a) => a.choix_achat)
+          .filter(Boolean) as string[],
+      );
+      return (famillesCriminelles ?? [])
+        .filter((f) => !dejaPrisAuNiveau.has(f.nom))
+        .map((f) => ({ value: f.nom, label: f.nom }));
+    }
+
+    return [];
+  };
+
+  // =======================================================================
+  // MUTATIONS
+  // =======================================================================
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({
+      predicate: (q) =>
+        Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
+    });
+  };
+
+  const acheterMutation = useMutation({
     mutationFn: async (params: AcheterCompetenceParams) => {
       const { data, error } = await supabase.rpc("acheter_competence", params);
       if (error) throw error;
-      // Format standard {succes, erreurs, avertissements, donnees}
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
         const msg =
@@ -274,13 +541,7 @@ const Etape5_Competences_V2 = ({
       return payload;
     },
     onSuccess: () => {
-      // Invalide TOUTES les queries dont la queryKey contient personnageId.
-      // Couvre la query locale ["personnage-competences", id] ET la query
-      // du wizard parent ["v2-personnage", id] qui alimente le header XP.
-      queryClient.invalidateQueries({
-        predicate: (q) =>
-          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
-      });
+      invalidateAll();
       toast.success("Compétence achetée !");
     },
     onError: (error: Error) => {
@@ -289,16 +550,55 @@ const Etape5_Competences_V2 = ({
     },
   });
 
-  const handleBuy = (comp: CompetenceWithNiveaux, niveau: NiveauInfo) => {
+  const desacheterMutation = useMutation({
+    mutationFn: async (params: { p_personnage_competence_id: string }) => {
+      const { data, error } = await supabase.rpc("desacheter_competence", params);
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        const msg =
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          (payload.erreurs?.[0]?.code as string | undefined) ??
+          "L'annulation a échoué.";
+        throw new Error(msg);
+      }
+      return payload;
+    },
+    onSuccess: (data) => {
+      invalidateAll();
+      const nbLignes = (data?.donnees?.nb_lignes_supprimees as number) ?? 1;
+      const xpRembourse = (data?.donnees?.xp_total_rembourse as number) ?? 0;
+      toast.success(
+        `${nbLignes} niveau${nbLignes > 1 ? "x" : ""} annulé${nbLignes > 1 ? "s" : ""} (${xpRembourse} XP remboursés)`,
+      );
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
+  const mutationEnCours = acheterMutation.isPending || desacheterMutation.isPending;
+
+  // =======================================================================
+  // HANDLERS
+  // =======================================================================
+
+  const handleBuy = (
+    comp: CompetenceWithNiveaux,
+    niveau: NiveauInfo,
+    choixAchat?: string,
+  ) => {
     if (needsMaster(comp, niveau.niveau)) {
-      setMasterDialog({ competence: comp, niveau });
+      setMasterDialog({ competence: comp, niveau, choixAchat });
       setMasterName("");
       return;
     }
-    mutation.mutate({
+    acheterMutation.mutate({
       p_personnage_id: personnageId,
       p_competence_id: comp.id,
       p_niveau_desire: niveau.niveau,
+      ...(choixAchat ? { p_choix_achat: choixAchat } : {}),
     });
   };
 
@@ -309,22 +609,717 @@ const Etape5_Competences_V2 = ({
       toast.error("Le nom du maître est obligatoire.");
       return;
     }
-    mutation.mutate({
+    acheterMutation.mutate({
       p_personnage_id: personnageId,
       p_competence_id: masterDialog.competence.id,
       p_niveau_desire: masterDialog.niveau.niveau,
       p_appris_via_maitre: true,
       p_nom_maitre: trimmed,
+      ...(masterDialog.choixAchat ? { p_choix_achat: masterDialog.choixAchat } : {}),
     });
     setMasterDialog(null);
   };
 
-  const renderCompetence = (comp: CompetenceWithNiveaux) => {
+  /**
+   * Décochage d'un achat. Si la compétence cascade et qu'il y a des niveaux
+   * > N à supprimer aussi, on ouvre la modale de confirmation. Sinon
+   * (ligne unique : multiple_langue/multiple_sans_choix, ou dernier niveau
+   * d'une séquence), on supprime direct sans modale.
+   */
+  const handleUncheck = (
+    comp: CompetenceWithNiveaux,
+    achat: PersonnageCompetenceRow,
+  ) => {
+    if (achat.xp_depense === 0) {
+      toast.error("Une compétence gratuite ne peut pas être désachetée.");
+      return;
+    }
+
+    if (!TYPES_ACHAT_CASCADE.has(comp.type_achat ?? "")) {
+      // multiple_langue ou multiple_sans_choix : suppression unique, pas de cascade
+      desacheterMutation.mutate({ p_personnage_competence_id: achat.id });
+      return;
+    }
+
+    // Calcul des achats cascade (niveau >= achat.niveau_acquis sur cette compétence)
+    const achatsCompetence = achatsParCompetence.get(comp.id) ?? [];
+    const aSupprimer = achatsCompetence.filter(
+      (a) => a.niveau_acquis >= achat.niveau_acquis,
+    );
+    const xpRembourse = aSupprimer.reduce((sum, a) => sum + (a.xp_depense ?? 0), 0);
+
+    if (aSupprimer.length === 1) {
+      // Pas de cascade réelle → suppression directe
+      desacheterMutation.mutate({ p_personnage_competence_id: achat.id });
+      return;
+    }
+
+    setCascadeDialog({
+      competence: comp,
+      achatCible: achat,
+      achatsAnnules: aSupprimer,
+      xpTotalRembourse: xpRembourse,
+    });
+  };
+
+  const confirmCascade = () => {
+    if (!cascadeDialog) return;
+    desacheterMutation.mutate({
+      p_personnage_competence_id: cascadeDialog.achatCible.id,
+    });
+    setCascadeDialog(null);
+  };
+
+  /**
+   * Confirme l'achat depuis le panneau "+ Ajouter une autre" (multiple_*).
+   * Le niveau visé est : pour multiple_langue = 1 ; pour
+   * multiple_avec_choix_par_niveau = max+1 (achat séquentiel par choix global).
+   */
+  const handleConfirmAdd = (comp: CompetenceWithNiveaux) => {
+    const key = `${comp.id}_add`;
+    const choix = pendingChoix[key];
+    if (!choix) {
+      toast.error("Veuillez sélectionner une option.");
+      return;
+    }
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+
+    let niveauCible = 1;
+    if (comp.type_achat === "multiple_avec_choix_par_niveau") {
+      // Au niveau 1 toujours pour un nouveau choix. Pour reprendre un choix
+      // existant à un niveau supérieur, l'utilisateur cochera le niveau dans
+      // la section principale (pas via "+ Ajouter").
+      niveauCible = 1;
+    }
+    const niveauInfo = comp.niveaux_parsed.find((n) => n.niveau === niveauCible);
+    if (!niveauInfo) {
+      toast.error("Niveau introuvable pour cette compétence.");
+      return;
+    }
+    handleBuy(comp, niveauInfo, choix);
+    setPendingChoix((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setPendingAddCompId(null);
+  };
+
+  /**
+   * Confirme l'achat pour les compétences à choix avec checkbox directe
+   * (unique_avec_choix uniquement). Ferme le panneau et reset le pending.
+   */
+  const handleConfirmChoix = (comp: CompetenceWithNiveaux, niveau: NiveauInfo) => {
+    const key = `${comp.id}_${niveau.niveau}`;
+    const choix = pendingChoix[key];
+    if (!choix) {
+      toast.error("Veuillez sélectionner une option.");
+      return;
+    }
+    handleBuy(comp, niveau, choix);
+    setPendingChoix((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  /**
+   * Trouve la ligne d'achat à supprimer pour un (comp, niveau) donné.
+   * Pour `simple`, il n'y a qu'une ligne par niveau.
+   * Pour `unique_avec_choix`, idem.
+   * Pour `multiple_*`, le décochage passe par la section "Achats existants",
+   * jamais par les niveaux globaux (donc cette fonction n'est pas appelée).
+   */
+  const findAchatPourNiveau = (
+    comp: CompetenceWithNiveaux,
+    niveau: number,
+  ): PersonnageCompetenceRow | undefined => {
+    const list = achatsParCompetence.get(comp.id) ?? [];
+    return list.find((a) => a.niveau_acquis === niveau);
+  };
+
+  // =======================================================================
+  // RENDER : compétences par type_achat
+  // =======================================================================
+
+  /**
+   * Rangée d'un niveau pour `simple` (case à cocher directe, pas de choix).
+   */
+  const renderNiveauSimple = (
+    comp: CompetenceWithNiveaux,
+    niv: NiveauInfo,
+    maxAchete: number,
+  ) => {
+    const dejaAchete = (niveauxAchetes.get(comp.id) ?? new Set()).has(niv.niveau);
+    const niveauPrecedentRequis = niv.niveau > 1 && niv.niveau - 1 > maxAchete;
+    const requiresMaster = needsMaster(comp, niv.niveau);
+    const achat = findAchatPourNiveau(comp, niv.niveau);
+    const estGratuit = achat?.xp_depense === 0;
+    const disabled =
+      niveauPrecedentRequis || mutationEnCours || (dejaAchete && estGratuit);
+
+    return (
+      <div
+        key={niv.niveau}
+        className="flex flex-wrap items-center gap-3 rounded border border-border p-2"
+      >
+        <Checkbox
+          id={`${comp.id}-${niv.niveau}`}
+          checked={dejaAchete}
+          disabled={disabled}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              handleBuy(comp, niv);
+            } else if (achat) {
+              handleUncheck(comp, achat);
+            }
+          }}
+        />
+        <Label
+          htmlFor={`${comp.id}-${niv.niveau}`}
+          className="flex-1 cursor-pointer space-y-1 text-xs"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <strong>Niveau {niv.niveau}</strong>
+            <Badge variant="secondary" className="text-xs">
+              {niv.cout_xp} XP
+            </Badge>
+            {requiresMaster && (
+              <Badge
+                variant="outline"
+                className="text-xs border-amber-600/40 text-amber-500"
+              >
+                Maître requis
+              </Badge>
+            )}
+            {estGratuit && (
+              <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
+                Acquis gratuitement
+              </Badge>
+            )}
+          </div>
+          {niv.description_niveau && (
+            <p className="text-muted-foreground">{niv.description_niveau}</p>
+          )}
+          {niveauPrecedentRequis && !dejaAchete && (
+            <p className="flex items-center gap-1 text-muted-foreground">
+              <Lock className="h-3 w-3" />
+              Acheter d'abord le niveau {niv.niveau - 1}
+            </p>
+          )}
+        </Label>
+      </div>
+    );
+  };
+
+  /**
+   * `unique_avec_choix` (Connaissances des Religions). 1 seule case à
+   * cocher (niveau 1). Cocher → expand un dropdown + bouton Confirmer.
+   */
+  const renderUniqueAvecChoix = (comp: CompetenceWithNiveaux) => {
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    const dejaAchete = achatsPourComp.length > 0;
+    const achat = achatsPourComp[0];
+    const estGratuit = achat?.xp_depense === 0;
+    const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
+    if (!niv1) return null;
+
+    const key = `${comp.id}_1`;
+    const panneauOuvert = key in pendingChoix;
+    const choixSelectionne = pendingChoix[key] ?? "";
+    const options = getOptionsDropdown(comp, 1);
+
+    return (
+      <div className="flex flex-col gap-2 rounded border border-border p-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <Checkbox
+            id={`${comp.id}-uac`}
+            checked={dejaAchete || panneauOuvert}
+            disabled={mutationEnCours || (dejaAchete && estGratuit)}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                // Ouvre le panneau de choix (checkbox passe en "cochée intermédiaire")
+                setPendingChoix((p) => ({ ...p, [key]: "" }));
+              } else if (dejaAchete && achat) {
+                handleUncheck(comp, achat);
+              } else {
+                // Annule l'ouverture du panneau
+                setPendingChoix((p) => {
+                  const next = { ...p };
+                  delete next[key];
+                  return next;
+                });
+              }
+            }}
+          />
+          <Label
+            htmlFor={`${comp.id}-uac`}
+            className="flex-1 cursor-pointer space-y-1 text-xs"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <strong>Niveau 1</strong>
+              <Badge variant="secondary" className="text-xs">
+                {niv1.cout_xp} XP
+              </Badge>
+              {estGratuit && (
+                <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
+                  Acquis gratuitement
+                </Badge>
+              )}
+            </div>
+            {niv1.description_niveau && (
+              <p className="text-muted-foreground">{niv1.description_niveau}</p>
+            )}
+          </Label>
+        </div>
+        {!dejaAchete && panneauOuvert && (
+          <div className="flex flex-wrap items-center gap-2 pl-7">
+            <Select
+              value={choixSelectionne}
+              onValueChange={(v) => setPendingChoix((p) => ({ ...p, [key]: v }))}
+            >
+              <SelectTrigger className="h-8 max-w-xs text-xs">
+                <SelectValue placeholder="Choisir..." />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((o) => (
+                  <SelectItem key={o.value} value={o.value} className="text-xs">
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              disabled={!choixSelectionne || mutationEnCours}
+              onClick={() => handleConfirmChoix(comp, niv1)}
+            >
+              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              Confirmer
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setPendingChoix((p) => {
+                  const next = { ...p };
+                  delete next[key];
+                  return next;
+                });
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /**
+   * `multiple_langue` (Décryptage, Langue supplémentaire). Liste des achats
+   * existants + bouton "+ Ajouter une autre" qui révèle un dropdown.
+   */
+  const renderMultipleLangue = (comp: CompetenceWithNiveaux) => {
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
+    if (!niv1) return null;
+    const addOpen = pendingAddCompId === comp.id;
+    const keyAdd = `${comp.id}_add`;
+    const choixAdd = pendingChoix[keyAdd] ?? "";
+    const options = getOptionsDropdown(comp, 1);
+
+    return (
+      <div className="space-y-2">
+        {/* Liste des achats existants : chacun avec checkbox cochée et décrochable */}
+        {achatsPourComp.map((achat) => {
+          const choixAffiche = resoudreChoixAffichage(
+            achat.choix_achat,
+            comp.type_choix,
+            religions ?? [],
+            langues ?? [],
+          );
+          const estGratuit = achat.xp_depense === 0;
+          return (
+            <div
+              key={achat.id}
+              className="flex flex-wrap items-center gap-3 rounded border border-border p-2"
+            >
+              <Checkbox
+                checked
+                disabled={mutationEnCours || estGratuit}
+                onCheckedChange={(checked) => {
+                  if (!checked) handleUncheck(comp, achat);
+                }}
+              />
+              <div className="flex-1 space-y-1 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <strong>{choixAffiche ?? "—"}</strong>
+                  {estGratuit ? (
+                    <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
+                      Acquis gratuitement
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      {achat.xp_depense} XP
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Panneau "+ Ajouter une autre" */}
+        {!addOpen && options.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPendingAddCompId(comp.id)}
+            disabled={mutationEnCours}
+            className="text-xs"
+          >
+            <Plus className="mr-1 h-3 w-3" />
+            Ajouter une autre ({niv1.cout_xp} XP)
+          </Button>
+        )}
+        {addOpen && (
+          <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
+            <Select
+              value={choixAdd}
+              onValueChange={(v) => setPendingChoix((p) => ({ ...p, [keyAdd]: v }))}
+            >
+              <SelectTrigger className="h-8 max-w-xs text-xs">
+                <SelectValue placeholder="Choisir..." />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((o) => (
+                  <SelectItem key={o.value} value={o.value} className="text-xs">
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              disabled={!choixAdd || mutationEnCours}
+              onClick={() => handleConfirmAdd(comp)}
+            >
+              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              Confirmer ({niv1.cout_xp} XP)
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setPendingAddCompId(null);
+                setPendingChoix((p) => {
+                  const next = { ...p };
+                  delete next[keyAdd];
+                  return next;
+                });
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+        {options.length === 0 && achatsPourComp.length > 0 && !addOpen && (
+          <p className="text-xs italic text-muted-foreground">
+            Toutes les options disponibles ont été choisies.
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  /**
+   * `multiple_avec_choix_par_niveau`. Pour chaque "choix" (catégorie, cercle...),
+   * affiche les niveaux 1, 2, 3 en checkboxes. Bouton "+ Ajouter une autre"
+   * en bas pour démarrer un nouveau choix au niveau 1.
+   */
+  const renderMultipleAvecChoixParNiveau = (comp: CompetenceWithNiveaux) => {
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    // Grouper par choix_achat
+    const parChoix = new Map<string, PersonnageCompetenceRow[]>();
+    achatsPourComp.forEach((a) => {
+      const k = a.choix_achat ?? "(sans choix)";
+      if (!parChoix.has(k)) parChoix.set(k, []);
+      parChoix.get(k)!.push(a);
+    });
+
+    const addOpen = pendingAddCompId === comp.id;
+    const keyAdd = `${comp.id}_add`;
+    const choixAdd = pendingChoix[keyAdd] ?? "";
+    const optionsAdd = getOptionsDropdown(comp, 1);
+    const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
+
+    return (
+      <div className="space-y-3">
+        {/* Pour chaque choix existant, afficher les niveaux possibles */}
+        {Array.from(parChoix.entries()).map(([choixKey, achatsDuChoix]) => {
+          const niveauxDuChoix = new Set(achatsDuChoix.map((a) => a.niveau_acquis));
+          const maxAchete = Math.max(...niveauxDuChoix);
+          const choixAffiche = resoudreChoixAffichage(
+            choixKey,
+            comp.type_choix,
+            religions ?? [],
+            langues ?? [],
+          );
+
+          return (
+            <div key={choixKey} className="rounded border border-border p-2">
+              <p className="mb-2 text-xs font-semibold text-foreground">
+                {choixAffiche}
+              </p>
+              <div className="space-y-1.5">
+                {comp.niveaux_parsed.map((niv) => {
+                  const dejaAchete = niveauxDuChoix.has(niv.niveau);
+                  const niveauPrecedentRequis =
+                    niv.niveau > 1 && niv.niveau - 1 > maxAchete;
+                  const requiresMaster = needsMaster(comp, niv.niveau);
+                  const achatCible = achatsDuChoix.find(
+                    (a) => a.niveau_acquis === niv.niveau,
+                  );
+                  const estGratuit = achatCible?.xp_depense === 0;
+                  const disabled =
+                    (!dejaAchete && niveauPrecedentRequis) ||
+                    mutationEnCours ||
+                    (dejaAchete && estGratuit);
+
+                  return (
+                    <div
+                      key={niv.niveau}
+                      className="flex flex-wrap items-center gap-3 pl-2"
+                    >
+                      <Checkbox
+                        id={`${comp.id}-${choixKey}-${niv.niveau}`}
+                        checked={dejaAchete}
+                        disabled={disabled}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            handleBuy(comp, niv, choixKey);
+                          } else if (achatCible) {
+                            handleUncheck(comp, achatCible);
+                          }
+                        }}
+                      />
+                      <Label
+                        htmlFor={`${comp.id}-${choixKey}-${niv.niveau}`}
+                        className="flex-1 cursor-pointer text-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>Niveau {niv.niveau}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            {niv.cout_xp} XP
+                          </Badge>
+                          {requiresMaster && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs border-amber-600/40 text-amber-500"
+                            >
+                              Maître
+                            </Badge>
+                          )}
+                          {estGratuit && (
+                            <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
+                              Gratuit
+                            </Badge>
+                          )}
+                          {niveauPrecedentRequis && !dejaAchete && (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Lock className="h-3 w-3" /> Niveau {niv.niveau - 1} requis
+                            </span>
+                          )}
+                        </div>
+                      </Label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* "+ Ajouter une autre" */}
+        {!addOpen && optionsAdd.length > 0 && niv1 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setPendingAddCompId(comp.id)}
+            disabled={mutationEnCours}
+            className="text-xs"
+          >
+            <Plus className="mr-1 h-3 w-3" />
+            Ajouter une autre ({niv1.cout_xp} XP)
+          </Button>
+        )}
+        {addOpen && niv1 && (
+          <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
+            <Select
+              value={choixAdd}
+              onValueChange={(v) => setPendingChoix((p) => ({ ...p, [keyAdd]: v }))}
+            >
+              <SelectTrigger className="h-8 max-w-xs text-xs">
+                <SelectValue placeholder="Choisir..." />
+              </SelectTrigger>
+              <SelectContent>
+                {optionsAdd.map((o) => (
+                  <SelectItem key={o.value} value={o.value} className="text-xs">
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              disabled={!choixAdd || mutationEnCours}
+              onClick={() => handleConfirmAdd(comp)}
+            >
+              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              Confirmer ({niv1.cout_xp} XP)
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setPendingAddCompId(null);
+                setPendingChoix((p) => {
+                  const next = { ...p };
+                  delete next[keyAdd];
+                  return next;
+                });
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+        {optionsAdd.length === 0 && achatsPourComp.length > 0 && !addOpen && (
+          <p className="text-xs italic text-muted-foreground">
+            Toutes les options disponibles ont été choisies.
+          </p>
+        )}
+        {comp.type_choix === "categorie_depecage" &&
+          optionsAdd.length === 0 &&
+          achatsPourComp.length === 0 && (
+            <p className="text-xs italic text-muted-foreground">
+              Achetez d'abord Connaissance des Créatures pour au moins une
+              catégorie.
+            </p>
+          )}
+      </div>
+    );
+  };
+
+  /**
+   * `multiple_sans_choix` (Dév. Spirituel + Supérieur). Compteur `[-] X [+]`.
+   * Chaque clic = 1 RPC.
+   */
+  const renderMultipleSansChoix = (comp: CompetenceWithNiveaux) => {
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    const nbAchats = achatsPourComp.length;
+    const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
+    if (!niv1) return null;
+
+    // Détection Dév. Spirituel basique vs Supérieur
+    const estBasique = comp.nom === "Développement Spirituel";
+    const compSuperieur = (competences ?? []).find(
+      (c) => c.nom === "Développement Spirituel Supérieur",
+    );
+    const aSuperieurAcquis = compSuperieur
+      ? (achatsParCompetence.get(compSuperieur.id) ?? []).length > 0
+      : false;
+
+    // [-] désactivé si pas d'achat OU si on est sur le basique et que
+    // le supérieur a déjà été acheté (la RPC refuserait de baisser sous 20 PS).
+    const minusDisabled =
+      nbAchats === 0 || mutationEnCours || (estBasique && aSuperieurAcquis);
+
+    const handlePlus = () => {
+      handleBuy(comp, niv1);
+    };
+
+    const handleMinus = () => {
+      // Décocher le dernier achat (le plus récent). La RPC supprime cette
+      // ligne unique (type multiple_sans_choix → pas de cascade).
+      const dernier = achatsPourComp[achatsPourComp.length - 1];
+      if (dernier) handleUncheck(comp, dernier);
+    };
+
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded border border-border p-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleMinus}
+          disabled={minusDisabled}
+          title={
+            estBasique && aSuperieurAcquis
+              ? "Désachetez d'abord Développement Spirituel Supérieur"
+              : undefined
+          }
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        <div className="flex-1 text-xs">
+          <strong>Acheté {nbAchats} fois</strong>
+          <span className="ml-2 text-muted-foreground">
+            ({niv1.cout_xp} XP / achat)
+          </span>
+        </div>
+        <Button size="sm" onClick={handlePlus} disabled={mutationEnCours}>
+          {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  };
+
+  /**
+   * `simple` : checkbox par niveau (refactor du flow existant).
+   */
+  const renderSimple = (comp: CompetenceWithNiveaux) => {
     const niveauxAchetesPourComp = niveauxAchetes.get(comp.id) ?? new Set<number>();
     const maxAchete = niveauxAchetesPourComp.size
       ? Math.max(...niveauxAchetesPourComp)
       : 0;
-    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    return (
+      <div className="space-y-2">
+        {comp.niveaux_parsed.length === 0 && (
+          <p className="text-xs italic text-muted-foreground">
+            Aucun niveau défini pour cette compétence.
+          </p>
+        )}
+        {comp.niveaux_parsed.map((niv) => renderNiveauSimple(comp, niv, maxAchete))}
+      </div>
+    );
+  };
+
+  // =======================================================================
+  // RENDER : Carte compétence (dispatch par type_achat)
+  // =======================================================================
+
+  const renderCompetence = (comp: CompetenceWithNiveaux) => {
+    let body: JSX.Element | null = null;
+    switch (comp.type_achat) {
+      case "unique_avec_choix":
+        body = renderUniqueAvecChoix(comp);
+        break;
+      case "multiple_langue":
+        body = renderMultipleLangue(comp);
+        break;
+      case "multiple_avec_choix_par_niveau":
+        body = renderMultipleAvecChoixParNiveau(comp);
+        break;
+      case "multiple_sans_choix":
+        body = renderMultipleSansChoix(comp);
+        break;
+      case "simple":
+      default:
+        body = renderSimple(comp);
+    }
 
     return (
       <Card key={comp.id}>
@@ -340,113 +1335,15 @@ const Etape5_Competences_V2 = ({
           {comp.description && (
             <p className="text-xs text-muted-foreground">{comp.description}</p>
           )}
-          {achatsPourComp.length > 0 && (
-            <div className="flex flex-col gap-1 pt-1">
-              {achatsPourComp.map((achat) => {
-                const choixAffiche = resoudreChoixAffichage(
-                  achat.choix_achat,
-                  comp.type_choix,
-                  religions ?? [],
-                  langues ?? [],
-                );
-                const estGratuit = achat.xp_depense === 0;
-                return (
-                  <div
-                    key={achat.id}
-                    className="flex flex-wrap items-center gap-2 text-xs"
-                  >
-                    {estGratuit ? (
-                      <Badge className="bg-green-600/20 text-green-400 border border-green-600/30">
-                        Acquis gratuitement
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-blue-600/20 text-blue-400 border border-blue-600/30">
-                        Acheté niveau {achat.niveau_acquis}
-                      </Badge>
-                    )}
-                    {choixAffiche && (
-                      <span className="text-muted-foreground">
-                        : <strong className="text-foreground">{choixAffiche}</strong>
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </CardHeader>
-        <CardContent className="space-y-2">
-          {comp.niveaux_parsed.length === 0 && (
-            <p className="text-xs italic text-muted-foreground">
-              Aucun niveau défini pour cette compétence.
-            </p>
-          )}
-          {comp.niveaux_parsed.map((niv) => {
-            const dejaAchete = niveauxAchetesPourComp.has(niv.niveau);
-            const niveauPrecedentRequis = niv.niveau > 1 && niv.niveau - 1 > maxAchete;
-            const requiresMaster = needsMaster(comp, niv.niveau);
-            // unique_avec_choix : un seul achat possible pour cette compétence,
-            // peu importe le niveau (cas de "Connaissances des Religions").
-            const uniqueDejaAchete =
-              comp.type_achat === "unique_avec_choix" && achatsPourComp.length >= 1;
-            const disabled =
-              dejaAchete ||
-              niveauPrecedentRequis ||
-              uniqueDejaAchete ||
-              mutation.isPending;
-
-            return (
-              <div
-                key={niv.niveau}
-                className="flex flex-wrap items-center justify-between gap-2 rounded border border-border p-2"
-              >
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-2">
-                    <strong>Niveau {niv.niveau}</strong>
-                    <Badge variant="secondary" className="text-xs">
-                      {niv.cout_xp} XP
-                    </Badge>
-                    {requiresMaster && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-amber-600/40 text-amber-500"
-                      >
-                        Maître requis
-                      </Badge>
-                    )}
-                    {dejaAchete && (
-                      <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">
-                        Acquis
-                      </Badge>
-                    )}
-                  </div>
-                  {niv.description_niveau && (
-                    <p className="text-muted-foreground">{niv.description_niveau}</p>
-                  )}
-                  {niveauPrecedentRequis && !dejaAchete && (
-                    <p className="flex items-center gap-1 text-muted-foreground">
-                      <Lock className="h-3 w-3" />
-                      Acheter d'abord le niveau {niv.niveau - 1}
-                    </p>
-                  )}
-                </div>
-                {!dejaAchete && !uniqueDejaAchete && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleBuy(comp, niv)}
-                    disabled={disabled}
-                  >
-                    {mutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                    Acheter niveau {niv.niveau} (coût {niv.cout_xp} XP)
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
+        <CardContent className="space-y-2">{body}</CardContent>
       </Card>
     );
   };
+
+  // =======================================================================
+  // RENDER : Page complète
+  // =======================================================================
 
   if (loadingCompetences || loadingAchats || loadingClasse) {
     return (
@@ -480,6 +1377,7 @@ const Etape5_Competences_V2 = ({
         ))}
       </Tabs>
 
+      {/* Dialog maître requis */}
       <Dialog
         open={!!masterDialog}
         onOpenChange={(open) => {
@@ -493,9 +1391,9 @@ const Etape5_Competences_V2 = ({
               {masterDialog && (
                 <>
                   L'achat du niveau {masterDialog.niveau.niveau} de{" "}
-                  <strong>{masterDialog.competence.nom}</strong> nécessite l'apprentissage
-                  auprès d'un maître. Indiquez son nom — la demande sera soumise à
-                  validation.
+                  <strong>{masterDialog.competence.nom}</strong> nécessite
+                  l'apprentissage auprès d'un maître. Indiquez son nom — la
+                  demande sera soumise à validation.
                 </>
               )}
             </DialogDescription>
@@ -514,9 +1412,89 @@ const Etape5_Competences_V2 = ({
             <Button variant="outline" onClick={() => setMasterDialog(null)}>
               Annuler
             </Button>
-            <Button onClick={confirmMaster} disabled={mutation.isPending}>
-              {mutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+            <Button onClick={confirmMaster} disabled={mutationEnCours}>
+              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               Confirmer l'achat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog cascade décochage */}
+      <Dialog
+        open={!!cascadeDialog}
+        onOpenChange={(open) => {
+          if (!open) setCascadeDialog(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Annuler cet achat ?</DialogTitle>
+            <DialogDescription>
+              {cascadeDialog && (
+                <>
+                  Annuler le niveau {cascadeDialog.achatCible.niveau_acquis} de{" "}
+                  <strong>{cascadeDialog.competence.nom}</strong>
+                  {cascadeDialog.achatCible.choix_achat && (
+                    <>
+                      {" "}
+                      ({" "}
+                      <em>
+                        {resoudreChoixAffichage(
+                          cascadeDialog.achatCible.choix_achat,
+                          cascadeDialog.competence.type_choix,
+                          religions ?? [],
+                          langues ?? [],
+                        )}
+                      </em>
+                      )
+                    </>
+                  )}{" "}
+                  annulera aussi tous les niveaux supérieurs de cette
+                  compétence.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {cascadeDialog && (
+            <div className="space-y-2 py-2 text-sm">
+              <p className="font-semibold">
+                Achats qui seront annulés ({cascadeDialog.achatsAnnules.length}) :
+              </p>
+              <ul className="ml-4 list-disc space-y-1 text-xs">
+                {cascadeDialog.achatsAnnules
+                  .sort((a, b) => a.niveau_acquis - b.niveau_acquis)
+                  .map((a) => {
+                    const choix = resoudreChoixAffichage(
+                      a.choix_achat,
+                      cascadeDialog.competence.type_choix,
+                      religions ?? [],
+                      langues ?? [],
+                    );
+                    return (
+                      <li key={a.id}>
+                        Niveau {a.niveau_acquis}
+                        {choix ? ` (${choix})` : ""} — {a.xp_depense} XP
+                      </li>
+                    );
+                  })}
+              </ul>
+              <p className="pt-2 font-semibold text-green-500">
+                Total remboursé : {cascadeDialog.xpTotalRembourse} XP
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCascadeDialog(null)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmCascade}
+              disabled={mutationEnCours}
+            >
+              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              Confirmer l'annulation
             </Button>
           </DialogFooter>
         </DialogContent>
