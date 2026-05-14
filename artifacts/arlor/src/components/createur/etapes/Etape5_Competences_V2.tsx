@@ -249,6 +249,25 @@ const Etape5_Competences_V2 = ({
     enabled: !!personnageId,
   });
 
+  const { data: prerequisMap } = useQuery({
+    queryKey: ["prerequis-competences", personnageId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "verifier_prerequis_competences",
+        { p_personnage_id: personnageId },
+      );
+      if (error) throw error;
+      return (data ?? {}) as Record<
+        string,
+        {
+          niveau_max_achetable: number;
+          raisons_par_niveau: Record<string, string>;
+        }
+      >;
+    },
+    enabled: !!personnageId,
+  });
+
   const { data: langues } = useQuery({
     queryKey: ["langues-actives"],
     queryFn: async () => {
@@ -392,6 +411,28 @@ const Etape5_Competences_V2 = ({
     const isOwnClass = !!classeNom && cat === classeNom;
     if (isGenerale || isOwnClass) return 3;
     return 2;
+  };
+
+  /**
+   * Infos de blocage par prérequis inter-compétences pour une compétence donnée.
+   * Retourne null si la compétence n'a aucun blocage (absente du map RPC).
+   * `niveauMaxAchetable` = niveau le plus haut achetable côté prérequis (0, 1 ou 2).
+   * `raisonPourNiveau(n)` = message à afficher pour le niveau n, avec fallback si
+   * le niveau n est absent de `raisons_par_niveau` mais reste > niveauMaxAchetable.
+   */
+  const getPrereqInfo = (comp: CompetenceWithNiveaux) => {
+    const entry = prerequisMap?.[comp.id];
+    if (!entry) return null;
+    return {
+      niveauMaxAchetable: entry.niveau_max_achetable,
+      raisonPourNiveau: (niveau: number): string | null => {
+        if (niveau <= entry.niveau_max_achetable) return null;
+        return (
+          entry.raisons_par_niveau?.[String(niveau)] ??
+          "Prérequis non rempli pour ce niveau."
+        );
+      },
+    };
   };
 
   // =======================================================================
@@ -771,8 +812,13 @@ const Etape5_Competences_V2 = ({
     const estGratuit = achat?.xp_depense === 0;
     const niveauMax = niveauMaxAccessible(comp);
     const niveauHorsClasse = niv.niveau > niveauMax;
+    const prereqInfo = getPrereqInfo(comp);
+    const prereqBloque =
+      !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
+    const raisonPrereq = prereqInfo?.raisonPourNiveau(niv.niveau) ?? null;
     const disabled =
       niveauHorsClasse ||
+      prereqBloque ||
       niveauPrecedentRequis ||
       mutationEnCours ||
       (dejaAchete && estGratuit);
@@ -781,7 +827,7 @@ const Etape5_Competences_V2 = ({
       <div
         key={niv.niveau}
         className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
-          niveauHorsClasse ? "opacity-50" : ""
+          niveauHorsClasse || prereqBloque ? "opacity-50" : ""
         }`}
       >
         <Checkbox
@@ -828,6 +874,12 @@ const Etape5_Competences_V2 = ({
               Niveau {niv.niveau} inaccessible hors de votre classe (max : {niveauMax})
             </p>
           )}
+          {prereqBloque && !niveauHorsClasse && !dejaAchete && (
+            <p className="flex items-center gap-1 text-muted-foreground">
+              <Lock className="h-3 w-3" />
+              {raisonPrereq}
+            </p>
+          )}
           {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && (
             <p className="flex items-center gap-1 text-muted-foreground">
               <Lock className="h-3 w-3" />
@@ -851,6 +903,10 @@ const Etape5_Competences_V2 = ({
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
 
+    const prereqInfo = getPrereqInfo(comp);
+    const prereqBloque = !!prereqInfo && prereqInfo.niveauMaxAchetable < 1;
+    const raisonPrereq = prereqInfo?.raisonPourNiveau(1) ?? null;
+
     const key = `${comp.id}_1`;
     const panneauOuvert = key in pendingChoix;
     const choixSelectionne = pendingChoix[key] ?? "";
@@ -862,7 +918,7 @@ const Etape5_Competences_V2 = ({
           <Checkbox
             id={`${comp.id}-uac`}
             checked={dejaAchete || panneauOuvert}
-            disabled={mutationEnCours || (dejaAchete && estGratuit)}
+            disabled={mutationEnCours || prereqBloque || (dejaAchete && estGratuit)}
             onCheckedChange={(checked) => {
               if (checked) {
                 // Ouvre le panneau de choix (checkbox passe en "cochée intermédiaire")
@@ -917,6 +973,12 @@ const Etape5_Competences_V2 = ({
               <p className="text-muted-foreground">{niv1.description_niveau}</p>
             )}
           </Label>
+          {prereqBloque && !dejaAchete && (
+            <p className="flex w-full items-center gap-1 pl-7 text-xs text-muted-foreground">
+              <Lock className="h-3 w-3" />
+              {raisonPrereq}
+            </p>
+          )}
         </div>
         {!dejaAchete && panneauOuvert && (
           <div className="flex flex-wrap items-center gap-2 pl-7">
@@ -970,6 +1032,9 @@ const Etape5_Competences_V2 = ({
     const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
+    const prereqInfo = getPrereqInfo(comp);
+    const prereqBloque = !!prereqInfo && prereqInfo.niveauMaxAchetable < 1;
+    const raisonPrereq = prereqInfo?.raisonPourNiveau(1) ?? null;
     const addOpen = pendingAddCompId === comp.id;
     const keyAdd = `${comp.id}_add`;
     const choixAdd = pendingChoix[keyAdd] ?? "";
@@ -1017,12 +1082,18 @@ const Etape5_Competences_V2 = ({
         })}
 
         {/* Panneau "+ Ajouter une autre" */}
-        {!addOpen && options.length > 0 && (
+        {prereqBloque && (
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Lock className="h-3 w-3" />
+            {raisonPrereq}
+          </p>
+        )}
+        {!addOpen && !prereqBloque && options.length > 0 && (
           <Button
             size="sm"
             variant="outline"
             onClick={() => setPendingAddCompId(comp.id)}
-            disabled={mutationEnCours}
+            disabled={mutationEnCours || prereqBloque}
             className="text-xs"
           >
             <Plus className="mr-1 h-3 w-3" />
@@ -1130,8 +1201,14 @@ const Etape5_Competences_V2 = ({
                   const estGratuit = achatCible?.xp_depense === 0;
                   const niveauMax = niveauMaxAccessible(comp);
                   const niveauHorsClasse = niv.niveau > niveauMax;
+                  const prereqInfo = getPrereqInfo(comp);
+                  const prereqBloque =
+                    !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
+                  const raisonPrereq =
+                    prereqInfo?.raisonPourNiveau(niv.niveau) ?? null;
                   const disabled =
                     niveauHorsClasse ||
+                    prereqBloque ||
                     (!dejaAchete && niveauPrecedentRequis) ||
                     mutationEnCours ||
                     (dejaAchete && estGratuit);
@@ -1140,7 +1217,7 @@ const Etape5_Competences_V2 = ({
                     <div
                       key={niv.niveau}
                       className={`flex flex-wrap items-center gap-3 pl-2 ${
-                        niveauHorsClasse ? "opacity-50" : ""
+                        niveauHorsClasse || prereqBloque ? "opacity-50" : ""
                       }`}
                     >
                       <Checkbox
@@ -1180,6 +1257,11 @@ const Etape5_Competences_V2 = ({
                           {niveauHorsClasse && (
                             <span className="flex items-center gap-1 text-muted-foreground">
                               <Lock className="h-3 w-3" /> Hors classe (max : {niveauMax})
+                            </span>
+                          )}
+                          {prereqBloque && !niveauHorsClasse && !dejaAchete && (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Lock className="h-3 w-3" /> {raisonPrereq}
                             </span>
                           )}
                           {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && (
@@ -1278,6 +1360,10 @@ const Etape5_Competences_V2 = ({
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
 
+    const prereqInfo = getPrereqInfo(comp);
+    const prereqBloque = !!prereqInfo && prereqInfo.niveauMaxAchetable < 1;
+    const raisonPrereq = prereqInfo?.raisonPourNiveau(1) ?? null;
+
     // Détection Dév. Spirituel basique vs Supérieur
     const estBasique = comp.nom === "Développement Spirituel";
     const compSuperieur = (competences ?? []).find(
@@ -1324,10 +1410,16 @@ const Etape5_Competences_V2 = ({
             ({niv1.cout_xp} XP / achat)
           </span>
         </div>
-        <Button size="sm" onClick={handlePlus} disabled={mutationEnCours}>
+        <Button size="sm" onClick={handlePlus} disabled={mutationEnCours || prereqBloque}>
           {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
           <Plus className="h-3 w-3" />
         </Button>
+        {prereqBloque && (
+          <p className="flex w-full items-center gap-1 text-xs text-muted-foreground">
+            <Lock className="h-3 w-3" />
+            {raisonPrereq}
+          </p>
+        )}
       </div>
     );
   };
