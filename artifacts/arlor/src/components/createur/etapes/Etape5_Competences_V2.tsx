@@ -381,6 +381,19 @@ const Etape5_Competences_V2 = ({
     return niveau >= 2;
   };
 
+  /**
+   * Niveau maximum achetable selon la classe du personnage.
+   * - Compétences générales OU de la classe du perso : max niveau 3
+   * - Compétences hors classe et non générales : max niveau 2
+   */
+  const niveauMaxAccessible = (comp: CompetenceWithNiveaux): number => {
+    const cat = normalizeCategorie(comp.categorie);
+    const isGenerale = comp.est_general || cat === "generale";
+    const isOwnClass = !!classeNom && cat === classeNom;
+    if (isGenerale || isOwnClass) return 3;
+    return 2;
+  };
+
   // =======================================================================
   // OPTIONS DE DROPDOWN PAR type_choix
   // =======================================================================
@@ -756,13 +769,20 @@ const Etape5_Competences_V2 = ({
     const requiresMaster = needsMaster(comp, niv.niveau);
     const achat = findAchatPourNiveau(comp, niv.niveau);
     const estGratuit = achat?.xp_depense === 0;
+    const niveauMax = niveauMaxAccessible(comp);
+    const niveauHorsClasse = niv.niveau > niveauMax;
     const disabled =
-      niveauPrecedentRequis || mutationEnCours || (dejaAchete && estGratuit);
+      niveauHorsClasse ||
+      niveauPrecedentRequis ||
+      mutationEnCours ||
+      (dejaAchete && estGratuit);
 
     return (
       <div
         key={niv.niveau}
-        className="flex flex-wrap items-center gap-3 rounded border border-border p-2"
+        className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
+          niveauHorsClasse ? "opacity-50" : ""
+        }`}
       >
         <Checkbox
           id={`${comp.id}-${niv.niveau}`}
@@ -785,7 +805,7 @@ const Etape5_Competences_V2 = ({
             <Badge variant="secondary" className="text-xs">
               {niv.cout_xp} XP
             </Badge>
-            {requiresMaster && (
+            {requiresMaster && !niveauHorsClasse && (
               <Badge
                 variant="outline"
                 className="text-xs border-amber-600/40 text-amber-500"
@@ -802,7 +822,13 @@ const Etape5_Competences_V2 = ({
           {niv.description_niveau && (
             <p className="text-muted-foreground">{niv.description_niveau}</p>
           )}
-          {niveauPrecedentRequis && !dejaAchete && (
+          {niveauHorsClasse && (
+            <p className="flex items-center gap-1 text-muted-foreground">
+              <Lock className="h-3 w-3" />
+              Niveau {niv.niveau} inaccessible hors de votre classe (max : {niveauMax})
+            </p>
+          )}
+          {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && (
             <p className="flex items-center gap-1 text-muted-foreground">
               <Lock className="h-3 w-3" />
               Acheter d'abord le niveau {niv.niveau - 1}
@@ -858,14 +884,33 @@ const Etape5_Competences_V2 = ({
             className="flex-1 cursor-pointer space-y-1 text-xs"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <strong>Niveau 1</strong>
-              <Badge variant="secondary" className="text-xs">
-                {niv1.cout_xp} XP
-              </Badge>
-              {estGratuit && (
-                <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
-                  Acquis gratuitement
-                </Badge>
+              {dejaAchete && achat ? (
+                <>
+                  <strong>
+                    {resoudreChoixAffichage(
+                      achat.choix_achat,
+                      comp.type_choix,
+                      religions ?? [],
+                      langues ?? [],
+                    ) ?? "—"}
+                  </strong>
+                  {estGratuit ? (
+                    <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
+                      Acquis gratuitement
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      {achat.xp_depense} XP
+                    </Badge>
+                  )}
+                </>
+              ) : (
+                <>
+                  <strong>Niveau 1</strong>
+                  <Badge variant="secondary" className="text-xs">
+                    {niv1.cout_xp} XP
+                  </Badge>
+                </>
               )}
             </div>
             {niv1.description_niveau && (
@@ -1083,7 +1128,10 @@ const Etape5_Competences_V2 = ({
                     (a) => a.niveau_acquis === niv.niveau,
                   );
                   const estGratuit = achatCible?.xp_depense === 0;
+                  const niveauMax = niveauMaxAccessible(comp);
+                  const niveauHorsClasse = niv.niveau > niveauMax;
                   const disabled =
+                    niveauHorsClasse ||
                     (!dejaAchete && niveauPrecedentRequis) ||
                     mutationEnCours ||
                     (dejaAchete && estGratuit);
@@ -1091,7 +1139,9 @@ const Etape5_Competences_V2 = ({
                   return (
                     <div
                       key={niv.niveau}
-                      className="flex flex-wrap items-center gap-3 pl-2"
+                      className={`flex flex-wrap items-center gap-3 pl-2 ${
+                        niveauHorsClasse ? "opacity-50" : ""
+                      }`}
                     >
                       <Checkbox
                         id={`${comp.id}-${choixKey}-${niv.niveau}`}
@@ -1114,7 +1164,7 @@ const Etape5_Competences_V2 = ({
                           <Badge variant="secondary" className="text-xs">
                             {niv.cout_xp} XP
                           </Badge>
-                          {requiresMaster && (
+                          {requiresMaster && !niveauHorsClasse && (
                             <Badge
                               variant="outline"
                               className="text-xs border-amber-600/40 text-amber-500"
@@ -1127,7 +1177,12 @@ const Etape5_Competences_V2 = ({
                               Gratuit
                             </Badge>
                           )}
-                          {niveauPrecedentRequis && !dejaAchete && (
+                          {niveauHorsClasse && (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Lock className="h-3 w-3" /> Hors classe (max : {niveauMax})
+                            </span>
+                          )}
+                          {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && (
                             <span className="flex items-center gap-1 text-muted-foreground">
                               <Lock className="h-3 w-3" /> Niveau {niv.niveau - 1} requis
                             </span>
