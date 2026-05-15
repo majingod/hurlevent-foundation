@@ -707,6 +707,39 @@ const Etape5_Competences_V2 = ({
     },
   });
 
+  // Avance etape_creation de 5 a 6 cote serveur. Les etapes 5-9 n'ont pas
+  // de sauvegarder_etape_N : sans cet appel, le bouton « Suivant » ne ferait
+  // que relire etape_creation et resterait bloque sur l'etape courante.
+  const avancerMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("avancer_etape", {
+        p_personnage_id: personnageId,
+        p_etape_courante: 5,
+      });
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        const msg =
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          (payload.erreurs?.[0]?.code as string | undefined) ??
+          "Impossible de passer a l'etape suivante.";
+        throw new Error(msg);
+      }
+      return payload;
+    },
+    onSuccess: (payload) => {
+      const avertissements =
+        (payload?.avertissements as Array<{ message?: string }> | undefined) ??
+        [];
+      if (avertissements[0]?.message) toast.info(avertissements[0].message);
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
   const mutationEnCours = acheterMutation.isPending || desacheterMutation.isPending;
 
   // =======================================================================
@@ -1747,7 +1780,14 @@ const Etape5_Competences_V2 = ({
             ← Précédent
           </Button>
         )}
-        <Button className="ml-auto" onClick={() => onSuccess?.()}>
+        <Button
+          className="ml-auto"
+          onClick={() => avancerMutation.mutate()}
+          disabled={avancerMutation.isPending}
+        >
+          {avancerMutation.isPending && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
           Suivant →
         </Button>
       </div>
