@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,11 @@ type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
 interface Etape9Props {
   personnageId: string;
+  /**
+   * Etape de creation actuelle cote serveur (personnages.etape_creation).
+   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
+   */
+  etapeCreation?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -30,6 +35,7 @@ interface Etape9Props {
 
 const Etape9_Assemblages_V2 = ({
   personnageId,
+  etapeCreation,
   onSuccess,
   onError,
   onPrevious,
@@ -165,6 +171,23 @@ const Etape9_Assemblages_V2 = ({
     },
   });
 
+  // Auto-skip : si l'utilisateur arrive sur l'etape 9 en avancement
+  // (etapeCreation === 9) et qu'il ne possede pas la competence
+  // « Assemblage de Runes » (niveauRunes < 1, donc hasAssemblage = false),
+  // on fait avancer etape_creation cote serveur immediatement. La garde
+  // useRef + etapeCreation === N protege contre le re-trigger et permet
+  // la navigation backward.
+  const skipDeclencheRef = useRef(false);
+  useEffect(() => {
+    if (skipDeclencheRef.current) return;
+    if (etapeCreation !== 9) return;
+    if (loadingQuotas) return;
+    if (hasAssemblage) return;
+    if (avancerMutation.isPending) return;
+    skipDeclencheRef.current = true;
+    avancerMutation.mutate();
+  }, [etapeCreation, loadingQuotas, hasAssemblage, avancerMutation]);
+
   const handleCocherGratuit = (assemblage: AssemblageRow) => {
     if (quotaRestant <= 0) {
       toast.error("Quota gratuit épuisé.");
@@ -194,17 +217,36 @@ const Etape9_Assemblages_V2 = ({
 
   if (!hasAssemblage) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            Étape 9 — Assemblages de runes
-          </CardTitle>
-          <CardDescription>
-            Vous ne possédez pas la compétence « Assemblage de Runes ». Vous
-            pouvez passer à l'étape suivante.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-heading">
+              Étape 9 — Assemblages de runes
+            </CardTitle>
+            <CardDescription>
+              Vous ne possédez pas la compétence « Assemblage de Runes ». Vous
+              pouvez passer à l'étape suivante.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <div className="flex justify-between pt-4">
+          {onPrevious && (
+            <Button variant="outline" onClick={onPrevious}>
+              ← Précédent
+            </Button>
+          )}
+          <Button
+            className="ml-auto"
+            onClick={() => avancerMutation.mutate()}
+            disabled={avancerMutation.isPending}
+          >
+            {avancerMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Suivant →
+          </Button>
+        </div>
+      </div>
     );
   }
 
