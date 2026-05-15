@@ -185,6 +185,14 @@ const PersonnageNouveauV2 = () => {
         return data as PersonnageRow;
       },
     });
+
+    // Personnage finalisé (étape 11 → 12) : sortir du wizard.
+    // Le toast de succès est déjà affiché par Etape11_Recapitulatif_V2.
+    if ((result.etape_creation ?? 0) > TOTAL_STEPS) {
+      navigate("/tableau-de-bord");
+      return;
+    }
+
     const cible = Math.max(1, Math.min(result.etape_creation ?? etape + 1, TOTAL_STEPS));
     setEtape(cible);
   };
