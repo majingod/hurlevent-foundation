@@ -304,6 +304,7 @@ const PersonnageNouveauV2 = () => {
         {etape === 6 && (
           <Etape6_Sorts_V2
             personnageId={personnageId}
+            etapeCreation={personnage?.etape_creation ?? 0}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -311,6 +312,7 @@ const PersonnageNouveauV2 = () => {
         {etape === 7 && (
           <Etape7_Prieres_V2
             personnageId={personnageId}
+            etapeCreation={personnage?.etape_creation ?? 0}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -318,6 +320,7 @@ const PersonnageNouveauV2 = () => {
         {etape === 8 && (
           <Etape8_Artisanat_V2
             personnageId={personnageId}
+            etapeCreation={personnage?.etape_creation ?? 0}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />

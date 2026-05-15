@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +41,11 @@ type DomaineDispo =
 
 interface Etape7Props {
   personnageId: string;
+  /**
+   * Etape de creation actuelle cote serveur (personnages.etape_creation).
+   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
+   */
+  etapeCreation?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -58,6 +63,7 @@ interface AcheterPriereParams {
 
 const Etape7_Prieres_V2 = ({
   personnageId,
+  etapeCreation,
   onSuccess,
   onError,
   onPrevious,
@@ -325,6 +331,29 @@ const Etape7_Prieres_V2 = ({
     },
   });
 
+  // Auto-skip : si l'utilisateur arrive sur l'etape 7 en avancement
+  // (etapeCreation === 7) et qu'aucun domaine n'est disponible (aucune
+  // compétence d'acquisition de domaines, ou tous les domaines proscrits
+  // par la religion), on fait avancer etape_creation cote serveur
+  // immediatement. La garde useRef + etapeCreation === N protege contre
+  // le re-trigger et permet la navigation backward.
+  const skipDeclencheRef = useRef(false);
+  useEffect(() => {
+    if (skipDeclencheRef.current) return;
+    if (etapeCreation !== 7) return;
+    if (loadingDomaines || !proscritsResolus) return;
+    if (domainesAffiches.length > 0) return;
+    if (avancerMutation.isPending) return;
+    skipDeclencheRef.current = true;
+    avancerMutation.mutate();
+  }, [
+    etapeCreation,
+    loadingDomaines,
+    proscritsResolus,
+    domainesAffiches,
+    avancerMutation,
+  ]);
+
   const peutAcheter =
     !!priereSelectionnee &&
     !!zoneChoisie &&
@@ -402,17 +431,36 @@ const Etape7_Prieres_V2 = ({
 
   if (!domainesAffiches || domainesAffiches.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            Aucun domaine disponible
-          </CardTitle>
-          <CardDescription>
-            Ce personnage n'a accès à aucun domaine de prières (tous proscrits
-            par sa religion ou aucun acquis pour l'instant).
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-heading">
+              Aucun domaine disponible
+            </CardTitle>
+            <CardDescription>
+              Ce personnage n'a accès à aucun domaine de prières (tous proscrits
+              par sa religion ou aucun acquis pour l'instant).
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <div className="flex justify-between pt-4">
+          {onPrevious && (
+            <Button variant="outline" onClick={onPrevious}>
+              ← Précédent
+            </Button>
+          )}
+          <Button
+            className="ml-auto"
+            onClick={() => avancerMutation.mutate()}
+            disabled={avancerMutation.isPending}
+          >
+            {avancerMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Suivant →
+          </Button>
+        </div>
+      </div>
     );
   }
 

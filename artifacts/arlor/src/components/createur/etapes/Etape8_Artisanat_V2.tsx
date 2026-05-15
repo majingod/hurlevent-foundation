@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,11 @@ type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
 interface Etape8Props {
   personnageId: string;
+  /**
+   * Etape de creation actuelle cote serveur (personnages.etape_creation).
+   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
+   */
+  etapeCreation?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -35,6 +40,7 @@ interface Etape8Props {
 
 const Etape8_Artisanat_V2 = ({
   personnageId,
+  etapeCreation,
   onSuccess,
   onError,
   onPrevious,
@@ -194,40 +200,6 @@ const Etape8_Artisanat_V2 = ({
     });
   };
 
-  if (loadingQuotas) {
-    return (
-      <div className="flex items-center justify-center p-8 text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Chargement des quotas d'artisanat…
-      </div>
-    );
-  }
-
-  if (!hasAlchimie && !hasForge && !hasJoaillerie) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            Étape 8 — Artisanat
-          </CardTitle>
-          <CardDescription>
-            Aucune compétence d'artisanat acquise. Vous pouvez passer à l'étape
-            suivante.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  const tabsCount = [hasAlchimie, hasForge, hasJoaillerie].filter(
-    Boolean,
-  ).length;
-  const defaultTab = hasAlchimie
-    ? "alchimie"
-    : hasForge
-      ? "forge"
-      : "joaillerie";
-
   // Avance etape_creation de 8 a 9 cote serveur. Les etapes 5-9 n'ont pas
   // de sauvegarder_etape_N : sans cet appel, le bouton « Suivant » ne ferait
   // que relire etape_creation et resterait bloque sur l'etape courante.
@@ -260,6 +232,82 @@ const Etape8_Artisanat_V2 = ({
       onError?.(error);
     },
   });
+
+  // Auto-skip : si l'utilisateur arrive sur l'etape 8 en avancement
+  // (etapeCreation === 8) et qu'aucune competence d'artisanat n'est
+  // acquise, on fait avancer etape_creation cote serveur immediatement.
+  // La garde useRef + etapeCreation === N protege contre le re-trigger
+  // et permet la navigation backward.
+  const skipDeclencheRef = useRef(false);
+  useEffect(() => {
+    if (skipDeclencheRef.current) return;
+    if (etapeCreation !== 8) return;
+    if (loadingQuotas) return;
+    if (hasAlchimie || hasForge || hasJoaillerie) return;
+    if (avancerMutation.isPending) return;
+    skipDeclencheRef.current = true;
+    avancerMutation.mutate();
+  }, [
+    etapeCreation,
+    loadingQuotas,
+    hasAlchimie,
+    hasForge,
+    hasJoaillerie,
+    avancerMutation,
+  ]);
+
+  if (loadingQuotas) {
+    return (
+      <div className="flex items-center justify-center p-8 text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Chargement des quotas d'artisanat…
+      </div>
+    );
+  }
+
+  if (!hasAlchimie && !hasForge && !hasJoaillerie) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-heading">
+              Étape 8 — Artisanat
+            </CardTitle>
+            <CardDescription>
+              Aucune compétence d'artisanat acquise. Vous pouvez passer à l'étape
+              suivante.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <div className="flex justify-between pt-4">
+          {onPrevious && (
+            <Button variant="outline" onClick={onPrevious}>
+              ← Précédent
+            </Button>
+          )}
+          <Button
+            className="ml-auto"
+            onClick={() => avancerMutation.mutate()}
+            disabled={avancerMutation.isPending}
+          >
+            {avancerMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Suivant →
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const tabsCount = [hasAlchimie, hasForge, hasJoaillerie].filter(
+    Boolean,
+  ).length;
+  const defaultTab = hasAlchimie
+    ? "alchimie"
+    : hasForge
+      ? "forge"
+      : "joaillerie";
 
   const mutationsPending = acheterMutation.isPending;
 
