@@ -328,6 +328,7 @@ const PersonnageNouveauV2 = () => {
         {etape === 9 && (
           <Etape9_Assemblages_V2
             personnageId={personnageId}
+            etapeCreation={personnage?.etape_creation ?? 0}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
