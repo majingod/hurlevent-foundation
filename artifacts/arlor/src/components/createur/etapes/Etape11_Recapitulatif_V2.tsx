@@ -36,10 +36,15 @@ interface Etape11Props {
 }
 
 interface TraitRacial {
-  nom?: string | null;
-  description?: string | null;
+  trait_id?: string | null;
+  trait_nom?: string | null;
+  trait_description?: string | null;
+  /** Coût intrinsèque du trait dans la table `traits_raciaux` (référentiel). */
   cout_xp?: number | null;
-  est_obligatoire?: boolean | null;
+  /** XP réellement dépensé par le personnage (0 si pris gratuitement). */
+  xp_depense?: number | null;
+  /** True si le trait a été pris sur le quota gratuit de la race. */
+  est_gratuit?: boolean | null;
 }
 
 interface CompetenceItem {
@@ -181,8 +186,6 @@ const Etape11_Recapitulatif_V2 = ({
   }
 
   const traits = asArray<TraitRacial>(recap.traits_raciaux);
-  const traitObligatoire = traits.find((t) => t.est_obligatoire);
-  const traitsOptionnels = traits.filter((t) => !t.est_obligatoire);
   const competences = asArray<CompetenceItem>(recap.competences);
   const sorts = asArray<SortItem>(recap.sorts);
   const prieres = asArray<PriereItem>(recap.prieres);
@@ -282,14 +285,9 @@ const Etape11_Recapitulatif_V2 = ({
           {traits.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucun trait racial.</p>
           ) : (
-            <>
-              {traitObligatoire && (
-                <TraitRow trait={traitObligatoire} obligatoire />
-              )}
-              {traitsOptionnels.map((t, i) => (
-                <TraitRow key={i} trait={t} />
-              ))}
-            </>
+            traits.map((t, i) => (
+              <TraitRow key={t.trait_id ?? i} trait={t} />
+            ))
           )}
         </CardContent>
       </Card>
@@ -610,24 +608,20 @@ const Info = ({
   </div>
 );
 
-const TraitRow = ({
-  trait,
-  obligatoire,
-}: {
-  trait: TraitRacial;
-  obligatoire?: boolean;
-}) => (
+const TraitRow = ({ trait }: { trait: TraitRacial }) => (
   <div className="border rounded-md p-3">
     <div className="flex items-center justify-between gap-2">
-      <span className="font-medium">{trait.nom}</span>
-      {obligatoire ? (
-        <Badge variant="secondary">Obligatoire</Badge>
-      ) : trait.cout_xp ? (
-        <Badge variant="outline">{trait.cout_xp} XP</Badge>
-      ) : null}
+      <span className="font-medium">
+        {trait.trait_nom ?? "(trait inconnu)"}
+      </span>
+      <Badge variant="outline">
+        {trait.est_gratuit ? "Gratuit" : `${trait.xp_depense ?? 0} XP`}
+      </Badge>
     </div>
-    {trait.description && (
-      <p className="text-xs text-muted-foreground mt-1">{trait.description}</p>
+    {trait.trait_description && (
+      <p className="text-xs text-muted-foreground mt-1">
+        {trait.trait_description}
+      </p>
     )}
   </div>
 );
