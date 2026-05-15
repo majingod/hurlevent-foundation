@@ -386,37 +386,57 @@ const Etape7_Prieres_V2 = ({
 
   if (!conditionsRemplies) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            Étape 7 — Prières divines indisponibles
-          </CardTitle>
-          <CardDescription>
-            Pour acquérir des prières, ce personnage doit posséder la compétence
-            « Acquisition de Domaine » au niveau 1 minimum, et être croyant.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-1 text-sm text-muted-foreground">
-          <p>
-            • Acquisition de Domaine :{" "}
-            <strong
-              className={
-                niveauAcquisition >= 1 ? "text-primary" : "text-destructive"
-              }
-            >
-              niveau {niveauAcquisition}
-            </strong>
-          </p>
-          <p>
-            • Croyant :{" "}
-            <strong
-              className={estCroyant ? "text-primary" : "text-destructive"}
-            >
-              {estCroyant ? "oui" : "non"}
-            </strong>
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-heading">
+              Étape 7 — Prières divines indisponibles
+            </CardTitle>
+            <CardDescription>
+              Pour acquérir des prières, ce personnage doit posséder la
+              compétence « Acquisition de Domaine » au niveau 1 minimum, et
+              être croyant.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              • Acquisition de Domaine :{" "}
+              <strong
+                className={
+                  niveauAcquisition >= 1 ? "text-primary" : "text-destructive"
+                }
+              >
+                niveau {niveauAcquisition}
+              </strong>
+            </p>
+            <p>
+              • Croyant :{" "}
+              <strong
+                className={estCroyant ? "text-primary" : "text-destructive"}
+              >
+                {estCroyant ? "oui" : "non"}
+              </strong>
+            </p>
+          </CardContent>
+        </Card>
+        <div className="flex justify-between pt-4">
+          {onPrevious && (
+            <Button variant="outline" onClick={onPrevious}>
+              ← Précédent
+            </Button>
+          )}
+          <Button
+            className="ml-auto"
+            onClick={() => avancerMutation.mutate()}
+            disabled={avancerMutation.isPending}
+          >
+            {avancerMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Suivant →
+          </Button>
+        </div>
+      </div>
     );
   }
 
