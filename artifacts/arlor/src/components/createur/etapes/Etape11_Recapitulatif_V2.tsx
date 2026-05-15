@@ -1,3 +1,4 @@
+// PR #77 — handler aligné sur le contrat valider_personnage_final
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,11 +96,23 @@ interface ObjetArtisanatItem {
   effet?: string | null;
 }
 
+interface ValidationError {
+  code?: string;
+  message?: string;
+  champ?: string;
+}
+
+interface ValidationWarning {
+  code?: string;
+  message?: string;
+}
+
 interface ValidationResult {
-  success?: boolean;
-  ok?: boolean;
-  errors?: string[];
-  erreurs?: string[];
+  valide?: boolean;
+  erreurs?: ValidationError[];
+  avertissements?: ValidationWarning[];
+  est_verrouille?: boolean;
+  non_autorise?: boolean;
   message?: string;
   [k: string]: unknown;
 }
@@ -143,24 +156,39 @@ const Etape11_Recapitulatif_V2 = ({
     },
     onSuccess: (data) => {
       const result = (data ?? {}) as ValidationResult;
-      const isOk = result.success === true || result.ok === true;
 
-      if (isOk) {
+      if (result.non_autorise === true) {
+        toast.error("Accès refusé", {
+          description:
+            "Vous n'êtes pas autorisé à finaliser ce personnage.",
+        });
+        return;
+      }
+
+      const avertissements = result.avertissements ?? [];
+      const avertDesc = avertissements
+        .map((a) => a.message ?? a.code)
+        .filter(Boolean)
+        .join("\n");
+
+      if (result.valide === true) {
         toast.success(
           result.message ?? "Personnage finalisé et verrouillé !",
+          avertDesc ? { description: avertDesc } : undefined,
         );
         onSuccess?.();
         return;
       }
 
-      const errs = result.errors ?? result.erreurs ?? [];
-      if (errs.length > 0) {
-        toast.error("Validation impossible", {
-          description: errs.join("\n"),
-        });
-      } else {
-        toast.error(result.message ?? "Validation impossible.");
-      }
+      const errs = result.erreurs ?? [];
+      const errDesc = errs
+        .map((e) => e.message ?? e.code)
+        .filter(Boolean)
+        .join("\n");
+
+      toast.error("Validation impossible", {
+        description: errDesc || result.message || "Erreur inconnue.",
+      });
     },
     onError: (err: Error) => {
       toast.error(err.message);
