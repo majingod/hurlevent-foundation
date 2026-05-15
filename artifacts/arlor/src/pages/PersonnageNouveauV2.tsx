@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -43,6 +43,11 @@ const PersonnageNouveauV2 = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+
+  // ?id= : reprise / modification d'un personnage précis depuis le tableau
+  // de bord. Si présent, on NE passe PAS par demarrer_creation_personnage.
+  const personnageIdParUrl = searchParams.get("id");
 
   const [personnageId, setPersonnageId] = useState<string | null>(null);
   const [etape, setEtape] = useState<number>(1);
@@ -50,13 +55,28 @@ const PersonnageNouveauV2 = () => {
   const [xpGainCourant, setXpGainCourant] = useState<number>(0);
   const [demarrage, setDemarrage] = useState(true);
   const [erreurDemarrage, setErreurDemarrage] = useState<string | null>(null);
+  // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
+  // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
+  const [etapeInitialisee, setEtapeInitialisee] = useState(false);
 
-  // 1) Démarrage : créer ou récupérer le brouillon
+  // 1) Démarrage : soit reprise d'un personnage précis (?id=),
+  //    soit création / récupération du brouillon unique.
   useEffect(() => {
     if (authLoading || !user) return;
-    if (personnageId) return; // garde anti double-démarrage : si on a déjà un perso, ne pas relancer la RPC
+    if (personnageId) return; // garde anti double-démarrage
     let annule = false;
 
+    // Cas A — reprise via ?id= (bouton « Continuer / Modifier » du tableau
+    // de bord). On prend l'id tel quel ; l'ownership est garanti par la RLS
+    // sur « personnages » (le SELECT de la query "v2-personnage" lèvera une
+    // erreur si le personnage n'appartient pas au joueur).
+    if (personnageIdParUrl) {
+      setPersonnageId(personnageIdParUrl);
+      setDemarrage(false);
+      return;
+    }
+
+    // Cas B — création / reprise du brouillon unique.
     const demarrer = async () => {
       setDemarrage(true);
       setErreurDemarrage(null);
@@ -87,6 +107,7 @@ const PersonnageNouveauV2 = () => {
       if (succesExplicite || brouillonExistant) {
         setPersonnageId(personnage_id!);
         setEtape(Math.max(1, Math.min(etape_courante, TOTAL_STEPS)));
+        setEtapeInitialisee(true);
         setDemarrage(false);
         return;
       }
@@ -103,22 +124,37 @@ const PersonnageNouveauV2 = () => {
     return () => {
       annule = true;
     };
-  }, [authLoading, user?.id]);
+  }, [authLoading, user?.id, personnageIdParUrl]);
 
   // 2) État du personnage (XP, étape) — rafraîchi après chaque mutation
-  const { data: personnage } = useQuery<PersonnageRow | null>({
-    queryKey: ["v2-personnage", personnageId],
-    enabled: !!personnageId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnages")
-        .select("id, nom, etape_creation, xp_total, xp_depense")
-        .eq("id", personnageId!)
-        .single();
-      if (error) throw error;
-      return data as PersonnageRow;
-    },
-  });
+  const { data: personnage, error: erreurPersonnage } =
+    useQuery<PersonnageRow | null>({
+      queryKey: ["v2-personnage", personnageId],
+      enabled: !!personnageId,
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("personnages")
+          .select("id, nom, etape_creation, xp_total, xp_depense")
+          .eq("id", personnageId!)
+          .single();
+        if (error) throw error;
+        return data as PersonnageRow;
+      },
+    });
+
+  // 1b) Reprise via ?id= : positionner l'étape initiale sur etape_creation
+  //     lu en base, une seule fois (ne pas écraser la navigation manuelle).
+  useEffect(() => {
+    if (etapeInitialisee) return;
+    if (!personnageIdParUrl) return;
+    if (!personnage) return;
+    const cible = Math.max(
+      1,
+      Math.min(personnage.etape_creation ?? 1, TOTAL_STEPS)
+    );
+    setEtape(cible);
+    setEtapeInitialisee(true);
+  }, [etapeInitialisee, personnageIdParUrl, personnage]);
 
   useEffect(() => {
     setXpDeltaCourant(0);
@@ -158,7 +194,12 @@ const PersonnageNouveauV2 = () => {
   };
 
   // -- Rendus de chargement / erreur ----------------------------------------
-  if (authLoading || demarrage) {
+  // Cas reprise via ?id= : on attend que l'étape initiale soit positionnée
+  // (ou qu'une erreur de chargement survienne) avant d'afficher le wizard.
+  const enAttenteEtapeInitiale =
+    !!personnageIdParUrl && !etapeInitialisee && !erreurPersonnage;
+
+  if (authLoading || demarrage || enAttenteEtapeInitiale) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-white/60">
         <Loader2 className="mr-3 h-5 w-5 animate-spin" />
@@ -167,13 +208,21 @@ const PersonnageNouveauV2 = () => {
     );
   }
 
-  if (erreurDemarrage || !personnageId) {
+  const messageErreurFatale =
+    erreurDemarrage ??
+    (personnageIdParUrl && erreurPersonnage
+      ? `Personnage introuvable ou inaccessible : ${erreurPersonnage.message}`
+      : null);
+
+  if (messageErreurFatale || !personnageId) {
     return (
       <div className="mx-auto mt-12 max-w-xl space-y-4 rounded-lg border border-red-700/50 bg-red-950/30 p-6 text-red-100">
         <h2 className="text-xl font-heading text-red-200">
           Création indisponible
         </h2>
-        <p className="text-sm">{erreurDemarrage ?? "Brouillon introuvable."}</p>
+        <p className="text-sm">
+          {messageErreurFatale ?? "Brouillon introuvable."}
+        </p>
         <Button variant="outline" onClick={() => navigate("/tableau-de-bord")}>
           Retour au tableau de bord
         </Button>

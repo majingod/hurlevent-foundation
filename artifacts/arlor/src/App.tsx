@@ -19,7 +19,6 @@ import Connexion from "@/pages/Connexion";
 
 // Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
-import PersonnageNouveau from "@/pages/PersonnageNouveau";
 import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 
@@ -66,14 +65,6 @@ const AppRoutes = () => (
     />
     <Route
       path="/personnage/nouveau"
-      element={
-        <ProtectedRoute>
-          <PersonnageNouveau />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/personnage/nouveau-v2"
       element={
         <ProtectedRoute>
           <PersonnageNouveauV2 />

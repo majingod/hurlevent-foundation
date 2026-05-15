@@ -63,6 +63,19 @@ const Etape10_Historique_V2 = ({
         p_ame_personnage: amePersonnage,
       });
       if (error) throw error;
+      // sauvegarder_etape_10 renvoie {succes, erreurs, avertissements, donnees}
+      // en HTTP 200 même en cas de refus métier (personnage_verrouille,
+      // ownership_refuse, contrainte_violee, non_authentifie, échec de
+      // valider_etape_10…). On traite succes:false comme une erreur : pas de
+      // faux toast de succès, et le wizard n'avance pas.
+      const payload = (data ?? {}) as Record<string, unknown>;
+      if (payload.succes === false) {
+        const erreurs =
+          (payload.erreurs as Array<{ code?: string; message?: string }>) ?? [];
+        const code = erreurs[0]?.code ?? "erreur";
+        const message = erreurs[0]?.message ?? "Sauvegarde refusée.";
+        throw new Error(`[${code}] ${message}`);
+      }
       return data;
     },
     onSuccess: () => {
