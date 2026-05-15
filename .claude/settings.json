@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm install --filter @workspace/arlor --prefer-offline"
+          }
+        ]
+      }
+    ]
+  }
+}
