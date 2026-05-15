@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +40,11 @@ type CercleDispo =
 
 interface Etape6Props {
   personnageId: string;
+  /**
+   * Etape de creation actuelle cote serveur (personnages.etape_creation).
+   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
+   */
+  etapeCreation?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -55,7 +60,7 @@ interface AcheterSortParams {
   p_nom_personnalise: string;
 }
 
-const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError, onPrevious }: Etape6Props) => {
+const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, onSuccess, onError, onPrevious }: Etape6Props) => {
   const queryClient = useQueryClient();
 
   const [cercleSelectionne, setCercleSelectionne] = useState<string | null>(null);
@@ -252,6 +257,24 @@ const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError, onPrevious }: Etape
     },
   });
 
+  // Auto-skip : si l'utilisateur arrive sur l'etape 6 en avancement
+  // (etapeCreation === 6) et qu'aucun cercle n'est disponible (l'etape
+  // d'acquisition de cercles n'a rien produit), on fait avancer
+  // etape_creation cote serveur immediatement, sans clic. Le useRef
+  // empeche le re-trigger dans un meme mount. En backward
+  // (etapeCreation > 6), l'effet ne se declenche pas et l'utilisateur
+  // voit l'ecran statique avec le bouton « Suivant ».
+  const skipDeclencheRef = useRef(false);
+  useEffect(() => {
+    if (skipDeclencheRef.current) return;
+    if (etapeCreation !== 6) return;
+    if (loadingCercles) return;
+    if (cerclesDisponibles && cerclesDisponibles.length > 0) return;
+    if (avancerMutation.isPending) return;
+    skipDeclencheRef.current = true;
+    avancerMutation.mutate();
+  }, [etapeCreation, loadingCercles, cerclesDisponibles, avancerMutation]);
+
   const peutAcheter =
     !!sortSelectionne &&
     !!zoneChoisie &&
@@ -284,16 +307,35 @@ const Etape6_Sorts_V2 = ({ personnageId, onSuccess, onError, onPrevious }: Etape
 
   if (!cerclesDisponibles || cerclesDisponibles.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            Aucun cercle disponible
-          </CardTitle>
-          <CardDescription>
-            Ce personnage n'a accès à aucun cercle de magie pour l'instant.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-heading">
+              Aucun cercle disponible
+            </CardTitle>
+            <CardDescription>
+              Ce personnage n'a accès à aucun cercle de magie pour l'instant.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <div className="flex justify-between pt-4">
+          {onPrevious && (
+            <Button variant="outline" onClick={onPrevious}>
+              ← Précédent
+            </Button>
+          )}
+          <Button
+            className="ml-auto"
+            onClick={() => avancerMutation.mutate()}
+            disabled={avancerMutation.isPending}
+          >
+            {avancerMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Suivant →
+          </Button>
+        </div>
+      </div>
     );
   }
 
