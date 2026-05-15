@@ -1,3 +1,4 @@
+// PR #77 — handler aligné sur le contrat valider_personnage_final
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
