@@ -163,12 +163,24 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       return;
     }
     const payload = (data ?? {}) as Record<string, unknown>;
+    const erreurs =
+      (payload.erreurs as Array<{ code?: string; message?: string }>) ?? [];
+    const avertissements =
+      (payload.avertissements as Array<{ code?: string; message?: string }>) ?? [];
+
     if (payload.succes === false) {
-      const code = (payload.code as string) ?? "erreur";
-      const message = (payload.message as string) ?? "Sauvegarde refusée.";
+      const premiereErreur = erreurs[0] ?? {};
+      const code = premiereErreur.code ?? "erreur";
+      const message = premiereErreur.message ?? "Sauvegarde refusée.";
       toast.error(`[${code}] ${message}`);
       return;
     }
+
+    // Avertissements éventuels (ex. justification_race_speciale_requise,
+    // demande_race_echec quand on choisit Chiméride ou Les Non-Races)
+    avertissements.forEach((a) => {
+      if (a.message) toast.info(a.message);
+    });
 
     toast.success("Race enregistrée.");
     onSuccess();

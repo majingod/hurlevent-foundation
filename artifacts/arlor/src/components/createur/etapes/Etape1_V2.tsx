@@ -159,12 +159,23 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
     }
 
     const payload = (data ?? {}) as Record<string, unknown>;
+    const erreurs =
+      (payload.erreurs as Array<{ code?: string; message?: string }>) ?? [];
+    const avertissements =
+      (payload.avertissements as Array<{ code?: string; message?: string }>) ?? [];
+
     if (payload.succes === false) {
-      const code = (payload.code as string) ?? "erreur";
-      const message = (payload.message as string) ?? "Sauvegarde refusée.";
+      const premiereErreur = erreurs[0] ?? {};
+      const code = premiereErreur.code ?? "erreur";
+      const message = premiereErreur.message ?? "Sauvegarde refusée.";
       toast.error(`[${code}] ${message}`);
       return;
     }
+
+    // Avertissements éventuels (cas succès — ex. validation propagée par valider_etape_1)
+    avertissements.forEach((a) => {
+      if (a.message) toast.info(a.message);
+    });
 
     toast.success("Étape 1 enregistrée.");
     onSuccess();
