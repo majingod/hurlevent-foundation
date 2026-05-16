@@ -534,7 +534,9 @@ const Etape5_Competences_V2 = ({
     );
 
     if (typeChoix === "religion") {
-      return (religions ?? []).map((r) => ({ value: r.id, label: r.nom }));
+      return (religions ?? [])
+        .filter((r): r is typeof r & { nom: string } => r.nom !== null)
+        .map((r) => ({ value: r.id, label: r.nom }));
     }
 
     if (typeChoix === "langue") {
@@ -637,6 +639,7 @@ const Etape5_Competences_V2 = ({
           .filter(Boolean) as string[],
       );
       return (famillesCriminelles ?? [])
+        .filter((f): f is typeof f & { nom: string } => f.nom !== null)
         .filter((f) => !dejaPrisAuNiveau.has(f.nom))
         .map((f) => ({ value: f.nom, label: f.nom }));
     }
@@ -1560,7 +1563,7 @@ const Etape5_Competences_V2 = ({
   // =======================================================================
 
   const renderCompetence = (comp: CompetenceWithNiveaux) => {
-    let body: JSX.Element | null = null;
+    let body: ReactNode = null;
     switch (comp.type_achat) {
       case "unique_avec_choix":
         body = renderUniqueAvecChoix(comp);
