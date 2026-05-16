@@ -242,9 +242,21 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       return;
     }
 
-    // Valider les choix obligatoires
+    // Valider les choix obligatoires, avec fallback automatique pour religion
+    // si le personnage est déjà croyant (sa religion étape 1 est utilisée).
+    // Ce fallback couvre le cas où l'utilisateur clique « Suivant » avant que
+    // le useEffect de pré-remplissage n'ait eu le temps de hydrater le state.
+    const choixEffectif: Record<string, string> = { ...choixParCompetence };
     for (const c of competencesAvecChoix) {
-      if (!choixParCompetence[c.id]) {
+      if (!choixEffectif[c.id]) {
+        if (
+          c.type_choix === "religion" &&
+          dejaCroyant &&
+          perso?.religion_id
+        ) {
+          choixEffectif[c.id] = perso.religion_id;
+          continue;
+        }
         const typeNom =
           c.type_choix === "religion" ? "religion" : "langue ancienne";
         toast.error(`Un choix de ${typeNom} est requis pour : ${c.nom}.`);
@@ -266,11 +278,11 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
     setSubmitting(true);
 
-    // Construire un objet de choix propre (filtré sur les compétences pertinentes)
+    // Construire un objet de choix propre (utilise le fallback religion ci-dessus)
     const choixFinaux: Record<string, string> = {};
     for (const c of competencesAvecChoix) {
-      if (choixParCompetence[c.id]) {
-        choixFinaux[c.id] = choixParCompetence[c.id];
+      if (choixEffectif[c.id]) {
+        choixFinaux[c.id] = choixEffectif[c.id];
       }
     }
 
