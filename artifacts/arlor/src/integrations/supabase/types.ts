@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       assemblages_runes: {
@@ -228,36 +203,42 @@ export type Database = {
       competences: {
         Row: {
           categorie: string | null
+          classes_requises: string[] | null
           description: string | null
           est_actif: boolean | null
           est_general: boolean | null
           id: string
           niveaux: Json | null
           nom: string | null
+          prerequis_competences: Json | null
           type_achat: string
           type_choix: string | null
           verrouillage_croise: boolean
         }
         Insert: {
           categorie?: string | null
+          classes_requises?: string[] | null
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
           id?: string
           niveaux?: Json | null
           nom?: string | null
+          prerequis_competences?: Json | null
           type_achat?: string
           type_choix?: string | null
           verrouillage_croise?: boolean
         }
         Update: {
           categorie?: string | null
+          classes_requises?: string[] | null
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
           id?: string
           niveaux?: Json | null
           nom?: string | null
+          prerequis_competences?: Json | null
           type_achat?: string
           type_choix?: string | null
           verrouillage_croise?: boolean
@@ -1271,6 +1252,48 @@ export type Database = {
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+        }
+        Relationships: []
+      }
+      parametres_jeu: {
+        Row: {
+          created_at: string | null
+          description_gn: string | null
+          email_contact: string | null
+          id: string
+          lien_discord: string | null
+          lien_facebook: string | null
+          lien_instagram: string | null
+          lien_site_web: string | null
+          nom_gn: string
+          texte_envoi_photos_race: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description_gn?: string | null
+          email_contact?: string | null
+          id?: string
+          lien_discord?: string | null
+          lien_facebook?: string | null
+          lien_instagram?: string | null
+          lien_site_web?: string | null
+          nom_gn?: string
+          texte_envoi_photos_race?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description_gn?: string | null
+          email_contact?: string | null
+          id?: string
+          lien_discord?: string | null
+          lien_facebook?: string | null
+          lien_instagram?: string | null
+          lien_site_web?: string | null
+          nom_gn?: string
+          texte_envoi_photos_race?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -5307,10 +5330,7 @@ export type Database = {
     }
     Functions: {
       acheter_assemblage: {
-        Args: {
-          p_assemblage_id: string
-          p_personnage_id: string
-        }
+        Args: { p_assemblage_id: string; p_personnage_id: string }
         Returns: Json
       }
       acheter_competence: {
@@ -5325,17 +5345,11 @@ export type Database = {
         Returns: Json
       }
       acheter_objet_forge: {
-        Args: {
-          p_objet_id: string
-          p_personnage_id: string
-        }
+        Args: { p_objet_id: string; p_personnage_id: string }
         Returns: Json
       }
       acheter_objet_joaillerie: {
-        Args: {
-          p_objet_id: string
-          p_personnage_id: string
-        }
+        Args: { p_objet_id: string; p_personnage_id: string }
         Returns: Json
       }
       acheter_priere: {
@@ -5351,10 +5365,7 @@ export type Database = {
         Returns: Json
       }
       acheter_recette: {
-        Args: {
-          p_personnage_id: string
-          p_recette_id: string
-        }
+        Args: { p_personnage_id: string; p_recette_id: string }
         Returns: Json
       }
       acheter_sort: {
@@ -5370,10 +5381,7 @@ export type Database = {
         Returns: Json
       }
       acheter_trait_racial: {
-        Args: {
-          p_personnage_id: string
-          p_trait_id: string
-        }
+        Args: { p_personnage_id: string; p_trait_id: string }
         Returns: Json
       }
       ajouter_presence_tardive: {
@@ -5386,8 +5394,16 @@ export type Database = {
       }
       approuver_race_demande: { Args: { p_demande_id: string }; Returns: Json }
       archiver_personnage: { Args: { p_personnage_id: string }; Returns: Json }
+      attribuer_competences_gratuites_classe: {
+        Args: { p_choix_par_competence?: Json; p_personnage_id: string }
+        Returns: Json
+      }
       attribuer_xp_evenement: {
         Args: { p_inscription_id: string; p_xp_montant: number }
+        Returns: Json
+      }
+      avancer_etape: {
+        Args: { p_etape_courante: number; p_personnage_id: string }
         Returns: Json
       }
       changer_role_utilisateur: {
@@ -5404,6 +5420,10 @@ export type Database = {
         Returns: Json
       }
       demarrer_creation_personnage: { Args: never; Returns: Json }
+      desacheter_competence: {
+        Args: { p_personnage_competence_id: string }
+        Returns: Json
+      }
       deverrouiller_personnage: {
         Args: { p_personnage_id: string }
         Returns: Json
@@ -5457,6 +5477,14 @@ export type Database = {
         }
         Returns: Json
       }
+      recalculer_ps_max: {
+        Args: { p_personnage_id: string }
+        Returns: undefined
+      }
+      recalculer_xp_personnage: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
       refuser_maitre_competence: {
         Args: { p_personnage_competence_id: string; p_raison?: string }
         Returns: Json
@@ -5500,7 +5528,11 @@ export type Database = {
         Returns: Json
       }
       sauvegarder_etape_4: {
-        Args: { p_classe_id: string; p_personnage_id: string }
+        Args: {
+          p_choix_par_competence?: Json
+          p_classe_id: string
+          p_personnage_id: string
+        }
         Returns: Json
       }
       update_user_role: {
@@ -5527,6 +5559,10 @@ export type Database = {
         Returns: boolean
       }
       valider_personnage_final: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
+      verifier_prerequis_competences: {
         Args: { p_personnage_id: string }
         Returns: Json
       }
@@ -5662,9 +5698,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
