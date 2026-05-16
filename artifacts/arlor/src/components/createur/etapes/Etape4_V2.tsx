@@ -467,10 +467,15 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
             }
 
             if (c.type_choix === "religion") {
-              const religionChoisieId = choixParCompetence[c.id];
-              const religionChoisie = religionChoisieId
+              // Affichage : si le perso est déjà croyant et qu'aucun choix
+              // explicite n'a été fait, pré-afficher sa religion (sans modifier
+              // le state — le fallback dans onSubmit garantit la validation).
+              const religionChoisieIdEffective =
+                choixParCompetence[c.id] ||
+                (dejaCroyant && perso?.religion_id ? perso.religion_id : "");
+              const religionChoisie = religionChoisieIdEffective
                 ? (religions as Array<any>).find(
-                    (r) => r.id === religionChoisieId
+                    (r) => r.id === religionChoisieIdEffective
                   )
                 : null;
               return (
@@ -479,7 +484,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                     {c.nom} — religion
                   </Label>
                   <Select
-                    value={choixParCompetence[c.id] ?? ""}
+                    value={religionChoisieIdEffective}
                     onValueChange={(v) =>
                       setChoixParCompetence((prev) => ({
                         ...prev,
