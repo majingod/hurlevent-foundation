@@ -274,8 +274,8 @@ const Etape8_Artisanat_V2 = ({
               Étape 8 — Artisanat
             </CardTitle>
             <CardDescription>
-              Aucune compétence d'artisanat acquise. Vous pouvez passer à l'étape
-              suivante.
+              Aucune compétence d'artisanat acquise — cette étape ne s'applique
+              pas à ce personnage.
             </CardDescription>
           </CardHeader>
         </Card>

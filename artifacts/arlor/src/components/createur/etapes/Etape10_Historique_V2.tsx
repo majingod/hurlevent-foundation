@@ -12,23 +12,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Loader2, Save } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
+import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 type PersonnageRow = Database["public"]["Tables"]["personnages"]["Row"];
-
-interface Etape10Props {
-  personnageId: string;
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
-  onPrevious?: () => void;
-}
 
 const Etape10_Historique_V2 = ({
   personnageId,
   onSuccess,
-  onError,
   onPrevious,
-}: Etape10Props) => {
+}: EtapeProps) => {
   const queryClient = useQueryClient();
 
   const [historique, setHistorique] = useState("");
@@ -80,12 +73,14 @@ const Etape10_Historique_V2 = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
+      queryClient.invalidateQueries({
+        queryKey: ["v2-personnage", personnageId],
+      });
       toast.success("Historique et âme sauvegardés !");
-      onSuccess?.();
+      onSuccess();
     },
     onError: (error: Error) => {
       toast.error(error.message);
-      onError?.(error);
     },
   });
 
@@ -174,17 +169,10 @@ const Etape10_Historique_V2 = ({
           onClick={() => sauvegarderMutation.mutate()}
           disabled={sauvegarderMutation.isPending}
         >
-          {sauvegarderMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sauvegarde…
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Sauvegarder
-            </>
+          {sauvegarderMutation.isPending && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
+          Suivant →
         </Button>
       </div>
     </div>
