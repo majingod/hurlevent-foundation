@@ -105,6 +105,16 @@ const TYPES_ACHAT_CASCADE = new Set([
   "multiple_avec_choix_par_niveau",
 ]);
 
+// Compétences dupliquées mage/pretre en DB, soumises au trigger
+// verifier_verrous_competences. Verrou mutuel : ne peut pas acheter
+// les 2 versions sur le même personnage.
+const COMP_VERROUS_MUTUELS = new Set([
+  "Assemblage de Runes",
+  "Canalisation",
+  "Développement Spirituel",
+  "Développement Spirituel Supérieur",
+]);
+
 // =========================================================================
 // HELPERS
 // =========================================================================
@@ -466,14 +476,77 @@ const Etape5_Competences_V2 = ({
   };
 
   /**
-   * True si la compétence est réservée à des classes dont le personnage ne
-   * fait pas partie. Blocage tout-ou-rien sur la compétence entière.
-   * classes_requises NULL ou vide = aucune restriction.
+   * Pour les compétences à verrou mutuel mage/pretre : si la classe du perso
+   * est mage ou pretre, l'autre version est réservée à la classe opposée.
+   * Renvoie le nom de la classe réservataire à afficher, ou null si pas concerné.
+   */
+  const classeReservataireOpposee = (
+    comp: CompetenceWithNiveaux,
+  ): string | null => {
+    if (!comp.nom || !COMP_VERROUS_MUTUELS.has(comp.nom)) return null;
+    const cat = normalizeCategorie(comp.categorie);
+    if (cat !== "mage" && cat !== "pretre") return null;
+    if (classeNom !== "mage" && classeNom !== "pretre") return null;
+    if (cat === classeNom) return null;
+    return cat; // 'mage' ou 'pretre' — la classe à laquelle la version est réservée
+  };
+
+  /**
+   * Pour les compétences à verrou mutuel : retourne le nom de la catégorie
+   * opposée si la version opposée a déjà été achetée par le perso. Sinon null.
+   */
+  const versionOpposeeAchetee = (
+    comp: CompetenceWithNiveaux,
+  ): string | null => {
+    if (!comp.nom || !COMP_VERROUS_MUTUELS.has(comp.nom)) return null;
+    const cat = normalizeCategorie(comp.categorie);
+    if (cat !== "mage" && cat !== "pretre") return null;
+    const opposingCat = cat === "mage" ? "pretre" : "mage";
+    const opposingComp = (competences ?? []).find(
+      (c) =>
+        c.nom === comp.nom && normalizeCategorie(c.categorie) === opposingCat,
+    );
+    if (!opposingComp) return null;
+    const achatsOp = achatsParCompetence.get(opposingComp.id) ?? [];
+    return achatsOp.length > 0 ? opposingCat : null;
+  };
+
+  /**
+   * Calcule le détail du blocage tout-ou-rien pour la compétence : retourne
+   * le contenu de MessageBlocage à afficher, ou null si pas bloquée.
+   * Priorités :
+   * 1. classes_requises explicite (ex: Bâton de Sorcier)
+   * 2. Réservation classe mage/pretre opposée (verrous mutuels pour mage/pretre)
+   * 3. Version opposée déjà achetée (verrou mutuel actif)
+   */
+  const blocageDetail = (
+    comp: CompetenceWithNiveaux,
+  ): { label: string; items: string[] } | null => {
+    const requises = comp.classes_requises;
+    if (requises && requises.length > 0 && !requises.includes(classeNom)) {
+      return { label: "Réservé aux classes :", items: requises };
+    }
+    const classeOpposee = classeReservataireOpposee(comp);
+    if (classeOpposee) {
+      return { label: "Réservé aux classes :", items: [classeOpposee] };
+    }
+    const versionOp = versionOpposeeAchetee(comp);
+    if (versionOp) {
+      const labelCat = versionOp === "mage" ? "Mage" : "Prêtre";
+      return {
+        label: "Déjà acquise via :",
+        items: [`Onglet ${labelCat}`],
+      };
+    }
+    return null;
+  };
+
+  /**
+   * True si la compétence est bloquée tout-ou-rien. Combine classes_requises,
+   * réservation mage/pretre, et verrou mutuel.
    */
   const classeBloque = (comp: CompetenceWithNiveaux): boolean => {
-    const requises = comp.classes_requises;
-    if (!requises || requises.length === 0) return false;
-    return !requises.includes(classeNom);
+    return blocageDetail(comp) !== null;
   };
 
   /**
@@ -534,6 +607,17 @@ const Etape5_Competences_V2 = ({
     );
 
     if (typeChoix === "religion") {
+      // Si le perso est déjà croyant, Connaissance des Religions ne peut
+      // viser que sa religion (cohérence métier : "consacré à une seule
+      // religion" — voir description de la compétence dans le Manuel).
+      if (personnage?.est_croyant && personnage?.religion_id) {
+        const sienne = (religions ?? []).find(
+          (r) => r.id === personnage.religion_id,
+        );
+        if (sienne && sienne.nom) {
+          return [{ value: sienne.id, label: sienne.nom }];
+        }
+      }
       return (religions ?? [])
         .filter((r): r is typeof r & { nom: string } => r.nom !== null)
         .map((r) => ({ value: r.id, label: r.nom }));
@@ -1043,8 +1127,11 @@ const Etape5_Competences_V2 = ({
             }
             onCheckedChange={(checked) => {
               if (checked) {
-                // Ouvre le panneau de choix (checkbox passe en "cochée intermédiaire")
-                setPendingChoix((p) => ({ ...p, [key]: "" }));
+                // Pré-sélectionner automatiquement si une seule option est
+                // disponible (cas : Connaissance des Religions pour un perso
+                // déjà croyant — sa religion est la seule option).
+                const defaultValue = options.length === 1 ? options[0].value : "";
+                setPendingChoix((p) => ({ ...p, [key]: defaultValue }));
               } else if (dejaAchete && achat) {
                 handleUncheck(comp, achat);
               } else {
@@ -1603,12 +1690,10 @@ const Etape5_Competences_V2 = ({
           {comp.description && (
             <p className="text-xs text-muted-foreground">{comp.description}</p>
           )}
-          {compBloqueeClasse && (
-            <MessageBlocage
-              label="Réservé aux classes :"
-              items={comp.classes_requises ?? []}
-            />
-          )}
+          {compBloqueeClasse && (() => {
+            const detail = blocageDetail(comp);
+            return detail ? <MessageBlocage {...detail} /> : null;
+          })()}
           {!compBloqueeClasse && prereqCompBloquee && raisonPrereqGlobal && (
             <MessageBlocage {...parsePrereqRaison(raisonPrereqGlobal)} />
           )}
