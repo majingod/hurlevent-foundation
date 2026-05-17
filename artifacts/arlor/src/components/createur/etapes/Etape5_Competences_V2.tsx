@@ -614,12 +614,14 @@ const Etape5_Competences_V2 = ({
         const sienne = (religions ?? []).find(
           (r) => r.id === personnage.religion_id,
         );
-        if (sienne && sienne.nom) {
+        if (sienne && sienne.nom && !dejaPris.has(sienne.id)) {
           return [{ value: sienne.id, label: sienne.nom }];
         }
+        return [];
       }
       return (religions ?? [])
         .filter((r): r is typeof r & { nom: string } => r.nom !== null)
+        .filter((r) => !dejaPris.has(r.id))
         .map((r) => ({ value: r.id, label: r.nom }));
     }
 
