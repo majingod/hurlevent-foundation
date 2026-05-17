@@ -2,6 +2,67 @@
 
 Liste des chantiers de dette technique identifiés, par priorité.
 
+## NEW — MAJ Manuel des règles 2026 : Connaissances des Religions (priorité moyenne)
+
+**Découvert** : session 7 (17 mai 2026) lors du debug du Bug #21.
+
+**Symptôme** : le Manuel des règles 2026 indique pour la compétence Connaissances des Religions :
+
+> "Cette compétence peut être achetée plusieurs fois uniquement afin d'acquérir la connaissance des rites et coutumes de différentes religions."
+
+Or la règle métier réelle (confirmée par Fred en session 7) est :
+- 1 achat max par personnage
+- Religion forcée à celle du personnage s'il est croyant (sinon choix libre)
+
+**Cause** : décalage entre le manuel publié et la règle effectivement appliquée par les animateurs / la base de données.
+
+**Impact actuel** :
+- DB et frontend alignés sur la règle réelle (post PR #91 + rollback session 7)
+- Manuel papier / docx encore obsolète → confusion possible pour les joueurs
+
+**Plan** :
+1. Réécrire la section "Connaissances des Religions" du Manuel 2026
+2. Publier la version corrigée
+
+**Préreqs / dépendances** : aucun (chantier purement éditorial).
+
+**Effort estimé** : 15 minutes.
+
+**Liens** :
+- Migrations Bug #21 : `20260517182730_bug21_connaissances_religions_achetable_multiple.sql` + `20260517191621_rollback_bug21_connaissances_religions_unique.sql`
+- PR #91 (frontend : croyant → seule sa religion dans le dropdown)
+
+---
+
+## NEW — peut_acheter_competence : UUID brut dans message anti-doublon (priorité basse)
+
+**Découvert** : session 7 (17 mai 2026) lors des tests Bug #21.
+
+**Symptôme** : la branche `multiple_langue` de `peut_acheter_competence` renvoie un message du type :
+
+> `Vous avez déjà acquis "c821b270-d314-4092-9899-2fd80925e873"`
+
+quand `p_choix_achat` est un UUID (cas où le choix référence une ligne d'une table source comme `langues`). L'utilisateur voit un UUID brut au lieu du nom lisible.
+
+**Cause** : le format générique `format('Vous avez déjà acquis "%s"', p_choix_achat)` n'a pas de logique pour résoudre l'UUID en nom selon `type_choix`.
+
+**Impact actuel** :
+- Mineur : la branche `multiple_langue` n'est plus utilisée pour Religions (post rollback Bug #21)
+- Reste un défaut pour `Langue supplémentaire` et `Décryptage` qui utilisent toujours `multiple_langue` avec UUID de langue
+
+**Plan** :
+1. Détecter dans `peut_acheter_competence` si `type_choix` ∈ {langue, langue_ancienne, religion}
+2. Résoudre l'UUID via `(SELECT nom FROM langues WHERE id = p_choix_achat::uuid)` ou équivalent
+3. Fallback sur l'UUID brut si la résolution échoue
+
+**Préreqs / dépendances** : aucun.
+
+**Effort estimé** : 30 minutes (incluant tests).
+
+**Liens** : migration prévue pour une future session.
+
+---
+
 ## NEW — baseline_schema-regen (priorité haute après stabilisation)
 
 **Découvert** : session 6 (16 mai 2026) lors du merge de F4.
