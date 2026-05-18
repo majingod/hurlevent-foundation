@@ -1033,6 +1033,7 @@ export type Database = {
           id: string
           nom: string
           ordre: number | null
+          recherche_tsv: unknown
           sous_titre: string | null
           updated_at: string | null
         }
@@ -1045,6 +1046,7 @@ export type Database = {
           id?: string
           nom: string
           ordre?: number | null
+          recherche_tsv?: unknown
           sous_titre?: string | null
           updated_at?: string | null
         }
@@ -1057,6 +1059,7 @@ export type Database = {
           id?: string
           nom?: string
           ordre?: number | null
+          recherche_tsv?: unknown
           sous_titre?: string | null
           updated_at?: string | null
         }
@@ -5484,6 +5487,18 @@ export type Database = {
       recalculer_xp_personnage: {
         Args: { p_personnage_id: string }
         Returns: Json
+      }
+      rechercher_encyclopedie: {
+        Args: { p_terme: string }
+        Returns: {
+          categorie: string
+          id: string
+          rang: number
+          snippet: string
+          sous_titre: string
+          titre: string
+          type: string
+        }[]
       }
       refuser_maitre_competence: {
         Args: { p_personnage_competence_id: string; p_raison?: string }

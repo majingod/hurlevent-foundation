@@ -47,3 +47,22 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
   - Lyla + Décryptage avec L'Ancien Démoniaque déjà acquis → `"Vous avez déjà acquis \"L'Ancien Démoniaque\""`
 - **Dette retirée** : `peut_acheter_competence : UUID brut dans message anti-doublon` (`docs/hurlevent_dette_technique.md`)
 - **Branche** : `fix-uuid-resolution-peut-acheter-competence`
+
+### Session 9 — Phase 3.3a recherche encyclopédie (18 mai 2026)
+
+- **Objectif** : implémenter la recherche plein texte dans l'encyclopédie (Phase 3.3 du plan directeur, scope `lore` seulement)
+- **Migrations appliquées via MCP** :
+  - `20260518174956_phase3_3a_recherche_encyclopedie_lore` :
+    - Generated column `lore.recherche_tsv` (tsvector, `'french'`, pondération A/B/C sur nom/sous_titre/description)
+    - Index GIN `idx_lore_recherche_tsv`
+    - RPC `rechercher_encyclopedie(p_terme text)` avec `plainto_tsquery`, `ts_rank`, `ts_headline` (highlighting `<mark>`)
+  - `20260518175223_phase3_3a_ajouter_section_recherche` :
+    - INSERT dans `sections_encyclopedie` : section 'recherche' (ordre=0, icon='Search', label='Recherche', url_key='recherche')
+    - Idempotent via `WHERE NOT EXISTS`
+- **Tests validés en prod via execute_sql** :
+  - "Torekh" → 7 résultats, "Royaume de Torekh" et "Torekh" (cité) en tête
+  - "fae" → 4 résultats avec highlighting `<mark>Fae</mark>`
+  - "capitale" → 7 résultats (stemming français fonctionnel)
+- **Frontend** : nouvel onglet "Recherche" en première position dans Encyclopedie.tsx. Composant RechercheSection avec debounce 300ms, navigation au clic vers l'onglet d'origine (lore → tab=monde + filtre par nom).
+- **Reste pour 3.3b/c** : étendre la recherche à `bestiaire`, `religions`, `competences`, `sorts`, `prieres`, etc. (vue UNION ou nouvelles colonnes tsvector par table).
+- **Branche** : `feat-phase3-3a-recherche-encyclopedie`
