@@ -96,6 +96,41 @@ Or la règle métier réelle (confirmée par Fred en session 7) est :
 
 **Effort estimé** : 30-60 min de debug Vercel (sans garantie ; possible escalade au support Vercel).
 
+**Observations** :
+- Session 7 : ne marche pas
+- Session 8 : ne marche pas (malgré le reconnect)
+- Session 9 PR #96 : ne marche pas
+- Session 9 PR #97 : auto-trigger ✅ (un seul succès)
+- Session 9 PR #98 : manuel
+- Session 10 PR #99 : ne marche pas
+
+**Hypothèse infirmée (session 10)** : PR #97 = anomalie isolée, pas un retour à la normale du reconnect Git de session 6/8.
+
 **Liens** :
 - Session 8 — PR #95 : aucun preview déclenché malgré push complet
 - MCP `Vercel:list_deployments` : `creator` distingue auto (identifiant distinct) vs manuel (`majingod`)
+
+---
+
+## NEW — RechercheSection : routage des nouveaux types (priorité moyenne)
+
+**Découvert** : session 10 (18 mai 2026) lors de la livraison Phase 3.3b (PR #99).
+
+**Symptôme** : Le RPC `rechercher_encyclopedie` retourne désormais 4 types (`lore`, `bestiaire`, `religion`, `competence`) suite à la PR #99. Le composant `RechercheSection.tsx` côté frontend (créé en PR #98) ne sait probablement router que le type `lore` au clic d'un résultat.
+
+**Cause** : Le composant a été conçu avant l'extension multi-tables. Pas de switch/case sur `type` pour la navigation.
+
+**Impact actuel** :
+- Backend opérationnel, recherche multi-tables fonctionne (testée : `rechercher_encyclopedie('magie')` → 4 types représentés)
+- Clic sur un résultat `bestiaire` / `religion` / `competence` : comportement à confirmer (probablement cassé ou redirige sur `/lore`)
+
+**Plan** :
+1. Cat `RechercheSection.tsx` pour confirmer l'état exact du routage
+2. Étendre le switch (ou l'ajouter s'il est absent) pour router les 4 types vers leurs pages respectives
+3. Vérifier que les pages cibles acceptent un paramètre `id` ou nom pour naviguer directement
+
+**Préreqs / dépendances** : aucun.
+
+**Effort estimé** : 30 minutes (incluant tests sur les 4 types).
+
+**Liens** : PR #99 (extension backend Phase 3.3b).
