@@ -66,3 +66,15 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
 - **Frontend** : nouvel onglet "Recherche" en première position dans Encyclopedie.tsx. Composant RechercheSection avec debounce 300ms, navigation au clic vers l'onglet d'origine (lore → tab=monde + filtre par nom).
 - **Reste pour 3.3b/c** : étendre la recherche à `bestiaire`, `religions`, `competences`, `sorts`, `prieres`, etc. (vue UNION ou nouvelles colonnes tsvector par table).
 - **Branche** : `feat-phase3-3a-recherche-encyclopedie`
+
+### Session 10 — Phase 3.3b extension recherche multi-tables (18 mai 2026)
+
+- **Objectif** : étendre la recherche encyclopédie à `bestiaire`, `religions`, `competences`
+- **Migrations appliquées via MCP** :
+  - `20260518193926_phase3_3b_recherche_encyclopedie_etend_3_tables` : colonnes generated `recherche_tsv` + index GIN
+  - `20260518193944_phase3_3b_recherche_encyclopedie_rpc_multi_tables` : RPC refactoré en UNION ALL pour 4 sources (lore + bestiaire + religion + competence)
+- **Pattern réutilisable** : ALTER ADD COLUMN generated + CREATE INDEX GIN + UNION ALL au RPC
+- **Pondération FTS** : nom (A) > champ catégoriel (B) > description (C) > champs annexes (D)
+- **Mergé via** : PR #99 (squash and merge)
+- **Dette créée** : `RechercheSection` frontend (routage des nouveaux types) — voir `hurlevent_dette_technique.md`
+- **Total migrations alignées** : 40 entrées en `schema_migrations`, identiques au repo
