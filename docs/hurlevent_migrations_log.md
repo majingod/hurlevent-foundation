@@ -32,3 +32,18 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
 - **Méthode** : reconstitution des SQL depuis `schema_migrations.statements` via MCP Supabase (cf F4)
 - **Constat phase B (fix frontend croyant → sa religion)** : déjà mergée via PR #91 (16 mai), aucun commit code nécessaire
 - **Branche** : `claude/fix-bug21-religions-croyant-force` (alignement migrations + docs uniquement)
+
+### Session 9 — Dette UUID brut résolue (18 mai 2026)
+
+- **Objectif** : résoudre la dette technique "peut_acheter_competence : UUID brut dans message anti-doublon" (priorité basse, ajoutée session 7)
+- **Migration appliquée via MCP** (`20260518160244_fix_peut_acheter_competence_resoudre_uuid_choix_achat`) :
+  - Variables locales ajoutées : `v_nom_lisible text`, `v_choix_existant text`
+  - Branche `multiple_langue` : résolution UUID → nom lisible via tables `langues` et `religions` selon `v_competence.type_choix` ∈ {langue, langue_ancienne, religion}
+  - Branche `unique_avec_choix` : mini-fix bonus, message "Déjà acquis" inclut le nom du choix existant si résolvable
+  - Pattern CASE avec fallback sur la valeur brute
+  - Comparaison `id::text = choix_achat` pour éviter le cast UUID (plus safe sur valeurs non-UUID)
+- **Tests validés en prod via MCP `execute_sql`** :
+  - Vilo + Connaissances des Religions déjà acquise → `"Déjà acquis : Les Éternels de Shen-Gon"`
+  - Lyla + Décryptage avec L'Ancien Démoniaque déjà acquis → `"Vous avez déjà acquis \"L'Ancien Démoniaque\""`
+- **Dette retirée** : `peut_acheter_competence : UUID brut dans message anti-doublon` (`docs/hurlevent_dette_technique.md`)
+- **Branche** : `fix-uuid-resolution-peut-acheter-competence`
