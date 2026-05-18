@@ -95,3 +95,36 @@ quand `p_choix_achat` est un UUID (cas où le choix référence une ligne d'une 
 **Liens** :
 - PR #92 (F4 mergé en bypass) : https://github.com/majingod/hurlevent-foundation/pull/92
 - Branche `chore-f4-aligner-migrations-repo-base` poussée comme référence historique
+
+---
+
+## NEW — Vercel auto-trigger preview branches (priorité moyenne, haute friction quotidienne)
+
+**Découvert** : session 6 (16 mai 2026), confirmé non-résolu en session 8 (17 mai 2026).
+
+**Symptôme** : les push sur les branches non-`main` ne déclenchent **plus** automatiquement de déploiement preview Vercel. Aucun build, aucun preview URL dans les checks GitHub.
+
+**Workaround validé** : Vercel UI → Deployments → Create Deployment → sélectionner la branche → Create Preview Deployment.
+
+**Causes investiguées (non concluantes)** :
+- `Require Verified Commits` activé sur Vercel : les commits Claude Code ne sont pas signés → désactivé, sans effet
+- `Ignored Build Step` réglé sur `Automatic` au lieu de `On` : modifié, sans effet
+- Git disconnect/reconnect dans Vercel settings : tenté en fin de session 6, sans effet (reconfirmé en session 8 sur PR #95)
+
+**Impact actuel** :
+- Chaque PR nécessite un déclenchement manuel du preview
+- Le check Vercel sur GitHub branch protection reste en attente jusqu'au trigger manuel
+- Friction non-bloquante mais répétée à chaque PR
+
+**Plan** :
+1. Inspecter les webhook deliveries côté Vercel (intégration GitHub) pour identifier la cause
+2. Si nécessaire : supprimer/recréer complètement l'intégration GitHub côté Vercel
+3. Valider via MCP `Vercel:list_deployments` que le champ `creator` ≠ `majingod` après push (signe d'auto-trigger fonctionnel)
+
+**Préreqs / dépendances** : aucun.
+
+**Effort estimé** : 30-60 min de debug Vercel (sans garantie ; possible escalade au support Vercel).
+
+**Liens** :
+- Session 8 — PR #95 : aucun preview déclenché malgré push complet
+- MCP `Vercel:list_deployments` : `creator` distingue auto (identifiant distinct) vs manuel (`majingod`)
