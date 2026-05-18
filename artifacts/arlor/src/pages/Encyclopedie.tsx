@@ -108,15 +108,17 @@ interface TraitRacial {
 }
 
 type SectionKey =
+  | "recherche"
   | "races" | "traits" | "classes" | "competences" | "magie" | "prieres" | "religions"
   | "alchimie" | "assemblages" | "forge" | "joaillerie" | "bestiaire" | "lore" | "pieges";
 
 const LUCIDE_ICON_MAP: Record<string, React.ElementType> = {
   Users, Sparkle, Shield, Swords, Sparkles, Church,
-  BookOpen, FlaskConical, Gem, Hammer, Bomb, Skull, Globe,
+  BookOpen, FlaskConical, Gem, Hammer, Bomb, Skull, Globe, Search,
 };
 
 const URL_TO_KEY: Record<string, SectionKey> = {
+  "recherche": "recherche",
   "races": "races",
   "traits-raciaux": "traits",
   "classes": "classes",
@@ -238,6 +240,16 @@ const Encyclopedie = () => {
     fetchAll();
   }, []);
 
+  const handleSelectResult = (type: string, _id: string, titre: string) => {
+    if (type === "lore") {
+      setActive("lore");
+      setSearch(titre);
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", "monde");
+      setSearchParams(next, { replace: true });
+    }
+  };
+
   const handleTabClick = (key: SectionKey) => {
     setActive(key);
     const urlKey = Object.entries(URL_TO_KEY).find(([, v]) => v === key)?.[0];
@@ -286,17 +298,20 @@ const Encyclopedie = () => {
         </div>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher dans cet onglet…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      {active !== "recherche" && (
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher dans cet onglet…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      )}
 
       <div>
+        {active === "recherche" && <RechercheSection onSelectResult={handleSelectResult} />}
         {active === "races" && <RacesSection races={races} searchQuery={search} />}
         {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} />}
         {active === "classes" && <ClassesSection classes={classes} searchQuery={search} />}
@@ -324,6 +339,85 @@ const Encyclopedie = () => {
         {active === "pieges" && <PiegesSection pieges={pieges} searchQuery={search} />}
         {active === "bestiaire" && <BestiaireSection creatures={creatures} searchQuery={search} />}
         {active === "lore" && <LoreSection loreEntries={loreEntries} searchQuery={search} />}
+      </div>
+    </div>
+  );
+};
+
+const RechercheSection = ({ onSelectResult }: { onSelectResult: (type: string, id: string, titre: string) => void }) => {
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [results, setResults] = useState<Array<{ type: string; id: string; titre: string; sous_titre: string | null; categorie: string | null; snippet: string | null; rang: number; }>>([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    if (debouncedQuery.trim().length < 2) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    supabase.rpc("rechercher_encyclopedie", { p_terme: debouncedQuery }).then(({ data, error }) => {
+      if (error) {
+        console.error("[rechercher_encyclopedie]", error);
+        setResults([]);
+      } else {
+        setResults((data ?? []) as typeof results);
+      }
+      setSearching(false);
+    });
+  }, [debouncedQuery]);
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Recherche globale</h2>
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher dans toute l'encyclopédie…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="pl-10"
+          autoFocus
+        />
+      </div>
+      {searching && <p className="text-muted-foreground text-center py-2">Recherche en cours…</p>}
+      {!searching && debouncedQuery.trim().length >= 2 && results.length === 0 && (
+        <p className="text-muted-foreground text-center py-6">Aucun résultat pour « {debouncedQuery} ».</p>
+      )}
+      {!searching && debouncedQuery.trim().length < 2 && (
+        <p className="text-muted-foreground text-center py-6">Saisis au moins 2 caractères pour démarrer la recherche.</p>
+      )}
+      <div className="space-y-3">
+        {results.map((r) => (
+          <Card
+            key={`${r.type}-${r.id}`}
+            className="cursor-pointer border-primary/10 bg-card/50 hover:border-primary/30 transition-all"
+            onClick={() => onSelectResult(r.type, r.id, r.titre)}
+          >
+            <CardHeader className="pb-2">
+              <div className="flex-1 min-w-0">
+                <CardTitle className="font-heading text-lg">{r.titre}</CardTitle>
+                {r.sous_titre && (
+                  <p className="text-sm text-muted-foreground mt-1">{r.sous_titre}</p>
+                )}
+                <Badge variant="secondary" className="mt-2 text-xs">
+                  {r.type === "lore" ? "Monde de Destéa" : r.type}
+                </Badge>
+              </div>
+            </CardHeader>
+            {r.snippet && (
+              <CardContent className="text-sm text-muted-foreground">
+                <div dangerouslySetInnerHTML={{ __html: r.snippet }} />
+              </CardContent>
+            )}
+          </Card>
+        ))}
       </div>
     </div>
   );
