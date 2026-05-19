@@ -33,48 +33,41 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
 - **Constat phase B (fix frontend croyant → sa religion)** : déjà mergée via PR #91 (16 mai), aucun commit code nécessaire
 - **Branche** : `claude/fix-bug21-religions-croyant-force` (alignement migrations + docs uniquement)
 
-### Session 9 — Dette UUID brut résolue (18 mai 2026)
+### Session 9 — UUID resolved + Phase 3.3a recherche lore (18 mai 2026)
 
-- **Objectif** : résoudre la dette technique "peut_acheter_competence : UUID brut dans message anti-doublon" (priorité basse, ajoutée session 7)
-- **Migration appliquée via MCP** (`20260518160244_fix_peut_acheter_competence_resoudre_uuid_choix_achat`) :
-  - Variables locales ajoutées : `v_nom_lisible text`, `v_choix_existant text`
-  - Branche `multiple_langue` : résolution UUID → nom lisible via tables `langues` et `religions` selon `v_competence.type_choix` ∈ {langue, langue_ancienne, religion}
-  - Branche `unique_avec_choix` : mini-fix bonus, message "Déjà acquis" inclut le nom du choix existant si résolvable
-  - Pattern CASE avec fallback sur la valeur brute
-  - Comparaison `id::text = choix_achat` pour éviter le cast UUID (plus safe sur valeurs non-UUID)
-- **Tests validés en prod via MCP `execute_sql`** :
-  - Vilo + Connaissances des Religions déjà acquise → `"Déjà acquis : Les Éternels de Shen-Gon"`
-  - Lyla + Décryptage avec L'Ancien Démoniaque déjà acquis → `"Vous avez déjà acquis \"L'Ancien Démoniaque\""`
-- **Dette retirée** : `peut_acheter_competence : UUID brut dans message anti-doublon` (`docs/hurlevent_dette_technique.md`)
-- **Branche** : `fix-uuid-resolution-peut-acheter-competence`
+- **Objectif** : améliorer un message d'erreur + ajouter recherche plein texte (phase 3.3a du plan directeur)
+- **3 migrations appliquées via MCP** :
+  - `20260518160244_peut_acheter_competence_uuid_resolved` (PR #97) — résolution UUID en nom lisible dans branches `multiple_langue` + `unique_avec_choix` (Langues, Décryptage)
+  - `20260518192800_phase3_3a_recherche_lore_tsv_index` (PR #98) — generated column `lore.recherche_tsv` (pondération nom A > sous_titre B > description C > categorie D) + index GIN
+  - `20260518192824_phase3_3a_rpc_rechercher_encyclopedie` (PR #98) — RPC avec `plainto_tsquery` + `ts_rank` + `ts_headline` (highlighting `<mark>`)
+- **PRs mergées** : #96 (docs Vercel dette), #97 (UUID), #98 (recherche lore)
+- **Migrations en base** : 38 entrées (37 versionnées + baseline)
+- **Tests** : `rechercher_encyclopedie('hurlevent')` retournait correctement les lores matchants
 
-### Session 9 — Phase 3.3a recherche encyclopédie (18 mai 2026)
+### Session 10 — Phase 3.3b multi-tables (18 mai 2026)
 
-- **Objectif** : implémenter la recherche plein texte dans l'encyclopédie (Phase 3.3 du plan directeur, scope `lore` seulement)
-- **Migrations appliquées via MCP** :
-  - `20260518174956_phase3_3a_recherche_encyclopedie_lore` :
-    - Generated column `lore.recherche_tsv` (tsvector, `'french'`, pondération A/B/C sur nom/sous_titre/description)
-    - Index GIN `idx_lore_recherche_tsv`
-    - RPC `rechercher_encyclopedie(p_terme text)` avec `plainto_tsquery`, `ts_rank`, `ts_headline` (highlighting `<mark>`)
-  - `20260518175223_phase3_3a_ajouter_section_recherche` :
-    - INSERT dans `sections_encyclopedie` : section 'recherche' (ordre=0, icon='Search', label='Recherche', url_key='recherche')
-    - Idempotent via `WHERE NOT EXISTS`
-- **Tests validés en prod via execute_sql** :
-  - "Torekh" → 7 résultats, "Royaume de Torekh" et "Torekh" (cité) en tête
-  - "fae" → 4 résultats avec highlighting `<mark>Fae</mark>`
-  - "capitale" → 7 résultats (stemming français fonctionnel)
-- **Frontend** : nouvel onglet "Recherche" en première position dans Encyclopedie.tsx. Composant RechercheSection avec debounce 300ms, navigation au clic vers l'onglet d'origine (lore → tab=monde + filtre par nom).
-- **Reste pour 3.3b/c** : étendre la recherche à `bestiaire`, `religions`, `competences`, `sorts`, `prieres`, etc. (vue UNION ou nouvelles colonnes tsvector par table).
-- **Branche** : `feat-phase3-3a-recherche-encyclopedie`
+- **Objectif** : étendre la recherche à bestiaire + religions + competences
+- **2 migrations appliquées via MCP** :
+  - `20260518193926_phase3_3b_recherche_encyclopedie_etend_3_tables` (PR #99) — generated columns `recherche_tsv` + index GIN sur `bestiaire`, `religions`, `competences`
+  - `20260518193944_phase3_3b_recherche_encyclopedie_rpc_multi_tables` (PR #99) — refacto du RPC en UNION ALL pour 4 sources, signature de retour inchangée, type discriminant ajouté
+- **PRs mergées** : #99 (Phase 3.3b), #100 (docs session 10)
+- **Migrations en base** : 40 entrées (39 versionnées + baseline)
+- **Dette créée** : routing frontend `RechercheSection` ne couvre que `lore` (à étendre aux 4 types)
+- **Pattern confirmé** : ajouter une table = 1 ALTER + 1 INDEX + 1 SELECT dans UNION
 
-### Session 10 — Phase 3.3b extension recherche multi-tables (18 mai 2026)
+### Session 11 — Phase 3.3c sorts+prieres + 2 fixes frontend (19 mai 2026)
 
-- **Objectif** : étendre la recherche encyclopédie à `bestiaire`, `religions`, `competences`
-- **Migrations appliquées via MCP** :
-  - `20260518193926_phase3_3b_recherche_encyclopedie_etend_3_tables` : colonnes generated `recherche_tsv` + index GIN
-  - `20260518193944_phase3_3b_recherche_encyclopedie_rpc_multi_tables` : RPC refactoré en UNION ALL pour 4 sources (lore + bestiaire + religion + competence)
-- **Pattern réutilisable** : ALTER ADD COLUMN generated + CREATE INDEX GIN + UNION ALL au RPC
-- **Pondération FTS** : nom (A) > champ catégoriel (B) > description (C) > champs annexes (D)
-- **Mergé via** : PR #99 (squash and merge)
-- **Dette créée** : `RechercheSection` frontend (routage des nouveaux types) — voir `hurlevent_dette_technique.md`
-- **Total migrations alignées** : 40 entrées en `schema_migrations`, identiques au repo
+- **Objectif** : compléter la Phase 3.3 (sorts + prières) + fermer la dette frontend de routing
+- **3 migrations appliquées via MCP** :
+  - `20260519183304_phase_3_3c_tsv_sorts_prieres` (PR #102) — generated columns `recherche_tsv` + index GIN sur `sorts` (135 actifs) et `prieres` (121 actifs)
+  - `20260519183333_phase_3_3c_rpc_sorts_prieres` (PR #102) — RPC étendu UNION ALL à 6 sources, **version cassée** (alias `AS` manquants après UNION ALL → `ORDER BY rang` plante au runtime)
+  - `20260519183412_phase_3_3c_rpc_sorts_prieres_fix_alias` (PR #102) — RPC v2 fonctionnelle, alias explicites partout
+- **3 PRs mergées** :
+  - **PR #101** — `fix(encyclopedie)` : table `RPC_TYPE_TO_TARGET` dans `Encyclopedie.tsx` route les 4 types (lore + bestiaire + religion + competence). Source unique de vérité pour section + URL tab + label badge.
+  - **PR #102** — `feat(encyclopedie)` Phase 3.3c : 3 migrations + 2 entrées dans `RPC_TYPE_TO_TARGET` (sort + priere). RPC final retourne 6 types.
+  - **PR #103** — `fix(encyclopedie)` : suppression du `useEffect [active] { setSearch("") }` qui vidait le filtre après navigation depuis recherche. Régression silencieuse latente depuis PR #98, invisible pour lore (peu d'items) mais évidente pour sorts/prières.
+- **Migrations en base** : 43 entrées (42 versionnées + baseline)
+- **Tests prod** : 5/5 — foudre → sorts+prières filtrés correctement, hurlevent → lore (régression check), clic manuel onglet → search clear.
+- **Phase 3.3 complète** : recherche plein texte fonctionnelle sur 6 types.
+- **Leçon clé pattern SQL** : pour `UNION ALL` avec `ORDER BY <colonne>` après, les alias `AS <colonne>` sont OBLIGATOIRES dans chaque SELECT, sinon plante au runtime (cf migration 42).
+- **Leçon clé frontend** : Avant tout fix élaboré, confirmer l'environnement de test (preview vs prod) et le statut de merge de la PR.
