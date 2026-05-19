@@ -2,6 +2,37 @@
 
 Liste des chantiers de dette technique identifiés, par priorité.
 
+---
+
+## NEW — Pré-ouverture accordéon cible après navigation depuis recherche (priorité basse)
+
+**Découvert** : session 11 (19 mai 2026) lors de la validation Phase 3.3c.
+
+**Symptôme** : quand l'utilisateur clique un résultat dans l'onglet Recherche
+(ex. "Tempête de Foudre"), il est bien dirigé vers l'onglet cible (Magie Arcane)
+avec le filtre par titre pré-rempli. Mais l'item lui-même reste dans un accordéon
+**fermé**. L'utilisateur doit cliquer une 2e fois pour voir la description.
+
+**Cause** : `MagieSection` et `PrieresSection` (inline dans `Encyclopedie.tsx`)
+utilisent `<Accordion type="multiple">` sans prop `defaultValue` ni state contrôlé.
+Tous les accordéons sont fermés par défaut, indépendamment du filtre actif.
+
+**Impact actuel** :
+- Mineur — l'utilisateur peut toujours cliquer pour ouvrir.
+- Affecte les 6 types de la recherche (régression latente depuis PR #98).
+- Pas spécifique aux sorts/prières mais y est plus visible (listes plus longues).
+
+**Plan** :
+1. Passer chaque `*Section` à un `<Accordion type="multiple" value={...}>` contrôlé.
+2. Quand `searchQuery` est non vide, pré-ouvrir tous les items dont le `nom` matche.
+3. Alternative plus simple : si exactement 1 item matche, ouvrir cet item.
+
+**Préreqs / dépendances** : aucun.
+
+**Effort estimé** : 30-45 min (toucher 6+ sections, choisir une stratégie).
+
+---
+
 ## NEW — MAJ Manuel des règles 2026 : Connaissances des Religions (priorité moyenne)
 
 **Découvert** : session 7 (17 mai 2026) lors du debug du Bug #21.
@@ -31,6 +62,36 @@ Or la règle métier réelle (confirmée par Fred en session 7) est :
 **Liens** :
 - Migrations Bug #21 : `20260517182730_bug21_connaissances_religions_achetable_multiple.sql` + `20260517191621_rollback_bug21_connaissances_religions_unique.sql`
 - PR #91 (frontend : croyant → seule sa religion dans le dropdown)
+
+---
+
+## NEW — peut_acheter_competence : UUID brut dans message anti-doublon (priorité basse)
+
+**Découvert** : session 7 (17 mai 2026) lors des tests Bug #21.
+
+**Symptôme** : la branche `multiple_langue` de `peut_acheter_competence` renvoie un message du type :
+
+> `Vous avez déjà acquis "c821b270-d314-4092-9899-2fd80925e873"`
+
+quand `p_choix_achat` est un UUID (cas où le choix référence une ligne d'une table source comme `langues`). L'utilisateur voit un UUID brut au lieu du nom lisible.
+
+**Cause** : le format générique `format('Vous avez déjà acquis "%s"', p_choix_achat)` n'a pas de logique pour résoudre l'UUID en nom selon `type_choix`.
+
+**Impact actuel** :
+- Mineur : la branche `multiple_langue` n'est plus utilisée pour Religions (post rollback Bug #21)
+- Reste un défaut pour `Langue supplémentaire` et `Décryptage` qui utilisent toujours `multiple_langue` avec UUID de langue
+- Note : PR #97 a partiellement traité d'autres branches (la résolution UUID est faite ailleurs dans la fonction)
+
+**Plan** :
+1. Détecter dans `peut_acheter_competence` (branche `multiple_langue`) si `type_choix` ∈ {langue, langue_ancienne, religion}
+2. Résoudre l'UUID via `(SELECT nom FROM langues WHERE id = p_choix_achat::uuid)` ou équivalent
+3. Fallback sur l'UUID brut si la résolution échoue
+
+**Préreqs / dépendances** : aucun.
+
+**Effort estimé** : 30 minutes (incluant tests).
+
+**Liens** : migration prévue pour une future session.
 
 ---
 
@@ -69,68 +130,35 @@ Or la règle métier réelle (confirmée par Fred en session 7) est :
 
 ---
 
-## NEW — Vercel auto-trigger preview branches (priorité moyenne, haute friction quotidienne)
+## ONGOING — Vercel auto-trigger preview branches (priorité moyenne)
 
-**Découvert** : session 6 (16 mai 2026), confirmé non-résolu en session 8 (17 mai 2026).
+**Découvert** : session 6 (16 mai 2026), confirmé en sessions 7, 8, 10, 11.
 
-**Symptôme** : les push sur les branches non-`main` ne déclenchent **plus** automatiquement de déploiement preview Vercel. Aucun build, aucun preview URL dans les checks GitHub.
+**Symptôme** : les pushs sur branches non-main ne déclenchent pas systématiquement
+un preview deployment Vercel. Vercel détecte le commit (visible dans Git History
+de Vercel) mais n'enclenche pas le build.
 
-**Workaround validé** : Vercel UI → Deployments → Create Deployment → sélectionner la branche → Create Preview Deployment.
+**Données** :
+- Sessions concernées : 6, 7, 8, 10, 11.
+- PR #97 (session 9) a été un succès d'auto-trigger isolé — hypothèse "Git reconnect a résolu" infirmée par sessions 10, 11.
+- 3 PRs consécutives en session 11 (#101, #102, #103) toutes en preview manuel.
+- Production auto-deploye correctement sur merge to main (différence claire).
 
-**Causes investiguées (non concluantes)** :
-- `Require Verified Commits` activé sur Vercel : les commits Claude Code ne sont pas signés → désactivé, sans effet
-- `Ignored Build Step` réglé sur `Automatic` au lieu de `On` : modifié, sans effet
-- Git disconnect/reconnect dans Vercel settings : tenté en fin de session 6, sans effet (reconfirmé en session 8 sur PR #95)
+**Causes investiguées (non-conclusives)** :
+- `Require Verified Commits` (Vercel security) : Claude Code commits non signés. Toggle désactivé en session 8, sans effet stable.
+- `Ignored Build Step` : passé de `Automatic` à autre chose en session 8, sans effet stable.
+- Git disconnect/reconnect : fait en session 9, semblait résoudre, mais en fait c'était une coïncidence (PR #97 = chance pure).
 
-**Impact actuel** :
-- Chaque PR nécessite un déclenchement manuel du preview
-- Le check Vercel sur GitHub branch protection reste en attente jusqu'au trigger manuel
-- Friction non-bloquante mais répétée à chaque PR
+**Workaround stable** : Vercel UI → Project → Deployments → Create Deployment → sélectionner branche → Create Preview Deployment. ~30s.
 
 **Plan** :
-1. Inspecter les webhook deliveries côté Vercel (intégration GitHub) pour identifier la cause
-2. Si nécessaire : supprimer/recréer complètement l'intégration GitHub côté Vercel
-3. Valider via MCP `Vercel:list_deployments` que le champ `creator` ≠ `majingod` après push (signe d'auto-trigger fonctionnel)
+1. Reproduire le problème en une session dédiée (10-20 min).
+2. Inspecter le Git History dans Vercel : voir si le commit y apparaît, voir si un build est tenté puis abandonné.
+3. Inspecter les logs CI : `Vercel:get_deployment_build_logs` sur un deployment manuel pour comparer.
+4. Ouvrir un ticket support Vercel si pas de cause identifiable. Plan Hobby = pas de SLA mais le support répond.
 
 **Préreqs / dépendances** : aucun.
 
-**Effort estimé** : 30-60 min de debug Vercel (sans garantie ; possible escalade au support Vercel).
-
-**Observations** :
-- Session 7 : ne marche pas
-- Session 8 : ne marche pas (malgré le reconnect)
-- Session 9 PR #96 : ne marche pas
-- Session 9 PR #97 : auto-trigger ✅ (un seul succès)
-- Session 9 PR #98 : manuel
-- Session 10 PR #99 : ne marche pas
-
-**Hypothèse infirmée (session 10)** : PR #97 = anomalie isolée, pas un retour à la normale du reconnect Git de session 6/8.
-
-**Liens** :
-- Session 8 — PR #95 : aucun preview déclenché malgré push complet
-- MCP `Vercel:list_deployments` : `creator` distingue auto (identifiant distinct) vs manuel (`majingod`)
+**Effort estimé** : 1-2h en session debug dédiée.
 
 ---
-
-## NEW — RechercheSection : routage des nouveaux types (priorité moyenne)
-
-**Découvert** : session 10 (18 mai 2026) lors de la livraison Phase 3.3b (PR #99).
-
-**Symptôme** : Le RPC `rechercher_encyclopedie` retourne désormais 4 types (`lore`, `bestiaire`, `religion`, `competence`) suite à la PR #99. Le composant `RechercheSection.tsx` côté frontend (créé en PR #98) ne sait probablement router que le type `lore` au clic d'un résultat.
-
-**Cause** : Le composant a été conçu avant l'extension multi-tables. Pas de switch/case sur `type` pour la navigation.
-
-**Impact actuel** :
-- Backend opérationnel, recherche multi-tables fonctionne (testée : `rechercher_encyclopedie('magie')` → 4 types représentés)
-- Clic sur un résultat `bestiaire` / `religion` / `competence` : comportement à confirmer (probablement cassé ou redirige sur `/lore`)
-
-**Plan** :
-1. Cat `RechercheSection.tsx` pour confirmer l'état exact du routage
-2. Étendre le switch (ou l'ajouter s'il est absent) pour router les 4 types vers leurs pages respectives
-3. Vérifier que les pages cibles acceptent un paramètre `id` ou nom pour naviguer directement
-
-**Préreqs / dépendances** : aucun.
-
-**Effort estimé** : 30 minutes (incluant tests sur les 4 types).
-
-**Liens** : PR #99 (extension backend Phase 3.3b).
