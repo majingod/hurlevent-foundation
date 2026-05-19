@@ -135,6 +135,15 @@ const URL_TO_KEY: Record<string, SectionKey> = {
   "bestiaire": "bestiaire",
 };
 
+/* Mapping type RPC `rechercher_encyclopedie` → cible de navigation.
+ * Source unique de vérité pour routing + URL + label badge. */
+const RPC_TYPE_TO_TARGET: Record<string, { section: SectionKey; urlKey: string; label: string }> = {
+  lore: { section: "lore", urlKey: "monde", label: "Monde de Destéa" },
+  bestiaire: { section: "bestiaire", urlKey: "bestiaire", label: "Bestiaire" },
+  religion: { section: "religions", urlKey: "religions", label: "Religion" },
+  competence: { section: "competences", urlKey: "competences", label: "Compétence" },
+};
+
 /* ── helpers ── */
 
 function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
@@ -241,13 +250,13 @@ const Encyclopedie = () => {
   }, []);
 
   const handleSelectResult = (type: string, _id: string, titre: string) => {
-    if (type === "lore") {
-      setActive("lore");
-      setSearch(titre);
-      const next = new URLSearchParams(searchParams);
-      next.set("tab", "monde");
-      setSearchParams(next, { replace: true });
-    }
+    const target = RPC_TYPE_TO_TARGET[type];
+    if (!target) return;
+    setActive(target.section);
+    setSearch(titre);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", target.urlKey);
+    setSearchParams(next, { replace: true });
   };
 
   const handleTabClick = (key: SectionKey) => {
@@ -407,7 +416,7 @@ const RechercheSection = ({ onSelectResult }: { onSelectResult: (type: string, i
                   <p className="text-sm text-muted-foreground mt-1">{r.sous_titre}</p>
                 )}
                 <Badge variant="secondary" className="mt-2 text-xs">
-                  {r.type === "lore" ? "Monde de Destéa" : r.type}
+                  {RPC_TYPE_TO_TARGET[r.type]?.label ?? r.type}
                 </Badge>
               </div>
             </CardHeader>
