@@ -203,10 +203,6 @@ const Encyclopedie = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    setSearch("");
-  }, [active]);
-
-  useEffect(() => {
     const fetchAll = async () => {
       const [
         racesRes, traitsRes, classesRes, compRes, sortsRes, prieresRes, relRes,
@@ -263,6 +259,7 @@ const Encyclopedie = () => {
 
   const handleTabClick = (key: SectionKey) => {
     setActive(key);
+    setSearch(""); // clear search bar on manual tab change
     const urlKey = Object.entries(URL_TO_KEY).find(([, v]) => v === key)?.[0];
     if (urlKey) {
       const next = new URLSearchParams(searchParams);
