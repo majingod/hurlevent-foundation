@@ -142,6 +142,8 @@ const RPC_TYPE_TO_TARGET: Record<string, { section: SectionKey; urlKey: string; 
   bestiaire: { section: "bestiaire", urlKey: "bestiaire", label: "Bestiaire" },
   religion: { section: "religions", urlKey: "religions", label: "Religion" },
   competence: { section: "competences", urlKey: "competences", label: "Compétence" },
+  sort: { section: "magie", urlKey: "magie", label: "Sort" },
+  priere: { section: "prieres", urlKey: "prieres", label: "Prière" },
 };
 
 /* ── helpers ── */
