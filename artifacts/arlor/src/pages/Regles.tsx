@@ -28,6 +28,16 @@ interface EffetCombat {
   source: string | null;
 }
 
+interface SearchResult {
+  type: string;
+  id: string;
+  titre: string;
+  sous_titre: string | null;
+  categorie: string | null;
+  snippet: string | null;
+  rang: number;
+}
+
 const CATEGORIES: { key: string; label: string }[] = [
   { key: "generaux", label: "Règles générales" },
   { key: "objets_enjeu", label: "Règles en jeu" },
@@ -92,6 +102,39 @@ const Regles = () => {
   const [rechercheLex, setRechercheLex] = useState("");
   const [filtreType, setFiltreType] = useState<string | null>(null);
   const [filtreSource, setFiltreSource] = useState<string | null>(null);
+
+  const [debouncedRecherche, setDebouncedRecherche] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  // Debounce 300ms du champ de recherche
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedRecherche(recherche), 300);
+    return () => clearTimeout(t);
+  }, [recherche]);
+
+  // Appel RPC quand debouncedRecherche change
+  useEffect(() => {
+    if (debouncedRecherche.trim().length < 2 || activeCat === "lexique") {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    supabase
+      .rpc("rechercher_encyclopedie", { p_terme: debouncedRecherche })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[rechercher_encyclopedie]", error);
+          setSearchResults([]);
+        } else {
+          setSearchResults(
+            ((data ?? []) as SearchResult[]).filter((r) => r.type === "regle")
+          );
+        }
+        setSearching(false);
+      });
+  }, [debouncedRecherche, activeCat]);
 
   useEffect(() => {
     (async () => {
@@ -165,7 +208,11 @@ const Regles = () => {
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher dans cette section…"
+            placeholder={
+              activeCat === "lexique"
+                ? "Rechercher dans cette section…"
+                : "Rechercher dans toutes les règles…"
+            }
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
             className="pl-10"
@@ -174,7 +221,61 @@ const Regles = () => {
 
         {CATEGORIES.map((c) => (
           <TabsContent key={c.key} value={c.key} className="mt-0 space-y-4">
-            {c.key === "lexique" ? (
+            {c.key !== "lexique" && recherche.trim().length >= 2 ? (
+              <>
+                {searching && (
+                  <p className="text-muted-foreground text-center py-2">Recherche en cours…</p>
+                )}
+                {!searching && searchResults.length === 0 && (
+                  <p className="text-muted-foreground text-center py-6">
+                    Aucune règle trouvée pour « {debouncedRecherche} ».
+                  </p>
+                )}
+                {!searching && searchResults.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {searchResults.length} résultat{searchResults.length > 1 ? "s" : ""} dans toutes les catégories
+                    </p>
+                    {searchResults.map((r) => {
+                      const catLabel = CATEGORIES.find((cc) => cc.key === r.sous_titre)?.label ?? r.sous_titre;
+                      return (
+                        <article
+                          key={r.id}
+                          id={`section-regle-${r.id}`}
+                          className="rounded-md bg-[#111111] border-l-[3px] border-primary p-5 shadow-sm cursor-pointer hover:border-l-4 transition-all"
+                          onClick={() => {
+                            setRecherche("");
+                            if (r.sous_titre && r.sous_titre !== activeCat) {
+                              setActiveCat(r.sous_titre);
+                            }
+                            requestAnimationFrame(() => {
+                              document
+                                .getElementById(`section-regle-${r.id}`)
+                                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            });
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <h2 className="font-heading text-xl text-primary">{r.titre}</h2>
+                            {catLabel && (
+                              <Badge variant="secondary" className="flex-shrink-0 text-xs">
+                                {catLabel}
+                              </Badge>
+                            )}
+                          </div>
+                          {r.snippet && (
+                            <div
+                              className="text-[#f5f0e8] text-sm"
+                              dangerouslySetInnerHTML={{ __html: r.snippet }}
+                            />
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            ) : c.key === "lexique" ? (
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="relative">
@@ -279,6 +380,7 @@ const Regles = () => {
                   sectionsFiltrees.map((s) => (
                     <article
                       key={s.id}
+                      id={`section-regle-${s.id}`}
                       className="rounded-md bg-[#111111] border-l-[3px] border-primary p-5 shadow-sm"
                     >
                       <h2 className="font-heading text-xl text-primary mb-3">{s.titre}</h2>

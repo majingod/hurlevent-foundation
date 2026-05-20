@@ -71,3 +71,17 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
 - **Phase 3.3 complète** : recherche plein texte fonctionnelle sur 6 types.
 - **Leçon clé pattern SQL** : pour `UNION ALL` avec `ORDER BY <colonne>` après, les alias `AS <colonne>` sont OBLIGATOIRES dans chaque SELECT, sinon plante au runtime (cf migration 42).
 - **Leçon clé frontend** : Avant tout fix élaboré, confirmer l'environnement de test (preview vs prod) et le statut de merge de la PR.
+
+### Session 12 — Phase 3.3d sections_regles + régénération docs (19 mai 2026)
+
+- **Objectif** : étendre la recherche plein texte à `sections_regles` (page Règles autonome) et régénérer les docs DB déphasées
+- **1 migration appliquée via MCP** :
+  - `20260519234138_phase_3_3d_sections_regles_recherche` — generated column `sections_regles.recherche_tsv` (pondération titre A > categorie B > contenu C) + index GIN + refactor RPC `rechercher_encyclopedie` en UNION ALL pour 7 sources, signature de retour inchangée, type discriminant `'regle'` ajouté
+- **Mapping `'regle'`** : `titre = sr.titre`, `sous_titre = sr.categorie` (pour groupage UI), `categorie = 'regle'` (type uniforme, pattern aligné sur `religion`)
+- **Frontend** — `Regles.tsx` : remplacement de la recherche `.includes()` locale par appel RPC plein texte en Mode 2 (recherche globale toutes catégories). Quand `recherche.length >= 2` : affichage des résultats avec snippet highlighting et badge catégorie. Clic = bascule onglet + scroll vers article.
+- **Page Règles autonome** : pas de modification de `Encyclopedie.tsx` (Voie C — recherche locale isolée).
+- **Migrations en base** : 44 entrées (43 versionnées + baseline)
+- **Tests prod** : ÉCRIRE AU MOMENT DU MERGE (résultats des tests Fred)
+- **Régénération docs project knowledge** : `hurlevent_schema_tables.md` + `hurlevent_fonctions_et_vues.md` régénérés depuis la base, dernière migration `20260519234138` couverte. Fichiers uploadés en project knowledge en clôture de session.
+- **Dette technique ajoutée** : `bestiaire_categorie_check` trop restrictive (priorité basse).
+- **Décisions de scope** : Phase 3.1 (messagerie), 3.2 (réputation) et 4.3 (tests utilisateurs externes) **supprimées** du plan directeur.
