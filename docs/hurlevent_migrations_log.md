@@ -98,3 +98,16 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
 - **Migrations en base** : 46 entrées (45 versionnées + baseline)
 - **Nouvelle règle de collaboration** : règle #10 *Clôture dette en même commit* (méthodologie v6). Quand un PR ferme une dette, retirer l'entrée du fichier dette dans le même commit pour éviter les dettes fantômes.
 - **Observation Vercel** : auto-trigger encore raté pour la branche `fix-dette-bestiaire-check-elargie`. 6e session consécutive (6, 7, 8, 10, 11, 13). Cause toujours inconnue.
+
+### Session 14 — Régénération baseline + suppression migrations versionnées (20 mai 2026)
+
+- **Objectif** : éliminer la dette `baseline_schema-regen` créée en session 6 pour permettre `supabase db reset` et réactiver le check Supabase Preview obligatoire
+- **Méthode** :
+  - Nouveau `pg_dump --schema-only` propre de la prod via `pg_dump 17.10` (compatible prod 17.6)
+  - Cleanup du dump : retrait des directives `\restrict` / `\unrestrict` (psql 17 only), `CREATE SCHEMA public` → `CREATE SCHEMA IF NOT EXISTS public`
+  - Remplacement de `00000000000000_baseline_schema.sql` par le nouveau dump (8889 lignes, 422 KB)
+  - Suppression des 45 fichiers de migrations versionnées (`202604*` + `202605*`) — historique préservé via `git log`
+- **Stats dump** : 41 tables, 71 fonctions, 32 vues, 43 indexes, 21 triggers, 85 policies, 41 RLS enabled
+- **Cleanup prod** (à faire post-merge via MCP Supabase) : `DELETE FROM supabase_migrations.schema_migrations WHERE version != '00000000000000';` — réduit la table de 46 → 1 entrée pour aligner avec le repo
+- **Dette fermée** : `baseline_schema-regen` (créée session 6)
+- **Branche** : `chore-baseline-schema-regen-session14`

@@ -65,41 +65,6 @@ Or la règle métier réelle (confirmée par Fred en session 7) est :
 
 ---
 
-## NEW — baseline_schema-regen (priorité haute après stabilisation)
-
-**Découvert** : session 6 (16 mai 2026) lors du merge de F4.
-
-**Symptôme** : `supabase db reset` ne fonctionne pas. Le check Supabase Preview sur GitHub Actions plante en chaîne sur :
-- Baseline #2 (REVOKE sur fonctions absentes de `baseline_schema.sql`)
-- Baseline #3 (ALTER VIEW sur vues absentes de `baseline_schema.sql`)
-- Phase 1.3 (CREATE TABLE `historique_xp` déjà présente dans `baseline_schema.sql`)
-- Probablement d'autres en cascade (Phase 1.4 RPC, Phase 1.5 vues, etc.)
-
-**Cause** : `00000000000000_baseline_schema.sql` est un `pg_dump` récent (post-4 mai 2026) qui inclut déjà l'état des migrations versionnées qui le suivent. C'est un état hybride qui ne reflète pas une "baseline initiale" mais un "snapshot daté".
-
-**Impact actuel** :
-- Prod 100% saine, fonctionnelle
-- F4 mergé avec bypass du check Supabase (acté en session 6)
-- Aucun `db reset` possible (CI ou local) tant que ce chantier n'est pas fait
-- Toute nouvelle PR devrait soit bypasser ce check, soit le résoudre
-
-**Plan** :
-1. Faire un `pg_dump` propre de la prod actuelle
-2. Remplacer `00000000000000_baseline_schema.sql` par ce dump
-3. Identifier les migrations versionnées dont les effets sont déjà dans le dump, et les supprimer (ou les squasher)
-4. Vérifier que `supabase db reset` (local ou Supabase preview branch) passe
-5. Réactiver le check Supabase obligatoire sur main
-
-**Préreqs / dépendances** : aucun. Peut être fait n'importe quand.
-
-**Effort estimé** : 1-2h en session desktop. Préférable de regrouper avec d'autres tâches de fond.
-
-**Liens** :
-- PR #92 (F4 mergé en bypass) : https://github.com/majingod/hurlevent-foundation/pull/92
-- Branche `chore-f4-aligner-migrations-repo-base` poussée comme référence historique
-
----
-
 ## ONGOING — Vercel auto-trigger preview branches (priorité moyenne)
 
 **Découvert** : session 6 (16 mai 2026), confirmé en sessions 7, 8, 10, 11.
@@ -109,8 +74,8 @@ un preview deployment Vercel. Vercel détecte le commit (visible dans Git Histor
 de Vercel) mais n'enclenche pas le build.
 
 **Données** :
-- Sessions concernées : 6, 7, 8, 10, 11.
-- PR #97 (session 9) a été un succès d'auto-trigger isolé — hypothèse "Git reconnect a résolu" infirmée par sessions 10, 11.
+- Sessions concernées : 6, 7, 8, 10, 11, 13, 14.
+- PR #97 (session 9) initialement crue auto-déployée, mais correction en session 14 : Fred confirme que toutes les PRs depuis l'apparition du problème ont été déployées manuellement. Hypothèse "Git reconnect a résolu" définitivement infirmée.
 - 3 PRs consécutives en session 11 (#101, #102, #103) toutes en preview manuel.
 - Production auto-deploye correctement sur merge to main (différence claire).
 
