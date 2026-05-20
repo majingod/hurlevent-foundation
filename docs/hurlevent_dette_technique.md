@@ -4,35 +4,6 @@ Liste des chantiers de dette technique identifiés, par priorité.
 
 ---
 
-## NEW — Contrainte `bestiaire_categorie_check` trop restrictive (priorité basse)
-
-**Découvert** : session 12 (19 mai 2026) lors de la régénération de `hurlevent_schema_tables.md`.
-
-**Symptôme** : la contrainte CHECK actuelle sur `bestiaire.categorie` est :
-
-```sql
-CHECK ((categorie = 'mort_vivant'::text))
-```
-
-Elle force `categorie` à être exactement `'mort_vivant'` sur toutes les lignes. Empêche d'ajouter d'autres catégories (animaux, humanoïdes, créatures magiques, démons, etc.).
-
-**Cause** : la contrainte a probablement été ajoutée quand le bestiaire ne contenait que des morts-vivants, et n'a jamais été élargie.
-
-**Impact actuel** :
-- Mineur — les 6 lignes actuelles sont toutes `'mort_vivant'`, cohérent avec la contrainte
-- Bloquant pour toute extension future du bestiaire (animaux sauvages, créatures féeriques, gobelins, etc.)
-
-**Plan** :
-1. `ALTER TABLE bestiaire DROP CONSTRAINT bestiaire_categorie_check`
-2. Recréer avec une liste élargie ou la retirer complètement
-3. (Optionnel) Créer une table `categories_bestiaire` + FK si on veut un référentiel propre
-
-**Préreqs / dépendances** : aucun.
-
-**Effort estimé** : 15 minutes (1 migration simple).
-
----
-
 ## NEW — Pré-ouverture accordéon cible après navigation depuis recherche (priorité basse)
 
 **Découvert** : session 11 (19 mai 2026) lors de la validation Phase 3.3c.

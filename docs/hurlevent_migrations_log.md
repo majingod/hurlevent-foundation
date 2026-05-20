@@ -85,3 +85,16 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
 - **Régénération docs project knowledge** : `hurlevent_schema_tables.md` + `hurlevent_fonctions_et_vues.md` régénérés depuis la base, dernière migration `20260519234138` couverte. Fichiers uploadés en project knowledge en clôture de session.
 - **Dette technique ajoutée** : `bestiaire_categorie_check` trop restrictive (priorité basse).
 - **Décisions de scope** : Phase 3.1 (messagerie), 3.2 (réputation) et 4.3 (tests utilisateurs externes) **supprimées** du plan directeur.
+
+### Session 13 — Dette bestiaire + cleanup dette obsolète (20 mai 2026)
+
+- **Objectif** : fermer 2 dettes basses identifiées en sessions 7 et 12
+- **1 migration appliquée via MCP** :
+  - `20260520020312_dette_bestiaire_categorie_check_elargie` (PR #106) — élargit la contrainte CHECK de `bestiaire.categorie` de `'mort_vivant'` seul à une liste de 7 catégories (`mort_vivant`, `animal`, `creature_magique`, `humanoide`, `demon`, `esprit`, `feerique`). Permet l'extension future du bestiaire sans nouvelle migration.
+- **Cleanup dette obsolète** (PR #106) :
+  - Découverte : l'entrée *peut_acheter_competence UUID brut* dans `docs/hurlevent_dette_technique.md` était **déjà résolue par PR #97** (session 9, migration `20260518160244`) mais l'entrée n'avait jamais été retirée. Dette fantôme depuis 4 sessions.
+  - Entrée retirée du fichier dette dans la même PR.
+- **PRs mergées** : #106 (dette bestiaire + cleanup), puis PR de cette clôture documentaire
+- **Migrations en base** : 46 entrées (45 versionnées + baseline)
+- **Nouvelle règle de collaboration** : règle #10 *Clôture dette en même commit* (méthodologie v6). Quand un PR ferme une dette, retirer l'entrée du fichier dette dans le même commit pour éviter les dettes fantômes.
+- **Observation Vercel** : auto-trigger encore raté pour la branche `fix-dette-bestiaire-check-elargie`. 6e session consécutive (6, 7, 8, 10, 11, 13). Cause toujours inconnue.
