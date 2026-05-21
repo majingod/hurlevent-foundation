@@ -168,3 +168,26 @@ Tests frontend sur preview Vercel (manuel — auto-trigger toujours cassé) : OK
 
 - **Inversée** : entrée "Connaissances des Religions" (`docs/hurlevent_dette_technique.md`) — désormais "Aligner DB sur Manuel 2026" (manuel à jour édition 6 mai, DB/frontend obsolètes), à corriger Sprint 5.3.
 - **Bumpée** : Vercel auto-trigger preview branches → 8 sessions consécutives.
+
+---
+
+## Session 18 — Sprint 5.2 Sweep corrections data critiques (21 mai 2026)
+
+**Fichier** : `supabase/migrations/20260521030004_phase_5_2_sweep_corrections_data_critiques.sql`
+
+**Phase** : 5.2 — Sweep corrections data critiques (alignement Manuel des règles 2026, édition 6 mai 2026)
+
+**Objectif** : 6 corrections d'alignement entre la base prod et le manuel officiel, regroupées dans une seule migration idempotente.
+
+**Tables touchées** :
+- `categories_creatures` (2 UPDATE) — Nature → Forêt, Profondeurs → Souterrains
+- `competences` (2 UPDATE jsonb) — ajout prérequis pour Herbes Rares et Métaux rares
+- `effets_combat` (1 INSERT) — "Sans âme" (type=`mort`, première entrée légitime de ce type ; description verbatim du manuel p.5)
+- `sorts` (1 UPDATE) — Inspiration spirituel : ajout paragraphe sur objets magiques/parchemins (985 → 1351 chars)
+- `assemblages_runes` (1 UPDATE) — Assemblage de durabilité : description verbatim manuel (94 → 703 chars)
+
+**Idempotence** : tous les `WHERE` filtres garantissent qu'une 2e exécution = no-op (UPDATE conditionnels, INSERT WHERE NOT EXISTS).
+
+**Validation prod** : 12 checks SELECT exécutés post-migration, tous au vert.
+
+**Découverte de session** : la table cible pour "Sans âme" était initialement `sections_regles` dans le backlog ; correction faite vers `effets_combat` après inspection de l'interface frontend (capture Fred). La CHECK constraint `effets_combat_type_check` accepte déjà `'mort'` — usage légitime au lieu de devoir ALTER la contrainte.
