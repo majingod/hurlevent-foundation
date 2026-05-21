@@ -33,35 +33,36 @@ Tous les accordéons sont fermés par défaut, indépendamment du filtre actif.
 
 ---
 
-## NEW — MAJ Manuel des règles 2026 : Connaissances des Religions (priorité moyenne)
+## NEW — Aligner DB sur Manuel 2026 : Connaissances des Religions (priorité moyenne, Sprint 5.3)
 
-**Découvert** : session 7 (17 mai 2026) lors du debug du Bug #21.
+**Découvert** : session 7 (17 mai 2026). **Direction inversée** en session 17 (20 mai 2026) après publication du Manuel 2026 édition 6 mai.
 
-**Symptôme** : le Manuel des règles 2026 indique pour la compétence Connaissances des Religions :
+**Symptôme** : la règle "Connaissances des Religions" diverge entre le Manuel 2026 (canonique, édition 6 mai 2026) et l'implémentation DB / frontend :
 
-> "Cette compétence peut être achetée plusieurs fois uniquement afin d'acquérir la connaissance des rites et coutumes de différentes religions."
+| Source | Règle |
+|---|---|
+| Manuel 2026 (canonique) | Plusieurs achats autorisés — 1 par religion différente |
+| DB / frontend actuels | 1 achat max + religion forcée à celle du personnage si croyant |
 
-Or la règle métier réelle (confirmée par Fred en session 7) est :
-- 1 achat max par personnage
-- Religion forcée à celle du personnage s'il est croyant (sinon choix libre)
-
-**Cause** : décalage entre le manuel publié et la règle effectivement appliquée par les animateurs / la base de données.
+**Cause** : le manuel a été mis à jour APRÈS les corrections DB de session 7 (Bug #21 → PR #91 + rollback). La DB et le frontend se retrouvent désormais obsolètes par rapport au manuel.
 
 **Impact actuel** :
-- DB et frontend alignés sur la règle réelle (post PR #91 + rollback session 7)
-- Manuel papier / docx encore obsolète → confusion possible pour les joueurs
+- Les joueurs croyants ne peuvent pas acheter Connaissances des Religions pour une seconde religion comme le manuel le permet.
+- Confusion possible entre la règle écrite et l'expérience UI.
 
-**Plan** :
-1. Réécrire la section "Connaissances des Religions" du Manuel 2026
-2. Publier la version corrigée
+**Plan** (Sprint 5.3) :
+1. Migration : autoriser plusieurs achats de `Connaissances des Religions` par personnage (réinstaurer la logique de la migration `20260517182730_bug21_*` rollbackée en session 7).
+2. Frontend : retirer la contrainte "croyant → seule religion forcée" du dropdown ; permettre la sélection d'une religion différente par achat.
+3. Stocker la religion choisie par achat (champ dédié dans `personnage_competences` ou table de liaison) pour distinguer les instances.
 
-**Préreqs / dépendances** : aucun (chantier purement éditorial).
+**Préreqs / dépendances** : aucun.
 
-**Effort estimé** : 15 minutes.
+**Effort estimé** : 1-2h (migration + frontend + tests).
 
 **Liens** :
 - Migrations Bug #21 : `20260517182730_bug21_connaissances_religions_achetable_multiple.sql` + `20260517191621_rollback_bug21_connaissances_religions_unique.sql`
-- PR #91 (frontend : croyant → seule sa religion dans le dropdown)
+- PR #91 (frontend : croyant → seule sa religion dans le dropdown — à inverser)
+- Manuel 2026 édition 6 mai (section Connaissances des Religions)
 
 ---
 
