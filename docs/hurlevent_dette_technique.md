@@ -75,10 +75,11 @@ un preview deployment Vercel. Vercel détecte le commit (visible dans Git Histor
 de Vercel) mais n'enclenche pas le build.
 
 **Données** :
-- Sessions concernées : 6, 7, 8, 10, 11, 13, 14.
+- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17 (8 sessions consécutives).
 - PR #97 (session 9) initialement crue auto-déployée, mais correction en session 14 : Fred confirme que toutes les PRs depuis l'apparition du problème ont été déployées manuellement. Hypothèse "Git reconnect a résolu" définitivement infirmée.
 - 3 PRs consécutives en session 11 (#101, #102, #103) toutes en preview manuel.
-- Production auto-deploye correctement sur merge to main (différence claire).
+- PR #109 (session 17) : preview manuel encore requis. Confirmation finale via `Vercel:list_deployments`.
+- Production auto-deploye correctement sur merge to main (différence claire) — déploiement prod `9c1751b` de la PR #109 s'est bien fait automatiquement.
 
 **Causes investiguées (non-conclusives)** :
 - `Require Verified Commits` (Vercel security) : Claude Code commits non signés. Toggle désactivé en session 8, sans effet stable.

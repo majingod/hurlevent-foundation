@@ -111,3 +111,60 @@ Historique des sessions d'alignement et chantiers touchant `supabase/migrations/
 - **Cleanup prod** (à faire post-merge via MCP Supabase) : `DELETE FROM supabase_migrations.schema_migrations WHERE version != '00000000000000';` — réduit la table de 46 → 1 entrée pour aligner avec le repo
 - **Dette fermée** : `baseline_schema-regen` (créée session 6)
 - **Branche** : `chore-baseline-schema-regen-session14`
+
+---
+
+## Session 17 — Sprint 5.1 Voie Z modification post-finalisation (20 mai 2026)
+
+**PR #109** — `feat-sprint-5-1-modif-post-finalisation` → `main`, mergée en squash (commit `9c1751b`).
+
+### Contexte
+
+Implémentation de la règle métier "modif post-finalisation" actée session 15 (architecture Voie Z). Permet à un joueur de modifier son personnage finalisé tant qu'aucun événement n'a confirmé son inscription, sans casser l'override admin manuel.
+
+### Migration appliquée
+
+`20260520213653_phase_5_1_modif_post_finalisation.sql` (1910 lignes, 87 KB, 18 objets DB) :
+
+- **Colonne ajoutée** : `personnages.est_finalise boolean NOT NULL DEFAULT false`
+- **Backfill** : `UPDATE personnages SET est_finalise = est_verrouille` (5 persos finalisés en base)
+- **Fonction créée** : `personnage_est_modifiable(uuid) → boolean`
+  - Logique : `NOT est_verrouille OR (est_finalise AND NOT EXISTS inscription confirmée)`
+  - "Inscription confirmée" = `inscriptions_evenements.date_confirmation IS NOT NULL` (la colonne `statut` ne contient pas `'confirmee'`)
+- **17 RPC refactorées** pour consulter `personnage_est_modifiable` :
+  - 5 `sauvegarder_etape_{1,2,3,4,10}`
+  - 8 `acheter_{assemblage, competence, objet_forge, objet_joaillerie, priere, recette, sort, trait_racial}`
+  - `desacheter_competence`, `avancer_etape`, `peut_acheter_competence`
+  - `valider_personnage_final` (set aussi `est_finalise = true`)
+- Code d'erreur `personnage_verrouille` conservé (compat front), message amélioré.
+
+### Validation
+
+Tests prod en BEGIN/ROLLBACK + JWT simulé (6 scénarios, 3 RPCs représentatifs × cas positifs + 2 négatifs) :
+
+| # | Scénario | RPC | Résultat |
+|---|---|---|---|
+| 1 | Finalisé + 0 inscription | `acheter_competence` | ✅ succès, 4 XP dépensés |
+| 2 | Admin lock (verrouille sans finalise) | `acheter_competence` | ✅ bloqué `personnage_verrouille` |
+| 3 | Finalisé + inscription confirmée | `acheter_competence` | ✅ bloqué `personnage_verrouille` |
+| 4 | Finalisé + 0 inscription | `sauvegarder_etape_1` | ✅ succès, modif appliquée |
+| 5 | Finalisé + inscription confirmée | `sauvegarder_etape_1` | ✅ bloqué `personnage_verrouille` |
+| 6 | Finalisé + 0 inscription | `desacheter_competence` | ✅ succès, 12 XP remboursés |
+
+Toutes transactions roll-backées — aucune donnée modifiée en prod.
+
+Tests frontend sur preview Vercel (manuel — auto-trigger toujours cassé) : OK.
+
+### Frontend
+
+**Aucune modification.** Le bouton "Modifier le personnage" du tableau de bord (`TableauDeBord.tsx`) est un pur `<Link>`, sans appel DB. Le fix du bug section 7 du backlog wizard est entièrement causé par le refactor des gardes côté DB.
+
+### Effets de bord positifs
+
+- **Supabase Preview vert sur PR #109** pour la première fois depuis plusieurs sessions. Probable conséquence positive de la régénération baseline de la PR #108 (session 14). À confirmer sur 2-3 PRs supplémentaires avant de réactiver le check obligatoire.
+- **Bug section 7 du backlog wizard** : fermé automatiquement.
+
+### Dette ouverte / fermée
+
+- **Inversée** : entrée "Connaissances des Religions" (`docs/hurlevent_dette_technique.md`) — désormais "Aligner DB sur Manuel 2026" (manuel à jour édition 6 mai, DB/frontend obsolètes), à corriger Sprint 5.3.
+- **Bumpée** : Vercel auto-trigger preview branches → 8 sessions consécutives.
