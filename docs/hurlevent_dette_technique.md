@@ -42,12 +42,13 @@ un preview deployment Vercel. Vercel détecte le commit (visible dans Git Histor
 de Vercel) mais n'enclenche pas le build.
 
 **Données** :
-- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17, 18, 19 (10 sessions consécutives).
+- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17, 18, 19, 20 (**11 sessions consécutives**).
 - PR #97 (session 9) initialement crue auto-déployée, mais correction en session 14 : Fred confirme que toutes les PRs depuis l'apparition du problème ont été déployées manuellement. Hypothèse "Git reconnect a résolu" définitivement infirmée.
 - 3 PRs consécutives en session 11 (#101, #102, #103) toutes en preview manuel.
 - PR #109 (session 17) : preview manuel encore requis. Confirmation finale via `Vercel:list_deployments`.
 - PR #111 (session 18) : preview manuel encore requis (Sprint 5.2 sweep corrections data critiques).
 - PR #112 + #113 (session 19) : preview manuel encore requis pour les deux (Sprint 5.3 Religions + hotfix).
+- PR #114, #115, #116 (session 20) : preview manuel encore requis pour les trois (clôture S19 + Sprint 5.4 Phase A + Phase C). `Vercel:list_deployments` confirme 0 deployment auto pour ces 3 branches.
 - Production auto-deploye correctement sur merge to main (différence claire) — déploiement prod `9c1751b` de la PR #109 s'est bien fait automatiquement.
 
 **Causes investiguées (non-conclusives)** :
@@ -56,6 +57,8 @@ de Vercel) mais n'enclenche pas le build.
 - Git disconnect/reconnect : fait en session 9, semblait résoudre, mais en fait c'était une coïncidence (PR #97 = chance pure).
 
 **Workaround stable** : Vercel UI → Project → Deployments → Create Deployment → sélectionner branche → Create Preview Deployment. ~30s.
+
+**Statut session 20** : ticket Vercel proposé puis reporté par Fred (décision explicite — pas la priorité en session 20).
 
 **Plan** :
 1. Reproduire le problème en une session dédiée (10-20 min).
@@ -93,5 +96,35 @@ L'entrée "Sans âme" insérée en migration `20260521030004_phase_5_2_sweep_cor
 **Préreqs / dépendances** : aucun.
 
 **Effort estimé** : 0.5-1 session dédiée.
+
+---
+
+## NEW — Alignement cosmétique noms compétences DB ↔ Manuel (priorité basse)
+
+**Découvert** : session 20 (21 mai 2026) lors du grep exhaustif du manuel pour l'audit `classes_requises`.
+
+**Constat** : 3 compétences ont un nom légèrement différent en base par rapport au manuel (édition 6 mai 2026) :
+
+| Nom DB | Nom Manuel | Différence |
+|---|---|---|
+| `Corps Sain` | `Corps sain` | Casse du `S` |
+| `Compétence d'arme d'hast` | `Compétence d'arme à l'arme d'hast` | Mots additionnels |
+| `Premiers Soins` | `Premiers soins` | Casse du `S` |
+
+**Impact actuel** :
+- Aucun fonctionnel (le moteur d'achat utilise les UUIDs et les noms en DB).
+- Cosmétique uniquement (joueurs voient le nom DB qui diffère légèrement de leur manuel papier).
+- Pour `Compétence d'arme d'hast`, c'est un changement plus que cosmétique — le manuel a 5 mots de plus.
+
+**Plan** :
+1. Décider stratégie : soit corriger DB pour matcher manuel, soit corriger manuel pour matcher DB.
+2. Si correction DB : 1 migration UPDATE avec 3 entrées.
+3. Si correction manuel : mettre dans le tracker du manuel pour édition suivante.
+
+**Cible suggérée** : intégrer à Sprint 5.7 (Refonte descriptions massives) en l'étendant pour inclure aussi les renommages cosmétiques.
+
+**Préreqs / dépendances** : décision Fred sur la direction de l'alignement.
+
+**Effort estimé** : 15 min (migration) ou 0 min (juste mettre en attente édition manuel).
 
 ---

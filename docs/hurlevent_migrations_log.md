@@ -232,3 +232,64 @@ Alignement DB et frontend avec le Manuel des règles 2026 (édition 6 mai 2026) 
 
 - **Fermée** : "Aligner DB sur Manuel 2026" (Connaissances des Religions) — confirmée résolue.
 - **Bumpée** : Vercel auto-trigger preview branches → **10 sessions consécutives** (cf `docs/hurlevent_dette_technique.md`).
+
+## Session 20 — Sprint 5.4 Audit `classes_requises` (21 mai 2026)
+
+**3 PRs mergées dans la session** :
+
+- **PR #114** (Étape 0) — `docs/cloture-session-19` : docs ajout entrée Session 19 + bump compteur Vercel 8 → 10.
+- **PR #115** (Sprint 5.4 Phase A) — `feat/sprint-5-4a-classes-requises-6-evidents` → migration `20260521071345_phase_5_4a_classes_requises_6_evidents`.
+- **PR #116** (Sprint 5.4 Phase C) — `feat/sprint-5-4b-grande-messe-prereq` → migration `20260521073247_phase_5_4b_grande_messe_prereq_connaissances_religions`.
+
+### Contexte
+
+Bug DB détecté session 15 : ~50 compétences ont `categorie ∈ {guerrier, voleur, mage, pretre}` mais `classes_requises = NULL`, permettant à des persos d'autres classes d'acheter des compétences réservées.
+
+### Migrations appliquées
+
+#### `20260521071345_phase_5_4a_classes_requises_6_evidents.sql` (PR #115)
+
+6 compétences passées en `classes_requises = ['guerrier']` ou `['voleur']`, alignées sur les prereqs classe explicites du Manuel 2026 :
+
+| Compétence | `classes_requises` | Manuel |
+|---|---|---|
+| Bonne santé | `['guerrier']` | L.1727 "Prérequis : Guerrier" |
+| Défense Inflexible | `['guerrier']` | L.1926, 1940 "(Prérequis : Guerrier)" |
+| Discours du Commandement | `['guerrier']` | L.1957 "Prérequis : Guerrier" |
+| Poids Lourd | `['guerrier']` | L.2034 "Prérequis : Guerrier" |
+| Cachette secrète | `['voleur']` | L.2206 "Prérequis : Voleur" |
+| Fouille rapide | `['voleur']` | L.2337 "Prérequis : Voleur" |
+
+Idempotence garantie par `AND classes_requises IS NULL`.
+
+#### `20260521073247_phase_5_4b_grande_messe_prereq_connaissances_religions.sql` (PR #116)
+
+Alignement du texte display `niveaux[i].prerequis` de Grande Messe sur ce que le moteur vérifie réellement via `prerequis_competences` :
+
+| Niveau | Avant | Après |
+|---|---|---|
+| 1 | `"Religion"` | `"Connaissances des Religions"` |
+| 2 | `"Grande Messe 1"` | `"Connaissances des Religions, Grande Messe 1"` |
+| 3 | `"Grande Messe 2"` | `"Connaissances des Religions, Grande Messe 2"` |
+
+Idempotence via `AND niveaux->0->>'prerequis' = 'Religion'`.
+
+### Découvertes-clés
+
+1. **Règle "niveau max 2 hors-classe" déjà implémentée** dans `peut_acheter_competence`. Donc `classes_requises = NULL` n'implique PAS accès illimité — limite niveau 2 hors-classe automatique. Sprint 5.4 = pur audit data.
+2. **Phase A exhaustive** : grep complet du manuel a confirmé qu'il existe exactement 6 compétences orphelines avec prereq classe explicite.
+3. **Politique Phase C** : pour les 45 compétences orphelines restantes, aucune n'a de prereq classe explicite dans le manuel. Politique stricte manuel littéral validée par Fred.
+4. **Grande Messe — écart DB ↔ manuel assumé** : moteur enforce `Connaissances des Religions`, manuel dit "Religion". Display aligné sur moteur.
+5. **Format URL raw GitHub** : ajout de `refs/heads/` pour éviter cache CDN stale. Liste URL raw mise à jour.
+6. **Incohérences cosmétiques DB ↔ manuel** repérées : `Corps Sain`/`Corps sain`, `Compétence d'arme d'hast`/`Compétence d'arme à l'arme d'hast`, `Premiers Soins`/`Premiers soins`. Ajoutées à la dette technique.
+
+### Validation
+
+- BEGIN/ROLLBACK tests passés avant chaque `apply_migration`.
+- 6 lignes UPDATEs Phase A validées via RETURNING.
+- 3 niveaux Grande Messe Phase C validés en SELECT post-migration.
+
+### Dette ouverte / fermée
+
+- **Bumpée** : Vercel auto-trigger preview branches → 11 sessions consécutives. 3 PRs preview manuelles en session 20.
+- **Ajoutée** : alignement cosmétique noms compétences DB ↔ manuel (priorité basse, voir entrée dette dédiée).
