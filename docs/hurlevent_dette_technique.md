@@ -99,3 +99,30 @@ de Vercel) mais n'enclenche pas le build.
 **Effort estimé** : 1-2h en session debug dédiée.
 
 ---
+
+## NEW — Refonte descriptions `effets_combat` (alignement Manuel) (priorité moyenne, Sprint 5.7)
+
+**Découvert** : session 18 (21 mai 2026).
+
+**Constat** : les 31 entrées existantes de la table `effets_combat` ont des descriptions résumées (16-42 chars) qui ne reflètent pas le texte du Manuel des règles. Exemples :
+
+- `Inconscient` : *"Personne à 0 PV (différent de comateux)."* (40 c.)
+- `Saignement` : *"1 dégât par minute jusqu'à soin."* (32 c.)
+
+L'entrée "Sans âme" insérée en migration `20260521030004_phase_5_2_sweep_corrections_data_critiques` utilise la description verbatim du manuel (370 chars), créant une incohérence stylistique avec les 31 autres.
+
+**Décision Fred (session 18)** : les descriptions de `effets_combat` doivent refléter exactement le texte du manuel pour éviter la confusion.
+
+**Plan** :
+
+1. Audit des 31 entrées vs Manuel des règles 2026 (édition 6 mai 2026).
+2. UPDATE des descriptions verbatim.
+3. Validation du rendu UI mobile sur cartes d'effets (le frontend gère-t-il bien des textes de 200-500 chars sans casser le layout ?).
+
+**Cible** : intégrer dans Sprint 5.7 (Refonte descriptions massives) en étendant son scope. Le backlog `backlog_manuel_2026_v2.md` n'incluait pas initialement `effets_combat` — à corriger en project knowledge.
+
+**Préreqs / dépendances** : aucun.
+
+**Effort estimé** : 0.5-1 session dédiée.
+
+---
