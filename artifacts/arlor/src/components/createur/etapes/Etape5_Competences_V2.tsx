@@ -589,7 +589,7 @@ const Etape5_Competences_V2 = ({
 
   /**
    * Retourne les options disponibles pour le dropdown selon `type_choix`.
-   * Filtre les options déjà choisies (pour multiple_langue et
+   * Filtre les options déjà choisies (pour multiple_choix_distinct et
    * multiple_avec_choix_par_niveau au niveau 1, où un choix doit être unique).
    * `categorie_depecage` est filtrée aux catégories où le perso a déjà acheté
    * Connaissance des Créatures.
@@ -872,7 +872,7 @@ const Etape5_Competences_V2 = ({
   /**
    * Décochage d'un achat. Si la compétence cascade et qu'il y a des niveaux
    * > N à supprimer aussi, on ouvre la modale de confirmation. Sinon
-   * (ligne unique : multiple_langue/multiple_sans_choix, ou dernier niveau
+   * (ligne unique : multiple_choix_distinct/multiple_sans_choix, ou dernier niveau
    * d'une séquence), on supprime direct sans modale.
    */
   const handleUncheck = (
@@ -885,7 +885,7 @@ const Etape5_Competences_V2 = ({
     }
 
     if (!TYPES_ACHAT_CASCADE.has(comp.type_achat ?? "")) {
-      // multiple_langue ou multiple_sans_choix : suppression unique, pas de cascade
+      // multiple_choix_distinct ou multiple_sans_choix : suppression unique, pas de cascade
       desacheterMutation.mutate({ p_personnage_competence_id: achat.id });
       return;
     }
@@ -921,7 +921,7 @@ const Etape5_Competences_V2 = ({
 
   /**
    * Confirme l'achat depuis le panneau "+ Ajouter une autre" (multiple_*).
-   * Le niveau visé est : pour multiple_langue = 1 ; pour
+   * Le niveau visé est : pour multiple_choix_distinct = 1 ; pour
    * multiple_avec_choix_par_niveau = max+1 (achat séquentiel par choix global).
    */
   const handleConfirmAdd = (comp: CompetenceWithNiveaux) => {
@@ -1228,10 +1228,10 @@ const Etape5_Competences_V2 = ({
   };
 
   /**
-   * `multiple_langue` (Décryptage, Langue supplémentaire). Liste des achats
+   * `multiple_choix_distinct` (Décryptage, Langue supplémentaire). Liste des achats
    * existants + bouton "+ Ajouter une autre" qui révèle un dropdown.
    */
-  const renderMultipleLangue = (comp: CompetenceWithNiveaux) => {
+  const renderMultipleChoixDistinct = (comp: CompetenceWithNiveaux) => {
     const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
@@ -1655,8 +1655,8 @@ const Etape5_Competences_V2 = ({
       case "unique_avec_choix":
         body = renderUniqueAvecChoix(comp);
         break;
-      case "multiple_langue":
-        body = renderMultipleLangue(comp);
+      case "multiple_choix_distinct":
+        body = renderMultipleChoixDistinct(comp);
         break;
       case "multiple_avec_choix_par_niveau":
         body = renderMultipleAvecChoixParNiveau(comp);
