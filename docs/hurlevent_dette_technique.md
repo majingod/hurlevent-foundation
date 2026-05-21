@@ -42,10 +42,12 @@ un preview deployment Vercel. Vercel détecte le commit (visible dans Git Histor
 de Vercel) mais n'enclenche pas le build.
 
 **Données** :
-- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17 (8 sessions consécutives).
+- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17, 18, 19 (10 sessions consécutives).
 - PR #97 (session 9) initialement crue auto-déployée, mais correction en session 14 : Fred confirme que toutes les PRs depuis l'apparition du problème ont été déployées manuellement. Hypothèse "Git reconnect a résolu" définitivement infirmée.
 - 3 PRs consécutives en session 11 (#101, #102, #103) toutes en preview manuel.
 - PR #109 (session 17) : preview manuel encore requis. Confirmation finale via `Vercel:list_deployments`.
+- PR #111 (session 18) : preview manuel encore requis (Sprint 5.2 sweep corrections data critiques).
+- PR #112 + #113 (session 19) : preview manuel encore requis pour les deux (Sprint 5.3 Religions + hotfix).
 - Production auto-deploye correctement sur merge to main (différence claire) — déploiement prod `9c1751b` de la PR #109 s'est bien fait automatiquement.
 
 **Causes investiguées (non-conclusives)** :

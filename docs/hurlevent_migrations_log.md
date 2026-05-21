@@ -191,3 +191,44 @@ Tests frontend sur preview Vercel (manuel — auto-trigger toujours cassé) : OK
 **Validation prod** : 12 checks SELECT exécutés post-migration, tous au vert.
 
 **Découverte de session** : la table cible pour "Sans âme" était initialement `sections_regles` dans le backlog ; correction faite vers `effets_combat` après inspection de l'interface frontend (capture Fred). La CHECK constraint `effets_combat_type_check` accepte déjà `'mort'` — usage légitime au lieu de devoir ALTER la contrainte.
+
+## Session 19 — Sprint 5.3 Renommage `multiple_choix_distinct` + multi-achat Religions (21 mai 2026)
+
+**PR #112** (Sprint 5.3 principal) — `feat-sprint-5-3-multiple-choix-distinct-religions-multiple` → `main`.
+**PR #113** (hotfix) — `fix-religions-dropdown-croyants-filtre-doublon` → `main`.
+
+### Contexte
+
+Alignement DB et frontend avec le Manuel des règles 2026 (édition 6 mai 2026) qui spécifie que `Connaissances des Religions` est achetable plusieurs fois, avec un choix de religion distinct à chaque achat (modèle similaire à `Langue supplémentaire`).
+
+### Migration appliquée
+
+`20260521041428_phase_5_3_renommage_multiple_choix_distinct_et_religions_multiple.sql` :
+
+- **Renommage CHECK + UPDATE** : `type_achat = 'multiple_langue'` → `'multiple_choix_distinct'` (CHECK constraint mise à jour, valeurs migrées).
+- **Bascule data** : `Connaissances des Religions` passe de `unique_avec_choix` à `multiple_choix_distinct` + `type_choix = 'religion'`.
+- **Refactor `peut_acheter_competence`** : branche `multiple_langue` renommée `multiple_choix_distinct`, conserve la logique anti-doublon basée sur `personnage_competences.choix_achat`. Résolution UUID → nom lisible étendue à la branche `religion`.
+- **Code mort documenté** : la branche `unique_avec_choix` reste fonctionnelle dans `peut_acheter_competence` (aucune compétence ne l'utilise après Sprint 5.3, conservée dans CHECK pour usage futur).
+
+### Frontend (PR #112 + #113)
+
+- **PR #112** : renommage cohérent dans plusieurs composants React (`PersonnageNouveau*`, `usePersonnageEdit`, `useCompetenceAchat`, etc.) — `multiple_langue` → `multiple_choix_distinct`.
+- **PR #113** (hotfix immédiat post-merge #112) :
+  - Dropdown religion ouvert aux croyants (et non plus seulement non-croyants) pour permettre l'achat de connaissances sur d'autres religions que la sienne.
+  - Filtre anti-doublon côté UI : religion déjà sélectionnée → grisée dans la liste.
+
+### Validation
+
+- Tests prod via MCP `execute_sql` (scénarios sur Vilo + Lyla) — ✅
+- Tests frontend sur preview Vercel (manuel — auto-trigger toujours cassé) — ✅
+
+### Découvertes-clés
+
+1. **`unique_avec_choix` désormais orphelin** — branche conservée dans le code (defensive coding) au cas où une future compétence en aurait besoin.
+2. **Vercel manuel encore requis** sur les 2 PRs — 2 sessions supplémentaires bumpées au compteur cumulé (sessions 18 + 19).
+3. **Consécration religion** distincte de la compétence : gérée par `personnages.religion_id` + `est_croyant`, indépendante de `Connaissances des Religions`.
+
+### Dette ouverte / fermée
+
+- **Fermée** : "Aligner DB sur Manuel 2026" (Connaissances des Religions) — confirmée résolue.
+- **Bumpée** : Vercel auto-trigger preview branches → **10 sessions consécutives** (cf `docs/hurlevent_dette_technique.md`).
