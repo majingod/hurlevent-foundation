@@ -607,19 +607,13 @@ const Etape5_Competences_V2 = ({
     );
 
     if (typeChoix === "religion") {
-      // Si le perso est déjà croyant, Connaissance des Religions ne peut
-      // viser que sa religion (cohérence métier : "consacré à une seule
-      // religion" — voir description de la compétence dans le Manuel).
-      if (personnage?.est_croyant && personnage?.religion_id) {
-        const sienne = (religions ?? []).find(
-          (r) => r.id === personnage.religion_id,
-        );
-        if (sienne && sienne.nom) {
-          return [{ value: sienne.id, label: sienne.nom }];
-        }
-      }
+      // Manuel des règles 2026 (édition 6 mai 2026) : plusieurs achats
+      // autorisés, un par religion différente. La consécration unique
+      // reste gérée via personnages.religion_id + est_croyant,
+      // indépendamment de cette compétence.
       return (religions ?? [])
         .filter((r): r is typeof r & { nom: string } => r.nom !== null)
+        .filter((r) => !dejaPris.has(r.id))
         .map((r) => ({ value: r.id, label: r.nom }));
     }
 
