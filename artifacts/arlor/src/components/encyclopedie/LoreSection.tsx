@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown } from "lucide-react";
+import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 
 interface LoreEntry {
   id: string;
@@ -20,7 +20,15 @@ const SOUS_ONGLETS_LORE = [
 ] as const;
 
 const LoreSection = ({ loreEntries, searchQuery }: { loreEntries: LoreEntry[]; searchQuery: string }) => {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const [loreOnglet, setLoreOnglet] = useState<"tout" | "region" | "cite">("tout");
 
   const loreFiltree = loreEntries.filter((entry) => {
@@ -59,30 +67,24 @@ const LoreSection = ({ loreEntries, searchQuery }: { loreEntries: LoreEntry[]; s
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {loreFiltree.map((item) => (
-            <Card
+            <EncyclopedieCard
               key={item.id}
-              className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
-              onClick={() => setExpanded(expanded === item.id ? null : item.id)}
+              id={item.id}
+              isOpen={expanded.has(item.id)}
+              onToggle={() => toggleExpanded(item.id)}
+              maxHeight={1000}
+              header={
+                <>
+                  <CardTitle className="font-heading text-xl">{item.nom}</CardTitle>
+                  {item.sous_titre && <p className="text-sm italic text-muted-foreground">{item.sous_titre}</p>}
+                  {item.embleme && (
+                    <Badge variant="outline" className="text-xs w-fit border-primary/30">{item.embleme}</Badge>
+                  )}
+                </>
+              }
             >
-              <CardHeader className="pb-2">
-                <CardTitle className="font-heading text-xl">{item.nom}</CardTitle>
-                {item.sous_titre && <p className="text-sm italic text-muted-foreground">{item.sous_titre}</p>}
-                {item.embleme && (
-                  <Badge variant="outline" className="text-xs w-fit border-primary/30">{item.embleme}</Badge>
-                )}
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                <div
-                  className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{ maxHeight: expanded === item.id ? "1000px" : "0", opacity: expanded === item.id ? 1 : 0 }}
-                >
-                  <p className="border-t border-primary/10 pt-3 mt-1 whitespace-pre-line">{item.description}</p>
-                </div>
-                <div className="flex justify-end pt-1">
-                  <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 ${expanded === item.id ? "rotate-180" : ""}`} />
-                </div>
-              </CardContent>
-            </Card>
+              <p className="border-t border-primary/10 pt-3 mt-1 whitespace-pre-line">{item.description}</p>
+            </EncyclopedieCard>
           ))}
         </div>
       )}

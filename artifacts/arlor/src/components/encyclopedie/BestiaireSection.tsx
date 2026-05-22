@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown } from "lucide-react";
+import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 
 interface Creature {
   id: string;
@@ -54,7 +54,15 @@ const BestiaireSection = ({
   creatures: Creature[];
   searchQuery?: string;
 }) => {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
     ? creatures.filter(
@@ -76,39 +84,27 @@ const BestiaireSection = ({
         <section key={cat}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{formatCategorie(cat)}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
-            {grouped[cat].map((c) => {
-              const isOpen = expanded === c.id;
-              return (
-                <Card
-                  key={c.id}
-                  className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
-                  onClick={() => setExpanded(isOpen ? null : c.id)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="font-heading text-xl">{c.nom}</CardTitle>
-                      <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
-                    </div>
+            {grouped[cat].map((c) => (
+              <EncyclopedieCard
+                key={c.id}
+                id={c.id}
+                isOpen={expanded.has(c.id)}
+                onToggle={() => toggleExpanded(c.id)}
+                maxHeight={1000}
+                header={
+                  <>
+                    <CardTitle className="font-heading text-xl">{c.nom}</CardTitle>
                     {c.pv_formule && <Badge variant="secondary" className="text-xs w-fit">PV : {c.pv_formule}</Badge>}
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    <div
-                      className="overflow-hidden transition-all duration-300 ease-in-out"
-                      style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
-                    >
-                      <div className="space-y-2 border-t border-primary/10 pt-3 mt-1">
-                        {c.immunites && <p><span className="font-medium text-foreground">Immunités :</span> {c.immunites}</p>}
-                        {c.capacites_speciales && <p><span className="font-medium text-foreground">Capacités spéciales :</span> {c.capacites_speciales}</p>}
-                        <p>{c.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </>
+                }
+              >
+                <div className="space-y-2 border-t border-primary/10 pt-3 mt-1">
+                  {c.immunites && <p><span className="font-medium text-foreground">Immunités :</span> {c.immunites}</p>}
+                  {c.capacites_speciales && <p><span className="font-medium text-foreground">Capacités spéciales :</span> {c.capacites_speciales}</p>}
+                  <p>{c.description}</p>
+                </div>
+              </EncyclopedieCard>
+            ))}
           </div>
         </section>
       ))}
