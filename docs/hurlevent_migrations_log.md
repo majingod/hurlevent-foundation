@@ -1,8 +1,32 @@
 # Hurlevent — Migrations log
 
-> **Dernière mise à jour** : 22 mai 2026 (clôture session 24).
+> **Dernière mise à jour** : 22 mai 2026 (session 25 — PR C : enrichissement vue_fiche_personnage pour traits raciaux).
 
 Document qui trace toutes les migrations DB appliquées, leur contexte, et les apprentissages.
+
+---
+
+## Session 25 — Enrichissement vue_fiche_personnage pour traits raciaux (22 mai 2026)
+
+### Migration : `20260522211910_enrichir_vue_fiche_personnage_traits_raciaux`
+
+**Objectif** : résoudre le bug session 25 finding 1 — onglet Traits vide sur PersonnageFiche.tsx.
+
+**Cause racine** : `vue_fiche_personnage.traits_raciaux_choisis` retournait le JSONB brut `[{trait_id, xp_depense, est_gratuit}]`. Le frontend castait `as Trait[]` et accédait à `trait.nom` (undefined) → cards vides.
+
+**Solution** : `CREATE OR REPLACE VIEW vue_fiche_personnage` avec enrichissement via `LEFT JOIN traits_raciaux` dans un sous-SELECT `jsonb_agg(jsonb_build_object(...))`. Format retourné : `[{id, nom, description, cout_xp, xp_depense, est_gratuit}]`.
+
+**Périmètre** :
+- ✅ `vue_fiche_personnage` (modifiée) — seul consommateur frontend = `PersonnageFiche.tsx`
+- ✅ `personnages.traits_raciaux_choisis` (table) — INCHANGÉE, garde le format brut pour `Etape3_V2.tsx` et RPC `sauvegarder_etape_3`
+- ✅ Asymétrie acceptée : table = brut (write), vue = enrichi (read)
+
+**Test prod (Valerius `7fd12430-...`)** : 6 traits enrichis correctement.
+
+**Apprentissages clés** :
+- La règle ANTI-DEVINER (mémoire #4) + grep via Claude Code = workflow validé pour évaluer l'impact d'un changement de vue. En session 25, le grep a confirmé qu'`Etape3_V2.tsx` lit directement la table (pas via la vue) → Option A (modifier vue) safe.
+- L'asymétrie "table brut + vue enrichie" est acceptable quand les chemins de lecture/écriture sont clairement séparés (write côté Etape3 / read côté PersonnageFiche).
+- Cache CDN raw.githubusercontent.com peut rester stale plusieurs minutes/heures après merge, même avec format `refs/heads/main`. Conséquence : éviter d'analyser des fichiers récemment modifiés via web_fetch ; préférer Claude Code `cat`.
 
 ---
 
