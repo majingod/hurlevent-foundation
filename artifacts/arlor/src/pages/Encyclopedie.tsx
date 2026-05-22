@@ -673,6 +673,7 @@ const CATEGORIES = [
 
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
   const [categorieActive, setCategorieActive] = useState<string | null>(null);
+  const [openItems, setOpenItems] = useState<string[]>([]);
   const filtered = competences.filter(comp => {
     const query = searchQuery.toLowerCase();
     const matchTexte = !searchQuery ||
@@ -711,7 +712,7 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
       {filtered.length === 0 ? <NoResults /> : keys.map((cat) => (
         <section key={cat}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{labelCategorie[cat] ?? cat}</h3>
-          <Accordion type="multiple" className="w-full">
+          <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
             {grouped[cat].map((c) => {
               const niveaux = Array.isArray(c.niveaux) ? c.niveaux : [];
               return (
@@ -778,6 +779,7 @@ const NIVEAU_MIN_FILTERS: { key: NiveauMin | null; label: string }[] = [
 const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: string }) => {
   const [cercleActif, setCercleActif] = useState<string | null>(null);
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
+  const [openItems, setOpenItems] = useState<string[]>([]);
 
   const filtered = sorts.filter(sort => {
     const query = searchQuery.toLowerCase();
@@ -838,7 +840,7 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
             {niveauGroups.map(([nMin, groupSorts]) => (
               <div key={nMin} className="mb-4">
                 <h4 className="font-heading text-sm font-semibold text-primary/70 mb-2 ml-1">Niveau Minimum : {nMin}</h4>
-                <Accordion type="multiple" className="w-full">
+                <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
                   {groupSorts.map((s) => (
                     <AccordionItem key={s.id} value={s.id}>
                       <AccordionTrigger className="font-heading text-base hover:no-underline">
@@ -879,6 +881,7 @@ const SOUS_ONGLETS_DOMAINES = [
 const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQuery: string }) => {
   const [domaineActif, setDomaineActif] = useState<string | null>(null);
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
+  const [openItems, setOpenItems] = useState<string[]>([]);
 
   const filtered = prieres.filter(priere => {
     const query = searchQuery.toLowerCase();
@@ -930,7 +933,7 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
       {filtered.length === 0 ? <NoResults /> : keys.map((domaine) => (
         <section key={domaine}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{domaine}</h3>
-          <Accordion type="multiple" className="w-full">
+          <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
             {grouped[domaine].map((p) => (
               <AccordionItem key={p.id} value={p.id}>
                 <AccordionTrigger className="font-heading text-base hover:no-underline">
