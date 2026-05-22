@@ -451,6 +451,14 @@ const Etape5_Competences_V2 = ({
       if (tab) grouped[tab.key].push(c);
       else if (c.est_general) grouped.generale.push(c);
     });
+    // Sprint 5.5 Section 2.2 : tri alphabétique stable par catégorie.
+    // localeCompare("fr", { sensitivity: "base" }) ignore accents et casse,
+    // garantit un ordre prévisible indépendant de la collation Postgres.
+    Object.keys(grouped).forEach((k) => {
+      grouped[k].sort((a, b) =>
+        (a.nom ?? "").localeCompare(b.nom ?? "", "fr", { sensitivity: "base" })
+      );
+    });
     return grouped;
   }, [competences]);
 
@@ -1713,9 +1721,17 @@ const Etape5_Competences_V2 = ({
   return (
     <div className="space-y-4">
       <Tabs defaultValue="generale" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        {/* Sprint 5.5 Section 2.3 : sous-menu scrollable horizontalement
+            sur mobile. Pattern aligné sur Encyclopedie.tsx (cercles de
+            magie, domaines de prière). Conserve Radix Tabs (state +
+            accessibilité), ne change que le style. */}
+        <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto pb-1 scrollbar-hide">
           {TAB_CONFIG.map((t) => (
-            <TabsTrigger key={t.key} value={t.key}>
+            <TabsTrigger
+              key={t.key}
+              value={t.key}
+              className="flex-shrink-0 whitespace-nowrap"
+            >
               {t.label}
             </TabsTrigger>
           ))}
