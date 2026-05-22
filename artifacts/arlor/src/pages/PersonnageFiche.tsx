@@ -637,16 +637,18 @@ const PersonnageFiche = () => {
       </div>
 
       <Tabs defaultValue="infos" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="infos">Infos</TabsTrigger>
-          <TabsTrigger value="traits">Traits</TabsTrigger>
-          <TabsTrigger value="competences">Compétences</TabsTrigger>
-          <TabsTrigger value="sorts">Sorts</TabsTrigger>
-          <TabsTrigger value="prieres">Prières</TabsTrigger>
-          <TabsTrigger value="artisanat">Artisanat</TabsTrigger>
-          <TabsTrigger value="historique">Historique</TabsTrigger>
-          <TabsTrigger value="export">Export</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-2 px-2">
+          <TabsList className="inline-flex w-max">
+            <TabsTrigger value="infos">Infos</TabsTrigger>
+            <TabsTrigger value="traits">Traits</TabsTrigger>
+            <TabsTrigger value="competences">Compétences</TabsTrigger>
+            <TabsTrigger value="sorts">Sorts</TabsTrigger>
+            <TabsTrigger value="prieres">Prières</TabsTrigger>
+            <TabsTrigger value="artisanat">Artisanat</TabsTrigger>
+            <TabsTrigger value="historique">Historique</TabsTrigger>
+            <TabsTrigger value="export">Export</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Infos générales */}
         <TabsContent value="infos" className="space-y-4 mt-6">
