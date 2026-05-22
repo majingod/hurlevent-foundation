@@ -600,7 +600,7 @@ const Etape5_Competences_V2 = ({
    * Filtre les options déjà choisies (pour multiple_choix_distinct et
    * multiple_avec_choix_par_niveau au niveau 1, où un choix doit être unique).
    * `categorie_depecage` est filtrée aux catégories où le perso a déjà acheté
-   * Connaissance des Créatures.
+   * Connaissances des Créatures.
    */
   const getOptionsDropdown = (
     comp: CompetenceWithNiveaux,
@@ -673,10 +673,10 @@ const Etape5_Competences_V2 = ({
     }
 
     if (typeChoix === "categorie_depecage") {
-      // Liste filtrée aux catégories où le perso a Connaissance des Créatures.
+      // Liste filtrée aux catégories où le perso a Connaissances des Créatures.
       const connaissanceCreatures = (achats ?? []).filter((a) => {
         const c = (competences ?? []).find((cc) => cc.id === a.competence_id);
-        return c?.nom === "Connaissance des Créatures";
+        return c?.nom === "Connaissances des Créatures";
       });
       const categoriesAccessibles = new Set(
         connaissanceCreatures.map((a) => a.choix_achat).filter(Boolean) as string[],
@@ -1541,7 +1541,7 @@ const Etape5_Competences_V2 = ({
           optionsAdd.length === 0 &&
           achatsPourComp.length === 0 && (
             <p className="text-xs italic text-muted-foreground">
-              Achetez d'abord Connaissance des Créatures pour au moins une
+              Achetez d'abord Connaissances des Créatures pour au moins une
               catégorie.
             </p>
           )}
