@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Printer, Edit2, X, Check } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { calculerCoutPS } from "@/utils/calculsMagie";
+import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -480,7 +480,7 @@ const PersonnageFiche = () => {
             <div class="card">
               <div class="card-row">
                 <div class="card-title">${escapeHtml(s.nom_personnalise)}</div>
-                <span class="badge">${calculerCoutPS(s.cout_xp_base)} PS</span>
+                <span class="badge">${calculerCoutPS(calculerCoutXP(s.zone_choisie ?? "", s.portee_choisie ?? "", s.duree_choisie ?? "", s.niveau_sort, Number(s.cout_xp_base)))} PS</span>
               </div>
               ${s.sort_nom_base && s.sort_nom_base !== s.nom_personnalise ? `<div class="muted">Basé sur : ${escapeHtml(s.sort_nom_base)}</div>` : ""}
               ${s.formule_magique ? `<div class="formula">Formule : ${escapeHtml(s.formule_magique)}</div>` : ""}
@@ -771,7 +771,15 @@ const PersonnageFiche = () => {
                         <p className="font-medium text-foreground">{sort.nom_personnalise}</p>
                         <p className="text-xs text-muted-foreground">{sort.cercle} • Niveau {sort.niveau_sort}</p>
                       </div>
-                      <Badge variant="secondary" className="text-xs shrink-0">{calculerCoutPS(sort.cout_xp_base)} PS</Badge>
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        {calculerCoutPS(calculerCoutXP(
+                          sort.zone_choisie ?? "",
+                          sort.portee_choisie ?? "",
+                          sort.duree_choisie ?? "",
+                          sort.niveau_sort,
+                          Number(sort.cout_xp_base),
+                        ))} PS
+                      </Badge>
                     </div>
 
                     {sort.sort_nom_base && sort.sort_nom_base !== sort.nom_personnalise && (
