@@ -80,7 +80,7 @@ const TableauDeBord = () => {
       setSuppressionEnCours(true);
       const { error: deleteError } = await supabase
         .from("personnages")
-        .update({ est_actif: false })
+        .delete()
         .eq("id", personnageASupprimer.id);
 
       if (deleteError) throw deleteError;
