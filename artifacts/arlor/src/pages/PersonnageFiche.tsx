@@ -763,14 +763,42 @@ const PersonnageFiche = () => {
             <div className="space-y-3">
               {sorts.map((sort) => (
                 <Card key={sort.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-medium text-foreground">{sort.nom_personnalise}</p>
                         <p className="text-xs text-muted-foreground">{sort.cercle} • Niveau {sort.niveau_sort}</p>
                       </div>
-                      <Badge variant="secondary" className="text-xs">{calculerCoutPS(sort.cout_xp_base)} PS</Badge>
+                      <Badge variant="secondary" className="text-xs shrink-0">{calculerCoutPS(sort.cout_xp_base)} PS</Badge>
                     </div>
+
+                    {sort.sort_nom_base && sort.sort_nom_base !== sort.nom_personnalise && (
+                      <p className="text-xs italic text-muted-foreground">Basé sur : {sort.sort_nom_base}</p>
+                    )}
+
+                    {sort.formule_magique && (
+                      <div className="inline-block rounded bg-muted px-2 py-1 font-mono text-xs">
+                        Formule : {sort.formule_magique}
+                      </div>
+                    )}
+
+                    {(sort.zone_choisie || sort.portee_choisie || sort.duree_choisie) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[
+                          sort.zone_choisie && `Zone : ${sort.zone_choisie}`,
+                          sort.portee_choisie && `Portée : ${sort.portee_choisie}`,
+                          sort.duree_choisie && `Durée : ${sort.duree_choisie}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </p>
+                    )}
+
+                    {sort.sort_description && (
+                      <p className="border-t border-border/50 pt-2 text-sm text-foreground/90">
+                        {sort.sort_description}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -786,13 +814,40 @@ const PersonnageFiche = () => {
             <div className="space-y-3">
               {prieres.map((priere) => (
                 <Card key={priere.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
                         <p className="text-xs text-muted-foreground">{priere.domaine} • Niveau {priere.niveau_priere}</p>
                       </div>
+                      {priere.cout_xp_base != null && (
+                        <Badge variant="secondary" className="text-xs shrink-0">
+                          {calculerCoutPS(priere.cout_xp_base)} PS
+                        </Badge>
+                      )}
                     </div>
+
+                    {(priere.duree_incantation ||
+                      priere.zone_choisie ||
+                      priere.portee_choisie ||
+                      priere.duree_choisie) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[
+                          priere.duree_incantation && `Incantation : ${priere.duree_incantation}`,
+                          priere.zone_choisie && `Zone : ${priere.zone_choisie}`,
+                          priere.portee_choisie && `Portée : ${priere.portee_choisie}`,
+                          priere.duree_choisie && `Durée : ${priere.duree_choisie}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </p>
+                    )}
+
+                    {priere.priere_description && (
+                      <p className="border-t border-border/50 pt-2 text-sm text-foreground/90">
+                        {priere.priere_description}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -811,9 +866,29 @@ const PersonnageFiche = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 {assemblages.map((asm) => (
-                  <div key={asm.id} className="p-2 rounded border border-border/50 text-sm">
-                    <p className="font-medium text-foreground">{asm.nom}</p>
-                    {asm.cout_ps && <p className="text-xs text-muted-foreground">Coût PS : {asm.cout_ps}</p>}
+                  <div key={asm.id} className="space-y-1 rounded border border-border/50 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-foreground">{asm.nom}</p>
+                      {asm.cout_ps != null && (
+                        <Badge variant="secondary" className="text-xs shrink-0">{asm.cout_ps} PS</Badge>
+                      )}
+                    </div>
+                    {asm.cible && (
+                      <p className="text-xs text-muted-foreground">Cible : {asm.cible}</p>
+                    )}
+                    {asm.runes_requises && asm.runes_requises.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Runes : {asm.runes_requises.join(", ")}
+                      </p>
+                    )}
+                    {asm.description && (
+                      <p className="border-t border-border/50 pt-2 text-foreground/90">{asm.description}</p>
+                    )}
+                    {asm.effet && (
+                      <p className="text-foreground/90">
+                        <strong>Effet :</strong> {asm.effet}
+                      </p>
+                    )}
                   </div>
                 ))}
               </CardContent>
@@ -827,9 +902,24 @@ const PersonnageFiche = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 {recettes.map((recette) => (
-                  <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
-                    <p className="font-medium text-foreground">{recette.nom}</p>
-                    <p className="text-xs text-muted-foreground">{recette.type}</p>
+                  <div key={recette.id} className="space-y-1 rounded border border-border/50 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-foreground">{recette.nom}</p>
+                        <p className="text-xs text-muted-foreground">{recette.type}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        Niv. {recette.niveau_requis}
+                      </Badge>
+                    </div>
+                    {recette.description && (
+                      <p className="border-t border-border/50 pt-2 text-foreground/90">{recette.description}</p>
+                    )}
+                    {recette.effet && (
+                      <p className="text-foreground/90">
+                        <strong>Effet :</strong> {recette.effet}
+                      </p>
+                    )}
                   </div>
                 ))}
               </CardContent>
