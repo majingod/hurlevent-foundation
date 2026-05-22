@@ -913,11 +913,23 @@ const Etape5_Competences_V2 = ({
       return;
     }
 
-    // Calcul des achats cascade (niveau >= achat.niveau_acquis sur cette compétence)
+    // Sprint 5.5f : Calcul des achats cascade (niveau >= achat.niveau_acquis
+    // sur cette compétence). Pour multiple_avec_choix_par_niveau, si la ligne
+    // cible a un choix_achat défini, la cascade ne touche QUE le même
+    // choix_achat (miroir de desacheter_competence côté DB depuis 5.5e).
+    // Si la ligne cible a choix_achat = NULL (cas Connaissances Criminelles
+    // niveau 1 = savoir général sans choix), cascade sur tout.
     const achatsCompetence = achatsParCompetence.get(comp.id) ?? [];
-    const aSupprimer = achatsCompetence.filter(
-      (a) => a.niveau_acquis >= achat.niveau_acquis,
-    );
+    const aSupprimer = achatsCompetence.filter((a) => {
+      if (a.niveau_acquis < achat.niveau_acquis) return false;
+      if (
+        comp.type_achat === "multiple_avec_choix_par_niveau" &&
+        achat.choix_achat != null
+      ) {
+        return a.choix_achat === achat.choix_achat;
+      }
+      return true;
+    });
     const xpRembourse = aSupprimer.reduce((sum, a) => sum + (a.xp_depense ?? 0), 0);
 
     if (aSupprimer.length === 1) {
