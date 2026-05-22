@@ -1,10 +1,79 @@
 # Hurlevent — Dette technique
 
-> **Dernière mise à jour** : 22 mai 2026 (clôture session 24).
+> **Dernière mise à jour** : 22 mai 2026 (session 25 — PR C : bug Traits raciaux résolu, 2 findings ajoutés).
 
 Document vivant qui liste les bugs connus, les dettes techniques, les
 choses à revoir, les vestiges acceptables, et les apprentissages
 méthodologie.
+
+---
+
+## 🐛 Bugs ouverts session 25 (2 nouveaux)
+
+### Formule magique manquante + audit calcul PS [HAUTE]
+
+**Découvert** : session 25, test fonctionnel de PR #135 sur Valerius.
+
+**Symptômes** :
+- Sur l'onglet Sorts de `/personnage/:id`, formule magique non visible pour Brasier Vengeur (et probablement tous les autres sorts de Valerius)
+- 2 sous-causes possibles à distinguer :
+  - (a) `formule_magique = NULL` en base pour ce sort (vérifié pour Brasier Vengeur) → bug de création sort non persistée
+  - (b) UI du `<TabsContent value="sorts">` n'affiche pas le champ (à vérifier avec version actuelle du fichier, fetch CDN stale en session 25)
+
+**Audit calcul PS (séparé mais lié)** :
+- Code actuel : `<Badge>{calculerCoutPS(sort.cout_xp_base)} PS</Badge>`
+- `calculerCoutPS(coutXp)` = `Math.ceil(coutXp / 5 + 0.5)` (formule confirmée dans `utils/calculsMagie.ts`)
+- **Problème** : `calculerCoutPS` attend le coût XP TOTAL (zone + portée + durée + niveau × base) calculé via `calculerCoutXP`, pas le `cout_xp_base` brut
+- **Conséquence probable** : PS affiché sous-estimé dans la fiche personnage
+- À VALIDER avec version actuelle du fichier (cache stale en session 25)
+
+**Cible** : session 26, priorité 1.
+
+**Investigation à faire d'abord** :
+1. Claude Code cat `artifacts/arlor/src/pages/PersonnageFiche.tsx` pour voir version actuelle du TabsContent Sorts
+2. Vérifier si formule_magique est affichée conditionnellement (`{s.formule_magique && ...}`)
+3. Vérifier si calculerCoutPS reçoit le coût total ou base
+4. Si formule_magique non affichée → ajouter
+5. Si calcul PS incorrect → utiliser `calculerCoutXP(...)` avant passage à `calculerCoutPS`
+6. Investiguer cause racine du `formule_magique = NULL` en base (RPC création sort)
+
+**Effort** : M.
+
+---
+
+### Compétences gratuites : tri non-prioritaire + badge sans source [MOYENNE]
+
+**Découvert** : session 25, test fonctionnel PR #135 + UX feedback Fred.
+
+**Symptômes** :
+- Sur `PersonnageFiche.tsx` onglet Compétences : compétences gratuites mélangées avec payantes (tri actuel : `categorie + nom`)
+- Sur `Etape11_Recapitulatif_V2.tsx` (étape 11 du wizard) : même problème
+- Badge "Gratuit" n'indique pas la source : est-ce de la classe ? de la race ? d'une religion ? Difficile à savoir pour le joueur
+
+**Solution proposée** :
+- **Tri** : `ORDER BY est_gratuit DESC, categorie, nom` (gratuites en premier dans chaque catégorie)
+- **Badge enrichi** : "Gratuit (classe Mage)" / "Gratuit (race Drow)" / "Gratuit (religion X)"
+- Probablement nécessite d'ajouter une colonne `source_gratuite` dans `vue_competences_personnage` (ou récupérer via jointure)
+
+**Fichiers à toucher** :
+- `vue_competences_personnage` (migration SQL pour exposer la source)
+- `artifacts/arlor/src/pages/PersonnageFiche.tsx` (onglet Compétences)
+- `artifacts/arlor/src/components/createur/etapes/Etape11_Recapitulatif_V2.tsx` (récap)
+- Possiblement `Etape5_Competences_V2.tsx` (créateur) si même affichage
+
+**Cible** : session 26, priorité 2.
+
+**Effort** : M.
+
+---
+
+## ✅ Bugs résolus session 25 (1)
+
+### Onglet Traits vide sur PersonnageFiche.tsx
+**Migration** : `20260522211910_enrichir_vue_fiche_personnage_traits_raciaux`
+**Solution** : enrichi `vue_fiche_personnage` avec jointure sur `traits_raciaux` (nom, description, cout_xp ajoutés au JSONB).
+**Test prod (Valerius)** : 6 traits affichés avec leurs descriptions correctement.
+**Aucun changement frontend nécessaire** : le cast `as unknown as Trait[]` continue de fonctionner avec le nouveau format.
 
 ---
 
