@@ -20,6 +20,7 @@ import BestiaireSection from "@/components/encyclopedie/BestiaireSection";
 import LoreSection from "@/components/encyclopedie/LoreSection";
 import PiegesSection from "@/components/encyclopedie/PiegesSection";
 import RaceCard from "@/components/encyclopedie/RaceCard";
+import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 
 /* ── types ── */
 
@@ -435,37 +436,6 @@ const NoResults = () => (
   <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
 );
 
-const ExpandableCard = ({
-  isOpen, onToggle, header, children,
-}: {
-  isOpen: boolean;
-  onToggle: () => void;
-  header: React.ReactNode;
-  children: React.ReactNode;
-}) => (
-  <Card
-    className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
-    onClick={onToggle}
-  >
-    <CardHeader className="pb-2">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">{header}</div>
-        <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 flex-shrink-0 group-hover:text-primary ${isOpen ? "rotate-180" : ""}`} />
-      </div>
-    </CardHeader>
-    <CardContent className="text-sm text-muted-foreground">
-      <div
-        className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{ maxHeight: isOpen ? "1500px" : "0", opacity: isOpen ? 1 : 0 }}
-      >
-        {children}
-      </div>
-      <div className="flex justify-end pt-1">
-        <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
-      </div>
-    </CardContent>
-  </Card>
-);
 
 const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: string }) => {
   const filtered = filterByText(races, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.nom_latin ?? "", r.exigences_costume ?? ""]);
@@ -498,7 +468,15 @@ const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: stri
 };
 
 const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; searchQuery: string; races: Race[] }) => {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const [raceFiltre, setRaceFiltre] = useState<string | null>(null);
 
   const filtered = traits.filter(trait => {
@@ -543,10 +521,11 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
               .map(rt => rt.races?.nom)
               .filter(Boolean) as string[];
             return (
-              <ExpandableCard
+              <EncyclopedieCard
                 key={t.id}
-                isOpen={expanded === t.id}
-                onToggle={() => setExpanded(expanded === t.id ? null : t.id)}
+                id={t.id}
+                isOpen={expanded.has(t.id)}
+                onToggle={() => toggleExpanded(t.id)}
                 header={
                   <>
                     <CardTitle className="font-heading text-lg">{t.nom}</CardTitle>
@@ -561,7 +540,7 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
                 }
               >
                 <p className="border-t border-primary/10 pt-3 mt-1">{t.description}</p>
-              </ExpandableCard>
+              </EncyclopedieCard>
             );
           })}
         </div>
@@ -980,7 +959,15 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
 };
 
 const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; searchQuery: string }) => {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const filtered = filterByText(religions, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.description_longue ?? ""]);
   return (
     <div className="space-y-4">
@@ -988,10 +975,11 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
       {filtered.length === 0 ? <NoResults /> : (
         <div className="space-y-4">
           {filtered.map((r) => (
-            <ExpandableCard
+            <EncyclopedieCard
               key={r.id}
-              isOpen={expanded === r.id}
-              onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+              id={r.id}
+              isOpen={expanded.has(r.id)}
+              onToggle={() => toggleExpanded(r.id)}
               header={
                 <>
                   <CardTitle className="font-heading text-xl">{r.nom}</CardTitle>
@@ -1024,7 +1012,7 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
                 {r.fondateur && <p><span className="font-medium text-foreground">Fondateur :</span> {r.fondateur}</p>}
                 {r.description_longue && <p className="mt-2 whitespace-pre-line">{r.description_longue}</p>}
               </div>
-            </ExpandableCard>
+            </EncyclopedieCard>
           ))}
         </div>
       )}
