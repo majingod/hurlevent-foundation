@@ -27,7 +27,25 @@ interface PersonnageResume {
   created_at: string;
   race_nom: string;
   classe_nom: string;
+  est_finalise: boolean;
 }
+
+type StatutPersonnage = "brouillon" | "finalise";
+
+const getStatutPersonnage = (p: PersonnageResume): StatutPersonnage => {
+  return p.est_finalise ? "finalise" : "brouillon";
+};
+
+const BadgeStatutPersonnage = ({ statut }: { statut: StatutPersonnage }) => {
+  if (statut !== "finalise") return null;
+  return (
+    <div className="mb-3">
+      <span className="inline-flex items-center rounded-full border border-green-600/30 bg-green-600/20 px-2.5 py-0.5 text-xs font-medium text-green-400">
+        Finalisé
+      </span>
+    </div>
+  );
+};
 
 const TableauDeBord = () => {
   const { user } = useAuth();
@@ -144,6 +162,7 @@ const TableauDeBord = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                <BadgeStatutPersonnage statut={getStatutPersonnage(p)} />
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p><span className="text-white/60">Race :</span> {p.race_nom}</p>
                   <p><span className="text-white/60">Classe :</span> {p.classe_nom}</p>

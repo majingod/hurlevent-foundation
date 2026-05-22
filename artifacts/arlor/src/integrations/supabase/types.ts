@@ -70,6 +70,7 @@ export type Database = {
           immunites: string | null
           nom: string
           pv_formule: string | null
+          recherche_tsv: unknown
           updated_at: string | null
         }
         Insert: {
@@ -82,6 +83,7 @@ export type Database = {
           immunites?: string | null
           nom: string
           pv_formule?: string | null
+          recherche_tsv?: unknown
           updated_at?: string | null
         }
         Update: {
@@ -94,6 +96,7 @@ export type Database = {
           immunites?: string | null
           nom?: string
           pv_formule?: string | null
+          recherche_tsv?: unknown
           updated_at?: string | null
         }
         Relationships: []
@@ -211,6 +214,7 @@ export type Database = {
           niveaux: Json | null
           nom: string | null
           prerequis_competences: Json | null
+          recherche_tsv: unknown
           type_achat: string
           type_choix: string | null
           verrouillage_croise: boolean
@@ -225,6 +229,7 @@ export type Database = {
           niveaux?: Json | null
           nom?: string | null
           prerequis_competences?: Json | null
+          recherche_tsv?: unknown
           type_achat?: string
           type_choix?: string | null
           verrouillage_croise?: boolean
@@ -239,6 +244,7 @@ export type Database = {
           niveaux?: Json | null
           nom?: string | null
           prerequis_competences?: Json | null
+          recherche_tsv?: unknown
           type_achat?: string
           type_choix?: string | null
           verrouillage_croise?: boolean
@@ -2424,6 +2430,7 @@ export type Database = {
           date_modification: string | null
           est_actif: boolean
           est_croyant: boolean
+          est_finalise: boolean
           est_mort: boolean
           est_verrouille: boolean | null
           etape_creation: number
@@ -2457,6 +2464,7 @@ export type Database = {
           date_modification?: string | null
           est_actif?: boolean
           est_croyant?: boolean
+          est_finalise?: boolean
           est_mort?: boolean
           est_verrouille?: boolean | null
           etape_creation?: number
@@ -2490,6 +2498,7 @@ export type Database = {
           date_modification?: string | null
           est_actif?: boolean
           est_croyant?: boolean
+          est_finalise?: boolean
           est_mort?: boolean
           est_verrouille?: boolean | null
           etape_creation?: number
@@ -2666,6 +2675,7 @@ export type Database = {
           niveau: number
           nom: string
           portee: string | null
+          recherche_tsv: unknown
           religion_id: string | null
           type_priere: string | null
           zone_effet: string | null
@@ -2681,6 +2691,7 @@ export type Database = {
           niveau?: number
           nom: string
           portee?: string | null
+          recherche_tsv?: unknown
           religion_id?: string | null
           type_priere?: string | null
           zone_effet?: string | null
@@ -2696,6 +2707,7 @@ export type Database = {
           niveau?: number
           nom?: string
           portee?: string | null
+          recherche_tsv?: unknown
           religion_id?: string | null
           type_priere?: string | null
           zone_effet?: string | null
@@ -2895,6 +2907,7 @@ export type Database = {
           id: string
           nom: string | null
           pouvoir_symbole: string | null
+          recherche_tsv: unknown
           symbole_sacre: string | null
         }
         Insert: {
@@ -2908,6 +2921,7 @@ export type Database = {
           id?: string
           nom?: string | null
           pouvoir_symbole?: string | null
+          recherche_tsv?: unknown
           symbole_sacre?: string | null
         }
         Update: {
@@ -2921,6 +2935,7 @@ export type Database = {
           id?: string
           nom?: string | null
           pouvoir_symbole?: string | null
+          recherche_tsv?: unknown
           symbole_sacre?: string | null
         }
         Relationships: []
@@ -3011,6 +3026,7 @@ export type Database = {
           est_actif: boolean | null
           id: string
           ordre: number
+          recherche_tsv: unknown
           titre: string
           updated_at: string | null
         }
@@ -3021,6 +3037,7 @@ export type Database = {
           est_actif?: boolean | null
           id?: string
           ordre?: number
+          recherche_tsv?: unknown
           titre: string
           updated_at?: string | null
         }
@@ -3031,6 +3048,7 @@ export type Database = {
           est_actif?: boolean | null
           id?: string
           ordre?: number
+          recherche_tsv?: unknown
           titre?: string
           updated_at?: string | null
         }
@@ -3047,6 +3065,7 @@ export type Database = {
           niveau: number
           nom: string
           portee: string | null
+          recherche_tsv: unknown
           type_sort: string | null
           zone_effet: string | null
         }
@@ -3060,6 +3079,7 @@ export type Database = {
           niveau?: number
           nom: string
           portee?: string | null
+          recherche_tsv?: unknown
           type_sort?: string | null
           zone_effet?: string | null
         }
@@ -3073,6 +3093,7 @@ export type Database = {
           niveau?: number
           nom?: string
           portee?: string | null
+          recherche_tsv?: unknown
           type_sort?: string | null
           zone_effet?: string | null
         }
@@ -4696,6 +4717,7 @@ export type Database = {
           classe_nom: string | null
           created_at: string | null
           est_actif: boolean | null
+          est_finalise: boolean | null
           etape_creation: number | null
           id: string | null
           joueur_id: string | null
@@ -5455,6 +5477,10 @@ export type Database = {
         Returns: boolean
       }
       personnage_a_des_sorts: {
+        Args: { p_personnage_id: string }
+        Returns: boolean
+      }
+      personnage_est_modifiable: {
         Args: { p_personnage_id: string }
         Returns: boolean
       }
