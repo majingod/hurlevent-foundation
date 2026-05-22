@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { LEGENDE_CONSTRUCTION_PIEGES } from "@/constants/artisanat";
+import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 
 interface Piege {
   id: string;
@@ -32,7 +33,15 @@ const PiegesSection = ({
   pieges: Piege[];
   searchQuery?: string;
 }) => {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
     ? pieges.filter(
@@ -68,68 +77,58 @@ const PiegesSection = ({
           {keys.map((nom) => {
             const niveaux = [...grouped[nom]].sort((a, b) => a.niveau - b.niveau);
             const principal = niveaux[0];
-            const isOpen = expanded === nom;
             return (
-              <Card
+              <EncyclopedieCard
                 key={nom}
-                className="cursor-pointer border-primary/10 transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
-                onClick={() => setExpanded(isOpen ? null : nom)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
+                id={nom}
+                isOpen={expanded.has(nom)}
+                onToggle={() => toggleExpanded(nom)}
+                maxHeight={2000}
+                header={
+                  <>
                     <CardTitle className="font-heading text-lg">{nom}</CardTitle>
-                    <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {niveaux.map((n) => (
-                      <Badge
-                        key={n.id}
-                        className="text-xs bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent"
-                      >
-                        Niv. {n.niveau}
-                      </Badge>
-                    ))}
-                    {principal?.type_piege && (
-                      <Badge variant="outline" className="text-xs">
-                        {principal.type_piege}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  <div
-                    className="overflow-hidden transition-all duration-300 ease-in-out"
-                    style={{ maxHeight: isOpen ? "2000px" : "0", opacity: isOpen ? 1 : 0 }}
-                  >
-                    <div className="space-y-3 border-t border-primary/10 pt-3 mt-1">
+                    <div className="flex flex-wrap gap-1.5 mt-1">
                       {niveaux.map((n) => (
-                        <div key={n.id} className="rounded border border-border/60 p-3 space-y-1 text-xs">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className="bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent text-xs">
-                              Niveau {n.niveau}
-                            </Badge>
-                            <span className="text-primary font-medium">{n.cout_xp} XP</span>
-                          </div>
-                          <p><span className="font-medium text-foreground">Cible :</span> {n.cible}</p>
-                          <p><span className="font-medium text-foreground">Durée :</span> {n.duree}</p>
-                          <p><span className="font-medium text-foreground">Effets :</span> {n.effets}</p>
-                          {n.niveau_effet != null && (
-                            <p><span className="font-medium text-foreground">Niveau de résistance requis :</span> {n.niveau_effet}</p>
-                          )}
-                          {n.construction && (
-                            <p className="mt-1 pt-1 border-t border-border/40">
-                              <span className="font-medium text-foreground">Construction :</span> {n.construction}
-                            </p>
-                          )}
-                        </div>
+                        <Badge
+                          key={n.id}
+                          className="text-xs bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent"
+                        >
+                          Niv. {n.niveau}
+                        </Badge>
                       ))}
+                      {principal?.type_piege && (
+                        <Badge variant="outline" className="text-xs">
+                          {principal.type_piege}
+                        </Badge>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex justify-end pt-1">
-                    <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
-                  </div>
-                </CardContent>
-              </Card>
+                  </>
+                }
+              >
+                <div className="space-y-3 border-t border-primary/10 pt-3 mt-1">
+                  {niveaux.map((n) => (
+                    <div key={n.id} className="rounded border border-border/60 p-3 space-y-1 text-xs">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge className="bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent text-xs">
+                          Niveau {n.niveau}
+                        </Badge>
+                        <span className="text-primary font-medium">{n.cout_xp} XP</span>
+                      </div>
+                      <p><span className="font-medium text-foreground">Cible :</span> {n.cible}</p>
+                      <p><span className="font-medium text-foreground">Durée :</span> {n.duree}</p>
+                      <p><span className="font-medium text-foreground">Effets :</span> {n.effets}</p>
+                      {n.niveau_effet != null && (
+                        <p><span className="font-medium text-foreground">Niveau de résistance requis :</span> {n.niveau_effet}</p>
+                      )}
+                      {n.construction && (
+                        <p className="mt-1 pt-1 border-t border-border/40">
+                          <span className="font-medium text-foreground">Construction :</span> {n.construction}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </EncyclopedieCard>
             );
           })}
         </div>
