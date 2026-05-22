@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
@@ -30,6 +30,17 @@ const LoreSection = ({ loreEntries, searchQuery }: { loreEntries: LoreEntry[]; s
     });
   };
   const [loreOnglet, setLoreOnglet] = useState<"tout" | "region" | "cite">("tout");
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const q = searchQuery.toLowerCase();
+    const matches = loreEntries.filter(entry =>
+      entry.nom.toLowerCase().includes(q) ||
+      entry.sous_titre?.toLowerCase().includes(q) ||
+      entry.description?.toLowerCase().includes(q)
+    );
+    setExpanded(new Set(matches.map(m => m.id)));
+  }, [searchQuery, loreEntries]);
 
   const loreFiltree = loreEntries.filter((entry) => {
     const query = searchQuery.toLowerCase();

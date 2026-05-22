@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
@@ -63,6 +63,17 @@ const BestiaireSection = ({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const qLow = searchQuery.toLowerCase();
+    const matches = creatures.filter(c =>
+      (c.nom ?? "").toLowerCase().includes(qLow) ||
+      (c.description ?? "").toLowerCase().includes(qLow)
+    );
+    setExpanded(new Set(matches.map(c => c.id)));
+  }, [searchQuery, creatures]);
+
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
     ? creatures.filter(

@@ -479,6 +479,16 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
   };
   const [raceFiltre, setRaceFiltre] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!searchQuery) return;
+    const q = searchQuery.toLowerCase();
+    const matches = traits.filter(t =>
+      t.nom.toLowerCase().includes(q) ||
+      (t.description ?? "").toLowerCase().includes(q)
+    );
+    setExpanded(new Set(matches.map(t => t.id)));
+  }, [searchQuery, traits]);
+
   const filtered = traits.filter(trait => {
     const matchTexte = !searchQuery ||
       trait.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -674,6 +684,16 @@ const CATEGORIES = [
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
   const [categorieActive, setCategorieActive] = useState<string | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const q = searchQuery.toLowerCase();
+    const matches = competences.filter(c =>
+      (c.nom ?? "").toLowerCase().includes(q) ||
+      (c.description ?? "").toLowerCase().includes(q)
+    );
+    setOpenItems(matches.map(c => c.id));
+  }, [searchQuery, competences]);
   const filtered = competences.filter(comp => {
     const query = searchQuery.toLowerCase();
     const matchTexte = !searchQuery ||
@@ -781,6 +801,17 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
 
+  useEffect(() => {
+    if (!searchQuery) return;
+    const q = searchQuery.toLowerCase();
+    const matches = sorts.filter(s =>
+      s.nom.toLowerCase().includes(q) ||
+      (s.description ?? "").toLowerCase().includes(q) ||
+      (s.cercle ?? "").toLowerCase().includes(q)
+    );
+    setOpenItems(matches.map(s => s.id));
+  }, [searchQuery, sorts]);
+
   const filtered = sorts.filter(sort => {
     const query = searchQuery.toLowerCase();
     const matchTexte = !searchQuery ||
@@ -883,6 +914,17 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
 
+  useEffect(() => {
+    if (!searchQuery) return;
+    const q = searchQuery.toLowerCase();
+    const matches = prieres.filter(p =>
+      p.nom.toLowerCase().includes(q) ||
+      (p.description ?? "").toLowerCase().includes(q) ||
+      (p.domaine ?? "").toLowerCase().includes(q)
+    );
+    setOpenItems(matches.map(p => p.id));
+  }, [searchQuery, prieres]);
+
   const filtered = prieres.filter(priere => {
     const query = searchQuery.toLowerCase();
     const matchTexte = !searchQuery ||
@@ -971,6 +1013,13 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const matches = filterByText(religions, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.description_longue ?? ""]);
+    setExpanded(new Set(matches.map(r => r.id)));
+  }, [searchQuery, religions]);
+
   const filtered = filterByText(religions, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.description_longue ?? ""]);
   return (
     <div className="space-y-4">

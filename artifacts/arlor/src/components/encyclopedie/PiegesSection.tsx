@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Info } from "lucide-react";
@@ -42,6 +42,22 @@ const PiegesSection = ({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const qLow = searchQuery.toLowerCase();
+    const matchedNoms = new Set(
+      pieges
+        .filter(p =>
+          p.nom.toLowerCase().includes(qLow) ||
+          (p.effets ?? "").toLowerCase().includes(qLow) ||
+          (p.cible ?? "").toLowerCase().includes(qLow)
+        )
+        .map(p => p.nom)
+    );
+    setExpanded(matchedNoms);
+  }, [searchQuery, pieges]);
+
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
     ? pieges.filter(
