@@ -42,14 +42,15 @@ un preview deployment Vercel. Vercel détecte le commit (visible dans Git Histor
 de Vercel) mais n'enclenche pas le build.
 
 **Données** :
-- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17, 18, 19, 20 (**11 sessions consécutives**).
+- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17, 18, 19, 20, **21** (**17 sessions consécutives** au compteur cumulé — 6 PRs additionnelles dans la seule session 21).
 - PR #97 (session 9) initialement crue auto-déployée, mais correction en session 14 : Fred confirme que toutes les PRs depuis l'apparition du problème ont été déployées manuellement. Hypothèse "Git reconnect a résolu" définitivement infirmée.
 - 3 PRs consécutives en session 11 (#101, #102, #103) toutes en preview manuel.
 - PR #109 (session 17) : preview manuel encore requis. Confirmation finale via `Vercel:list_deployments`.
 - PR #111 (session 18) : preview manuel encore requis (Sprint 5.2 sweep corrections data critiques).
 - PR #112 + #113 (session 19) : preview manuel encore requis pour les deux (Sprint 5.3 Religions + hotfix).
 - PR #114, #115, #116 (session 20) : preview manuel encore requis pour les trois (clôture S19 + Sprint 5.4 Phase A + Phase C). `Vercel:list_deployments` confirme 0 deployment auto pour ces 3 branches.
-- Production auto-deploye correctement sur merge to main (différence claire) — déploiement prod `9c1751b` de la PR #109 s'est bien fait automatiquement.
+- **PR #117, #118, #120, #121, #122, #123, #124 (session 21)** : preview manuel encore requis pour les 7 (Sprint 5.5). Bump significatif du compteur cumulé (+6 occurrences, atteint le seuil de 17 sessions consécutives).
+- Production auto-deploye correctement sur merge to main (différence claire) — déploiement prod `9c1751b` de la PR #109 s'est bien fait automatiquement. Confirmé également sur les merges des sessions 20 et 21.
 
 **Causes investiguées (non-conclusives)** :
 - `Require Verified Commits` (Vercel security) : Claude Code commits non signés. Toggle désactivé en session 8, sans effet stable.
@@ -59,6 +60,8 @@ de Vercel) mais n'enclenche pas le build.
 **Workaround stable** : Vercel UI → Project → Deployments → Create Deployment → sélectionner branche → Create Preview Deployment. ~30s.
 
 **Statut session 20** : ticket Vercel proposé puis reporté par Fred (décision explicite — pas la priorité en session 20).
+
+**Statut session 21** : 6 PRs additionnelles toutes en preview manuel. Compteur cumulé atteint **17 sessions consécutives**. Fred a explicitement gardé le sujet en attente pour ne pas casser le rythme du Sprint 5.5. Recommandation maintenue : ouvrir un ticket support Vercel dès qu'une fenêtre s'ouvre.
 
 **Plan** :
 1. Reproduire le problème en une session dédiée (10-20 min).
@@ -126,5 +129,27 @@ L'entrée "Sans âme" insérée en migration `20260521030004_phase_5_2_sweep_cor
 **Préreqs / dépendances** : décision Fred sur la direction de l'alignement.
 
 **Effort estimé** : 15 min (migration) ou 0 min (juste mettre en attente édition manuel).
+
+---
+
+## NEW — Apprentissages méthodologie session 21 (priorité informative)
+
+**Découvert** : session 21 (22 mai 2026) — Sprint 5.5 dévié vers 7 PRs et 5 migrations à cause de bugs latents révélés en cascade.
+
+**Apprentissages formalisés en méthodologie v7** (règles #11 à #14) :
+
+1. **Audit fonctions/vues PL/pgSQL avant renommage DB** : tout renommage d'une entité référencée par nom (compétence, classe, religion, catégorie) doit auditer `pg_get_functiondef` + `pg_get_viewdef` AVANT application. Le scan frontend seul ne suffit pas (cf. régression Dépeçage PR #120 corrigée par PR #121).
+
+2. **`regexp_count` post-application** : après tout patch de fonction/vue via `pg_get_functiondef + replace() + EXECUTE`, valider le nombre de remplacements effectués vs attendu.
+
+3. **Indentation peut différer entre blocs d'une même fonction** : dans `desacheter_competence`, le bloc DELETE utilisait 8 espaces avant `AND`, le bloc FOR 10 espaces. Un pattern unique ne matche que l'un des deux. Vérifier explicitement chaque pattern.
+
+4. **Cohérence frontend ↔ backend lors d'un changement de sémantique cascade** : après tout fix backend modifiant la sémantique d'une cascade ou d'un filtrage, auditer le frontend pour vérifier qu'il reproduit la nouvelle logique dans ses affichages (modales de confirmation, totaux, previews).
+
+**Impact estimé futur** : ces 4 règles devraient prévenir au moins 50% des bugs latents découverts en cascade lors d'une migration impactante.
+
+**Préreqs / dépendances** : aucun (règles méthodologie déjà actives).
+
+**Effort estimé** : 0 (déjà documenté en `Methodologie_collaboration_Claude_v7.md`).
 
 ---

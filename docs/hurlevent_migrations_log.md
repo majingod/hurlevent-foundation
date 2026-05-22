@@ -293,3 +293,109 @@ Idempotence via `AND niveaux->0->>'prerequis' = 'Religion'`.
 
 - **Bumpée** : Vercel auto-trigger preview branches → 11 sessions consécutives. 3 PRs preview manuelles en session 20.
 - **Ajoutée** : alignement cosmétique noms compétences DB ↔ manuel (priorité basse, voir entrée dette dédiée).
+
+---
+
+## Session 21 — Sprint 5.5 partiellement clos (22 mai 2026)
+
+**7 PRs mergées dans la session (toutes squash-and-merge)** :
+
+| PR | Description | Migration |
+|---|---|---|
+| **PR #118** | `feat(sprint-5-5a)` : vue_personnages_joueur expose est_finalise | `20260521191346` |
+| **PR #117** | `feat(sprint-5-5b)` : wizard quick wins (sections 1+2.2+2.3) | (frontend only) |
+| **PR #120** | `feat(sprint-5-5c)` : uniformisation noms 'Connaissances' pluriel + casse | `20260522012006` |
+| **PR #121** | `fix(sprint-5-5c-hotfix)` : aligne vue_personnage_etat + 2 RPC sur 'Connaissances des Créatures' | `20260522021423` |
+| **PR #122** | `feat(sprint-5-5d)` : fix Connaissances Criminelles frontend | (frontend only) |
+| **PR #123** | `fix(sprint-5-5e-hotfix)` : cascade desacheter_competence par choix_achat | `20260522024852` + `20260522025028` |
+| **PR #124** | `fix(sprint-5-5f-ui)` : aligne modale cascade sur desacheter_competence | (frontend only) |
+
+### Contexte
+
+Sprint 5.5 — Quick wins UX wizard. Initialement prévu pour 1 session simple (4 sections du backlog wizard). Dévié vers 7 PRs après découverte par Fred d'incohérences "Connaissance"/"Connaissances" dans le manuel, déclenchant une cascade de bugs latents :
+- Régression Dépeçage (3 objets PL/pgSQL référençaient encore l'ancien nom)
+- Bug Connaissances Criminelles frontend (niveau 1 imposait un choix à tort)
+- Bug ancien `desacheter_competence` (cascade ne filtrait pas sur choix_achat)
+- Bug UX modale cascade (frontend affichait l'ancienne logique cassée)
+
+### Migrations appliquées
+
+#### `20260521191346_phase_5_5a_vue_personnages_joueur_est_finalise.sql` (PR #118)
+
+`vue_personnages_joueur` recréée pour exposer `personnages.est_finalise` (posée en Sprint 5.1) en plus des colonnes existantes. Préalable au badge "finalisé" tableau de bord (à venir session 22).
+
+#### `20260522012006_phase_5_5b_uniformisation_connaissances_pluriel.sql` (PR #120)
+
+Uniformisation des noms de compétences "Connaissance(s) ..." :
+- **6 renames `competences.nom`** : 5 passages singulier→pluriel + 1 alignement casse (Métaux Communs/Rares avec C/R majuscule)
+- **3 REPLACE sur `prerequis_competences`** (jsonb) : préserve le chaînage prereq côté moteur
+- **1 UPDATE sur `sections_regles.contenu`** : section "Récolte de composantes sur les monstres"
+
+**11 noms résultants** : Connaissances Criminelles, Connaissances des Créatures, Connaissances des Gemmes Communes/Rares, Connaissances des Herbes Communes/Rares, Connaissances des Métaux Communs/Rares, Connaissances des Religions, Connaissances des Runes, Connaissances Héraldique.
+
+**Politique Fred** : pluriel + casse Majuscule sur Communs/Rares. Écart vs manuel papier édition 6 mai assumé (manuel mélange les 2 formes).
+
+#### `20260522021423_phase_5_5c_hotfix_creatures_pluriel_dans_vues_et_rpc.sql` (PR #121)
+
+Hotfix régression Dépeçage. La migration PR #120 n'avait pas couvert les références littérales de "Connaissance des Créatures" dans 3 objets PL/pgSQL :
+- `vue_personnage_etat` : 2 occurrences dans `bool_or(c.nom = 'Connaissance des Créatures'...)` → `a_connaissance_creatures_1/2` retournait toujours false
+- `peut_acheter_competence` : 6 occurrences (2 jointures bloquantes + 4 messages)
+- `verifier_prerequis_competences` : 2 occurrences (messages d'erreur uniquement)
+
+**Approche** : `CREATE OR REPLACE VIEW` pour la vue + `pg_get_functiondef + replace() + EXECUTE` pour les 2 fonctions (évite re-saisie manuelle de ~150 lignes par fonction).
+
+**Leçon ajoutée à méthodologie v7 (règle #11)** : tout renommage de compétence/objet référencé par nom doit auditer obligatoirement `pg_get_functiondef` + `pg_get_viewdef` AVANT application.
+
+#### `20260522024852_phase_5_5e_hotfix_desacheter_cascade_par_choix_achat.sql` (PR #123, bloc 1/2)
+
+Hotfix cascade `desacheter_competence` pour `multiple_avec_choix_par_niveau`. **Bug ANCIEN** (présent dès la création de la RPC), pas une régression. Détection rendue possible par PR #122 (scénario "plusieurs familles niveau 2" activé).
+
+Comportement corrigé :
+- Ligne désachée avec `choix_achat` défini → cascade uniquement sur le même `choix_achat`
+- Ligne désachée avec `choix_achat = NULL` (Criminelles niveau 1 savoir général) → cascade sur tout
+- Pour `simple` / `unique_avec_choix` : inchangé
+
+**Cette migration ne couvre que le bloc DELETE.** Le bloc FOR a été raté à cause d'une différence d'indentation (8 vs 10 espaces).
+
+#### `20260522025028_phase_5_5e_hotfix2_desacheter_cascade_for_indentation.sql` (PR #123, bloc 2/2)
+
+Migration de suivi immédiate. La migration `20260522024852` avait raté le bloc FOR de `desacheter_competence` à cause d'une indentation différente (10 espaces dans le FOR vs 8 dans le DELETE). Conséquence intermédiaire :
+- DELETE correct (le bug fonctionnel était résolu)
+- Mais `v_xp_total_rembourse` calculé sur portée trop large (remboursement XP surestimé)
+
+Cette migration aligne le filtre `choix_achat` sur le bloc FOR.
+
+**Leçon ajoutée à méthodologie v7 (règles #12 et #13)** : valider `regexp_count` post-application, et anticiper que l'indentation peut différer entre blocs d'une même fonction PL/pgSQL.
+
+### Découvertes-clés session 21
+
+1. **Manuel papier incohérent lui-même** : utilise indifféremment "Connaissance" et "Connaissances" pour le même type de compétence. Politique stricte "manuel littéral" doit céder face à l'incohérence → décision arbitraire cohérente requise.
+
+2. **Renommage DB ≠ scan frontend seulement** : 3 objets PL/pgSQL référençaient encore l'ancien nom par littéral. Audit `pg_get_functiondef + pg_get_viewdef` obligatoire avant migration de renommage (règle méthodologie #11).
+
+3. **Indentation peut différer entre blocs d'une même fonction** : DELETE (8 espaces) vs FOR (10 espaces) dans `desacheter_competence`. `regexp_count` post-application est obligatoire (règle #12 et #13).
+
+4. **Bug latent ancien révélé par cas d'usage nouveau** : la cascade `desacheter_competence` était cassée depuis sa création, mais jamais détectée car le scénario "plusieurs familles niveau 2" n'avait jamais été testé. PR #122 (fix Connaissances Criminelles) a ouvert ce cas → bug visible immédiatement.
+
+5. **Cohérence frontend ↔ backend** : après hotfix DB (PR #123), le frontend continuait à afficher la liste à supprimer selon l'ancienne logique. Bug cosmétique seulement, mais effrayant pour l'utilisateur (35 XP affichés au lieu de 10 XP réels). Audit systématique du frontend après tout fix backend modifiant la sémantique d'une cascade (règle #14).
+
+6. **Logique Connaissances Criminelles côté DB déjà correcte** : `peut_acheter_competence` gérait déjà le cas spécial via branches conditionnelles sur `v_competence.nom = 'Connaissances Criminelles'`. Le bug était purement frontend.
+
+### Validation
+
+- BEGIN/ROLLBACK tests passés avant chaque `apply_migration`.
+- Audit post-fix `regexp_count` confirmé : 0 référence à l'ancien nom dans les objets PL/pgSQL après hotfix.
+- Test ciblé Valerius (perso de Fred) : `a_connaissance_creatures_1 = true` après hotfix.
+- Test BEGIN/ROLLBACK cascade : "désache niv 2 Cauchemars, vérifie que niv 2 Forêt reste" → `apres_fix = '1/Cauchemars | 1/Forêt | 2/Forêt'` ✓
+- Tests UI prod Fred sur Valerius : Dépeçage déblocable après hotfix ✓ ; cascade familles correcte ✓.
+
+### Dette ouverte / fermée
+
+- **Bumpée** : Vercel auto-trigger preview branches → **17 sessions consécutives** (sessions 6, 7, 8, 10, 11, 13, 14, 17, 18, 19, 20, **21**). 6 PRs preview manuelles dans la seule session 21 (PR #117, #118, #120, #121, #122, #123, #124 = 7 PRs mais PR #117 et #118 ouvertes en parallèle). Ticket support Vercel reporté par Fred encore.
+- **Fermée partiellement** : 11 entrées Connaissance(s) closes par PR #120 (uniformisation pluriel + casse). 3 entrées historiques restent ouvertes (Corps Sain, Premiers Soins, Compétence d'arme d'hast) pour Sprint 5.7.
+- **Ajoutée potentielle** : textes d'affichage `competences.niveaux[].prerequis` désalignés post-PR #120 (cosmétique, UI uniquement, pas le moteur) — à intégrer Sprint 5.7.
+- **4 nouvelles règles méthodologie** ajoutées en v7 (#11 à #14) :
+  - #11 : Audit fonctions/vues PL/pgSQL avant renommage DB
+  - #12 : `regexp_count` post-application pour valider replacements PL/pgSQL
+  - #13 : Indentation peut différer entre blocs d'une même fonction
+  - #14 : Cohérence frontend ↔ backend lors d'un changement de sémantique cascade
