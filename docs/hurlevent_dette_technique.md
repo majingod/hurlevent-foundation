@@ -8,25 +8,7 @@ méthodologie.
 
 ---
 
-## 🐛 Bugs ouverts session 24 (8 nouveaux)
-
-### #8 — Sous-menu Tabs `PersonnageFiche` illisible mobile [HAUTE]
-
-**Découvert** : session 24, par test fonctionnel de PR #133.
-
-**Symptôme** : sur `/personnage/:id`, le `<TabsList className="grid w-full grid-cols-8">` rend les 8 onglets (Infos | Traits | Compétences | Sorts | Prières | Artisanat | Historique | Export) sur ~47px chacun en mobile (375px viewport). Texte chevauché/écrasé, illisible.
-
-**Impact** : empêche actuellement le test mobile complet de PR #133 (§2) sur les onglets enrichis (Sorts/Prières/Artisanat). Aussi bloquera §3 (masquage onglets vides) si pas résolu d'abord.
-
-**Solution** : pattern scrollable horizontal déjà existant dans le repo (étape 5 du créateur, Encyclopédie sous-catégories). À dupliquer plutôt que réinventer (cf règle inventaire avant code session 23).
-
-**Cible** : `artifacts/arlor/src/pages/PersonnageFiche.tsx` ligne ~454.
-
-**Effort** : S (1 fichier, ~10 lignes).
-
-**Cible** : session 25, priorité 1.
-
----
+## 🐛 Bugs ouverts session 24 (7 nouveaux)
 
 ### #4 — Étape sorts divins sautée malgré "Acquisition de Domaine" [CRITIQUE]
 
