@@ -58,6 +58,7 @@ const AlchimieSection = ({
 }) => {
   const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
   const [niveauIngFiltre, setNiveauIngFiltre] = useState<number | null>(null);
+  const [openItems, setOpenItems] = useState<string[]>([]);
 
   const showIngredients = typeFiltre === "ingredients";
 
@@ -161,7 +162,7 @@ const AlchimieSection = ({
                 <h4 className="text-sm font-medium text-muted-foreground mb-2">
                   {NIVEAU_ALCHIMIE_LABELS[Number(niv)] ?? `Niveau ${niv}`}
                 </h4>
-                <Accordion type="multiple" className="w-full">
+                <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
                   {byNiveau[niv].map((r) => {
                     const ings = Array.isArray(r.ingredients) ? r.ingredients : [];
                     return (
