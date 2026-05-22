@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, Clock, Info } from "lucide-react";
+import { CardTitle } from "@/components/ui/card";
+import { Clock, Info } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
-import { 
-  TYPE_OBJET_FORGE_LABELS, 
+import {
+  TYPE_OBJET_FORGE_LABELS,
   STATS_FORGE_LABELS,
   NOTE_FORGE,
-  NOTE_JOAILLERIE
+  NOTE_JOAILLERIE,
 } from "@/constants/artisanat";
+import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 
 interface ObjetForge {
   id: string;
@@ -77,9 +78,15 @@ const ForgeJoaillerieSection = ({
   reparations?: Reparation[];
   searchQuery?: string;
 }) => {
-  const [expandedRep, setExpandedRep] = useState<string | null>(null);
-  const [expandedForge, setExpandedForge] = useState<string | null>(null);
-  const [expandedJoail, setExpandedJoail] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const [forgeOnglet, setForgeOnglet] = useState<'fabrication' | 'reparation'>('fabrication');
   const q = searchQuery.trim().toLowerCase();
 
@@ -174,49 +181,39 @@ const ForgeJoaillerieSection = ({
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {forgeByType[type].map((o) => {
-                    const isOpen = expandedForge === o.id;
                     const stats = o.stats && typeof o.stats === "object" && !Array.isArray(o.stats) ? o.stats as Record<string, any> : null;
                     return (
-                      <Card
+                      <EncyclopedieCard
                         key={o.id}
-                        className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
-                        onClick={() => setExpandedForge(isOpen ? null : o.id)}
-                      >
-                        <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between gap-2">
+                        id={o.id}
+                        isOpen={expanded.has(o.id)}
+                        onToggle={() => toggleExpanded(o.id)}
+                        maxHeight={1000}
+                        header={
+                          <>
                             <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
-                            <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
-                          </div>
-                          {o.type && (
-                            <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
+                            {o.type && (
+                              <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
+                            </p>
+                          </>
+                        }
+                      >
+                        <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
+                          {o.description && <p>{o.description}</p>}
+                          {stats && Object.entries(stats).map(([k, v]) => (
+                            <p key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</p>
+                          ))}
+                          {o.materiaux_communs && (
+                            <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
                           )}
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
-                          </p>
-                        </CardHeader>
-                        <CardContent className="text-sm text-muted-foreground">
-                          <div
-                            className="overflow-hidden transition-all duration-300 ease-in-out"
-                            style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
-                          >
-                            <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
-                              {o.description && <p>{o.description}</p>}
-                              {stats && Object.entries(stats).map(([k, v]) => (
-                                <p key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</p>
-                              ))}
-                              {o.materiaux_communs && (
-                                <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
-                              )}
-                              {o.materiaux_rares && (
-                                <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex justify-end pt-1">
-                            <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          {o.materiaux_rares && (
+                            <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
+                          )}
+                        </div>
+                      </EncyclopedieCard>
                     );
                   })}
                 </div>
@@ -240,49 +237,37 @@ const ForgeJoaillerieSection = ({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            {fJoail.map((o) => {
-              const isOpen = expandedJoail === o.id;
-              return (
-                <Card
-                  key={o.id}
-                  className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
-                  onClick={() => setExpandedJoail(isOpen ? null : o.id)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
-                      <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
-                    </div>
+            {fJoail.map((o) => (
+              <EncyclopedieCard
+                key={o.id}
+                id={o.id}
+                isOpen={expanded.has(o.id)}
+                onToggle={() => toggleExpanded(o.id)}
+                maxHeight={1000}
+                header={
+                  <>
+                    <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
                     </p>
                     {o.effet && (
                       <p className="text-xs text-stone-400 truncate">{o.effet}</p>
                     )}
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    <div
-                      className="overflow-hidden transition-all duration-300 ease-in-out"
-                      style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
-                    >
-                      <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
-                        {o.description && <p>{o.description}</p>}
-                        {o.effet && <p><span className="font-medium text-foreground">Effet :</span> {o.effet}</p>}
-                        {o.materiaux_communs && (
-                          <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
-                        )}
-                        {o.materiaux_rares && (
-                          <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex justify-end pt-1">
-                      <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </>
+                }
+              >
+                <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
+                  {o.description && <p>{o.description}</p>}
+                  {o.effet && <p><span className="font-medium text-foreground">Effet :</span> {o.effet}</p>}
+                  {o.materiaux_communs && (
+                    <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
+                  )}
+                  {o.materiaux_rares && (
+                    <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
+                  )}
+                </div>
+              </EncyclopedieCard>
+            ))}
           </div>
         </section>
       )}
@@ -298,43 +283,31 @@ const ForgeJoaillerieSection = ({
             <div key={cat} className="mb-4">
               <h4 className="text-sm font-medium text-muted-foreground mb-2">{labelReparation[cat] ?? cat}</h4>
               <div className="grid gap-3 sm:grid-cols-2">
-                {repsByCat[cat].map((r) => {
-                  const isOpen = expandedRep === r.id;
-                  return (
-<Card
-	                      key={r.id}
-	                      className="cursor-pointer border-primary/10 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_25px_rgba(184,146,70,0.1)] group"
-	                      onClick={() => setExpandedRep(isOpen ? null : r.id)}
-	                    >
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="font-heading text-base">{r.nom_affichage}</CardTitle>
-                          <ChevronDown className={`h-4 w-4 text-primary/40 transition-transform duration-300 mt-1 ${isOpen ? "rotate-180" : ""}`} />
-                        </div>
+                {repsByCat[cat].map((r) => (
+                  <EncyclopedieCard
+                    key={r.id}
+                    id={r.id}
+                    isOpen={expanded.has(r.id)}
+                    onToggle={() => toggleExpanded(r.id)}
+                    maxHeight={1000}
+                    header={
+                      <>
+                        <CardTitle className="font-heading text-base">{r.nom_affichage}</CardTitle>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" /> {r.temps_minutes} min
                         </p>
-                      </CardHeader>
-                      <CardContent className="text-sm text-muted-foreground">
-                        <div
-                          className="overflow-hidden transition-all duration-300 ease-in-out"
-                          style={{ maxHeight: isOpen ? "1000px" : "0", opacity: isOpen ? 1 : 0 }}
-                        >
-                          <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
-                            <p><span className="font-medium text-foreground">Temps commun :</span> {r.temps_minutes} min</p>
-                            <p><span className="font-medium text-foreground">Temps rare :</span> {r.temps_rare_minutes} min</p>
-                            <p><span className="font-medium text-foreground">Matériaux communs :</span> {r.materiaux}</p>
-                            <p><span className="font-medium text-foreground">Matériaux rares :</span> {r.materiaux_rares}</p>
-                            {r.notes && <p className="italic mt-2">{r.notes}</p>}
-                          </div>
-                        </div>
-                        <div className="flex justify-end pt-1">
-                          <span className="text-xs text-primary">{isOpen ? "Voir moins" : "Voir plus"}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                      </>
+                    }
+                  >
+                    <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
+                      <p><span className="font-medium text-foreground">Temps commun :</span> {r.temps_minutes} min</p>
+                      <p><span className="font-medium text-foreground">Temps rare :</span> {r.temps_rare_minutes} min</p>
+                      <p><span className="font-medium text-foreground">Matériaux communs :</span> {r.materiaux}</p>
+                      <p><span className="font-medium text-foreground">Matériaux rares :</span> {r.materiaux_rares}</p>
+                      {r.notes && <p className="italic mt-2">{r.notes}</p>}
+                    </div>
+                  </EncyclopedieCard>
+                ))}
               </div>
             </div>
           ))}
@@ -345,4 +318,3 @@ const ForgeJoaillerieSection = ({
 };
 
 export default ForgeJoaillerieSection;
-
