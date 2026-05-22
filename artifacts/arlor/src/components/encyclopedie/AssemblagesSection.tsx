@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,17 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
     });
   };
   const [cibleFilter, setCibleFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const qLow = searchQuery.toLowerCase();
+    const matches = assemblages.filter(a =>
+      (a.nom ?? "").toLowerCase().includes(qLow) ||
+      (a.description_longue ?? "").toLowerCase().includes(qLow) ||
+      (a.effet ?? "").toLowerCase().includes(qLow)
+    );
+    setExpanded(new Set(matches.map(a => a.id)));
+  }, [searchQuery, assemblages]);
   const q = searchQuery.trim().toLowerCase();
   const filtered = assemblages
     .filter((a) => cibleFilter === null || a.cible === cibleFilter)

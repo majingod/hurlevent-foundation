@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
@@ -59,6 +59,18 @@ const AlchimieSection = ({
   const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
   const [niveauIngFiltre, setNiveauIngFiltre] = useState<number | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const qLow = searchQuery.toLowerCase();
+    const matches = recettes.filter(r =>
+      (r.nom ?? "").toLowerCase().includes(qLow) ||
+      (r.description ?? "").toLowerCase().includes(qLow) ||
+      (r.formule ?? "").toLowerCase().includes(qLow) ||
+      (r.effet ?? "").toLowerCase().includes(qLow)
+    );
+    setOpenItems(matches.map(r => r.id));
+  }, [searchQuery, recettes]);
 
   const showIngredients = typeFiltre === "ingredients";
 

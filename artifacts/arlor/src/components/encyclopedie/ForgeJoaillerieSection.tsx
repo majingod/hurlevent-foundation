@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CardTitle } from "@/components/ui/card";
 import { Clock, Info } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
@@ -88,6 +88,41 @@ const ForgeJoaillerieSection = ({
     });
   };
   const [forgeOnglet, setForgeOnglet] = useState<'fabrication' | 'reparation'>('fabrication');
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const qLow = searchQuery.toLowerCase();
+    const matches: string[] = [];
+    if (mode === "forge") {
+      forge.forEach(o => {
+        if (
+          (o.nom ?? "").toLowerCase().includes(qLow) ||
+          (o.description ?? "").toLowerCase().includes(qLow)
+        ) {
+          matches.push(o.id);
+        }
+      });
+      reparations.forEach(r => {
+        if (
+          r.nom_affichage.toLowerCase().includes(qLow) ||
+          (r.notes ?? "").toLowerCase().includes(qLow)
+        ) {
+          matches.push(r.id);
+        }
+      });
+    } else {
+      joaillerie.forEach(o => {
+        if (
+          (o.nom ?? "").toLowerCase().includes(qLow) ||
+          (o.description ?? "").toLowerCase().includes(qLow) ||
+          (o.effet ?? "").toLowerCase().includes(qLow)
+        ) {
+          matches.push(o.id);
+        }
+      });
+    }
+    setExpanded(new Set(matches));
+  }, [searchQuery, mode, forge, reparations, joaillerie]);
   const q = searchQuery.trim().toLowerCase();
 
   const filterFn = <T extends { nom: string | null; description?: string | null }>(arr: T[]) =>
