@@ -724,6 +724,27 @@ const Etape5_Competences_V2 = ({
           .map((a) => a.choix_achat)
           .filter(Boolean) as string[],
       );
+      // Sprint 5.5d Bug 2b : cascade au niveau N>1.
+      // Pour multiple_avec_choix_par_niveau, restreindre aux familles déjà
+      // acquises au niveau précédent (miroir de la logique categorie_creature).
+      // Si le niveau précédent n'a aucun achat avec choix (cas Connaissances
+      // Criminelles niveau 1 = savoir général sans choix), pas de cascade :
+      // toutes les options restent disponibles.
+      if (comp.type_achat === "multiple_avec_choix_par_niveau" && niveau > 1) {
+        const choixDejaAuNiveauPrecedent = new Set(
+          achatsPourComp
+            .filter((a) => a.niveau_acquis === niveau - 1)
+            .map((a) => a.choix_achat)
+            .filter(Boolean) as string[],
+        );
+        if (choixDejaAuNiveauPrecedent.size > 0) {
+          return (famillesCriminelles ?? [])
+            .filter((f): f is typeof f & { nom: string } => f.nom !== null)
+            .filter((f) => choixDejaAuNiveauPrecedent.has(f.nom))
+            .filter((f) => !dejaPrisAuNiveau.has(f.nom))
+            .map((f) => ({ value: f.nom, label: f.nom }));
+        }
+      }
       return (famillesCriminelles ?? [])
         .filter((f): f is typeof f & { nom: string } => f.nom !== null)
         .filter((f) => !dejaPrisAuNiveau.has(f.nom))
@@ -940,7 +961,10 @@ const Etape5_Competences_V2 = ({
       // Au niveau 1 toujours pour un nouveau choix. Pour reprendre un choix
       // existant à un niveau supérieur, l'utilisateur cochera le niveau dans
       // la section principale (pas via "+ Ajouter").
-      niveauCible = 1;
+      // Sprint 5.5d : exception Connaissances Criminelles — son niveau 1 est
+      // un savoir général sans choix, donc le bouton "+ Ajouter une famille"
+      // cible le niveau 2 (premier niveau avec choix de famille).
+      niveauCible = comp.nom === "Connaissances Criminelles" ? 2 : 1;
     }
     const niveauInfo = comp.niveaux_parsed.find((n) => n.niveau === niveauCible);
     if (!niveauInfo) {
@@ -1354,10 +1378,25 @@ const Etape5_Competences_V2 = ({
    * en bas pour démarrer un nouveau choix au niveau 1.
    */
   const renderMultipleAvecChoixParNiveau = (comp: CompetenceWithNiveaux) => {
+    // Sprint 5.5d Bug 2a : Connaissances Criminelles = cas spécial.
+    // Niveau 1 = savoir général sur TOUTES les familles (sans choix).
+    // Niveau 2 = ajoute un contact dans une famille (multi : 1 par famille).
+    // Niveau 3 = devient membre, cascade sur les choix du niveau 2.
+    const isCriminelles = comp.nom === "Connaissances Criminelles";
     const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
-    // Grouper par choix_achat
+
+    // Sépare le niveau 1 sans choix (Criminelles) des achats avec choix.
+    const achatNiveau1SansChoix = isCriminelles
+      ? achatsPourComp.find((a) => a.niveau_acquis === 1 && !a.choix_achat)
+      : null;
+    const achatsAvecChoix = isCriminelles
+      ? achatsPourComp.filter((a) => a.choix_achat != null)
+      : achatsPourComp;
+    const niveau1AcquisCriminelles = isCriminelles && !!achatNiveau1SansChoix;
+
+    // Grouper par choix_achat (uniquement les achats avec choix)
     const parChoix = new Map<string, PersonnageCompetenceRow[]>();
-    achatsPourComp.forEach((a) => {
+    achatsAvecChoix.forEach((a) => {
       const k = a.choix_achat ?? "(sans choix)";
       if (!parChoix.has(k)) parChoix.set(k, []);
       parChoix.get(k)!.push(a);
@@ -1366,13 +1405,60 @@ const Etape5_Competences_V2 = ({
     const addOpen = pendingAddCompId === comp.id;
     const keyAdd = `${comp.id}_add`;
     const choixAdd = pendingChoix[keyAdd] ?? "";
-    const optionsAdd = getOptionsDropdown(comp, 1);
+    // Pour Criminelles, le bouton "+ Ajouter une famille" cible le niveau 2
+    // (le niveau 1 est traité séparément en checkbox sans choix).
+    const niveauAjouter = isCriminelles ? 2 : 1;
+    const optionsAdd = getOptionsDropdown(comp, niveauAjouter);
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
+    const nivAjouter = comp.niveaux_parsed.find((n) => n.niveau === niveauAjouter);
     const compBloqueeClasse = classeBloque(comp);
     const prereqCompBloquee = prereqBloqueTotal(comp);
 
     return (
       <div className={`space-y-3 ${compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""}`}>
+        {/* Sprint 5.5d Bug 2a : Connaissances Criminelles niveau 1 = checkbox
+            simple sans choix (savoir général sur toutes les familles). */}
+        {isCriminelles && niv1 && (
+          <div className="flex flex-wrap items-center gap-3 rounded border border-border p-2">
+            <Checkbox
+              id={`${comp.id}-crim-niv1`}
+              checked={!!achatNiveau1SansChoix}
+              disabled={
+                compBloqueeClasse ||
+                prereqCompBloquee ||
+                mutationEnCours ||
+                (!!achatNiveau1SansChoix && achatNiveau1SansChoix.xp_depense === 0)
+              }
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  handleBuy(comp, niv1);
+                } else if (achatNiveau1SansChoix) {
+                  handleUncheck(comp, achatNiveau1SansChoix);
+                }
+              }}
+            />
+            <Label
+              htmlFor={`${comp.id}-crim-niv1`}
+              className="flex-1 cursor-pointer space-y-1 text-xs"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <strong>Niveau 1</strong>
+                <Badge variant="secondary" className="text-xs">
+                  {niv1.cout_xp} XP
+                </Badge>
+                {achatNiveau1SansChoix?.xp_depense === 0 && (
+                  <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
+                    Acquis gratuitement
+                  </Badge>
+                )}
+              </div>
+              {niv1.description_niveau && (
+                <p className="text-muted-foreground">{niv1.description_niveau}</p>
+              )}
+            </Label>
+          </div>
+        )}
+
         {/* Pour chaque choix existant, afficher les niveaux possibles */}
         {Array.from(parChoix.entries()).map(([choixKey, achatsDuChoix]) => {
           const niveauxDuChoix = new Set(achatsDuChoix.map((a) => a.niveau_acquis));
@@ -1390,10 +1476,17 @@ const Etape5_Competences_V2 = ({
                 {choixAffiche}
               </p>
               <div className="space-y-1.5">
-                {comp.niveaux_parsed.map((niv) => {
+                {comp.niveaux_parsed
+                  .filter((niv) => !(isCriminelles && niv.niveau === 1))
+                  .map((niv) => {
                   const dejaAchete = niveauxDuChoix.has(niv.niveau);
+                  // Sprint 5.5d : pour Criminelles, le premier niveau visible
+                  // dans la cascade par famille est le niveau 2. La cascade
+                  // niveauPrecedentRequis ne s'applique donc qu'à partir du
+                  // niveau 3 pour Criminelles.
+                  const niveauPrecedentMin = isCriminelles ? 2 : 1;
                   const niveauPrecedentRequis =
-                    niv.niveau > 1 && niv.niveau - 1 > maxAchete;
+                    niv.niveau > niveauPrecedentMin && niv.niveau - 1 > maxAchete;
                   const requiresMaster = needsMaster(comp, niv.niveau);
                   const achatCible = achatsDuChoix.find(
                     (a) => a.niveau_acquis === niv.niveau,
@@ -1478,8 +1571,11 @@ const Etape5_Competences_V2 = ({
           );
         })}
 
-        {/* "+ Ajouter une autre" */}
-        {!addOpen && !compBloqueeClasse && !prereqCompBloquee && optionsAdd.length > 0 && niv1 && (
+        {/* "+ Ajouter une autre" / "+ Ajouter une famille" pour Criminelles.
+            Sprint 5.5d : pour Criminelles, le bouton n'est visible que si le
+            niveau 1 (savoir général) a été acquis. */}
+        {(!isCriminelles || niveau1AcquisCriminelles) &&
+          !addOpen && !compBloqueeClasse && !prereqCompBloquee && optionsAdd.length > 0 && nivAjouter && (
           <Button
             size="sm"
             variant="outline"
@@ -1488,10 +1584,10 @@ const Etape5_Competences_V2 = ({
             className="text-xs"
           >
             <Plus className="mr-1 h-3 w-3" />
-            Ajouter une autre ({niv1.cout_xp} XP)
+            {isCriminelles ? "Ajouter une famille" : "Ajouter une autre"} ({nivAjouter.cout_xp} XP)
           </Button>
         )}
-        {addOpen && !compBloqueeClasse && !prereqCompBloquee && niv1 && (
+        {addOpen && !compBloqueeClasse && !prereqCompBloquee && nivAjouter && (
           <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
             <Select
               value={choixAdd}
@@ -1514,7 +1610,7 @@ const Etape5_Competences_V2 = ({
               onClick={() => handleConfirmAdd(comp)}
             >
               {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              Confirmer ({niv1.cout_xp} XP)
+              Confirmer ({nivAjouter.cout_xp} XP)
             </Button>
             <Button
               size="sm"
@@ -1532,7 +1628,7 @@ const Etape5_Competences_V2 = ({
             </Button>
           </div>
         )}
-        {optionsAdd.length === 0 && achatsPourComp.length > 0 && !addOpen && (
+        {optionsAdd.length === 0 && achatsAvecChoix.length > 0 && !addOpen && (
           <p className="text-xs italic text-muted-foreground">
             Toutes les options disponibles ont été choisies.
           </p>
