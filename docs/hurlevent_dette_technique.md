@@ -1,155 +1,288 @@
 # Hurlevent — Dette technique
 
-Liste des chantiers de dette technique identifiés, par priorité.
+> **Dernière mise à jour** : 22 mai 2026 (clôture session 24).
+
+Document vivant qui liste les bugs connus, les dettes techniques, les
+choses à revoir, les vestiges acceptables, et les apprentissages
+méthodologie.
 
 ---
 
-## NEW — Pré-ouverture accordéon cible après navigation depuis recherche (priorité basse)
+## 🐛 Bugs ouverts session 24 (8 nouveaux)
 
-**Découvert** : session 11 (19 mai 2026) lors de la validation Phase 3.3c.
+### #8 — Sous-menu Tabs `PersonnageFiche` illisible mobile [HAUTE]
 
-**Symptôme** : quand l'utilisateur clique un résultat dans l'onglet Recherche
-(ex. "Tempête de Foudre"), il est bien dirigé vers l'onglet cible (Magie Arcane)
-avec le filtre par titre pré-rempli. Mais l'item lui-même reste dans un accordéon
-**fermé**. L'utilisateur doit cliquer une 2e fois pour voir la description.
+**Découvert** : session 24, par test fonctionnel de PR #133.
 
-**Cause** : `MagieSection` et `PrieresSection` (inline dans `Encyclopedie.tsx`)
-utilisent `<Accordion type="multiple">` sans prop `defaultValue` ni state contrôlé.
-Tous les accordéons sont fermés par défaut, indépendamment du filtre actif.
+**Symptôme** : sur `/personnage/:id`, le `<TabsList className="grid w-full grid-cols-8">` rend les 8 onglets (Infos | Traits | Compétences | Sorts | Prières | Artisanat | Historique | Export) sur ~47px chacun en mobile (375px viewport). Texte chevauché/écrasé, illisible.
 
-**Impact actuel** :
-- Mineur — l'utilisateur peut toujours cliquer pour ouvrir.
-- Affecte les 6 types de la recherche (régression latente depuis PR #98).
-- Pas spécifique aux sorts/prières mais y est plus visible (listes plus longues).
+**Impact** : empêche actuellement le test mobile complet de PR #133 (§2) sur les onglets enrichis (Sorts/Prières/Artisanat). Aussi bloquera §3 (masquage onglets vides) si pas résolu d'abord.
 
-**Plan** :
-1. Passer chaque `*Section` à un `<Accordion type="multiple" value={...}>` contrôlé.
-2. Quand `searchQuery` est non vide, pré-ouvrir tous les items dont le `nom` matche.
-3. Alternative plus simple : si exactement 1 item matche, ouvrir cet item.
+**Solution** : pattern scrollable horizontal déjà existant dans le repo (étape 5 du créateur, Encyclopédie sous-catégories). À dupliquer plutôt que réinventer (cf règle inventaire avant code session 23).
 
-**Préreqs / dépendances** : aucun.
+**Cible** : `artifacts/arlor/src/pages/PersonnageFiche.tsx` ligne ~454.
 
-**Effort estimé** : 30-45 min (toucher 6+ sections, choisir une stratégie).
+**Effort** : S (1 fichier, ~10 lignes).
+
+**Cible** : session 25, priorité 1.
 
 ---
 
-## ONGOING — Vercel auto-trigger preview branches (priorité moyenne)
+### #4 — Étape sorts divins sautée malgré "Acquisition de Domaine" [CRITIQUE]
 
-**Découvert** : session 6 (16 mai 2026), confirmé en sessions 7, 8, 10, 11.
+**Découvert** : session 24, par test fonctionnel de Valerius.
 
-**Symptôme** : les pushs sur branches non-main ne déclenchent pas systématiquement
-un preview deployment Vercel. Vercel détecte le commit (visible dans Git History
-de Vercel) mais n'enclenche pas le build.
+**Symptôme** : compétence "Acquisition de Domaine (Bénédiction)" achetée dans la catégorie Prêtre à l'étape 5. Mais l'étape sorts divins (prières) est skip dans le wizard → récap étape 11 affiche "Prières divines (0) - Aucune prière".
 
-**Données** :
-- Sessions concernées : 6, 7, 8, 10, 11, 13, 14, 17, 18, 19, 20, **21** (**17 sessions consécutives** au compteur cumulé — 6 PRs additionnelles dans la seule session 21).
-- PR #97 (session 9) initialement crue auto-déployée, mais correction en session 14 : Fred confirme que toutes les PRs depuis l'apparition du problème ont été déployées manuellement. Hypothèse "Git reconnect a résolu" définitivement infirmée.
-- 3 PRs consécutives en session 11 (#101, #102, #103) toutes en preview manuel.
-- PR #109 (session 17) : preview manuel encore requis. Confirmation finale via `Vercel:list_deployments`.
-- PR #111 (session 18) : preview manuel encore requis (Sprint 5.2 sweep corrections data critiques).
-- PR #112 + #113 (session 19) : preview manuel encore requis pour les deux (Sprint 5.3 Religions + hotfix).
-- PR #114, #115, #116 (session 20) : preview manuel encore requis pour les trois (clôture S19 + Sprint 5.4 Phase A + Phase C). `Vercel:list_deployments` confirme 0 deployment auto pour ces 3 branches.
-- **PR #117, #118, #120, #121, #122, #123, #124 (session 21)** : preview manuel encore requis pour les 7 (Sprint 5.5). Bump significatif du compteur cumulé (+6 occurrences, atteint le seuil de 17 sessions consécutives).
-- Production auto-deploye correctement sur merge to main (différence claire) — déploiement prod `9c1751b` de la PR #109 s'est bien fait automatiquement. Confirmé également sur les merges des sessions 20 et 21.
+**Hypothèse cause** : la RPC `personnage_a_des_prieres()` (ou la logique de skip d'étape) ne détecte pas correctement "Acquisition de Domaine" comme prérequis pour ouvrir l'étape prières.
 
-**Causes investiguées (non-conclusives)** :
-- `Require Verified Commits` (Vercel security) : Claude Code commits non signés. Toggle désactivé en session 8, sans effet stable.
-- `Ignored Build Step` : passé de `Automatic` à autre chose en session 8, sans effet stable.
-- Git disconnect/reconnect : fait en session 9, semblait résoudre, mais en fait c'était une coïncidence (PR #97 = chance pure).
+**Impact** : tout joueur prêtre/croyant est privé de ses prières divines. Bloquant fonctionnel pour la classe Prêtre.
 
-**Workaround stable** : Vercel UI → Project → Deployments → Create Deployment → sélectionner branche → Create Preview Deployment. ~30s.
+**Investigation à faire** :
+1. Lire `personnage_a_des_prieres(uuid)` (langage SQL, NON security definer d'après contexte)
+2. Identifier la compétence "Acquisition de Domaine" en base (UUID, table, choix_achat)
+3. Vérifier la logique de skip dans `valider_etape_*` et/ou les RPC `avancer_etape_progression*`
 
-**Statut session 20** : ticket Vercel proposé puis reporté par Fred (décision explicite — pas la priorité en session 20).
-
-**Statut session 21** : 6 PRs additionnelles toutes en preview manuel. Compteur cumulé atteint **17 sessions consécutives**. Fred a explicitement gardé le sujet en attente pour ne pas casser le rythme du Sprint 5.5. Recommandation maintenue : ouvrir un ticket support Vercel dès qu'une fenêtre s'ouvre.
-
-**Plan** :
-1. Reproduire le problème en une session dédiée (10-20 min).
-2. Inspecter le Git History dans Vercel : voir si le commit y apparaît, voir si un build est tenté puis abandonné.
-3. Inspecter les logs CI : `Vercel:get_deployment_build_logs` sur un deployment manuel pour comparer.
-4. Ouvrir un ticket support Vercel si pas de cause identifiable. Plan Hobby = pas de SLA mais le support répond.
-
-**Préreqs / dépendances** : aucun.
-
-**Effort estimé** : 1-2h en session debug dédiée.
+**Cible** : session 25, priorité 2.
 
 ---
 
-## NEW — Refonte descriptions `effets_combat` (alignement Manuel) (priorité moyenne, Sprint 5.7)
+### #2 — Langues "L'Ancien*" mal placées dans menu Langue supplémentaire [HAUTE]
 
-**Découvert** : session 18 (21 mai 2026).
+**Découvert** : session 24, par test fonctionnel.
 
-**Constat** : les 31 entrées existantes de la table `effets_combat` ont des descriptions résumées (16-42 chars) qui ne reflètent pas le texte du Manuel des règles. Exemples :
+**Symptôme** : le menu déroulant de la compétence "Langue supplémentaire" affiche actuellement :
+- Le Drow ✓ (correct)
+- L'Elfique ✓
+- Le Nain ✓
+- L'Orc ✓
+- **L'Ancien** ❌ (n'existe pas du tout — à supprimer)
+- **L'Ancien Commun** ❌ (déplacer vers Décryptage)
+- **L'Ancien Démoniaque** ❌
+- **L'Ancien Drow** ❌
+- **L'Ancien Elfique** ❌
+- **L'Ancien Nain** ❌
 
-- `Inconscient` : *"Personne à 0 PV (différent de comateux)."* (40 c.)
-- `Saignement` : *"1 dégât par minute jusqu'à soin."* (32 c.)
+Les langues anciennes sont pour la compétence "Décryptage", pas "Langue supplémentaire".
 
-L'entrée "Sans âme" insérée en migration `20260521030004_phase_5_2_sweep_corrections_data_critiques` utilise la description verbatim du manuel (370 chars), créant une incohérence stylistique avec les 31 autres.
+**Solution** : data fix DB. Soit DELETE des 6 entrées mal placées, soit UPDATE d'un champ catégorie/scope. À investiguer (table `langues` probable + relation avec compétences).
 
-**Décision Fred (session 18)** : les descriptions de `effets_combat` doivent refléter exactement le texte du manuel pour éviter la confusion.
+**Effort** : S (data fix), mais nécessite inspection préalable du modèle.
 
-**Plan** :
-
-1. Audit des 31 entrées vs Manuel des règles 2026 (édition 6 mai 2026).
-2. UPDATE des descriptions verbatim.
-3. Validation du rendu UI mobile sur cartes d'effets (le frontend gère-t-il bien des textes de 200-500 chars sans casser le layout ?).
-
-**Cible** : intégrer dans Sprint 5.7 (Refonte descriptions massives) en étendant son scope. Le backlog `backlog_manuel_2026_v2.md` n'incluait pas initialement `effets_combat` — à corriger en project knowledge.
-
-**Préreqs / dépendances** : aucun.
-
-**Effort estimé** : 0.5-1 session dédiée.
-
----
-
-## NEW — Alignement cosmétique noms compétences DB ↔ Manuel (priorité basse)
-
-**Découvert** : session 20 (21 mai 2026) lors du grep exhaustif du manuel pour l'audit `classes_requises`.
-
-**Constat** : 3 compétences ont un nom légèrement différent en base par rapport au manuel (édition 6 mai 2026) :
-
-| Nom DB | Nom Manuel | Différence |
-|---|---|---|
-| `Corps Sain` | `Corps sain` | Casse du `S` |
-| `Compétence d'arme d'hast` | `Compétence d'arme à l'arme d'hast` | Mots additionnels |
-| `Premiers Soins` | `Premiers soins` | Casse du `S` |
-
-**Impact actuel** :
-- Aucun fonctionnel (le moteur d'achat utilise les UUIDs et les noms en DB).
-- Cosmétique uniquement (joueurs voient le nom DB qui diffère légèrement de leur manuel papier).
-- Pour `Compétence d'arme d'hast`, c'est un changement plus que cosmétique — le manuel a 5 mots de plus.
-
-**Plan** :
-1. Décider stratégie : soit corriger DB pour matcher manuel, soit corriger manuel pour matcher DB.
-2. Si correction DB : 1 migration UPDATE avec 3 entrées.
-3. Si correction manuel : mettre dans le tracker du manuel pour édition suivante.
-
-**Cible suggérée** : intégrer à Sprint 5.7 (Refonte descriptions massives) en l'étendant pour inclure aussi les renommages cosmétiques.
-
-**Préreqs / dépendances** : décision Fred sur la direction de l'alignement.
-
-**Effort estimé** : 15 min (migration) ou 0 min (juste mettre en attente édition manuel).
+**Cible** : session 25, priorité 3.
 
 ---
 
-## NEW — Apprentissages méthodologie session 21 (priorité informative)
+### #1 — Alchimie étape 8 : cases payantes pas grisées [MOYENNE]
 
-**Découvert** : session 21 (22 mai 2026) — Sprint 5.5 dévié vers 7 PRs et 5 migrations à cause de bugs latents révélés en cascade.
+**Découvert** : session 24.
 
-**Apprentissages formalisés en méthodologie v7** (règles #11 à #14) :
+**Symptôme** : sur étape 8 (artisanat), le quota de recettes gratuites est affiché (ex. 4/5 restant). Mais les boutons "Acheter (X XP)" sont actifs même quand le quota gratuit n'est pas épuisé. Devraient être grisés tant que quota gratuit > 0.
 
-1. **Audit fonctions/vues PL/pgSQL avant renommage DB** : tout renommage d'une entité référencée par nom (compétence, classe, religion, catégorie) doit auditer `pg_get_functiondef` + `pg_get_viewdef` AVANT application. Le scan frontend seul ne suffit pas (cf. régression Dépeçage PR #120 corrigée par PR #121).
+**Aussi** : empêcher décocher un choix gratuit si quota plein et déjà des payants sélectionnés (sinon état incohérent).
 
-2. **`regexp_count` post-application** : après tout patch de fonction/vue via `pg_get_functiondef + replace() + EXECUTE`, valider le nombre de remplacements effectués vs attendu.
+**Pattern à reprendre** : Traits raciaux (déjà implémenté précédemment).
 
-3. **Indentation peut différer entre blocs d'une même fonction** : dans `desacheter_competence`, le bloc DELETE utilisait 8 espaces avant `AND`, le bloc FOR 10 espaces. Un pattern unique ne matche que l'un des deux. Vérifier explicitement chaque pattern.
+**Cible** : `Etape8_Artisanat_V2.tsx` ou similaire.
 
-4. **Cohérence frontend ↔ backend lors d'un changement de sémantique cascade** : après tout fix backend modifiant la sémantique d'une cascade ou d'un filtrage, auditer le frontend pour vérifier qu'il reproduit la nouvelle logique dans ses affichages (modales de confirmation, totaux, previews).
+**Effort** : M.
 
-**Impact estimé futur** : ces 4 règles devraient prévenir au moins 50% des bugs latents découverts en cascade lors d'une migration impactante.
-
-**Préreqs / dépendances** : aucun (règles méthodologie déjà actives).
-
-**Effort estimé** : 0 (déjà documenté en `Methodologie_collaboration_Claude_v7.md`).
+**Cible** : session 25-26.
 
 ---
+
+### #3 — Assemblages runes étape 9 : cases payantes pas grisées [MOYENNE]
+
+**Découvert** : session 24.
+
+**Symptôme** : identique à #1, sur étape 9 (assemblages de runes). Quota gratuit 2/2 affiché, mais boutons "Acheter" actifs.
+
+**Solution** : même pattern que #1 et que Traits raciaux.
+
+**Cible** : `Etape9_Assemblages_V2.tsx`.
+
+**Effort** : M.
+
+**Cible** : session 25-26.
+
+---
+
+### #5 — UUID affichés au lieu de noms en étape 11 [MOYENNE]
+
+**Découvert** : session 24.
+
+**Symptôme** : dans `Etape11_Recapitulatif_V2.tsx` section Compétences, on voit par exemple :
+- "Langue supplémentaire (0dca7806-6956-4b56-9693-9a72311fe6c3)" au lieu de "Langue supplémentaire (Le Drow)"
+- "Décryptage (073762ec-4a6a-4767-85ba-2adf33c9679d)" au lieu de "Décryptage (L'Ancien Drow)"
+
+**Hypothèse** : la colonne `personnage_competences.choix_achat` stocke un UUID (référence vers `langues.id`) qui n'est pas dénormalisé en nom dans `vue_personnage_creation_complet`.
+
+**Solution** :
+- Soit modifier la vue agrégée pour joindre et résoudre les UUID → nom
+- Soit faire le lookup côté frontend (mais lourd)
+
+**Cible** : `vue_personnage_creation_complet` (le JSONB `competences` hydraté).
+
+**Effort** : S-M (1 migration de vue).
+
+**Cible** : session 25-26.
+
+---
+
+### #6 — Dev Spirituel × N : grouper sur 1 ligne en étape 11 [FAIBLE]
+
+**Découvert** : session 24.
+
+**Symptôme** : en étape 11, si le joueur a acheté 5x "Développement Spirituel" (2 XP chacun), c'est affiché sur 5 lignes distinctes. Idem pour "Développement Spirituel Supérieur" (4 XP chacun).
+
+**Comportement souhaité** : 1 seule ligne par compétence multiniveau, avec count + XP unitaire + XP total.
+
+Exemple :
+```
+Développement Spirituel        × 5    2 XP / 10 XP total
+Développement Spirituel Supérieur  × 5    4 XP / 20 XP total
+```
+
+**Cible** : `Etape11_Recapitulatif_V2.tsx`, section Compétences (logique d'agrégation à ajouter).
+
+**Effort** : S (UI uniquement, agrégation `Array.reduce` par nom).
+
+**Cible** : session 26+.
+
+---
+
+### #7 — Étape 11 + version imprimable : descriptions complètes manuel [MOYENNE]
+
+**Découvert** : session 24.
+
+**Demande Fred** : "chaque composant que ce soit la race, les traits raciaux, les competences, les recettes, les sorts Arcane ou divin, les assemblages de rune, les pièges, etc, bref tout, cest qu'il montre toute les informations les concernant comme dans le manuel des règles".
+
+**Périmètre** :
+- Étape 11 (`Etape11_Recapitulatif_V2.tsx`) doit afficher descriptions complètes
+- Version imprimable (`PersonnageFiche.handlePrint()`) → déjà très complète mais à vérifier
+- `PersonnageFiche` Tabs onglets : §2 a couvert Sorts/Prières/Artisanat ; **MANQUE descriptions des compétences elles-mêmes** (oubli §2 — à compléter)
+
+**Travail** :
+- Vérifier que `vue_personnage_creation_complet` JSONB hydratés contiennent les descriptions (probablement non actuellement)
+- Migration de vue pour ajouter `description` aux JSONB de competences, sorts, prieres, etc.
+- Régénérer types Supabase dans la même PR
+- Mise à jour UI Etape11
+- Mise à jour UI PersonnageFiche onglet Compétences (descriptions oubliées en §2)
+
+**Effort** : L (gros chantier multi-fichiers + migration vue).
+
+**Cible** : session 26+. À planifier comme Sprint 5.6 §4 ou Sprint 5.7.
+
+---
+
+## ✅ DETTES RÉSOLUES SESSION 24
+
+### Valerius sans `historique_xp` ✅ RÉSOLUE
+
+**Découvert** : session 22 (vague, "à investiguer").
+
+**Cause racine identifiée session 24** : bug systémique sur le calcul XP. `sauvegarder_etape_1` enregistrait `gn_completes` mais aucun mécanisme DB ne convertissait ça en XP. `recalculer_xp_personnage` ignorait `gn_completes`, `mini_gn_completes`, `ouvertures_terrain`. Au choix de race, le trigger `set_xp_initial_on_race_change` écrasait `xp_total` avec `race.xp_depart` seul → les XP de GN initiaux disparaissaient.
+
+**Fix** : migration `20260522174852_bugfix_calcul_xp_niveau_gn_initiaux` (voir log migrations).
+
+**Validation prod** : Valerius (111 GN, Drow xp_depart=60) → xp_total=1725 ✅ (= 60 + 15·111), niveau=112 ✅ (= 1 + 111).
+
+---
+
+## 🔧 Dettes ouvertes pré-session 24 (inchangées)
+
+### Bouton "Continuer/Modifier" basé sur `etape_creation` au lieu de `est_finalise`
+
+**Découvert** : session 22.
+
+(Voir notes session 22 pour détails.)
+
+### Pas de script `lint` dans `artifacts/arlor/package.json`
+
+**Découvert** : session 22.
+
+### Mention obsolète "16 erreurs TS" dans `CLAUDE.md` (mini-PR docs)
+
+**Découvert** : session 21.
+
+### Cache CDN GitHub raw stale même avec `refs/heads/`
+
+**Découvert** : session 22.
+
+### FK `inscriptions_evenements.personnage_id` en `NO ACTION`
+
+**Découvert** : session 22.
+
+### Champ `est_actif` de `personnages` plus utilisé
+
+**Découvert** : session 22.
+
+### Doc `vue_personnage_creation_complet` inexacte sur PersonnageFiche
+
+**Découvert** : session 24, signalé proactivement.
+
+**Constat** : `hurlevent_fonctions_et_vues.md` (v51) disait que cette vue sert "récap étape 11 ET fiche personnage finalisée". Faux : `PersonnageFiche` utilise 7 vues granulaires distinctes. **Corrigé dans v52 de `hurlevent_fonctions_et_vues.md`.**
+
+### Bug onglet Artisanat de PersonnageFiche : Forge et Joaillerie absents
+
+**Découvert** : session 24, signalé proactivement.
+
+**Constat** : la version imprimable (`handlePrint`) affiche Forge et Joaillerie. L'onglet Artisanat à l'écran (Tabs) ne montre que Assemblages + Recettes. `objetsForge` et `objetsJoaillerie` sont fetchés mais inutilisés dans le rendu Tabs.
+
+**Effort** : S (ajouter les sections manquantes dans l'onglet Artisanat).
+
+**Cible** : à combiner avec #8 et §3 idéalement (même fichier `PersonnageFiche.tsx`).
+
+### Anomalie Liste_URL_RAW au démarrage session 24
+
+**Découvert** : session 24, étape 0.
+
+**Constat** : header daté session 20, EncyclopedieCard.tsx (créé session 23) absent. La régénération de fin session 23 n'a apparemment pas été uploadée correctement.
+
+**Résolu en clôture session 24** : régénération via Claude Code.
+
+**Apprentissage** : à la prochaine clôture, vérifier explicitement que le swap a bien été fait.
+
+---
+
+## 🎓 Apprentissages méthodologie session 24
+
+### NOUVEAU — Test fonctionnel complet révèle bugs DB anciens
+
+Sprint 5.6 §2 (purement UI) a déclenché un test fonctionnel complet de création de personnage par Fred, ce qui a révélé un bug critique DB ancien (XP de GN jamais persistés). Ce bug aurait dû être visible bien plus tôt mais personne ne créait de perso de bout en bout en environnement de dev.
+
+**Méthode** : après tout PR frontend non-trivial, prévoir un scénario de création/utilisation complet pour révéler les bugs cachés du backend. Pourrait devenir une règle méthodologie #18.
+
+### NOUVEAU — Dette technique vague masque parfois un bug critique
+
+La dette session 22 "Valerius sans `historique_xp` — à investiguer" était formulée vaguement, sans hypothèse ni estimation d'impact. La cause racine (bug systémique calcul XP) n'a été identifiée que par test fonctionnel session 24 — 2 sessions plus tard.
+
+**Méthode** : formuler les dettes avec :
+1. Symptôme observé
+2. Hypothèse cause racine
+3. Impact estimé (cosmétique / fonctionnel / data)
+4. Effort estimé (S/M/L)
+
+Pourrait devenir une règle méthodologie #19.
+
+### NOUVEAU — Workflow validation Sol A pour bugfix DB systémique
+
+Pattern observé session 24 et à répliquer :
+1. Diagnostic complet (lecture RPC + triggers + CHECK constraints)
+2. Identification cause racine
+3. Présentation 3 solutions (A : calcul dérivé / B : nouvelle entrée historique / C : type existant)
+4. Recommandation argumentée
+5. Test en `BEGIN/ROLLBACK` avec 3 scénarios représentatifs (avant/touch1/touch2)
+6. `apply_migration` via MCP avec data fix idempotent inclus
+7. Validation prod via SELECT immédiat
+8. Commit du `.sql` dans le repo via prompt CC
+
+---
+
+## 📊 Sessions consécutives Vercel auto-trigger : **20**
+
+Premier signalement : session 5. Dernière vérification : session 24 (PR #133).
+
+---
+
+*Fin de hurlevent_dette_technique.md (clôture session 24).*
