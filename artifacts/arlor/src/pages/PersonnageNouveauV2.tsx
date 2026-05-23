@@ -8,6 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
@@ -29,6 +39,19 @@ interface PersonnageRow {
   etape_creation: number;
   xp_total: number | null;
   xp_depense: number | null;
+}
+
+interface DonneesAnnulationEtape {
+  etape_annulee: number;
+  etape_apres: number;
+  xp_rembourse: number;
+  count_competences: number;
+  count_sorts: number;
+  count_prieres: number;
+  count_assemblages: number;
+  count_recettes: number;
+  count_objets_forge: number;
+  count_objets_joaillerie: number;
 }
 
 export interface EtapeProps {
@@ -58,6 +81,12 @@ const PersonnageNouveauV2 = () => {
   // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
   // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
   const [etapeInitialisee, setEtapeInitialisee] = useState(false);
+
+  // Cat 2 voie A — modale de confirmation pour annuler l'étape courante.
+  // `donneesAnnulation` non-null = modale ouverte avec les counts du dry_run.
+  const [donneesAnnulation, setDonneesAnnulation] =
+    useState<DonneesAnnulationEtape | null>(null);
+  const [annulationEnCours, setAnnulationEnCours] = useState(false);
 
   // 1) Démarrage : soit reprise d'un personnage précis (?id=),
   //    soit création / récupération du brouillon unique.
@@ -197,8 +226,65 @@ const PersonnageNouveauV2 = () => {
     setEtape(cible);
   };
 
-  const handlePrevious = () => {
-    setEtape((e) => Math.max(e - 1, 1));
+  const handlePrevious = async () => {
+    if (!personnageId || etape <= 1) return;
+    const { data, error } = await supabase.rpc("annuler_etape", {
+      p_personnage_id: personnageId,
+      p_etape_courante: etape,
+      p_dry_run: true,
+    });
+    if (error) {
+      toast.error(`Impossible d'annuler : ${error.message}`);
+      return;
+    }
+    const payload = (data ?? {}) as {
+      succes?: boolean;
+      donnees?: DonneesAnnulationEtape;
+      erreurs?: Array<{ message?: string }>;
+    };
+    if (payload.succes !== true || !payload.donnees) {
+      const msg =
+        payload.erreurs?.[0]?.message ?? "Impossible d'annuler l'étape.";
+      toast.error(msg);
+      return;
+    }
+    setDonneesAnnulation(payload.donnees);
+  };
+
+  const handleConfirmAnnulation = async () => {
+    if (!personnageId || !donneesAnnulation) return;
+    setAnnulationEnCours(true);
+    try {
+      const { data, error } = await supabase.rpc("annuler_etape", {
+        p_personnage_id: personnageId,
+        p_etape_courante: donneesAnnulation.etape_annulee,
+        p_dry_run: false,
+      });
+      if (error) {
+        toast.error(`Erreur : ${error.message}`);
+        return;
+      }
+      const payload = (data ?? {}) as {
+        succes?: boolean;
+        erreurs?: Array<{ message?: string }>;
+      };
+      if (payload.succes !== true) {
+        const msg =
+          payload.erreurs?.[0]?.message ?? "Erreur lors de l'annulation.";
+        toast.error(msg);
+        return;
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["v2-personnage", personnageId],
+      });
+      setEtape(donneesAnnulation.etape_apres);
+      toast.success(
+        `Étape ${donneesAnnulation.etape_annulee} annulée — retour à l'étape ${donneesAnnulation.etape_apres}.`,
+      );
+      setDonneesAnnulation(null);
+    } finally {
+      setAnnulationEnCours(false);
+    }
   };
 
   // -- Rendus de chargement / erreur ----------------------------------------
@@ -356,6 +442,84 @@ const PersonnageNouveauV2 = () => {
           />
         )}
       </main>
+
+      <AlertDialog
+        open={!!donneesAnnulation}
+        onOpenChange={(open) => {
+          if (!open && !annulationEnCours) setDonneesAnnulation(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revenir à l'étape précédente ?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>Cette action annulera :</p>
+                {donneesAnnulation && (
+                  <ul className="ml-4 list-disc space-y-1">
+                    {donneesAnnulation.count_competences > 0 && (
+                      <li>
+                        {donneesAnnulation.count_competences} compétence(s)
+                      </li>
+                    )}
+                    {donneesAnnulation.count_sorts > 0 && (
+                      <li>{donneesAnnulation.count_sorts} sort(s)</li>
+                    )}
+                    {donneesAnnulation.count_prieres > 0 && (
+                      <li>{donneesAnnulation.count_prieres} prière(s)</li>
+                    )}
+                    {donneesAnnulation.count_recettes > 0 && (
+                      <li>
+                        {donneesAnnulation.count_recettes} recette(s)
+                        alchimique(s)
+                      </li>
+                    )}
+                    {donneesAnnulation.count_assemblages > 0 && (
+                      <li>
+                        {donneesAnnulation.count_assemblages} assemblage(s) de
+                        runes
+                      </li>
+                    )}
+                    {donneesAnnulation.count_objets_forge > 0 && (
+                      <li>
+                        {donneesAnnulation.count_objets_forge} objet(s) de forge
+                      </li>
+                    )}
+                    {donneesAnnulation.count_objets_joaillerie > 0 && (
+                      <li>
+                        {donneesAnnulation.count_objets_joaillerie} objet(s) de
+                        joaillerie
+                      </li>
+                    )}
+                  </ul>
+                )}
+                <p className="font-semibold text-gold">
+                  XP remboursés : {donneesAnnulation?.xp_rembourse ?? 0}
+                </p>
+                <p className="text-amber-400">Cette action est irréversible.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={annulationEnCours}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmAnnulation}
+              disabled={annulationEnCours}
+            >
+              {annulationEnCours ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Annulation…
+                </>
+              ) : (
+                "Confirmer et revenir en arrière"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

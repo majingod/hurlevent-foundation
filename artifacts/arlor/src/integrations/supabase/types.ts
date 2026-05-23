@@ -5413,6 +5413,14 @@ export type Database = {
         Args: { p_evenement_id: string; p_personnage_id: string }
         Returns: Json
       }
+      annuler_etape: {
+        Args: {
+          p_dry_run?: boolean
+          p_etape_courante: number
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
       approuver_maitre_competence: {
         Args: { p_personnage_competence_id: string }
         Returns: Json
@@ -5430,6 +5438,16 @@ export type Database = {
       avancer_etape: {
         Args: { p_etape_courante: number; p_personnage_id: string }
         Returns: Json
+      }
+      calculer_cout_xp_magie: {
+        Args: {
+          p_cout_xp_base: number
+          p_duree_choisie: string
+          p_niveau: number
+          p_portee_choisie: string
+          p_zone_choisie: string
+        }
+        Returns: number
       }
       changer_role_utilisateur: {
         Args: { p_nouveau_role: string; p_user_id: string }
@@ -5458,6 +5476,16 @@ export type Database = {
         Returns: Json
       }
       est_animateur_ou_admin: { Args: never; Returns: boolean }
+      generer_formule_magique: {
+        Args: {
+          p_cercle: string
+          p_duree: string
+          p_niveau: number
+          p_portee: string
+          p_zone: string
+        }
+        Returns: string
+      }
       get_joueurs_avec_count: {
         Args: never
         Returns: {
