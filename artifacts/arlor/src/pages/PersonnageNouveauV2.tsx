@@ -84,6 +84,12 @@ const PersonnageNouveauV2 = () => {
 
   const [personnageId, setPersonnageId] = useState<string | null>(null);
   const [etape, setEtape] = useState<number>(1);
+  // Etape la plus haute jamais atteinte dans cette session. Ne diminue jamais.
+  // Sert a desactiver l'auto-skip si l'utilisateur revient en arriere : on
+  // ne veut pas qu'une etape sans prerequis (ex. etape 7 sans prêtre)
+  // re-skipe automatiquement vers l'avant alors que le joueur essaie de
+  // remonter le wizard.
+  const [etapeMaxAtteinte, setEtapeMaxAtteinte] = useState<number>(1);
   const [xpDeltaCourant, setXpDeltaCourant] = useState<number>(0);
   const [xpGainCourant, setXpGainCourant] = useState<number>(0);
   const [demarrage, setDemarrage] = useState(true);
@@ -200,10 +206,22 @@ const PersonnageNouveauV2 = () => {
     setXpGainCourant(0);
   }, [etape]);
 
+  // Maintient etapeMaxAtteinte = max(etapeMaxAtteinte, etape). Augmente
+  // jamais autrement. Ne diminue jamais (pas de reset).
+  useEffect(() => {
+    setEtapeMaxAtteinte((m) => Math.max(m, etape));
+  }, [etape]);
+
   const xpTotal = personnage?.xp_total ?? 0;
   const xpDepense = personnage?.xp_depense ?? 0;
   const xpTotalAffiche = xpTotal + xpGainCourant;
   const xpDisponible = xpTotalAffiche - xpDepense - xpDeltaCourant;
+
+  // Auto-skip actif uniquement quand on est sur l'etape la plus haute
+  // jamais atteinte (premiere arrivee forward). Si l'utilisateur revient
+  // en arriere (Precedent ou annulation), etape < etapeMaxAtteinte et
+  // l'auto-skip est desactive sur les etapes concernees.
+  const autoSkipActif = etape >= etapeMaxAtteinte;
 
   const progression = useMemo(
     () => Math.round((etape / TOTAL_STEPS) * 100),
@@ -409,6 +427,7 @@ const PersonnageNouveauV2 = () => {
           <Etape6_Sorts_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
+            autoSkipActif={autoSkipActif}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -417,6 +436,7 @@ const PersonnageNouveauV2 = () => {
           <Etape7_Prieres_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
+            autoSkipActif={autoSkipActif}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -426,6 +446,7 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             xpDisponible={xpDisponible}
+            autoSkipActif={autoSkipActif}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -435,6 +456,7 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             xpDisponible={xpDisponible}
+            autoSkipActif={autoSkipActif}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />

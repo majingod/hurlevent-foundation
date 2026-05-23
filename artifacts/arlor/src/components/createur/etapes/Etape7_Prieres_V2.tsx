@@ -46,6 +46,13 @@ interface Etape7Props {
    * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
    */
   etapeCreation?: number;
+  /**
+   * Drapeau parent : true seulement si on est sur l'etape la plus haute
+   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
+   * en arriere), l'auto-skip est desactive meme si etapeCreation === 7.
+   * Defaut true pour compatibilite.
+   */
+  autoSkipActif?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -64,6 +71,7 @@ interface AcheterPriereParams {
 const Etape7_Prieres_V2 = ({
   personnageId,
   etapeCreation,
+  autoSkipActif = true,
   onSuccess,
   onError,
   onPrevious,
@@ -352,13 +360,14 @@ const Etape7_Prieres_V2 = ({
 
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
+    if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
     if (etapeCreation == null || etapeCreation > 7) return;
     if (!aucunePriereAchetable) return;
     if (avancerMutation.isPending) return;
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
-  }, [etapeCreation, aucunePriereAchetable, avancerMutation]);
+  }, [autoSkipActif, etapeCreation, aucunePriereAchetable, avancerMutation]);
 
   const peutAcheter =
     !!priereSelectionnee &&

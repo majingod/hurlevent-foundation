@@ -45,6 +45,13 @@ interface Etape6Props {
    * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
    */
   etapeCreation?: number;
+  /**
+   * Drapeau parent : true seulement si on est sur l'etape la plus haute
+   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
+   * en arriere), l'auto-skip est desactive meme si etapeCreation === 6.
+   * Defaut true pour compatibilite.
+   */
+  autoSkipActif?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -60,7 +67,7 @@ interface AcheterSortParams {
   p_nom_personnalise: string;
 }
 
-const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, onSuccess, onError, onPrevious }: Etape6Props) => {
+const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, autoSkipActif = true, onSuccess, onError, onPrevious }: Etape6Props) => {
   const queryClient = useQueryClient();
 
   const [cercleSelectionne, setCercleSelectionne] = useState<string | null>(null);
@@ -267,6 +274,7 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, onSuccess, onError, onPr
   // voit l'ecran statique avec le bouton « Suivant ».
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
+    if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
     if (etapeCreation == null || etapeCreation > 6) return;
     if (loadingCercles) return;
@@ -274,7 +282,7 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, onSuccess, onError, onPr
     if (avancerMutation.isPending) return;
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
-  }, [etapeCreation, loadingCercles, cerclesDisponibles, avancerMutation]);
+  }, [autoSkipActif, etapeCreation, loadingCercles, cerclesDisponibles, avancerMutation]);
 
   const peutAcheter =
     !!sortSelectionne &&

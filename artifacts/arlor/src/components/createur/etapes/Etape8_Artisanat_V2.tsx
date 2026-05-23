@@ -40,6 +40,13 @@ interface Etape8Props {
    * defaut si la prop manque.
    */
   xpDisponible?: number;
+  /**
+   * Drapeau parent : true seulement si on est sur l'etape la plus haute
+   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
+   * en arriere), l'auto-skip est desactive meme si etapeCreation === 8.
+   * Defaut true pour compatibilite.
+   */
+  autoSkipActif?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -49,6 +56,7 @@ const Etape8_Artisanat_V2 = ({
   personnageId,
   etapeCreation,
   xpDisponible = 0,
+  autoSkipActif = true,
   onSuccess,
   onError,
   onPrevious,
@@ -249,6 +257,7 @@ const Etape8_Artisanat_V2 = ({
   // et permet la navigation backward.
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
+    if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
     if (etapeCreation == null || etapeCreation > 8) return;
     if (loadingQuotas) return;
@@ -257,6 +266,7 @@ const Etape8_Artisanat_V2 = ({
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
   }, [
+    autoSkipActif,
     etapeCreation,
     loadingQuotas,
     hasAlchimie,
@@ -320,6 +330,9 @@ const Etape8_Artisanat_V2 = ({
 
   const mutationsPending = acheterMutation.isPending;
   const xpInsuffisantAlchimie = xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE;
+  // Tant qu'il reste des gratuités a consommer, on grise les boutons « Acheter »
+  // pour forcer l'utilisateur a epuiser ses gratuites d'abord.
+  const aGratuitesRestantesAlchimie = quotaRestant > 0;
 
   return (
     <div className="space-y-6">
@@ -452,12 +465,22 @@ const Etape8_Artisanat_V2 = ({
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={mutationsPending || xpInsuffisantAlchimie}
-                              className={xpInsuffisantAlchimie ? "opacity-50" : ""}
+                              disabled={
+                                mutationsPending ||
+                                xpInsuffisantAlchimie ||
+                                aGratuitesRestantesAlchimie
+                              }
+                              className={
+                                xpInsuffisantAlchimie || aGratuitesRestantesAlchimie
+                                  ? "opacity-50"
+                                  : ""
+                              }
                               title={
-                                xpInsuffisantAlchimie
-                                  ? `XP insuffisant (${xpDisponible}/${COUT_RECETTE_SUPPLEMENTAIRE})`
-                                  : undefined
+                                aGratuitesRestantesAlchimie
+                                  ? `Sélectionnez d'abord toutes vos recettes gratuites (${quotaRestant} restante${quotaRestant > 1 ? "s" : ""})`
+                                  : xpInsuffisantAlchimie
+                                    ? `XP insuffisant (${xpDisponible}/${COUT_RECETTE_SUPPLEMENTAIRE})`
+                                    : undefined
                               }
                               onClick={() => handleAcheter(recette)}
                             >
