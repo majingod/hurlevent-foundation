@@ -8,11 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Printer, Edit2, X, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
-import type { Json } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
+
+type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
+type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
 
 // ── Interfaces alignées sur les vues SQL ──────────────────────
 
@@ -150,6 +153,19 @@ interface ObjetJoaillerie {
   materiaux_communs: string | null;
   materiaux_rares: string | null;
 }
+
+const resoudreChoixAffichage = (
+  choixAchat: string | null,
+  langues: { id: string; nom: string | null }[] | undefined,
+  religions: { id: string; nom: string | null }[] | undefined,
+): string | null => {
+  if (!choixAchat) return null;
+  const enLangue = langues?.find((l) => l.id === choixAchat);
+  if (enLangue?.nom) return enLangue.nom;
+  const enReligion = religions?.find((r) => r.id === choixAchat);
+  if (enReligion?.nom) return enReligion.nom;
+  return choixAchat;
+};
 
 const PersonnageFiche = () => {
   const { id } = useParams<{ id: string }>();
@@ -321,6 +337,66 @@ const PersonnageFiche = () => {
     enabled: !!(artisanatEtat?.niveau_joaillerie && artisanatEtat.niveau_joaillerie >= 1),
   });
 
+  const { data: langues } = useQuery({
+    queryKey: ["langues-fiche"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("langues")
+        .select("id, nom");
+      if (error) throw error;
+      return (data ?? []) as Pick<LangueRow, "id" | "nom">[];
+    },
+  });
+
+  const { data: religions } = useQuery({
+    queryKey: ["religions-fiche"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("religions")
+        .select("id, nom");
+      if (error) throw error;
+      return (data ?? []) as Pick<ReligionRow, "id" | "nom">[];
+    },
+  });
+
+  const competencesGroupees = useMemo(() => {
+    const map = new Map<string, {
+      nom: string;
+      categorie: string;
+      choix_achat: string | null;
+      count: number;
+      niveau_max: number;
+      xp_total: number;
+      statut_maitre: string;
+      appris_via_maitre: boolean;
+      nom_maitre: string | null;
+    }>();
+
+    (competences ?? []).forEach((c) => {
+      const cle = `${c.nom}__${c.choix_achat ?? "none"}__${c.categorie}`;
+      const existing = map.get(cle);
+      if (existing) {
+        existing.count += 1;
+        existing.niveau_max = Math.max(existing.niveau_max, c.niveau_acquis);
+        existing.xp_total += c.xp_depense;
+      } else {
+        map.set(cle, {
+          nom: c.nom,
+          categorie: c.categorie,
+          choix_achat: c.choix_achat,
+          count: 1,
+          niveau_max: c.niveau_acquis,
+          xp_total: c.xp_depense,
+          statut_maitre: c.statut_maitre,
+          appris_via_maitre: c.appris_via_maitre,
+          nom_maitre: c.nom_maitre,
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [competences]);
+
   const isOwner = user?.id === fiche?.joueur_id;
   const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
 
@@ -456,16 +532,16 @@ const PersonnageFiche = () => {
         `).join("")}
         ` : ""}
 
-        ${(competences ?? []).length > 0 ? `
+        ${competencesGroupees.length > 0 ? `
         <h2>Compétences</h2>
         <table>
           <tr><th>Compétence</th><th>Catégorie</th><th>Niveau</th><th>XP</th><th>Statut</th></tr>
-          ${(competences ?? []).map((c) => `
+          ${competencesGroupees.map((c) => `
             <tr>
-              <td>${escapeHtml(c.nom)}${c.choix_achat ? ` (${escapeHtml(c.choix_achat)})` : ""}</td>
+              <td>${escapeHtml(c.nom)}${c.choix_achat ? ` (${escapeHtml(resoudreChoixAffichage(c.choix_achat, langues, religions) ?? c.choix_achat)})` : ""}${c.count > 1 && !c.choix_achat ? ` × ${c.count}` : ""}</td>
               <td>${escapeHtml(c.categorie)}</td>
-              <td>${c.niveau_acquis}</td>
-              <td>${c.xp_depense === 0 ? "Gratuit" : c.xp_depense}</td>
+              <td>${c.niveau_max}</td>
+              <td>${c.xp_total === 0 ? "Gratuit" : c.xp_total}</td>
               <td>${escapeHtml(c.statut_maitre !== "non_requis" ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre : "—")}</td>
             </tr>
           `).join("")}
@@ -725,34 +801,41 @@ const PersonnageFiche = () => {
 
         {/* Compétences */}
         <TabsContent value="competences" className="space-y-4 mt-6">
-          {competences && competences.length > 0 ? (
+          {competencesGroupees.length > 0 ? (
             <div className="space-y-3">
-              {competences.map((comp) => (
-                <Card key={comp.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">
-                          {comp.nom}
-                          {comp.choix_achat && <span className="text-muted-foreground ml-1">({comp.choix_achat})</span>}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{comp.categorie}</p>
+              {competencesGroupees.map((comp, i) => {
+                const choixResolu = resoudreChoixAffichage(comp.choix_achat, langues, religions);
+                const afficherMultiplicateur = comp.count > 1 && !comp.choix_achat;
+                return (
+                  <Card key={`${comp.nom}-${comp.choix_achat ?? ""}-${i}`}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">
+                            {comp.nom}
+                            {choixResolu && <span className="text-muted-foreground ml-1">({choixResolu})</span>}
+                            {afficherMultiplicateur && <span className="text-muted-foreground ml-1">× {comp.count}</span>}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{comp.categorie}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {comp.niveau_max > 1 && (
+                            <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_max}</Badge>
+                          )}
+                          {comp.xp_total === 0 ? (
+                            <Badge variant="outline" className="text-xs">Gratuit</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">{comp.xp_total} XP</Badge>
+                          )}
+                          {comp.statut_maitre !== "non_requis" && (
+                            <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_acquis}</Badge>
-                        {comp.xp_depense === 0 ? (
-                          <Badge variant="outline" className="text-xs">Gratuit</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">{comp.xp_depense} XP</Badge>
-                        )}
-                        {comp.statut_maitre !== "non_requis" && (
-                          <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <p className="text-center py-8 text-muted-foreground">Aucune compétence acquise.</p>
