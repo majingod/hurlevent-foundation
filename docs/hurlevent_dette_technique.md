@@ -8,26 +8,7 @@ méthodologie.
 
 ---
 
-## 🐛 Bugs ouverts session 26 (2 nouveaux)
-
-### Session 26 — `formule_magique` NULL en BD [HAUTE]
-
-**Découvert** : session 26 (suivi de PR #137).
-
-**Symptôme** : champ `personnage_sorts.formule_magique` est NULL en base pour tous les sorts achetés (testé sur Valerius). Affichage écran OK car conditionnel `{ps.formule_magique && ...}`, mais joueur ne voit jamais la formule à incanter.
-
-**Cause racine** : RPC `acheter_sort` ne prend pas paramètre `p_formule_magique`, et le wizard Etape6 ne propose pas non plus d'input pour la saisir.
-
-**Solution** :
-1. Ajouter paramètre `p_formule_magique TEXT` à `acheter_sort` (avec validation longueur min/max)
-2. Ajouter input texte au wizard `Etape6_Sorts_V2.tsx` (champ libre, exemple manuel)
-3. Régénérer types Supabase
-
-**Effort** : M (1 migration RPC + 1 input wizard + types).
-
-**Cible** : session 27, priorité 1.
-
----
+## 🐛 Bugs ouverts session 26 (1 nouveau)
 
 ### Session 26 — Naming `cout_xp_base` trompeur [FAIBLE]
 
