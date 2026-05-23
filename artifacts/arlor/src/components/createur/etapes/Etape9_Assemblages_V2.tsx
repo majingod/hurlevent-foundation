@@ -261,6 +261,9 @@ const Etape9_Assemblages_V2 = ({
 
   const mutationsPending = acheterMutation.isPending;
   const xpInsuffisantAssemblage = xpDisponible < COUT_ASSEMBLAGE_SUPPLEMENTAIRE;
+  // Tant qu'il reste des gratuités a consommer, on grise les boutons « Acheter »
+  // pour forcer l'utilisateur a epuiser ses gratuites d'abord.
+  const aGratuitesRestantesAssemblage = quotaRestant > 0;
 
   return (
     <div className="space-y-6">
@@ -374,12 +377,22 @@ const Etape9_Assemblages_V2 = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={mutationsPending || xpInsuffisantAssemblage}
-                        className={xpInsuffisantAssemblage ? "opacity-50" : ""}
+                        disabled={
+                          mutationsPending ||
+                          xpInsuffisantAssemblage ||
+                          aGratuitesRestantesAssemblage
+                        }
+                        className={
+                          xpInsuffisantAssemblage || aGratuitesRestantesAssemblage
+                            ? "opacity-50"
+                            : ""
+                        }
                         title={
-                          xpInsuffisantAssemblage
-                            ? `XP insuffisant (${xpDisponible}/${COUT_ASSEMBLAGE_SUPPLEMENTAIRE})`
-                            : undefined
+                          aGratuitesRestantesAssemblage
+                            ? `Sélectionnez d'abord tous vos assemblages gratuits (${quotaRestant} restant${quotaRestant > 1 ? "s" : ""})`
+                            : xpInsuffisantAssemblage
+                              ? `XP insuffisant (${xpDisponible}/${COUT_ASSEMBLAGE_SUPPLEMENTAIRE})`
+                              : undefined
                         }
                         onClick={() => handleAcheter(assemblage)}
                       >
