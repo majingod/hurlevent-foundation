@@ -114,8 +114,9 @@ const Etape7_Prieres_V2 = ({
   });
 
   const niveauAcquisition = acquisitionDomaine ?? 0;
+  const estCroyant = personnage?.est_croyant ?? false;
   const religionId = personnage?.religion_id ?? null;
-  const conditionsRemplies = niveauAcquisition >= 1;
+  const conditionsRemplies = estCroyant && niveauAcquisition >= 1;
 
   // Domaines disponibles (vue_domaines_disponibles)
   const { data: domainesDisponibles, isLoading: loadingDomaines } = useQuery({
@@ -331,40 +332,32 @@ const Etape7_Prieres_V2 = ({
   });
 
   // Auto-skip : si l'utilisateur arrive sur l'etape 7 en avancement
-  // (etapeCreation === 7) et qu'aucun domaine n'est disponible (aucune
-  // compétence d'acquisition de domaines, ou tous les domaines proscrits
-  // par la religion), on fait avancer etape_creation cote serveur
-  // immediatement. La garde useRef + etapeCreation === N protege contre
-  // le re-trigger et permet la navigation backward.
+  // (etapeCreation === 7) et qu'aucune prière n'est achetable pour ce
+  // personnage, on fait avancer etape_creation cote serveur immédiatement.
+  // Deux cas couverts :
+  //   1. !conditionsRemplies : Non-croyant ou sans Acquisition de Domaine
+  //   2. conditionsRemplies mais domaines tous proscrits / aucun disponible
+  // La garde queriesPrerequisChargees évite un déclenchement prématuré
+  // avant que personnage + acquisitionDomaine soient résolus (pattern
+  // PR #139 réinstauré).
+  const queriesPrerequisChargees =
+    !loadingPersonnage && !loadingAcquisition;
+  const aucunePriereAchetable =
+    queriesPrerequisChargees &&
+    (!conditionsRemplies ||
+      (!loadingDomaines &&
+        proscritsResolus &&
+        domainesAffiches.length === 0));
+
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
     if (skipDeclencheRef.current) return;
     if (etapeCreation !== 7) return;
-    // GARDE session 26 PR-C : attendre que les queries personnage +
-    // acquisitionDomaine soient terminees avant d'evaluer le skip.
-    // Sans ca, conditionsRemplies = false par defaut, domainesDisponibles
-    // est non-enabled, loadingDomaines = false (non-enabled != loading),
-    // et le skip declenche prematurement avant meme que conditionsRemplies
-    // soit evaluable.
-    if (loadingPersonnage || loadingAcquisition) return;
-    // GARDE session 26 PR-C : si conditions non remplies, on affiche la
-    // carte « indisponibles » plutot qu'un skip silencieux.
-    if (!conditionsRemplies) return;
-    if (loadingDomaines || !proscritsResolus) return;
-    if (domainesAffiches.length > 0) return;
+    if (!aucunePriereAchetable) return;
     if (avancerMutation.isPending) return;
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
-  }, [
-    etapeCreation,
-    loadingPersonnage,
-    loadingAcquisition,
-    conditionsRemplies,
-    loadingDomaines,
-    proscritsResolus,
-    domainesAffiches,
-    avancerMutation,
-  ]);
+  }, [etapeCreation, aucunePriereAchetable, avancerMutation]);
 
   const peutAcheter =
     !!priereSelectionnee &&
@@ -405,8 +398,8 @@ const Etape7_Prieres_V2 = ({
               Étape 7 — Prières divines indisponibles
             </CardTitle>
             <CardDescription>
-              Pour acquérir des prières, ce personnage doit posséder la
-              compétence « Acquisition de Domaine » au niveau 1 minimum.
+              Pour acquérir des prières, ce personnage doit posséder la compétence
+              « Acquisition de Domaine » au niveau 1 minimum, et être croyant.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
@@ -418,6 +411,14 @@ const Etape7_Prieres_V2 = ({
                 }
               >
                 niveau {niveauAcquisition}
+              </strong>
+            </p>
+            <p>
+              • Croyant :{" "}
+              <strong
+                className={estCroyant ? "text-primary" : "text-destructive"}
+              >
+                {estCroyant ? "oui" : "non"}
               </strong>
             </p>
           </CardContent>
