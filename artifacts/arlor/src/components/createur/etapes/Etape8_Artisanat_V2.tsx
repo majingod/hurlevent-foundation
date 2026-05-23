@@ -33,6 +33,13 @@ interface Etape8Props {
    * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
    */
   etapeCreation?: number;
+  /**
+   * XP disponible du personnage (xp_total - xp_depense, ajuste du delta
+   * courant). Calcule par PersonnageNouveauV2.tsx. Sert a griser le
+   * bouton « Acheter » quand XP insuffisant. Fallback 0 = bloque par
+   * defaut si la prop manque.
+   */
+  xpDisponible?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -41,6 +48,7 @@ interface Etape8Props {
 const Etape8_Artisanat_V2 = ({
   personnageId,
   etapeCreation,
+  xpDisponible = 0,
   onSuccess,
   onError,
   onPrevious,
@@ -310,6 +318,7 @@ const Etape8_Artisanat_V2 = ({
       : "joaillerie";
 
   const mutationsPending = acheterMutation.isPending;
+  const xpInsuffisantAlchimie = xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE;
 
   return (
     <div className="space-y-6">
@@ -442,7 +451,13 @@ const Etape8_Artisanat_V2 = ({
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={mutationsPending}
+                              disabled={mutationsPending || xpInsuffisantAlchimie}
+                              className={xpInsuffisantAlchimie ? "opacity-50" : ""}
+                              title={
+                                xpInsuffisantAlchimie
+                                  ? `XP insuffisant (${xpDisponible}/${COUT_RECETTE_SUPPLEMENTAIRE})`
+                                  : undefined
+                              }
                               onClick={() => handleAcheter(recette)}
                             >
                               Acheter ({COUT_RECETTE_SUPPLEMENTAIRE} XP)

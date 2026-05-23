@@ -28,6 +28,13 @@ interface Etape9Props {
    * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
    */
   etapeCreation?: number;
+  /**
+   * XP disponible du personnage (xp_total - xp_depense, ajuste du delta
+   * courant). Calcule par PersonnageNouveauV2.tsx. Sert a griser le
+   * bouton « Acheter » quand XP insuffisant. Fallback 0 = bloque par
+   * defaut si la prop manque.
+   */
+  xpDisponible?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -36,6 +43,7 @@ interface Etape9Props {
 const Etape9_Assemblages_V2 = ({
   personnageId,
   etapeCreation,
+  xpDisponible = 0,
   onSuccess,
   onError,
   onPrevious,
@@ -251,6 +259,7 @@ const Etape9_Assemblages_V2 = ({
   }
 
   const mutationsPending = acheterMutation.isPending;
+  const xpInsuffisantAssemblage = xpDisponible < COUT_ASSEMBLAGE_SUPPLEMENTAIRE;
 
   return (
     <div className="space-y-6">
@@ -364,7 +373,13 @@ const Etape9_Assemblages_V2 = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={mutationsPending}
+                        disabled={mutationsPending || xpInsuffisantAssemblage}
+                        className={xpInsuffisantAssemblage ? "opacity-50" : ""}
+                        title={
+                          xpInsuffisantAssemblage
+                            ? `XP insuffisant (${xpDisponible}/${COUT_ASSEMBLAGE_SUPPLEMENTAIRE})`
+                            : undefined
+                        }
                         onClick={() => handleAcheter(assemblage)}
                       >
                         Acheter ({COUT_ASSEMBLAGE_SUPPLEMENTAIRE} XP)
