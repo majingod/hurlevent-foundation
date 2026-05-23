@@ -35,6 +35,13 @@ interface Etape9Props {
    * defaut si la prop manque.
    */
   xpDisponible?: number;
+  /**
+   * Drapeau parent : true seulement si on est sur l'etape la plus haute
+   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
+   * en arriere), l'auto-skip est desactive meme si etapeCreation === 9.
+   * Defaut true pour compatibilite.
+   */
+  autoSkipActif?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -44,6 +51,7 @@ const Etape9_Assemblages_V2 = ({
   personnageId,
   etapeCreation,
   xpDisponible = 0,
+  autoSkipActif = true,
   onSuccess,
   onError,
   onPrevious,
@@ -188,6 +196,7 @@ const Etape9_Assemblages_V2 = ({
   // la navigation backward.
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
+    if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
     if (etapeCreation == null || etapeCreation > 9) return;
     if (loadingQuotas) return;
@@ -195,7 +204,7 @@ const Etape9_Assemblages_V2 = ({
     if (avancerMutation.isPending) return;
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
-  }, [etapeCreation, loadingQuotas, hasAssemblage, avancerMutation]);
+  }, [autoSkipActif, etapeCreation, loadingQuotas, hasAssemblage, avancerMutation]);
 
   const handleCocherGratuit = (assemblage: AssemblageRow) => {
     if (quotaRestant <= 0) {

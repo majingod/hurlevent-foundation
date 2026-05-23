@@ -40,6 +40,13 @@ interface Etape8Props {
    * defaut si la prop manque.
    */
   xpDisponible?: number;
+  /**
+   * Drapeau parent : true seulement si on est sur l'etape la plus haute
+   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
+   * en arriere), l'auto-skip est desactive meme si etapeCreation === 8.
+   * Defaut true pour compatibilite.
+   */
+  autoSkipActif?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -49,6 +56,7 @@ const Etape8_Artisanat_V2 = ({
   personnageId,
   etapeCreation,
   xpDisponible = 0,
+  autoSkipActif = true,
   onSuccess,
   onError,
   onPrevious,
@@ -249,6 +257,7 @@ const Etape8_Artisanat_V2 = ({
   // et permet la navigation backward.
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
+    if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
     if (etapeCreation == null || etapeCreation > 8) return;
     if (loadingQuotas) return;
@@ -257,6 +266,7 @@ const Etape8_Artisanat_V2 = ({
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
   }, [
+    autoSkipActif,
     etapeCreation,
     loadingQuotas,
     hasAlchimie,
