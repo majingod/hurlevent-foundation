@@ -1,12 +1,148 @@
 # Hurlevent — Migrations log
 
-> **Dernière mise à jour** : 22 mai 2026 (session 25 — PR C : enrichissement vue_fiche_personnage pour traits raciaux).
+> **Dernière mise à jour** : 22 mai 2026 (clôture session 26).
 
 Document qui trace toutes les migrations DB appliquées, leur contexte, et les apprentissages.
 
 ---
 
-## Session 25 — Enrichissement vue_fiche_personnage pour traits raciaux (22 mai 2026)
+## Session 26 — Fix système magie (22 mai 2026)
+
+**3 PRs frontend mergées** : #137 (calcul PS), #138 (système magie complet), #139 (race condition Etape7).
+
+**1 migration DB** appliquée + **1 data fix** prod.
+
+### Migration appliquée via MCP
+
+**`20260523000824_fix_magie_helper_calcul_xp_check_religion.sql`** (PR #138)
+
+#### Contexte
+
+5 bugs interconnectés dans le système magie (sorts et prières) :
+- (A) Frontend `Etape7_Prieres_V2.tsx` : condition `&& estCroyant` bloquait skip silencieux pour Non croyants
+- (B) RPC `acheter_priere` : check `religion_id` bloquait TOUS les achats — toutes les 121 prières ont `religion_id` NULL en BD
+- (C) RPC `acheter_priere` : calcul XP via `CEIL(cout_xp_base brut)` au lieu de la formule complète `(zone+portée+durée+niveau)·base`
+- (D) RPC `valider_etape_7` : check religion identique à B
+- (E) RPC `acheter_sort` : même bug calcul XP que C
+
+**Constat data brut** : 0 prière jamais achetée en BD sur 121 disponibles. Système magie cassé depuis le début.
+
+**Cohérence manuel 2026** : "Acquisition de Domaine" requiert "Linguistique et Mathématique" UNIQUEMENT (pas de religion). Confirme que les checks religion étaient erronés.
+
+#### Diagnostic
+
+1. Test fonctionnel Valerius (Mage, Drow) : badge "1 PS" affiché pour sort Altération du Corps niv 5 → suspicion calcul incorrect
+2. Inspection `calculerCoutPS` frontend + RPC `acheter_sort` : confirmation que la base brute était utilisée au lieu du XP total
+3. Test BEGIN/ROLLBACK acheter_priere sur perso Non croyant : erreur "personnage_non_croyant"
+4. Inspection 121 prières : 100% `religion_id` NULL → check religion = bug systémique
+5. Comparaison manuel 2026 : pas de religion requise pour Acquisition de Domaine
+6. Tests BEGIN/ROLLBACK helper SQL : 7/7 cas validés
+7. Run prod manuel avec session simulée (joueur Fred) : achat acheter_priere Non croyant réussi (2 XP pour Alerte du Danger niv 1)
+
+#### Migration appliquée
+
+**Nouvelle helper SQL** `calculer_cout_xp_magie(zone, portée, durée, niveau, base)` mirror exact du frontend `@/utils/calculsMagie.ts` et `@/constants/magie.ts`. CASE statements hardcodés pour COUT_ZONE/PORTEES/DUREES.
+
+**Signature** :
+```sql
+CREATE OR REPLACE FUNCTION public.calculer_cout_xp_magie(
+  p_zone TEXT,
+  p_portee TEXT,
+  p_duree TEXT,
+  p_niveau INTEGER,
+  p_base NUMERIC
+) RETURNS INTEGER
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  v_cout_zone INTEGER;
+  v_cout_portee INTEGER;
+  v_cout_duree INTEGER;
+BEGIN
+  -- CASE p_zone, p_portee, p_duree (valeurs hardcodées mirror constants/magie.ts)
+  RETURN CEIL((v_cout_zone + v_cout_portee + v_cout_duree + p_niveau) * p_base);
+END;
+$$;
+```
+
+**RPCs corrigées** :
+1. `acheter_sort` : utilise helper, retire calcul inline incorrect
+2. `acheter_priere` : utilise helper + retire check religion
+3. `valider_etape_7` : retire check religion (était un blocage parallèle)
+
+#### Tests BEGIN/ROLLBACK
+
+7 cas validés via MCP :
+- Test 1 : zone Personnelle, portée Toucher, durée Instant, niv 1, base 1.0 → 4 XP ✅
+- Test 2 : zone Personnelle, portée Toucher, durée 5 Min, niv 5, base 1.0 → 9 XP ✅
+- Test 3-6 : variations zone/portée/durée croisées → conformes manuel ✅
+- Test 7 : acheter_priere Non croyant + Acquisition de Domaine → réussi, 2 XP ✅
+
+#### Data fix Valerius (hors migration)
+
+Sort "Altération du Corps" de Valerius avait été acheté avec calcul incorrect (1 XP au lieu de 9). Data fix appliqué via MCP execute_sql :
+- `historique_xp.montant` : -1 → -9 (id `78a2f80e-cf2c-4735-aa4a-7df86e18491d`)
+- `personnage_sorts.xp_depense` : 1 → 9 (id `203b84b3-6379-4f34-97c2-3411dc2ba405`)
+- Trigger `trg_sync_xp_personnage` recalcule auto `personnages.xp_depense` : 181 → 189
+- `xp_dispo` Valerius : 1529 → 1521
+
+### PR #139 — Race condition useEffect Etape7 (frontend pur)
+
+**Pas de migration DB**. Mais bug subtil découvert APRÈS merge PR #138 lors du test de Fred avec un nouveau perso "Test" (Mage + Acquisition de Domaine).
+
+**Symptôme** : au click "Continuer la création" depuis tableau de bord, l'étape 7 est sautée silencieusement avec toast d'avertissement `info_domaine_sans_priere`. L'utilisateur arrive directement à l'étape 9.
+
+**Cause racine** : race condition useEffect skip. Au premier mount (arrivée via "Continuer la création", queries fraîches sans cache) :
+1. `loadingPersonnage = true` + `loadingAcquisition = true` (queries en cours)
+2. `niveauAcquisition = 0` par défaut → `conditionsRemplies = false`
+3. Query `domainesDisponibles` désactivée (`enabled: conditionsRemplies` = false)
+4. `loadingDomaines = false` (non-enabled ≠ loading)
+5. `domainesAffiches.length = 0` (donnée pas encore arrivée)
+6. useEffect skip déclenche `avancerMutation` 💥
+
+**Fix** : ajouter 2 gardes dans le useEffect :
+```ts
+if (loadingPersonnage || loadingAcquisition) return;
+if (!conditionsRemplies) return;
+```
++ ajout de ces variables dans deps array.
+
+**Pourquoi Etape6/Etape8 ne souffrent pas** : leurs queries principales utilisent `enabled: !!personnageId` (simple, toujours enabled au mount), donc `loadingCercles`/`loadingQuotas = true` au premier render → la garde `if (loading) return;` couvre le cas.
+
+### Apprentissages session 26
+
+1. **Helper SQL miroir frontend** : pattern validé, single source of truth backend. À reproduire pour autres formules dupliquées (xp recettes, xp assemblages).
+
+2. **Race condition useEffect vs query enabled conditionnel** : nouvelle règle implicite. Quand `enabled: ... && X`, ajouter gardes sur les queries calculant X.
+
+3. **Prod first valide pour bugs DB urgents** : MCP `apply_migration` en prod + tests BEGIN/ROLLBACK + 1 run prod manuel = workflow safe quand validation rigoureuse en amont.
+
+4. **Data fix idempotent dans la même session** : Valerius corrigé immédiatement après PR #138. Trigger `sync_xp_personnage` cascade auto = pas besoin de fix manuel sur `personnages.xp_depense`.
+
+5. **Bug subtil peut survivre à un fix partiel** : PR #138 a fixé la condition `&& estCroyant` mais pas la race. PR #139 nécessaire après test fonctionnel. Confirme l'importance du test post-merge (règle #10 diagnostic).
+
+### Dette ouverte / fermée
+
+- **Fermée** :
+  - Bug #4 — Étape sorts divins sautée (cause racine = 5 bugs interconnectés)
+  - Audit calcul PS (partiellement — TabsContent Prières reste asymétrique)
+
+- **Ajoutée** (3 nouveaux findings) :
+  - `formule_magique` NULL en BD (HAUTE)
+  - Asymétrie écran/impression Prières (MOYENNE)
+  - Naming `cout_xp_base` trompeur (FAIBLE)
+  - Mort code potentiel `prieres.religion_id` (à évaluer)
+
+---
+
+## Session 25 — Vue traits enrichie (22 mai 2026)
+
+**2 PRs mergées** : PR #135 (Bug #8 TabsList), PR #136 (Bug Traits vides).
+
+### Migration appliquée via MCP
+
+**`20260522211910_enrichir_vue_fiche_personnage_traits_raciaux.sql`** (PR #136)
 
 ### Migration : `20260522211910_enrichir_vue_fiche_personnage_traits_raciaux`
 
@@ -15,18 +151,6 @@ Document qui trace toutes les migrations DB appliquées, leur contexte, et les a
 **Cause racine** : `vue_fiche_personnage.traits_raciaux_choisis` retournait le JSONB brut `[{trait_id, xp_depense, est_gratuit}]`. Le frontend castait `as Trait[]` et accédait à `trait.nom` (undefined) → cards vides.
 
 **Solution** : `CREATE OR REPLACE VIEW vue_fiche_personnage` avec enrichissement via `LEFT JOIN traits_raciaux` dans un sous-SELECT `jsonb_agg(jsonb_build_object(...))`. Format retourné : `[{id, nom, description, cout_xp, xp_depense, est_gratuit}]`.
-
-**Périmètre** :
-- ✅ `vue_fiche_personnage` (modifiée) — seul consommateur frontend = `PersonnageFiche.tsx`
-- ✅ `personnages.traits_raciaux_choisis` (table) — INCHANGÉE, garde le format brut pour `Etape3_V2.tsx` et RPC `sauvegarder_etape_3`
-- ✅ Asymétrie acceptée : table = brut (write), vue = enrichi (read)
-
-**Test prod (Valerius `7fd12430-...`)** : 6 traits enrichis correctement.
-
-**Apprentissages clés** :
-- La règle ANTI-DEVINER (mémoire #4) + grep via Claude Code = workflow validé pour évaluer l'impact d'un changement de vue. En session 25, le grep a confirmé qu'`Etape3_V2.tsx` lit directement la table (pas via la vue) → Option A (modifier vue) safe.
-- L'asymétrie "table brut + vue enrichie" est acceptable quand les chemins de lecture/écriture sont clairement séparés (write côté Etape3 / read côté PersonnageFiche).
-- Cache CDN raw.githubusercontent.com peut rester stale plusieurs minutes/heures après merge, même avec format `refs/heads/main`. Conséquence : éviter d'analyser des fichiers récemment modifiés via web_fetch ; préférer Claude Code `cat`.
 
 ---
 
@@ -139,4 +263,4 @@ Valerius (avant migration : xp_total=0, niveau=1) → après migration + data fi
 
 ---
 
-*Fin de hurlevent_migrations_log.md (clôture session 24).*
+*Fin de hurlevent_migrations_log.md (clôture session 26).*
