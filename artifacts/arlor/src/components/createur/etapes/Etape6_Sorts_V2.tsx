@@ -267,7 +267,7 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, onSuccess, onError, onPr
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
     if (skipDeclencheRef.current) return;
-    if (etapeCreation !== 6) return;
+    if (etapeCreation == null || etapeCreation > 6) return;
     if (loadingCercles) return;
     if (cerclesDisponibles && cerclesDisponibles.length > 0) return;
     if (avancerMutation.isPending) return;

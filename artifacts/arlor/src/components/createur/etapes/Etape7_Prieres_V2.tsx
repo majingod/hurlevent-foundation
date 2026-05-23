@@ -352,7 +352,7 @@ const Etape7_Prieres_V2 = ({
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
     if (skipDeclencheRef.current) return;
-    if (etapeCreation !== 7) return;
+    if (etapeCreation == null || etapeCreation > 7) return;
     if (!aucunePriereAchetable) return;
     if (avancerMutation.isPending) return;
     skipDeclencheRef.current = true;

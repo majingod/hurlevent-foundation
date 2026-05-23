@@ -249,7 +249,7 @@ const Etape8_Artisanat_V2 = ({
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
     if (skipDeclencheRef.current) return;
-    if (etapeCreation !== 8) return;
+    if (etapeCreation == null || etapeCreation > 8) return;
     if (loadingQuotas) return;
     if (hasAlchimie || hasForge || hasJoaillerie) return;
     if (avancerMutation.isPending) return;

@@ -188,7 +188,7 @@ const Etape9_Assemblages_V2 = ({
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
     if (skipDeclencheRef.current) return;
-    if (etapeCreation !== 9) return;
+    if (etapeCreation == null || etapeCreation > 9) return;
     if (loadingQuotas) return;
     if (hasAssemblage) return;
     if (avancerMutation.isPending) return;
