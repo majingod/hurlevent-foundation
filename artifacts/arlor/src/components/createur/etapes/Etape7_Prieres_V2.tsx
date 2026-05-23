@@ -281,13 +281,14 @@ const Etape7_Prieres_V2 = ({
       return data;
     },
     onSuccess: () => {
+      // Invalide toutes les queries qui contiennent personnageId dans leur
+      // clef. Cela couvre ["personnage-prieres", id], ["domaines-disponibles", id]
+      // ET ["v2-personnage", id] du parent (header XP), sans avoir a lister
+      // chaque queryKey explicitement.
       queryClient.invalidateQueries({
-        queryKey: ["personnage-prieres", personnageId],
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
-      queryClient.invalidateQueries({
-        queryKey: ["domaines-disponibles", personnageId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       toast.success("Prière acquise !");
       setPriereId(null);
       setDomaineSelectionne(null);
