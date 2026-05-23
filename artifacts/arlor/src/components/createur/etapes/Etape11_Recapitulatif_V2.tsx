@@ -29,6 +29,8 @@ import {
 
 type VueRecap =
   Database["public"]["Views"]["vue_personnage_creation_complet"]["Row"];
+type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
+type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
 
 interface Etape11Props {
   personnageId: string;
@@ -123,6 +125,38 @@ const asArray = <T,>(value: Json | null | undefined): T[] => {
   return [];
 };
 
+interface CompetenceGroupe {
+  nom: string;
+  choix_achat: string | null;
+  niveau_max: number;
+  xp_total: number;
+  count: number;
+  categorie: string;
+}
+
+/**
+ * Résout un choix_achat en nom affichable.
+ * - UUID matchant une langue → nom de la langue
+ * - UUID matchant une religion → nom de la religion
+ * - Autres (cercle, domaine, catégorie, famille_criminelle) → valeur littérale
+ *
+ * Duplicate temporaire de la logique Etape5_Competences_V2.tsx. À factoriser
+ * lors du Bug #7 (refonte descriptions complètes étape 11) qui enrichira
+ * vue_competences_personnage avec un champ choix_achat_affichage côté DB.
+ */
+const resoudreChoixAffichage = (
+  choixAchat: string | null,
+  langues: { id: string; nom: string | null }[] | undefined,
+  religions: { id: string; nom: string | null }[] | undefined,
+): string | null => {
+  if (!choixAchat) return null;
+  const enLangue = langues?.find((l) => l.id === choixAchat);
+  if (enLangue?.nom) return enLangue.nom;
+  const enReligion = religions?.find((r) => r.id === choixAchat);
+  if (enReligion?.nom) return enReligion.nom;
+  return choixAchat;
+};
+
 const Etape11_Recapitulatif_V2 = ({
   personnageId,
   onSuccess,
@@ -144,6 +178,28 @@ const Etape11_Recapitulatif_V2 = ({
       return data as VueRecap | null;
     },
     enabled: !!personnageId,
+  });
+
+  const { data: langues } = useQuery({
+    queryKey: ["langues-recap"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("langues")
+        .select("id, nom");
+      if (error) throw error;
+      return (data ?? []) as Pick<LangueRow, "id" | "nom">[];
+    },
+  });
+
+  const { data: religions } = useQuery({
+    queryKey: ["religions-recap"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("religions")
+        .select("id, nom");
+      if (error) throw error;
+      return (data ?? []) as Pick<ReligionRow, "id" | "nom">[];
+    },
   });
 
   const finaliserMutation = useMutation({
@@ -222,11 +278,40 @@ const Etape11_Recapitulatif_V2 = ({
   const objetsForge = asArray<ObjetArtisanatItem>(recap.objets_forge);
   const objetsJoaillerie = asArray<ObjetArtisanatItem>(recap.objets_joaillerie);
 
-  const competencesParCategorie = competences.reduce<
-    Record<string, CompetenceItem[]>
-  >((acc, c) => {
+  // Groupage par (nom, choix_achat, categorie) pour :
+  // - Bug #5 : résoudre les UUIDs (langues / religions) en noms lisibles au rendu
+  // - Bug #6 : afficher "× N" pour multi-sans-choix (Dev Spirituel), niveau max
+  //   pour multi-par-niveau (Connaissance des Créatures Vermines niv 1+2),
+  //   et somme XP.
+  const groupes = competences.reduce<CompetenceGroupe[]>((acc, c) => {
     const cat = c.categorie ?? "Autre";
-    (acc[cat] ??= []).push(c);
+    const existant = acc.find(
+      (g) =>
+        g.nom === (c.nom ?? "") &&
+        g.choix_achat === (c.choix_achat ?? null) &&
+        g.categorie === cat,
+    );
+    if (existant) {
+      existant.count += 1;
+      existant.niveau_max = Math.max(existant.niveau_max, c.niveau_acquis ?? 1);
+      existant.xp_total += c.xp_depense ?? 0;
+    } else {
+      acc.push({
+        nom: c.nom ?? "",
+        choix_achat: c.choix_achat ?? null,
+        niveau_max: c.niveau_acquis ?? 1,
+        xp_total: c.xp_depense ?? 0,
+        count: 1,
+        categorie: cat,
+      });
+    }
+    return acc;
+  }, []);
+
+  const competencesParCategorie = groupes.reduce<
+    Record<string, CompetenceGroupe[]>
+  >((acc, g) => {
+    (acc[g.categorie] ??= []).push(g);
     return acc;
   }, {});
 
@@ -338,33 +423,52 @@ const Etape11_Recapitulatif_V2 = ({
                 <div key={cat}>
                   <h4 className="text-sm font-semibold mb-2">{cat}</h4>
                   <ul className="space-y-1 text-sm">
-                    {items.map((c, i) => (
-                      <li
-                        key={i}
-                        className="flex items-center justify-between gap-2"
-                      >
-                        <span>
-                          {c.nom}
-                          {c.choix_achat && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              ({c.choix_achat})
-                            </span>
-                          )}
-                          {c.niveau_acquis && c.niveau_acquis > 1 && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              — niv. {c.niveau_acquis}
-                            </span>
-                          )}
-                        </span>
-                        <Badge variant="outline">
-                          {c.xp_depense === 0
-                            ? "Gratuit"
-                            : `${c.xp_depense ?? 0} XP`}
-                        </Badge>
-                      </li>
-                    ))}
+                    {items.map((g, i) => {
+                      const choixResolu = resoudreChoixAffichage(
+                        g.choix_achat,
+                        langues,
+                        religions,
+                      );
+                      // "× N" affiché UNIQUEMENT pour multi-sans-choix (Dev Spirituel,
+                      // Dev Spirituel Supérieur). Pour multi-par-niveau avec choix
+                      // (Connaissance des Créatures Vermines niv 1+2), on affiche
+                      // le niveau max sans multiplicateur.
+                      const afficherMultiplicateur =
+                        g.count > 1 && !g.choix_achat;
+                      return (
+                        <li
+                          key={`${g.nom}-${g.choix_achat ?? ""}-${i}`}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <span>
+                            {g.nom}
+                            {choixResolu && (
+                              <span className="text-muted-foreground">
+                                {" "}
+                                ({choixResolu})
+                              </span>
+                            )}
+                            {afficherMultiplicateur && (
+                              <span className="text-muted-foreground">
+                                {" "}
+                                × {g.count}
+                              </span>
+                            )}
+                            {g.niveau_max > 1 && (
+                              <span className="text-muted-foreground">
+                                {" "}
+                                — niv. {g.niveau_max}
+                              </span>
+                            )}
+                          </span>
+                          <Badge variant="outline">
+                            {g.xp_total === 0
+                              ? "Gratuit"
+                              : `${g.xp_total} XP`}
+                          </Badge>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
