@@ -9,8 +9,6 @@
 - **Date de capture** : 16 mai 2026
 - **Commande** : `pnpm --filter arlor run typecheck`
 - **Nombre total d'erreurs `TS`** : 26
-- **Référence dette** : nouvel item à ajouter à
-  `hurlevent_dette_technique.md` (cf. passation v34).
 
 ## Notes
 
