@@ -503,7 +503,7 @@ const PersonnageFiche = () => {
             <div class="card">
               <div class="card-row">
                 <div class="card-title">${escapeHtml(p.nom_personnalise)}</div>
-                ${p.cout_xp_base != null ? `<span class="badge">${calculerCoutPS(p.cout_xp_base)} PS</span>` : ""}
+                ${p.cout_xp_base != null ? `<span class="badge">${calculerCoutPS(calculerCoutXP(p.zone_choisie ?? "", p.portee_choisie ?? "", p.duree_choisie ?? "", p.niveau_priere, Number(p.cout_xp_base)))} PS</span>` : ""}
               </div>
               <div class="muted">
                 ${p.duree_incantation ? `Incantation : ${escapeHtml(p.duree_incantation)}` : ""}
@@ -832,7 +832,7 @@ const PersonnageFiche = () => {
                       </div>
                       {priere.cout_xp_base != null && (
                         <Badge variant="secondary" className="text-xs shrink-0">
-                          {calculerCoutPS(priere.cout_xp_base)} PS
+                          {calculerCoutPS(calculerCoutXP(priere.zone_choisie ?? "", priere.portee_choisie ?? "", priere.duree_choisie ?? "", priere.niveau_priere, Number(priere.cout_xp_base)))} PS
                         </Badge>
                       )}
                     </div>

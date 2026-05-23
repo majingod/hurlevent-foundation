@@ -8,7 +8,7 @@ méthodologie.
 
 ---
 
-## 🐛 Bugs ouverts session 26 (3 nouveaux)
+## 🐛 Bugs ouverts session 26 (2 nouveaux)
 
 ### Session 26 — `formule_magique` NULL en BD [HAUTE]
 
@@ -26,22 +26,6 @@ méthodologie.
 **Effort** : M (1 migration RPC + 1 input wizard + types).
 
 **Cible** : session 27, priorité 1.
-
----
-
-### Session 26 — Asymétrie écran/impression Prières [MOYENNE]
-
-**Découvert** : session 26 (audit calcul PS dans PR #137).
-
-**Symptôme** : dans `PersonnageFiche.tsx`, le `TabsContent` "Prières" n'affiche PAS le coût PS, contrairement à `handlePrint` qui le calcule via `calculerCoutPS(calculerCoutXP(...))`.
-
-**Solution** : ajouter badge PS dans la card de chaque prière du TabsContent (pattern identique à TabsContent Sorts).
-
-**Cible** : `artifacts/arlor/src/pages/PersonnageFiche.tsx`.
-
-**Effort** : S (1 fichier, ~5 lignes).
-
-**Cible** : session 27, priorité 2.
 
 ---
 
