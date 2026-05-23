@@ -626,7 +626,11 @@ const Etape5_Competences_V2 = ({
     }
 
     if (typeChoix === "langue") {
+      // Langue supplémentaire (manuel 2026) : uniquement les langues vivantes.
+      // Les langues anciennes (L'Ancien Commun, L'Ancien Démoniaque, etc.) sont
+      // réservées à la compétence "Décryptage" (type_choix === "langue_ancienne").
       return (langues ?? [])
+        .filter((l) => !l.est_ancienne)
         .filter((l) => !dejaPris.has(l.id))
         .map((l) => ({ value: l.id, label: l.nom }));
     }
