@@ -340,6 +340,16 @@ const Etape7_Prieres_V2 = ({
   useEffect(() => {
     if (skipDeclencheRef.current) return;
     if (etapeCreation !== 7) return;
+    // GARDE session 26 PR-C : attendre que les queries personnage +
+    // acquisitionDomaine soient terminees avant d'evaluer le skip.
+    // Sans ca, conditionsRemplies = false par defaut, domainesDisponibles
+    // est non-enabled, loadingDomaines = false (non-enabled != loading),
+    // et le skip declenche prematurement avant meme que conditionsRemplies
+    // soit evaluable.
+    if (loadingPersonnage || loadingAcquisition) return;
+    // GARDE session 26 PR-C : si conditions non remplies, on affiche la
+    // carte « indisponibles » plutot qu'un skip silencieux.
+    if (!conditionsRemplies) return;
     if (loadingDomaines || !proscritsResolus) return;
     if (domainesAffiches.length > 0) return;
     if (avancerMutation.isPending) return;
@@ -347,6 +357,9 @@ const Etape7_Prieres_V2 = ({
     avancerMutation.mutate();
   }, [
     etapeCreation,
+    loadingPersonnage,
+    loadingAcquisition,
+    conditionsRemplies,
     loadingDomaines,
     proscritsResolus,
     domainesAffiches,
