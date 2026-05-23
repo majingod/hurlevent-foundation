@@ -41,6 +41,15 @@ interface PersonnageRow {
   xp_depense: number | null;
 }
 
+interface ItemDetailAnnulation {
+  type: string;
+  type_label: string;
+  nom: string;
+  quantite: number;
+  xp_unitaire: number;
+  xp_total: number;
+}
+
 interface DonneesAnnulationEtape {
   etape_annulee: number;
   etape_apres: number;
@@ -52,6 +61,7 @@ interface DonneesAnnulationEtape {
   count_recettes: number;
   count_objets_forge: number;
   count_objets_joaillerie: number;
+  items_detail: ItemDetailAnnulation[];
 }
 
 export interface EtapeProps {
@@ -455,46 +465,40 @@ const PersonnageNouveauV2 = () => {
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm">
                 <p>Cette action annulera :</p>
-                {donneesAnnulation && (
-                  <ul className="ml-4 list-disc space-y-1">
-                    {donneesAnnulation.count_competences > 0 && (
-                      <li>
-                        {donneesAnnulation.count_competences} compétence(s)
-                      </li>
-                    )}
-                    {donneesAnnulation.count_sorts > 0 && (
-                      <li>{donneesAnnulation.count_sorts} sort(s)</li>
-                    )}
-                    {donneesAnnulation.count_prieres > 0 && (
-                      <li>{donneesAnnulation.count_prieres} prière(s)</li>
-                    )}
-                    {donneesAnnulation.count_recettes > 0 && (
-                      <li>
-                        {donneesAnnulation.count_recettes} recette(s)
-                        alchimique(s)
-                      </li>
-                    )}
-                    {donneesAnnulation.count_assemblages > 0 && (
-                      <li>
-                        {donneesAnnulation.count_assemblages} assemblage(s) de
-                        runes
-                      </li>
-                    )}
-                    {donneesAnnulation.count_objets_forge > 0 && (
-                      <li>
-                        {donneesAnnulation.count_objets_forge} objet(s) de forge
-                      </li>
-                    )}
-                    {donneesAnnulation.count_objets_joaillerie > 0 && (
-                      <li>
-                        {donneesAnnulation.count_objets_joaillerie} objet(s) de
-                        joaillerie
-                      </li>
-                    )}
-                  </ul>
+                {donneesAnnulation && donneesAnnulation.items_detail.length > 0 && (
+                  <div className="space-y-3">
+                    {Object.entries(
+                      donneesAnnulation.items_detail.reduce(
+                        (acc, item) => {
+                          (acc[item.type_label] ??= []).push(item);
+                          return acc;
+                        },
+                        {} as Record<string, ItemDetailAnnulation[]>,
+                      ),
+                    ).map(([typeLabel, items]) => (
+                      <div key={typeLabel}>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
+                          {typeLabel} :
+                        </p>
+                        <ul className="ml-4 mt-1 list-disc space-y-0.5 text-xs text-muted-foreground">
+                          {items.map((item, i) => (
+                            <li key={`${typeLabel}-${i}`}>
+                              {item.nom}
+                              {item.quantite > 1 && ` (×${item.quantite})`}
+                              {item.xp_unitaire > 0
+                                ? item.quantite > 1
+                                  ? ` — ${item.xp_unitaire} XP/u = ${item.xp_total} XP`
+                                  : ` — ${item.xp_total} XP`
+                                : " — Gratuit"}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
                 )}
                 <p className="font-semibold text-gold">
-                  XP remboursés : {donneesAnnulation?.xp_rembourse ?? 0}
+                  XP remboursés total : {donneesAnnulation?.xp_rembourse ?? 0}
                 </p>
                 <p className="text-amber-400">Cette action est irréversible.</p>
               </div>
