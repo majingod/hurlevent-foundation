@@ -114,9 +114,8 @@ const Etape7_Prieres_V2 = ({
   });
 
   const niveauAcquisition = acquisitionDomaine ?? 0;
-  const estCroyant = personnage?.est_croyant === true;
   const religionId = personnage?.religion_id ?? null;
-  const conditionsRemplies = niveauAcquisition >= 1 && estCroyant;
+  const conditionsRemplies = niveauAcquisition >= 1;
 
   // Domaines disponibles (vue_domaines_disponibles)
   const { data: domainesDisponibles, isLoading: loadingDomaines } = useQuery({
@@ -394,8 +393,7 @@ const Etape7_Prieres_V2 = ({
             </CardTitle>
             <CardDescription>
               Pour acquérir des prières, ce personnage doit posséder la
-              compétence « Acquisition de Domaine » au niveau 1 minimum, et
-              être croyant.
+              compétence « Acquisition de Domaine » au niveau 1 minimum.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
@@ -407,14 +405,6 @@ const Etape7_Prieres_V2 = ({
                 }
               >
                 niveau {niveauAcquisition}
-              </strong>
-            </p>
-            <p>
-              • Croyant :{" "}
-              <strong
-                className={estCroyant ? "text-primary" : "text-destructive"}
-              >
-                {estCroyant ? "oui" : "non"}
               </strong>
             </p>
           </CardContent>
