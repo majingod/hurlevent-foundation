@@ -207,13 +207,14 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, onSuccess, onError, onPr
       return data;
     },
     onSuccess: () => {
+      // Invalide toutes les queries qui contiennent personnageId dans leur
+      // clef. Cela couvre ["personnage-sorts", id], ["cercles-disponibles", id]
+      // ET ["v2-personnage", id] du parent (header XP), sans avoir a lister
+      // chaque queryKey explicitement.
       queryClient.invalidateQueries({
-        queryKey: ["personnage-sorts", personnageId],
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
-      queryClient.invalidateQueries({
-        queryKey: ["cercles-disponibles", personnageId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       toast.success("Sort acheté !");
       setSortId(null);
       setCercleSelectionne(null);
@@ -267,7 +268,7 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, onSuccess, onError, onPr
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
     if (skipDeclencheRef.current) return;
-    if (etapeCreation !== 6) return;
+    if (etapeCreation == null || etapeCreation > 6) return;
     if (loadingCercles) return;
     if (cerclesDisponibles && cerclesDisponibles.length > 0) return;
     if (avancerMutation.isPending) return;

@@ -131,13 +131,14 @@ const Etape9_Assemblages_V2 = ({
       return data;
     },
     onSuccess: () => {
+      // Invalide toutes les queries qui contiennent personnageId dans leur
+      // clef. Cela couvre ["personnage-assemblages", id], ["artisanat-quotas", id]
+      // ET ["v2-personnage", id] du parent (header XP), sans avoir a lister
+      // chaque queryKey explicitement.
       queryClient.invalidateQueries({
-        queryKey: ["personnage-assemblages", personnageId],
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
-      queryClient.invalidateQueries({
-        queryKey: ["artisanat-quotas", personnageId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       toast.success("Assemblage acquis !");
     },
     onError: (error: Error) => {
@@ -188,7 +189,7 @@ const Etape9_Assemblages_V2 = ({
   const skipDeclencheRef = useRef(false);
   useEffect(() => {
     if (skipDeclencheRef.current) return;
-    if (etapeCreation !== 9) return;
+    if (etapeCreation == null || etapeCreation > 9) return;
     if (loadingQuotas) return;
     if (hasAssemblage) return;
     if (avancerMutation.isPending) return;
