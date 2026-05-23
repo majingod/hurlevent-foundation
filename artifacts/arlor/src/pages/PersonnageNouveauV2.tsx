@@ -425,6 +425,7 @@ const PersonnageNouveauV2 = () => {
           <Etape8_Artisanat_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
+            xpDisponible={xpDisponible}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -433,6 +434,7 @@ const PersonnageNouveauV2 = () => {
           <Etape9_Assemblages_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
+            xpDisponible={xpDisponible}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
