@@ -107,26 +107,16 @@ const Etape9_Assemblages_V2 = ({
       enabled: !!personnageId && hasAssemblage,
     });
 
-  const assemblagesGratuitsIds = useMemo(
-    () =>
-      new Set(
-        (personnageAssemblages ?? [])
-          .filter((a) => a.est_gratuit)
-          .map((a) => a.assemblage_id),
-      ),
-    [personnageAssemblages],
-  );
-  const assemblagesAchetesIds = useMemo(
-    () =>
-      new Set(
-        (personnageAssemblages ?? [])
-          .filter((a) => !a.est_gratuit)
-          .map((a) => a.assemblage_id),
-      ),
-    [personnageAssemblages],
-  );
+  // Map assemblage_id → personnage_assemblage (pour pouvoir désacheter)
+  const assemblagesAcquisParAssemblageId = useMemo(() => {
+    const map = new Map<string, PersonnageAssemblageRow>();
+    (personnageAssemblages ?? []).forEach((a) => {
+      map.set(a.assemblage_id, a);
+    });
+    return map;
+  }, [personnageAssemblages]);
 
-  const nbGratuits = assemblagesGratuitsIds.size;
+  const nbGratuits = [...assemblagesAcquisParAssemblageId.values()].filter((a) => a.est_gratuit).length;
   const quotaRestant = Math.max(0, quotaAssemblagesTotal - nbGratuits);
 
   const acheterMutation = useMutation({
@@ -148,6 +138,30 @@ const Etape9_Assemblages_V2 = ({
           Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
       toast.success("Assemblage acquis !");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
+  const desacheterMutation = useMutation({
+    mutationFn: async (params: {
+      p_personnage_assemblage_id: string;
+    }) => {
+      const { data, error } = await supabase.rpc("desacheter_assemblage", params);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["personnage-assemblages", personnageId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["artisanat-quotas", personnageId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
+      toast.success("Assemblage retiré.");
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -206,22 +220,17 @@ const Etape9_Assemblages_V2 = ({
     avancerMutation.mutate();
   }, [autoSkipActif, etapeCreation, loadingQuotas, hasAssemblage, avancerMutation]);
 
-  const handleCocherGratuit = (assemblage: AssemblageRow) => {
-    if (quotaRestant <= 0) {
-      toast.error("Quota gratuit épuisé.");
-      return;
+  const handleToggle = (assemblage: AssemblageRow, acquis: PersonnageAssemblageRow | undefined) => {
+    if (acquis) {
+      // Désacheter
+      desacheterMutation.mutate({ p_personnage_assemblage_id: acquis.id });
+    } else {
+      // Acheter (le serveur décide gratuit vs payant selon quota)
+      acheterMutation.mutate({
+        p_personnage_id: personnageId,
+        p_assemblage_id: assemblage.id,
+      });
     }
-    acheterMutation.mutate({
-      p_personnage_id: personnageId,
-      p_assemblage_id: assemblage.id,
-    });
-  };
-
-  const handleAcheter = (assemblage: AssemblageRow) => {
-    acheterMutation.mutate({
-      p_personnage_id: personnageId,
-      p_assemblage_id: assemblage.id,
-    });
   };
 
   if (loadingQuotas) {
@@ -268,11 +277,7 @@ const Etape9_Assemblages_V2 = ({
     );
   }
 
-  const mutationsPending = acheterMutation.isPending;
-  const xpInsuffisantAssemblage = xpDisponible < COUT_ASSEMBLAGE_SUPPLEMENTAIRE;
-  // Tant qu'il reste des gratuités a consommer, on grise les boutons « Acheter »
-  // pour forcer l'utilisateur a epuiser ses gratuites d'abord.
-  const aGratuitesRestantesAssemblage = quotaRestant > 0;
+  const mutationsPending = acheterMutation.isPending || desacheterMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -313,15 +318,19 @@ const Etape9_Assemblages_V2 = ({
             </p>
           ) : (
             (assemblages ?? []).map((assemblage) => {
-              const estGratuit = assemblagesGratuitsIds.has(assemblage.id);
-              const estAchete = assemblagesAchetesIds.has(assemblage.id);
-              const dejaAcquis = estGratuit || estAchete;
-              const peutCocherGratuit = estGratuit || quotaRestant > 0;
+              const acquis = assemblagesAcquisParAssemblageId.get(assemblage.id);
+              const estAcquis = !!acquis;
+              const estGratuit = acquis?.est_gratuit ?? false;
+              const seraGratuit = !estAcquis && quotaRestant > 0;
 
               return (
                 <div
                   key={assemblage.id}
-                  className="space-y-2 rounded-lg border border-border p-3"
+                  className={`space-y-2 rounded-lg border p-3 transition-colors ${
+                    estAcquis
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-border"
+                  }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="space-y-1">
@@ -363,63 +372,20 @@ const Etape9_Assemblages_V2 = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 pt-1">
-                    <label
-                      className={`flex items-center gap-2 text-sm ${
-                        !peutCocherGratuit && !estGratuit ? "opacity-50" : ""
-                      }`}
-                    >
+                    <label className="flex items-center gap-2 text-sm">
                       <Checkbox
-                        checked={estGratuit}
-                        disabled={
-                          mutationsPending || dejaAcquis || quotaRestant <= 0
-                        }
-                        onCheckedChange={(c) => {
-                          if (c === true && !dejaAcquis) {
-                            handleCocherGratuit(assemblage);
-                          }
-                        }}
+                        checked={estAcquis}
+                        disabled={mutationsPending}
+                        onCheckedChange={() => handleToggle(assemblage, acquis)}
                       />
-                      Gratuit
+                      {estAcquis
+                        ? estGratuit
+                          ? "Sélectionné (Gratuit)"
+                          : `Sélectionné (${COUT_ASSEMBLAGE_SUPPLEMENTAIRE} XP)`
+                        : seraGratuit
+                          ? "Sélectionner (Gratuit)"
+                          : `Sélectionner (${COUT_ASSEMBLAGE_SUPPLEMENTAIRE} XP)`}
                     </label>
-
-                    {!estGratuit && !estAchete && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={
-                          mutationsPending ||
-                          xpInsuffisantAssemblage ||
-                          aGratuitesRestantesAssemblage
-                        }
-                        className={
-                          xpInsuffisantAssemblage || aGratuitesRestantesAssemblage
-                            ? "opacity-50"
-                            : ""
-                        }
-                        title={
-                          aGratuitesRestantesAssemblage
-                            ? `Sélectionnez d'abord tous vos assemblages gratuits (${quotaRestant} restant${quotaRestant > 1 ? "s" : ""})`
-                            : xpInsuffisantAssemblage
-                              ? `XP insuffisant (${xpDisponible}/${COUT_ASSEMBLAGE_SUPPLEMENTAIRE})`
-                              : undefined
-                        }
-                        onClick={() => handleAcheter(assemblage)}
-                      >
-                        Acheter ({COUT_ASSEMBLAGE_SUPPLEMENTAIRE} XP)
-                      </Button>
-                    )}
-
-                    {estAchete && (
-                      <Badge className="bg-amber-700/30 text-amber-300">
-                        Acheté ({COUT_ASSEMBLAGE_SUPPLEMENTAIRE} XP)
-                      </Badge>
-                    )}
-
-                    {estGratuit && (
-                      <Badge className="bg-green-700/30 text-green-300">
-                        Gratuit sélectionné
-                      </Badge>
-                    )}
                   </div>
                 </div>
               );
