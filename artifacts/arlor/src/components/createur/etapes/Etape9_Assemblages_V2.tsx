@@ -155,12 +155,9 @@ const Etape9_Assemblages_V2 = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["personnage-assemblages", personnageId],
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
-      queryClient.invalidateQueries({
-        queryKey: ["artisanat-quotas", personnageId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       toast.success("Assemblage retiré.");
     },
     onError: (error: Error) => {
