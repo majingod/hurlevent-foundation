@@ -5463,8 +5463,16 @@ export type Database = {
         Returns: Json
       }
       demarrer_creation_personnage: { Args: never; Returns: Json }
+      desacheter_assemblage: {
+        Args: { p_personnage_assemblage_id: string }
+        Returns: Json
+      }
       desacheter_competence: {
         Args: { p_personnage_competence_id: string }
+        Returns: Json
+      }
+      desacheter_recette: {
+        Args: { p_personnage_recette_id: string }
         Returns: Json
       }
       deverrouiller_personnage: {

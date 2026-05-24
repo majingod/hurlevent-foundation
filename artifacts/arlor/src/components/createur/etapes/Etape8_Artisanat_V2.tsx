@@ -151,26 +151,16 @@ const Etape8_Artisanat_V2 = ({
     enabled: hasJoaillerie,
   });
 
-  const recettesGratuitesIds = useMemo(
-    () =>
-      new Set(
-        (personnageRecettes ?? [])
-          .filter((r) => r.est_gratuit)
-          .map((r) => r.recette_id),
-      ),
-    [personnageRecettes],
-  );
-  const recettesAcheteesIds = useMemo(
-    () =>
-      new Set(
-        (personnageRecettes ?? [])
-          .filter((r) => !r.est_gratuit)
-          .map((r) => r.recette_id),
-      ),
-    [personnageRecettes],
-  );
+  // Map recette_id → personnage_recette (pour pouvoir désacheter)
+  const recettesAcquisesParRecetteId = useMemo(() => {
+    const map = new Map<string, PersonnageRecetteRow>();
+    (personnageRecettes ?? []).forEach((r) => {
+      map.set(r.recette_id, r);
+    });
+    return map;
+  }, [personnageRecettes]);
 
-  const nbGratuites = recettesGratuitesIds.size;
+  const nbGratuites = [...recettesAcquisesParRecetteId.values()].filter((r) => r.est_gratuit).length;
   const quotaRestant = Math.max(0, quotaRecettesTotal - nbGratuites);
 
   const acheterMutation = useMutation({
@@ -199,22 +189,41 @@ const Etape8_Artisanat_V2 = ({
     },
   });
 
-  const handleCocherGratuit = (recette: RecetteRow) => {
-    if (quotaRestant <= 0) {
-      toast.error("Quota gratuit épuisé.");
-      return;
-    }
-    acheterMutation.mutate({
-      p_personnage_id: personnageId,
-      p_recette_id: recette.id,
-    });
-  };
+  const desacheterMutation = useMutation({
+    mutationFn: async (params: {
+      p_personnage_recette_id: string;
+    }) => {
+      const { data, error } = await supabase.rpc("desacheter_recette", params);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["personnage-recettes", personnageId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["artisanat-quotas", personnageId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
+      toast.success("Recette retirée.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
 
-  const handleAcheter = (recette: RecetteRow) => {
-    acheterMutation.mutate({
-      p_personnage_id: personnageId,
-      p_recette_id: recette.id,
-    });
+  const handleToggle = (recette: RecetteRow, acquise: PersonnageRecetteRow | undefined) => {
+    if (acquise) {
+      // Désacheter
+      desacheterMutation.mutate({ p_personnage_recette_id: acquise.id });
+    } else {
+      // Acheter (le serveur décide gratuit vs payant selon quota)
+      acheterMutation.mutate({
+        p_personnage_id: personnageId,
+        p_recette_id: recette.id,
+      });
+    }
   };
 
   // Avance etape_creation de 8 a 9 cote serveur. Les etapes 5-9 n'ont pas
@@ -328,11 +337,7 @@ const Etape8_Artisanat_V2 = ({
       ? "forge"
       : "joaillerie";
 
-  const mutationsPending = acheterMutation.isPending;
-  const xpInsuffisantAlchimie = xpDisponible < COUT_RECETTE_SUPPLEMENTAIRE;
-  // Tant qu'il reste des gratuités a consommer, on grise les boutons « Acheter »
-  // pour forcer l'utilisateur a epuiser ses gratuites d'abord.
-  const aGratuitesRestantesAlchimie = quotaRestant > 0;
+  const mutationsPending = acheterMutation.isPending || desacheterMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -399,15 +404,19 @@ const Etape8_Artisanat_V2 = ({
                   </p>
                 ) : (
                   (recettes ?? []).map((recette) => {
-                    const estGratuite = recettesGratuitesIds.has(recette.id);
-                    const estAchetee = recettesAcheteesIds.has(recette.id);
-                    const dejaAcquise = estGratuite || estAchetee;
-                    const peutCocherGratuit = estGratuite || quotaRestant > 0;
+                    const acquise = recettesAcquisesParRecetteId.get(recette.id);
+                    const estAcquise = !!acquise;
+                    const estGratuite = acquise?.est_gratuit ?? false;
+                    const seraGratuite = !estAcquise && quotaRestant > 0;
 
                     return (
                       <div
                         key={recette.id}
-                        className="space-y-2 rounded-lg border border-border p-3"
+                        className={`space-y-2 rounded-lg border p-3 transition-colors ${
+                          estAcquise
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border"
+                        }`}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="space-y-1">
@@ -438,67 +447,20 @@ const Etape8_Artisanat_V2 = ({
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3 pt-1">
-                          <label
-                            className={`flex items-center gap-2 text-sm ${
-                              !peutCocherGratuit && !estGratuite
-                                ? "opacity-50"
-                                : ""
-                            }`}
-                          >
+                          <label className="flex items-center gap-2 text-sm">
                             <Checkbox
-                              checked={estGratuite}
-                              disabled={
-                                mutationsPending ||
-                                dejaAcquise ||
-                                quotaRestant <= 0
-                              }
-                              onCheckedChange={(c) => {
-                                if (c === true && !dejaAcquise) {
-                                  handleCocherGratuit(recette);
-                                }
-                              }}
+                              checked={estAcquise}
+                              disabled={mutationsPending}
+                              onCheckedChange={() => handleToggle(recette, acquise)}
                             />
-                            Gratuite
+                            {estAcquise
+                              ? estGratuite
+                                ? "Sélectionnée (Gratuite)"
+                                : `Sélectionnée (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`
+                              : seraGratuite
+                                ? "Sélectionner (Gratuite)"
+                                : `Sélectionner (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`}
                           </label>
-
-                          {!estGratuite && !estAchetee && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={
-                                mutationsPending ||
-                                xpInsuffisantAlchimie ||
-                                aGratuitesRestantesAlchimie
-                              }
-                              className={
-                                xpInsuffisantAlchimie || aGratuitesRestantesAlchimie
-                                  ? "opacity-50"
-                                  : ""
-                              }
-                              title={
-                                aGratuitesRestantesAlchimie
-                                  ? `Sélectionnez d'abord toutes vos recettes gratuites (${quotaRestant} restante${quotaRestant > 1 ? "s" : ""})`
-                                  : xpInsuffisantAlchimie
-                                    ? `XP insuffisant (${xpDisponible}/${COUT_RECETTE_SUPPLEMENTAIRE})`
-                                    : undefined
-                              }
-                              onClick={() => handleAcheter(recette)}
-                            >
-                              Acheter ({COUT_RECETTE_SUPPLEMENTAIRE} XP)
-                            </Button>
-                          )}
-
-                          {estAchetee && (
-                            <Badge className="bg-amber-700/30 text-amber-300">
-                              Achetée ({COUT_RECETTE_SUPPLEMENTAIRE} XP)
-                            </Badge>
-                          )}
-
-                          {estGratuite && (
-                            <Badge className="bg-green-700/30 text-green-300">
-                              Gratuite sélectionnée
-                            </Badge>
-                          )}
                         </div>
                       </div>
                     );
