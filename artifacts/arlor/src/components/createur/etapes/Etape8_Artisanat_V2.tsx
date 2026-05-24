@@ -199,12 +199,9 @@ const Etape8_Artisanat_V2 = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["personnage-recettes", personnageId],
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
-      queryClient.invalidateQueries({
-        queryKey: ["artisanat-quotas", personnageId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["personnage", personnageId] });
       toast.success("Recette retirée.");
     },
     onError: (error: Error) => {
