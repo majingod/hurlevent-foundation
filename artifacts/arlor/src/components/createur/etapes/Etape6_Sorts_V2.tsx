@@ -22,7 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
   calculerCoutPS,
@@ -77,6 +87,11 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, autoSkipActif = true, on
   const [dureeChoisie, setDureeChoisie] = useState<string>("");
   const [niveauSort, setNiveauSort] = useState<number>(1);
   const [nomPersonnalise, setNomPersonnalise] = useState<string>("");
+  const [aSupprimer, setASupprimer] = useState<{
+    personnage_sort_id: string;
+    nom: string;
+    xp_depense: number;
+  } | null>(null);
 
   // Cercles disponibles (vue_cercles_disponibles)
   const { data: cerclesDisponibles, isLoading: loadingCercles } = useQuery({
@@ -225,6 +240,35 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, autoSkipActif = true, on
       toast.success("Sort acheté !");
       setSortId(null);
       setCercleSelectionne(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
+  const desacheterMutation = useMutation({
+    mutationFn: async (personnageSortId: string) => {
+      const { data, error } = await supabase.rpc("desacheter_sort", {
+        p_personnage_sort_id: personnageSortId,
+      });
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        const msg =
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          "Impossible de supprimer ce sort.";
+        throw new Error(msg);
+      }
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
+      });
+      toast.success("Sort supprimé et XP remboursés.");
+      setASupprimer(null);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -590,14 +634,31 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, autoSkipActif = true, on
                 key={ps.id}
                 className="space-y-1 rounded-lg border border-border p-3 text-sm"
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <strong className="font-heading text-primary">
-                    {ps.nom_personnalise ?? ps.sorts?.nom}
-                  </strong>
-                  {ps.sorts?.cercle && (
-                    <Badge variant="outline">{ps.sorts.cercle}</Badge>
-                  )}
-                  <Badge variant="secondary">Niv. {ps.niveau_sort}</Badge>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <strong className="font-heading text-primary">
+                      {ps.nom_personnalise ?? ps.sorts?.nom}
+                    </strong>
+                    {ps.sorts?.cercle && (
+                      <Badge variant="outline">{ps.sorts.cercle}</Badge>
+                    )}
+                    <Badge variant="secondary">Niv. {ps.niveau_sort}</Badge>
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() =>
+                      setASupprimer({
+                        personnage_sort_id: ps.id,
+                        nom: ps.nom_personnalise ?? ps.sorts?.nom ?? "Sort",
+                        xp_depense: ps.xp_depense,
+                      })
+                    }
+                    disabled={desacheterMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {ps.zone_choisie} • {ps.portee_choisie} • {ps.duree_choisie}
@@ -611,6 +672,41 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, autoSkipActif = true, on
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={aSupprimer !== null}
+        onOpenChange={(open) => !open && setASupprimer(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce sort ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le sort « {aSupprimer?.nom} » sera supprimé et vous récupérerez{" "}
+              <strong>{aSupprimer?.xp_depense ?? 0} XP</strong>. Cette action est
+              immédiate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={desacheterMutation.isPending}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={desacheterMutation.isPending}
+              onClick={() => {
+                if (aSupprimer) {
+                  desacheterMutation.mutate(aSupprimer.personnage_sort_id);
+                }
+              }}
+            >
+              {desacheterMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex justify-between pt-4">
         {onPrevious && (

@@ -5471,10 +5471,15 @@ export type Database = {
         Args: { p_personnage_competence_id: string }
         Returns: Json
       }
+      desacheter_priere: {
+        Args: { p_personnage_priere_id: string }
+        Returns: Json
+      }
       desacheter_recette: {
         Args: { p_personnage_recette_id: string }
         Returns: Json
       }
+      desacheter_sort: { Args: { p_personnage_sort_id: string }; Returns: Json }
       deverrouiller_personnage: {
         Args: { p_personnage_id: string }
         Returns: Json
