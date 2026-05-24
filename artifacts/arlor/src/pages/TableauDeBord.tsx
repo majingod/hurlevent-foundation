@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -30,22 +31,6 @@ interface PersonnageResume {
   est_finalise: boolean;
 }
 
-type StatutPersonnage = "brouillon" | "finalise";
-
-const getStatutPersonnage = (p: PersonnageResume): StatutPersonnage => {
-  return p.est_finalise ? "finalise" : "brouillon";
-};
-
-const BadgeStatutPersonnage = ({ statut }: { statut: StatutPersonnage }) => {
-  if (statut !== "finalise") return null;
-  return (
-    <div className="mb-3">
-      <span className="inline-flex items-center rounded-full border border-green-600/30 bg-green-600/20 px-2.5 py-0.5 text-xs font-medium text-green-400">
-        Finalisé
-      </span>
-    </div>
-  );
-};
 
 const TableauDeBord = () => {
   const { user } = useAuth();
@@ -154,15 +139,25 @@ const TableauDeBord = () => {
           {personnages.map((p) => (
             <Card key={p.id} className="group overflow-hidden border-white/10 bg-white/5 transition-all hover:border-gold/30">
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-2xl font-heading text-gold">{p.nom}</CardTitle>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/10 text-gold group-hover:scale-110 transition-transform">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <CardTitle className="text-2xl font-heading text-gold">{p.nom}</CardTitle>
+                    {p.est_finalise ? (
+                      <Badge className="border border-green-600/30 bg-green-600/20 text-green-400">
+                        Finalisé
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-amber-600/40 bg-amber-600/10 text-amber-400">
+                        Brouillon
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold group-hover:scale-110 transition-transform">
                     <User size={20} />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <BadgeStatutPersonnage statut={getStatutPersonnage(p)} />
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p><span className="text-white/60">Race :</span> {p.race_nom}</p>
                   <p><span className="text-white/60">Classe :</span> {p.classe_nom}</p>
@@ -183,7 +178,7 @@ const TableauDeBord = () => {
                   >
                     <Button variant="secondary" size="sm" className="w-full bg-gold/10 text-gold hover:bg-gold/20 border-gold/20">
                       <Edit2 className="mr-2 h-4 w-4" />
-                      {(p.etape_creation ?? 0) < 11 ? "Continuer la création" : "Modifier le personnage"}
+                      {!p.est_finalise ? "Continuer la création" : "Modifier le personnage"}
                     </Button>
                   </Link>
 
