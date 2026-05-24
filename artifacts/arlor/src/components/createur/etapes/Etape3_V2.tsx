@@ -7,14 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { QueryState } from "@/components/ui/QueryState";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
@@ -36,13 +28,6 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
   const [gratuits, setGratuits] = useState<Set<string>>(new Set());
   const [achetes, setAchetes] = useState<Set<string>>(new Set());
   const [chargementInit, setChargementInit] = useState(true);
-  // Sprint 5.5 Section 1 : modal bloquante quand l'utilisateur tente de
-  // décocher un trait gratuit alors qu'il a des achats payants en attente
-  // (l'état DB serait incohérent : payants sans gratuit acquis).
-  const [blocChangementGratuit, setBlocChangementGratuit] = useState<{
-    traitId: string;
-    nbAchats: number;
-  } | null>(null);
 
   // Charger l'état du personnage (race + sous-type + traits déjà choisis)
   const { data: perso } = useQuery({
@@ -141,34 +126,47 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
   }, [xpTraits, onXpDeltaChange]);
 
   const toggleGratuit = (id: string) => {
-    // Sprint 5.5 Section 1 : si on décoche un gratuit et qu'il y a des
-    // achats payants, on bloque via modal. L'utilisateur doit retirer ses
-    // achats payants avant de pouvoir changer son trait gratuit.
-    if (gratuits.has(id) && achetes.size > 0) {
-      setBlocChangementGratuit({ traitId: id, nbAchats: achetes.size });
-      return;
-    }
-    setGratuits((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
+    if (gratuits.has(id)) {
+      // Décocher un gratuit : si des achats payants existent, le premier
+      // (FIFO) est automatiquement promu en gratuit, miroir du recalcul
+      // serveur dans sauvegarder_etape_3 (Option B validée session 34).
+      const premierPayant =
+        achetes.size > 0
+          ? (achetes.values().next().value as string)
+          : null;
+
+      setGratuits((prev) => {
+        const next = new Set(prev);
         next.delete(id);
-      } else {
-        if (next.size >= quotaGratuits) {
-          toast.error(
-            `Tu ne peux choisir que ${quotaGratuits} trait(s) gratuit(s).`
-          );
-          return prev;
-        }
-        next.add(id);
-        // Si déjà acheté, on retire de la liste payante
-        setAchetes((a) => {
-          const na = new Set(a);
-          na.delete(id);
-          return na;
+        if (premierPayant) next.add(premierPayant);
+        return next;
+      });
+
+      if (premierPayant) {
+        setAchetes((prev) => {
+          const next = new Set(prev);
+          next.delete(premierPayant);
+          return next;
         });
       }
-      return next;
-    });
+      return;
+    }
+
+    // Cocher comme gratuit
+    if (gratuits.size >= quotaGratuits) {
+      toast.error(
+        `Tu ne peux choisir que ${quotaGratuits} trait(s) gratuit(s).`
+      );
+      return;
+    }
+    setGratuits((prev) => new Set(prev).add(id));
+    if (achetes.has(id)) {
+      setAchetes((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   };
 
   const toggleAchete = (id: string) => {
@@ -356,38 +354,6 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
             </Button>
           </div>
 
-          {/* Sprint 5.5 Section 1 : modal bloquante de changement de trait
-              gratuit. Affichée quand l'utilisateur tente de décocher un
-              trait gratuit alors que des achats payants existent. */}
-          <Dialog
-            open={!!blocChangementGratuit}
-            onOpenChange={(open) => {
-              if (!open) setBlocChangementGratuit(null);
-            }}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Impossible de changer ce trait gratuit</DialogTitle>
-                <DialogDescription>
-                  {blocChangementGratuit && (
-                    <>
-                      Tu as déjà acheté{" "}
-                      <strong>{blocChangementGratuit.nbAchats}</strong> trait
-                      {blocChangementGratuit.nbAchats > 1 ? "s" : ""}{" "}
-                      supplémentaire
-                      {blocChangementGratuit.nbAchats > 1 ? "s" : ""}. Retire
-                      d'abord ces achats avant de changer ton trait gratuit.
-                    </>
-                  )}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button onClick={() => setBlocChangementGratuit(null)}>
-                  Compris
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       )}
     </QueryState>
