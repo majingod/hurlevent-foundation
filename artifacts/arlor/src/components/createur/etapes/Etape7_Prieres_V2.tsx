@@ -22,7 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
   calculerCoutPS,
@@ -87,6 +97,11 @@ const Etape7_Prieres_V2 = ({
   const [dureeChoisie, setDureeChoisie] = useState<string>("");
   const [niveauPriere, setNiveauPriere] = useState<number>(1);
   const [nomPersonnalise, setNomPersonnalise] = useState<string>("");
+  const [aSupprimer, setASupprimer] = useState<{
+    personnage_priere_id: string;
+    nom: string;
+    xp_depense: number;
+  } | null>(null);
 
   // Personnage : est_croyant + religion
   const { data: personnage, isLoading: loadingPersonnage } = useQuery({
@@ -300,6 +315,35 @@ const Etape7_Prieres_V2 = ({
       toast.success("Prière acquise !");
       setPriereId(null);
       setDomaineSelectionne(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
+  const desacheterMutation = useMutation({
+    mutationFn: async (personnagePriereId: string) => {
+      const { data, error } = await supabase.rpc("desacheter_priere", {
+        p_personnage_priere_id: personnagePriereId,
+      });
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        const msg =
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          "Impossible de supprimer cette prière.";
+        throw new Error(msg);
+      }
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
+      });
+      toast.success("Prière supprimée et XP remboursés.");
+      setASupprimer(null);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -751,14 +795,32 @@ const Etape7_Prieres_V2 = ({
                 key={pp.id}
                 className="space-y-1 rounded-lg border border-border p-3 text-sm"
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <strong className="font-heading text-primary">
-                    {pp.nom_personnalise ?? pp.prieres?.nom}
-                  </strong>
-                  {pp.prieres?.domaine && (
-                    <Badge variant="outline">{pp.prieres.domaine}</Badge>
-                  )}
-                  <Badge variant="secondary">Niv. {pp.niveau_priere}</Badge>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <strong className="font-heading text-primary">
+                      {pp.nom_personnalise ?? pp.prieres?.nom}
+                    </strong>
+                    {pp.prieres?.domaine && (
+                      <Badge variant="outline">{pp.prieres.domaine}</Badge>
+                    )}
+                    <Badge variant="secondary">Niv. {pp.niveau_priere}</Badge>
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() =>
+                      setASupprimer({
+                        personnage_priere_id: pp.id,
+                        nom:
+                          pp.nom_personnalise ?? pp.prieres?.nom ?? "Prière",
+                        xp_depense: pp.xp_depense,
+                      })
+                    }
+                    disabled={desacheterMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {pp.zone_choisie} • {pp.portee_choisie} • {pp.duree_choisie}
@@ -772,6 +834,41 @@ const Etape7_Prieres_V2 = ({
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={aSupprimer !== null}
+        onOpenChange={(open) => !open && setASupprimer(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette prière ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La prière « {aSupprimer?.nom} » sera supprimée et vous récupérerez{" "}
+              <strong>{aSupprimer?.xp_depense ?? 0} XP</strong>. Cette action est
+              immédiate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={desacheterMutation.isPending}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={desacheterMutation.isPending}
+              onClick={() => {
+                if (aSupprimer) {
+                  desacheterMutation.mutate(aSupprimer.personnage_priere_id);
+                }
+              }}
+            >
+              {desacheterMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex justify-between pt-4">
         {onPrevious && (
