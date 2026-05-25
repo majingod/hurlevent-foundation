@@ -62,6 +62,12 @@ interface Etape6Props {
    * Defaut true pour compatibilite.
    */
   autoSkipActif?: boolean;
+  /**
+   * XP encore disponibles pour le personnage (xp_total - xp_depense).
+   * Sert au grisage UI du bouton d'achat quand le budget est insuffisant.
+   * Le serveur reste l'arbitre final de la validation.
+   */
+  xpDisponible?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -77,7 +83,15 @@ interface AcheterSortParams {
   p_nom_personnalise: string;
 }
 
-const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, autoSkipActif = true, onSuccess, onError, onPrevious }: Etape6Props) => {
+const Etape6_Sorts_V2 = ({
+  personnageId,
+  etapeCreation,
+  autoSkipActif = true,
+  xpDisponible = 0,
+  onSuccess,
+  onError,
+  onPrevious,
+}: Etape6Props) => {
   const queryClient = useQueryClient();
 
   const [cercleSelectionne, setCercleSelectionne] = useState<string | null>(null);
@@ -595,18 +609,28 @@ const Etape6_Sorts_V2 = ({ personnageId, etapeCreation, autoSkipActif = true, on
               </div>
             </div>
 
-            <Button
-              onClick={handleAcheter}
-              disabled={!peutAcheter || mutation.isPending}
-              className="w-full"
-            >
-              {mutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              Acheter ce sort ({coutXp} XP)
-            </Button>
+            {(() => {
+              const xpInsuffisants = peutAcheter && coutXp > xpDisponible;
+              return (
+                <Button
+                  onClick={handleAcheter}
+                  disabled={!peutAcheter || mutation.isPending || xpInsuffisants}
+                  title={
+                    xpInsuffisants
+                      ? `XP insuffisants (manque ${coutXp - xpDisponible} XP)`
+                      : undefined
+                  }
+                  className={`w-full ${xpInsuffisants ? "opacity-50" : ""}`}
+                >
+                  {mutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Acheter ce sort ({coutXp} XP)
+                </Button>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
