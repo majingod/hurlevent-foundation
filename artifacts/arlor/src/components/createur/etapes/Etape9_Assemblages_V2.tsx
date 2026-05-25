@@ -374,7 +374,7 @@ const Etape9_Assemblages_V2 = ({
 
                   <div className="flex flex-wrap items-center gap-3 pt-1">
                     <label
-                      className="flex items-center gap-2 text-sm"
+                      className={`flex items-center gap-2 text-sm ${xpInsuffisants ? "opacity-50" : ""}`}
                       title={
                         xpInsuffisants
                           ? `XP insuffisants (manque ${COUT_ASSEMBLAGE_SUPPLEMENTAIRE - xpDisponible} XP)`

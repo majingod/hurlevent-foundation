@@ -440,6 +440,7 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             autoSkipActif={autoSkipActif}
+            xpDisponible={xpDisponible}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -449,6 +450,7 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             autoSkipActif={autoSkipActif}
+            xpDisponible={xpDisponible}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
