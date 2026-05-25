@@ -544,7 +544,7 @@ const Etape8_Artisanat_V2 = ({
                           {obj.materiaux_communs}
                         </p>
                       )}
-                      {obj.materiaux_rares && (
+                      {niveauForge >= 2 && obj.materiaux_rares && (
                         <p className="text-xs">
                           <span className="text-purple-400">
                             Matériaux rares :
@@ -629,7 +629,7 @@ const Etape8_Artisanat_V2 = ({
                           {obj.materiaux_communs}
                         </p>
                       )}
-                      {obj.materiaux_rares && (
+                      {niveauJoaillerie >= 2 && obj.materiaux_rares && (
                         <p className="text-xs">
                           <span className="text-purple-400">
                             Matériaux rares :
