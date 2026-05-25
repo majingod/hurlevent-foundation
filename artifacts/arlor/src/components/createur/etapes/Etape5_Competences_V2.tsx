@@ -80,6 +80,12 @@ interface CascadeContext {
 
 interface Etape5Props {
   personnageId: string;
+  /**
+   * XP encore disponibles pour le personnage (xp_total - xp_depense).
+   * Sert au grisage UI des contrôles d'achat quand le budget est insuffisant.
+   * Le serveur reste l'arbitre final de la validation.
+   */
+  xpDisponible?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -214,6 +220,7 @@ function MessageBlocage({
 
 const Etape5_Competences_V2 = ({
   personnageId,
+  xpDisponible = 0,
   onSuccess,
   onError,
   onPrevious,
@@ -1054,13 +1061,16 @@ const Etape5_Competences_V2 = ({
       !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
     const raisonPrereq = prereqInfo?.raisonPourNiveau(niv.niveau) ?? null;
     const compBloqueeClasse = classeBloque(comp);
+    const xpInsuffisants =
+      !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
     const disabled =
       compBloqueeClasse ||
       niveauHorsClasse ||
       prereqBloque ||
       niveauPrecedentRequis ||
       mutationEnCours ||
-      (dejaAchete && estGratuit);
+      (dejaAchete && estGratuit) ||
+      xpInsuffisants;
 
     return (
       <div
@@ -1073,6 +1083,11 @@ const Etape5_Competences_V2 = ({
           id={`${comp.id}-${niv.niveau}`}
           checked={dejaAchete}
           disabled={disabled}
+          title={
+            xpInsuffisants
+              ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
+              : undefined
+          }
           onCheckedChange={(checked) => {
             if (checked) {
               handleBuy(comp, niv);
@@ -1158,6 +1173,10 @@ const Etape5_Competences_V2 = ({
         }`}
       >
         <div className="flex flex-wrap items-center gap-3">
+          {(() => {
+            const xpInsuffisants =
+              !dejaAchete && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+            return (
           <Checkbox
             id={`${comp.id}-uac`}
             checked={dejaAchete || panneauOuvert}
@@ -1165,7 +1184,13 @@ const Etape5_Competences_V2 = ({
               compBloqueeClasse ||
               mutationEnCours ||
               prereqBloque ||
-              (dejaAchete && estGratuit)
+              (dejaAchete && estGratuit) ||
+              xpInsuffisants
+            }
+            title={
+              xpInsuffisants
+                ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+                : undefined
             }
             onCheckedChange={(checked) => {
               if (checked) {
@@ -1186,6 +1211,8 @@ const Etape5_Competences_V2 = ({
               }
             }}
           />
+            );
+          })()}
           <Label
             htmlFor={`${comp.id}-uac`}
             className="flex-1 cursor-pointer space-y-1 text-xs"
@@ -1242,14 +1269,31 @@ const Etape5_Competences_V2 = ({
                 ))}
               </SelectContent>
             </Select>
+            {(() => {
+              const xpInsuffisants =
+                !dejaAchete && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+              return (
             <Button
               size="sm"
-              disabled={!choixSelectionne || mutationEnCours || compBloqueeClasse}
+              disabled={
+                !choixSelectionne ||
+                mutationEnCours ||
+                compBloqueeClasse ||
+                xpInsuffisants
+              }
+              title={
+                xpInsuffisants
+                  ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+                  : undefined
+              }
+              className={xpInsuffisants ? "opacity-50" : ""}
               onClick={() => handleConfirmChoix(comp, niv1)}
             >
               {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
               Confirmer
             </Button>
+              );
+            })()}
             <Button
               size="sm"
               variant="ghost"
@@ -1326,18 +1370,31 @@ const Etape5_Competences_V2 = ({
         })}
 
         {/* Panneau "+ Ajouter une autre" */}
-        {!addOpen && !prereqCompBloquee && !compBloqueeClasse && options.length > 0 && (
+        {!addOpen && !prereqCompBloquee && !compBloqueeClasse && options.length > 0 && (() => {
+          const xpInsuffisants = niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+          return (
           <Button
             size="sm"
             variant="outline"
             onClick={() => setPendingAddCompId(comp.id)}
-            disabled={compBloqueeClasse || prereqCompBloquee || mutationEnCours}
-            className="text-xs"
+            disabled={
+              compBloqueeClasse ||
+              prereqCompBloquee ||
+              mutationEnCours ||
+              xpInsuffisants
+            }
+            title={
+              xpInsuffisants
+                ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+                : undefined
+            }
+            className={`text-xs ${xpInsuffisants ? "opacity-50" : ""}`}
           >
             <Plus className="mr-1 h-3 w-3" />
             Ajouter une autre ({niv1.cout_xp} XP)
           </Button>
-        )}
+          );
+        })()}
         {addOpen && !compBloqueeClasse && !prereqCompBloquee && (
           <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
             <Select
@@ -1436,6 +1493,11 @@ const Etape5_Competences_V2 = ({
             simple sans choix (savoir général sur toutes les familles). */}
         {isCriminelles && niv1 && (
           <div className="flex flex-wrap items-center gap-3 rounded border border-border p-2">
+            {(() => {
+              const dejaAcheteCrim = !!achatNiveau1SansChoix;
+              const xpInsuffisants =
+                !dejaAcheteCrim && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+              return (
             <Checkbox
               id={`${comp.id}-crim-niv1`}
               checked={!!achatNiveau1SansChoix}
@@ -1443,7 +1505,13 @@ const Etape5_Competences_V2 = ({
                 compBloqueeClasse ||
                 prereqCompBloquee ||
                 mutationEnCours ||
-                (!!achatNiveau1SansChoix && achatNiveau1SansChoix.xp_depense === 0)
+                (!!achatNiveau1SansChoix && achatNiveau1SansChoix.xp_depense === 0) ||
+                xpInsuffisants
+              }
+              title={
+                xpInsuffisants
+                  ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+                  : undefined
               }
               onCheckedChange={(checked) => {
                 if (checked) {
@@ -1453,6 +1521,8 @@ const Etape5_Competences_V2 = ({
                 }
               }}
             />
+              );
+            })()}
             <Label
               htmlFor={`${comp.id}-crim-niv1`}
               className="flex-1 cursor-pointer space-y-1 text-xs"
@@ -1515,13 +1585,16 @@ const Etape5_Competences_V2 = ({
                     !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
                   const raisonPrereq =
                     prereqInfo?.raisonPourNiveau(niv.niveau) ?? null;
+                  const xpInsuffisants =
+                    !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
                   const disabled =
                     compBloqueeClasse ||
                     niveauHorsClasse ||
                     prereqBloque ||
                     (!dejaAchete && niveauPrecedentRequis) ||
                     mutationEnCours ||
-                    (dejaAchete && estGratuit);
+                    (dejaAchete && estGratuit) ||
+                    xpInsuffisants;
 
                   return (
                     <div
@@ -1534,6 +1607,11 @@ const Etape5_Competences_V2 = ({
                         id={`${comp.id}-${choixKey}-${niv.niveau}`}
                         checked={dejaAchete}
                         disabled={disabled}
+                        title={
+                          xpInsuffisants
+                            ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
+                            : undefined
+                        }
                         onCheckedChange={(checked) => {
                           if (checked) {
                             handleBuy(comp, niv, choixKey);
@@ -1591,18 +1669,32 @@ const Etape5_Competences_V2 = ({
             Sprint 5.5d : pour Criminelles, le bouton n'est visible que si le
             niveau 1 (savoir général) a été acquis. */}
         {(!isCriminelles || niveau1AcquisCriminelles) &&
-          !addOpen && !compBloqueeClasse && !prereqCompBloquee && optionsAdd.length > 0 && nivAjouter && (
+          !addOpen && !compBloqueeClasse && !prereqCompBloquee && optionsAdd.length > 0 && nivAjouter && (() => {
+          const xpInsuffisants =
+            nivAjouter.cout_xp > 0 && nivAjouter.cout_xp > xpDisponible;
+          return (
           <Button
             size="sm"
             variant="outline"
             onClick={() => setPendingAddCompId(comp.id)}
-            disabled={compBloqueeClasse || prereqCompBloquee || mutationEnCours}
-            className="text-xs"
+            disabled={
+              compBloqueeClasse ||
+              prereqCompBloquee ||
+              mutationEnCours ||
+              xpInsuffisants
+            }
+            title={
+              xpInsuffisants
+                ? `XP insuffisants (manque ${nivAjouter.cout_xp - xpDisponible} XP)`
+                : undefined
+            }
+            className={`text-xs ${xpInsuffisants ? "opacity-50" : ""}`}
           >
             <Plus className="mr-1 h-3 w-3" />
             {isCriminelles ? "Ajouter une famille" : "Ajouter une autre"} ({nivAjouter.cout_xp} XP)
           </Button>
-        )}
+          );
+        })()}
         {addOpen && !compBloqueeClasse && !prereqCompBloquee && nivAjouter && (
           <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
             <Select
@@ -1727,14 +1819,30 @@ const Etape5_Competences_V2 = ({
             ({niv1.cout_xp} XP / achat)
           </span>
         </div>
+        {(() => {
+          const xpInsuffisants = niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+          return (
         <Button
           size="sm"
           onClick={handlePlus}
-          disabled={compBloqueeClasse || prereqCompBloquee || mutationEnCours}
+          disabled={
+            compBloqueeClasse ||
+            prereqCompBloquee ||
+            mutationEnCours ||
+            xpInsuffisants
+          }
+          title={
+            xpInsuffisants
+              ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+              : undefined
+          }
+          className={xpInsuffisants ? "opacity-50" : ""}
         >
           {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
           <Plus className="h-3 w-3" />
         </Button>
+          );
+        })()}
       </div>
     );
   };
