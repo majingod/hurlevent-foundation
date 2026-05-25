@@ -405,6 +405,10 @@ const Etape8_Artisanat_V2 = ({
                     const estAcquise = !!acquise;
                     const estGratuite = acquise?.est_gratuit ?? false;
                     const seraGratuite = !estAcquise && quotaRestant > 0;
+                    const xpInsuffisants =
+                      !seraGratuite &&
+                      !estAcquise &&
+                      COUT_RECETTE_SUPPLEMENTAIRE > xpDisponible;
 
                     return (
                       <div
@@ -444,10 +448,17 @@ const Etape8_Artisanat_V2 = ({
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3 pt-1">
-                          <label className="flex items-center gap-2 text-sm">
+                          <label
+                            className="flex items-center gap-2 text-sm"
+                            title={
+                              xpInsuffisants
+                                ? `XP insuffisants (manque ${COUT_RECETTE_SUPPLEMENTAIRE - xpDisponible} XP)`
+                                : undefined
+                            }
+                          >
                             <Checkbox
                               checked={estAcquise}
-                              disabled={mutationsPending}
+                              disabled={mutationsPending || xpInsuffisants}
                               onCheckedChange={() => handleToggle(recette, acquise)}
                             />
                             {estAcquise
