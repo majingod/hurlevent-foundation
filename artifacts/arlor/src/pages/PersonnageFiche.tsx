@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, Edit2, X, Check } from "lucide-react";
+import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Sparkles, Clock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
@@ -142,6 +142,8 @@ interface ReparationForge {
   materiaux: string;
   materiaux_rares: string;
   temps_minutes: number;
+  temps_rare_minutes: number;
+  notes: string | null;
 }
 
 interface ObjetJoaillerie {
@@ -314,7 +316,7 @@ const PersonnageFiche = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("reparations_forge")
-        .select("id, nom_affichage, categorie, materiaux, materiaux_rares, temps_minutes")
+        .select("id, nom_affichage, categorie, materiaux, materiaux_rares, temps_minutes, temps_rare_minutes, notes")
         .eq("est_actif", true)
         .order("categorie")
         .order("nom_affichage");
@@ -641,6 +643,7 @@ const PersonnageFiche = () => {
               <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
               ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
               ${o.type ? `<div class="muted">Type : ${escapeHtml(o.type)}</div>` : ""}
+              ${o.difficulte != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.difficulte} min</div>` : ""}
               ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
               ${niveauForge >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
               ${niveauForge >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
@@ -653,8 +656,11 @@ const PersonnageFiche = () => {
             <div class="card">
               <div class="card-title">${escapeHtml(rep.nom_affichage)}</div>
               <div class="muted">Catégorie : ${escapeHtml(rep.categorie)}</div>
+              <div class="muted"><strong>Temps commun :</strong> ${rep.temps_minutes} min</div>
+              ${niveauForge >= 2 ? `<div class="muted"><strong>Temps rare :</strong> ${rep.temps_rare_minutes} min</div>` : ""}
               <div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(rep.materiaux)}</div>
               ${niveauForge >= 2 ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(rep.materiaux_rares)}</div>` : ""}
+              ${rep.notes ? `<div class="muted" style="font-style: italic; margin-top: 4px;">${escapeHtml(rep.notes)}</div>` : ""}
             </div>
           `).join("")}
         ` : ""}
@@ -669,6 +675,7 @@ const PersonnageFiche = () => {
               <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
               ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
               ${o.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(o.effet)}</div>` : ""}
+              ${o.difficulte != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.difficulte} min</div>` : ""}
               ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
               ${niveauJoaillerie >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
               ${niveauJoaillerie >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
@@ -952,76 +959,163 @@ const PersonnageFiche = () => {
 
         {/* Artisanat */}
         <TabsContent value="artisanat" className="space-y-4 mt-6">
-          {assemblages && assemblages.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Assemblages de runes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {assemblages.map((asm) => (
-                  <div key={asm.id} className="space-y-1 rounded border border-border/50 p-3 text-sm">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-foreground">{asm.nom}</p>
-                      {asm.cout_ps != null && (
-                        <Badge variant="secondary" className="text-xs shrink-0">{asm.cout_ps} PS</Badge>
-                      )}
-                    </div>
-                    {asm.cible && (
-                      <p className="text-xs text-muted-foreground">Cible : {asm.cible}</p>
-                    )}
-                    {asm.runes_requises && asm.runes_requises.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Runes : {asm.runes_requises.join(", ")}
-                      </p>
-                    )}
-                    {asm.description && (
-                      <p className="border-t border-border/50 pt-2 text-foreground/90">{asm.description}</p>
-                    )}
-                    {asm.effet && (
-                      <p className="text-foreground/90">
-                        <strong>Effet :</strong> {asm.effet}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          <Tabs defaultValue="alchimie" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="alchimie" className="gap-1">
+                <FlaskConical className="h-3 w-3" /> Alchimie
+              </TabsTrigger>
+              <TabsTrigger value="forge" className="gap-1">
+                <Hammer className="h-3 w-3" /> Forge
+              </TabsTrigger>
+              <TabsTrigger value="joaillerie" className="gap-1">
+                <Gem className="h-3 w-3" /> Joaillerie
+              </TabsTrigger>
+              <TabsTrigger value="assemblages" className="gap-1">
+                <Sparkles className="h-3 w-3" /> Assemblages
+              </TabsTrigger>
+            </TabsList>
 
-          {recettes && recettes.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Recettes alchimiques</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {recettes.map((recette) => (
-                  <div key={recette.id} className="space-y-1 rounded border border-border/50 p-3 text-sm">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-foreground">{recette.nom}</p>
-                        <p className="text-xs text-muted-foreground">{recette.type}</p>
+            {/* Sous-onglet Alchimie */}
+            <TabsContent value="alchimie" className="space-y-3 mt-4">
+              {(artisanatEtat?.niveau_alchimie ?? 0) < 1 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucune compétence en alchimie.</p>
+              ) : !recettes || recettes.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucune recette acquise.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recettes.map((recette) => (
+                    <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
+                      <p className="font-medium text-foreground">{recette.nom}</p>
+                      <p className="text-xs text-muted-foreground">{recette.type} — Niv. {recette.niveau_requis}</p>
+                      {recette.effet && <p className="text-xs text-muted-foreground mt-1"><strong>Effet :</strong> {recette.effet}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Sous-onglet Forge */}
+            <TabsContent value="forge" className="space-y-6 mt-4">
+              {(artisanatEtat?.niveau_forge ?? 0) < 1 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucune compétence en forge.</p>
+              ) : (
+                <>
+                  {/* Section Fabrication */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-primary">Fabrication</h3>
+                    {!objetsForge || objetsForge.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Aucun objet de forge disponible.</p>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {objetsForge.map((obj) => (
+                          <Card key={obj.id} className="border-border/50">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">{obj.nom}</CardTitle>
+                              {obj.type && <p className="text-xs text-muted-foreground">{obj.type}</p>}
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> Temps de fabrication : {obj.difficulte} min
+                              </p>
+                            </CardHeader>
+                            <CardContent className="space-y-1 text-xs pt-0">
+                              {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
+                              {obj.materiaux_communs && (
+                                <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {obj.materiaux_communs}</p>
+                              )}
+                              {(artisanatEtat?.niveau_forge ?? 0) >= 2 && obj.materiaux_rares && (
+                                <p><span className="text-purple-400 font-medium">Matériaux rares :</span> {obj.materiaux_rares}</p>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
-                      <Badge variant="outline" className="text-xs shrink-0">
-                        Niv. {recette.niveau_requis}
-                      </Badge>
-                    </div>
-                    {recette.description && (
-                      <p className="border-t border-border/50 pt-2 text-foreground/90">{recette.description}</p>
-                    )}
-                    {recette.effet && (
-                      <p className="text-foreground/90">
-                        <strong>Effet :</strong> {recette.effet}
-                      </p>
                     )}
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
 
-          {(!assemblages || assemblages.length === 0) && (!recettes || recettes.length === 0) && (
-            <p className="text-center py-8 text-muted-foreground">Aucun artisanat acquis.</p>
-          )}
+                  {/* Section Réparation */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-primary">Réparation</h3>
+                    {!reparationsForge || reparationsForge.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Aucune réparation disponible.</p>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {reparationsForge.map((rep) => (
+                          <Card key={rep.id} className="border-border/50">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">{rep.nom_affichage}</CardTitle>
+                              <p className="text-xs text-muted-foreground">{rep.categorie}</p>
+                            </CardHeader>
+                            <CardContent className="space-y-1 text-xs pt-0">
+                              <p className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> <span className="font-medium">Temps commun :</span> {rep.temps_minutes} min
+                              </p>
+                              {(artisanatEtat?.niveau_forge ?? 0) >= 2 && (
+                                <p className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" /> <span className="font-medium">Temps rare :</span> {rep.temps_rare_minutes} min
+                                </p>
+                              )}
+                              <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {rep.materiaux}</p>
+                              {(artisanatEtat?.niveau_forge ?? 0) >= 2 && (
+                                <p><span className="text-purple-400 font-medium">Matériaux rares :</span> {rep.materiaux_rares}</p>
+                              )}
+                              {rep.notes && <p className="italic text-muted-foreground mt-1">{rep.notes}</p>}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </TabsContent>
+
+            {/* Sous-onglet Joaillerie */}
+            <TabsContent value="joaillerie" className="space-y-3 mt-4">
+              {(artisanatEtat?.niveau_joaillerie ?? 0) < 1 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucune compétence en joaillerie.</p>
+              ) : !objetsJoaillerie || objetsJoaillerie.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun objet de joaillerie disponible.</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {objetsJoaillerie.map((obj) => (
+                    <Card key={obj.id} className="border-border/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">{obj.nom}</CardTitle>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Temps de fabrication : {obj.difficulte} min
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-1 text-xs pt-0">
+                        {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
+                        {obj.effet && <p><span className="font-medium">Effet :</span> {obj.effet}</p>}
+                        {obj.materiaux_communs && (
+                          <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {obj.materiaux_communs}</p>
+                        )}
+                        {(artisanatEtat?.niveau_joaillerie ?? 0) >= 2 && obj.materiaux_rares && (
+                          <p><span className="text-purple-400 font-medium">Matériaux rares :</span> {obj.materiaux_rares}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Sous-onglet Assemblages */}
+            <TabsContent value="assemblages" className="space-y-3 mt-4">
+              {!assemblages || assemblages.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>
+              ) : (
+                <div className="space-y-2">
+                  {assemblages.map((asm) => (
+                    <div key={asm.id} className="p-2 rounded border border-border/50 text-sm">
+                      <p className="font-medium text-foreground">{asm.nom}</p>
+                      {asm.cout_ps && <p className="text-xs text-muted-foreground">Coût PS : {asm.cout_ps}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Historique et Âme */}
