@@ -319,6 +319,10 @@ const Etape9_Assemblages_V2 = ({
               const estAcquis = !!acquis;
               const estGratuit = acquis?.est_gratuit ?? false;
               const seraGratuit = !estAcquis && quotaRestant > 0;
+              const xpInsuffisants =
+                !seraGratuit &&
+                !estAcquis &&
+                COUT_ASSEMBLAGE_SUPPLEMENTAIRE > xpDisponible;
 
               return (
                 <div
@@ -369,10 +373,17 @@ const Etape9_Assemblages_V2 = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 pt-1">
-                    <label className="flex items-center gap-2 text-sm">
+                    <label
+                      className="flex items-center gap-2 text-sm"
+                      title={
+                        xpInsuffisants
+                          ? `XP insuffisants (manque ${COUT_ASSEMBLAGE_SUPPLEMENTAIRE - xpDisponible} XP)`
+                          : undefined
+                      }
+                    >
                       <Checkbox
                         checked={estAcquis}
-                        disabled={mutationsPending}
+                        disabled={mutationsPending || xpInsuffisants}
                         onCheckedChange={() => handleToggle(assemblage, acquis)}
                       />
                       {estAcquis
