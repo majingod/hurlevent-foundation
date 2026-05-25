@@ -634,9 +634,9 @@ const PersonnageFiche = () => {
 
         ${niveauForge >= 1 ? `
         <h2>Forge (Niv. ${niveauForge})</h2>
-        ${(objetsForge ?? []).filter((o) => (o.difficulte ?? 0) <= niveauForge).length > 0 ? `
+        ${(objetsForge ?? []).length > 0 ? `
           <h3>Fabrication</h3>
-          ${(objetsForge ?? []).filter((o) => (o.difficulte ?? 0) <= niveauForge).map((o) => `
+          ${(objetsForge ?? []).map((o) => `
             <div class="card">
               <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
               ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
@@ -662,9 +662,9 @@ const PersonnageFiche = () => {
 
         ${niveauJoaillerie >= 1 ? `
         <h2>Joaillerie (Niv. ${niveauJoaillerie})</h2>
-        ${(objetsJoaillerie ?? []).filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie).length > 0 ? `
+        ${(objetsJoaillerie ?? []).length > 0 ? `
           <h3>Fabrication</h3>
-          ${(objetsJoaillerie ?? []).filter((o) => (o.difficulte ?? 0) <= niveauJoaillerie).map((o) => `
+          ${(objetsJoaillerie ?? []).map((o) => `
             <div class="card">
               <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
               ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
