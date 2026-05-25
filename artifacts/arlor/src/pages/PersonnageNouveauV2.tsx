@@ -187,6 +187,18 @@ const PersonnageNouveauV2 = () => {
       },
     });
 
+  // Redirect automatique : si le personnage est finalisé (etape_creation > TOTAL_STEPS),
+  // on bascule vers la fiche read-only. La modification post-finalisation (achats inter-événements)
+  // sera implémentée dans le chantier section 8.
+  useEffect(() => {
+    if (personnage && personnage.etape_creation > TOTAL_STEPS) {
+      toast.info(
+        "Ce personnage est finalisé. La modification post-finalisation arrivera bientôt.",
+      );
+      navigate(`/personnage/${personnage.id}`, { replace: true });
+    }
+  }, [personnage, navigate]);
+
   // 1b) Reprise via ?id= : positionner l'étape initiale sur etape_creation
   //     lu en base, une seule fois (ne pas écraser la navigation manuelle).
   useEffect(() => {
