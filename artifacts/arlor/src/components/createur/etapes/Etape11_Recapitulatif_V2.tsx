@@ -93,7 +93,7 @@ interface RecetteItem {
 interface ObjetArtisanatItem {
   nom?: string | null;
   type?: string | null;
-  difficulte?: number | null;
+  temps_fabrication_minutes?: number | null;
   temps_rare_minutes?: number | null;
   description?: string | null;
   effet?: string | null;
@@ -811,12 +811,12 @@ const ArtisanatList = ({
           <span className="font-medium">{o.nom}</span>
           {o.type && <Badge variant="outline">{o.type}</Badge>}
         </div>
-        {o.difficulte != null && (
+        {o.temps_fabrication_minutes != null && (
           <div className="text-xs text-muted-foreground">
             <strong>Temps de fabrication :</strong>{" "}
             {kind === "joaillerie" && niveau >= 2 && o.temps_rare_minutes != null
-              ? `${o.difficulte} min (commun) — ${o.temps_rare_minutes} min (rare)`
-              : `${o.difficulte} min`}
+              ? `${o.temps_fabrication_minutes} min (commun) — ${o.temps_rare_minutes} min (rare)`
+              : `${o.temps_fabrication_minutes} min`}
           </div>
         )}
         {o.effet && (

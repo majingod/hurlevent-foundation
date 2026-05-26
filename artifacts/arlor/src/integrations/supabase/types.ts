@@ -1193,37 +1193,37 @@ export type Database = {
         Row: {
           cout_xp: number | null
           description: string | null
-          difficulte: number | null
           est_actif: boolean | null
           id: string
           materiaux_communs: string | null
           materiaux_rares: string | null
           nom: string | null
           stats: Json | null
+          temps_fabrication_minutes: number | null
           type: string | null
         }
         Insert: {
           cout_xp?: number | null
           description?: string | null
-          difficulte?: number | null
           est_actif?: boolean | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
           stats?: Json | null
+          temps_fabrication_minutes?: number | null
           type?: string | null
         }
         Update: {
           cout_xp?: number | null
           description?: string | null
-          difficulte?: number | null
           est_actif?: boolean | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
           stats?: Json | null
+          temps_fabrication_minutes?: number | null
           type?: string | null
         }
         Relationships: []
@@ -1232,37 +1232,37 @@ export type Database = {
         Row: {
           cout_xp: number | null
           description: string | null
-          difficulte: number | null
           effet: string | null
           est_actif: boolean | null
           id: string
           materiaux_communs: string | null
           materiaux_rares: string | null
           nom: string | null
+          temps_fabrication_minutes: number | null
           temps_rare_minutes: number | null
         }
         Insert: {
           cout_xp?: number | null
           description?: string | null
-          difficulte?: number | null
           effet?: string | null
           est_actif?: boolean | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          temps_fabrication_minutes?: number | null
           temps_rare_minutes?: number | null
         }
         Update: {
           cout_xp?: number | null
           description?: string | null
-          difficulte?: number | null
           effet?: string | null
           est_actif?: boolean | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          temps_fabrication_minutes?: number | null
           temps_rare_minutes?: number | null
         }
         Relationships: []

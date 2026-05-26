@@ -130,7 +130,7 @@ interface ObjetForge {
   nom: string | null;
   description: string | null;
   type: string | null;
-  difficulte: number | null;
+  temps_fabrication_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
 }
@@ -151,7 +151,7 @@ interface ObjetJoaillerie {
   nom: string | null;
   description: string | null;
   effet: string | null;
-  difficulte: number | null;
+  temps_fabrication_minutes: number | null;
   temps_rare_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
@@ -303,9 +303,9 @@ const PersonnageFiche = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_forge")
-        .select("id, nom, description, type, difficulte, materiaux_communs, materiaux_rares")
+        .select("id, nom, description, type, temps_fabrication_minutes, materiaux_communs, materiaux_rares")
         .eq("est_actif", true)
-        .order("difficulte")
+        .order("temps_fabrication_minutes")
         .order("nom");
       return (data ?? []) as ObjetForge[];
     },
@@ -331,9 +331,9 @@ const PersonnageFiche = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_joaillerie")
-        .select("id, nom, description, effet, difficulte, temps_rare_minutes, materiaux_communs, materiaux_rares")
+        .select("id, nom, description, effet, temps_fabrication_minutes, temps_rare_minutes, materiaux_communs, materiaux_rares")
         .eq("est_actif", true)
-        .order("difficulte")
+        .order("temps_fabrication_minutes")
         .order("nom");
       return (data ?? []) as ObjetJoaillerie[];
     },
@@ -644,7 +644,7 @@ const PersonnageFiche = () => {
               <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
               ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
               ${o.type ? `<div class="muted">Type : ${escapeHtml(o.type)}</div>` : ""}
-              ${o.difficulte != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.difficulte} min</div>` : ""}
+              ${o.temps_fabrication_minutes != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.temps_fabrication_minutes} min</div>` : ""}
               ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
               ${niveauForge >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
               ${niveauForge >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
@@ -676,7 +676,7 @@ const PersonnageFiche = () => {
               <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
               ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
               ${o.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(o.effet)}</div>` : ""}
-              ${o.difficulte != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.difficulte} min${niveauJoaillerie >= 2 && o.temps_rare_minutes != null ? ` (commun) — ${o.temps_rare_minutes} min (rare)` : ""}</div>` : ""}
+              ${o.temps_fabrication_minutes != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.temps_fabrication_minutes} min${niveauJoaillerie >= 2 && o.temps_rare_minutes != null ? ` (commun) — ${o.temps_rare_minutes} min (rare)` : ""}</div>` : ""}
               ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
               ${niveauJoaillerie >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
               ${niveauJoaillerie >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
@@ -1036,7 +1036,7 @@ const PersonnageFiche = () => {
                               <CardTitle className="text-sm">{obj.nom}</CardTitle>
                               {obj.type && <p className="text-xs text-muted-foreground">{obj.type}</p>}
                               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> Temps de fabrication : {obj.difficulte} min
+                                <Clock className="h-3 w-3" /> Temps de fabrication : {obj.temps_fabrication_minutes} min
                               </p>
                             </CardHeader>
                             <CardContent className="space-y-1 text-xs pt-0">
@@ -1104,7 +1104,7 @@ const PersonnageFiche = () => {
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm">{obj.nom}</CardTitle>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> Temps de fabrication : {obj.difficulte} min
+                          <Clock className="h-3 w-3" /> Temps de fabrication : {obj.temps_fabrication_minutes} min
                           {(artisanatEtat?.niveau_joaillerie ?? 0) >= 2 && obj.temps_rare_minutes != null && (
                             <>
                               {" (commun) — "}
