@@ -1239,6 +1239,7 @@ export type Database = {
           materiaux_communs: string | null
           materiaux_rares: string | null
           nom: string | null
+          temps_rare_minutes: number | null
         }
         Insert: {
           cout_xp?: number | null
@@ -1250,6 +1251,7 @@ export type Database = {
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          temps_rare_minutes?: number | null
         }
         Update: {
           cout_xp?: number | null
@@ -1261,6 +1263,7 @@ export type Database = {
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          temps_rare_minutes?: number | null
         }
         Relationships: []
       }
@@ -4541,6 +4544,7 @@ export type Database = {
           recettes: Json | null
           religion_id: string | null
           religion_nom: string | null
+          reparations_forge: Json | null
           sorts: Json | null
           sous_type_chimeride: string | null
           traits_raciaux: Json | null
