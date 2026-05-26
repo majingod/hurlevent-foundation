@@ -560,24 +560,7 @@ const PersonnageFiche = () => {
               detail = `× ${c.rows.length} achats`;
             } else if (c.type_achat === "multiple_choix_distinct") {
               detail = c.rows.map((r) => escapeHtml(resoudreChoixAffichage(r.choix_achat, langues, religions) ?? r.choix_achat ?? "?")).join(", ");
-            } else if (c.type_achat === "multiple_avec_choix_par_niveau") {
-              // Grouper par niveau : "Niv. 1 : Feu, Glace · Niv. 2 : Feu"
-              const parNiveau = c.rows.reduce<Record<number, string[]>>((acc, r) => {
-                const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
-                const label = choix ?? r.choix_achat ?? "";
-                (acc[r.niveau_acquis] ??= []).push(label);
-                return acc;
-              }, {});
-              detail = Object.entries(parNiveau)
-                .sort(([a], [b]) => Number(a) - Number(b))
-                .map(([niv, choixListe]) => {
-                  const choixFiltres = choixListe.filter(Boolean);
-                  const suffixe = choixFiltres.length > 0 ? ` : ${choixFiltres.map(escapeHtml).join(", ")}` : "";
-                  return `Niv. ${niv}${suffixe}`;
-                })
-                .join(" · ");
             } else {
-              // Fallback véritable pour type_achat futur inattendu
               detail = c.rows.map((r) => {
                 const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
                 return `Niv. ${r.niveau_acquis}${choix ? ` (${escapeHtml(choix)})` : ""}`;
@@ -862,7 +845,7 @@ const PersonnageFiche = () => {
                     {comp.xp_total === 0 ? (
                       <Badge variant="outline" className="text-xs">Gratuit</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-xs">{comp.xp_total} XP</Badge>
+                      <Badge variant="outline" className="text-xs">Coût total : {comp.xp_total} XP</Badge>
                     )}
                     {comp.statut_maitre !== "non_requis" && (
                       <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
@@ -959,20 +942,11 @@ const PersonnageFiche = () => {
                           )
                             .sort(([a], [b]) => Number(a) - Number(b))
                             .map(([niveau, rowsNiveau]) => {
-                              const totalNiveau = rowsNiveau.reduce((sum, r) => sum + r.xp_depense, 0);
                               const descriptionNiveau = rowsNiveau[0]?.description_niveau_acquis;
                               const aDesChoix = rowsNiveau.some((r) => r.choix_achat);
                               return (
                                 <div key={niveau} className="space-y-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-medium text-foreground">Niveau {niveau}</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {totalNiveau === 0 ? "Gratuit" : `${totalNiveau} XP`}
-                                    </Badge>
-                                  </div>
-                                  {descriptionNiveau && (
-                                    <p className="whitespace-pre-line">{descriptionNiveau}</p>
-                                  )}
+                                  <div className="font-medium text-foreground">Niveau {niveau}</div>
                                   {aDesChoix && (
                                     <ul className="space-y-1 ml-2">
                                       {rowsNiveau.map((r) => {
@@ -991,6 +965,9 @@ const PersonnageFiche = () => {
                                         );
                                       })}
                                     </ul>
+                                  )}
+                                  {descriptionNiveau && (
+                                    <p className="whitespace-pre-line">{descriptionNiveau}</p>
                                   )}
                                 </div>
                               );
