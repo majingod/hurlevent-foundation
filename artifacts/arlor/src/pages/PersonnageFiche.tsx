@@ -152,6 +152,7 @@ interface ObjetJoaillerie {
   description: string | null;
   effet: string | null;
   difficulte: number | null;
+  temps_rare_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
 }
@@ -330,7 +331,7 @@ const PersonnageFiche = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_joaillerie")
-        .select("id, nom, description, effet, difficulte, materiaux_communs, materiaux_rares")
+        .select("id, nom, description, effet, difficulte, temps_rare_minutes, materiaux_communs, materiaux_rares")
         .eq("est_actif", true)
         .order("difficulte")
         .order("nom");
@@ -675,7 +676,7 @@ const PersonnageFiche = () => {
               <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
               ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
               ${o.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(o.effet)}</div>` : ""}
-              ${o.difficulte != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.difficulte} min</div>` : ""}
+              ${o.difficulte != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.difficulte} min${niveauJoaillerie >= 2 && o.temps_rare_minutes != null ? ` (commun) — ${o.temps_rare_minutes} min (rare)` : ""}</div>` : ""}
               ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
               ${niveauJoaillerie >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
               ${niveauJoaillerie >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
@@ -982,14 +983,36 @@ const PersonnageFiche = () => {
               ) : !recettes || recettes.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">Aucune recette acquise.</p>
               ) : (
-                <div className="space-y-2">
-                  {recettes.map((recette) => (
-                    <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
-                      <p className="font-medium text-foreground">{recette.nom}</p>
-                      <p className="text-xs text-muted-foreground">{recette.type} — Niv. {recette.niveau_requis}</p>
-                      {recette.effet && <p className="text-xs text-muted-foreground mt-1"><strong>Effet :</strong> {recette.effet}</p>}
-                    </div>
-                  ))}
+                <div className="space-y-4">
+                  <div className="text-xs text-muted-foreground border-b border-border/50 pb-2">
+                    Total : {recettes.length} recette{recettes.length > 1 ? "s" : ""}
+                    {[1, 2, 3].map((n) => {
+                      const count = recettes.filter((r) => r.niveau_requis === n).length;
+                      const label = n === 1 ? "mineures" : n === 2 ? "intermédiaires" : "majeures";
+                      return count > 0 ? ` • ${count} ${label}` : "";
+                    }).join("")}
+                  </div>
+                  {[1, 2, 3].map((n) => {
+                    const recettesNiveau = recettes.filter((r) => r.niveau_requis === n);
+                    if (recettesNiveau.length === 0) return null;
+                    const label = n === 1 ? "Mineures" : n === 2 ? "Intermédiaires" : "Majeures";
+                    return (
+                      <div key={n} className="space-y-2">
+                        <h3 className="text-sm font-semibold text-foreground">
+                          {label} (Niv. {n}) — {recettesNiveau.length}
+                        </h3>
+                        <div className="space-y-2">
+                          {recettesNiveau.map((recette) => (
+                            <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
+                              <p className="font-medium text-foreground">{recette.nom}</p>
+                              <p className="text-xs text-muted-foreground">{recette.type}</p>
+                              {recette.effet && <p className="text-xs text-muted-foreground mt-1"><strong>Effet :</strong> {recette.effet}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
@@ -1082,6 +1105,12 @@ const PersonnageFiche = () => {
                         <CardTitle className="text-sm">{obj.nom}</CardTitle>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" /> Temps de fabrication : {obj.difficulte} min
+                          {(artisanatEtat?.niveau_joaillerie ?? 0) >= 2 && obj.temps_rare_minutes != null && (
+                            <>
+                              {" (commun) — "}
+                              {obj.temps_rare_minutes} min (rare)
+                            </>
+                          )}
                         </p>
                       </CardHeader>
                       <CardContent className="space-y-1 text-xs pt-0">
