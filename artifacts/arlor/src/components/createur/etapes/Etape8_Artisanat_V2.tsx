@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Sparkles, Hammer, Gem, Crown, Wrench } from "lucide-react";
 import { COUT_RECETTE_SUPPLEMENTAIRE } from "@/constants/artisanat";
-import { NIVEAU_ALCHIMIE_LABELS, TYPE_RECETTE_LABELS } from "@/constants/labels";
+import { TYPE_RECETTE_LABELS } from "@/constants/labels";
 
 type RecetteRow = Database["public"]["Tables"]["recettes_alchimie"]["Row"];
 type ObjetForgeRow = Database["public"]["Tables"]["objets_forge"]["Row"];
@@ -83,7 +83,26 @@ const Etape8_Artisanat_V2 = ({
   const niveauAlchimie = quotas?.niveau_alchimie ?? 0;
   const niveauForge = quotas?.niveau_forge ?? 0;
   const niveauJoaillerie = quotas?.niveau_joaillerie ?? 0;
-  const quotaRecettesTotal = quotas?.quota_recettes_total ?? 0;
+
+  // Quotas alchimie par niveau (Mineures / Intermédiaires / Majeures)
+  // PR 8 — l'UI affiche les quotas séparés au lieu d'un total global trompeur.
+  const quotaMineuresTotal = quotas?.quota_alchimie_mineure_total ?? 0;
+  const quotaMineuresUtilises = quotas?.quota_alchimie_mineure_utilises ?? 0;
+  const quotaIntermediairesTotal = quotas?.quota_alchimie_intermediaire_total ?? 0;
+  const quotaIntermediairesUtilises = quotas?.quota_alchimie_intermediaire_utilises ?? 0;
+  const quotaMajeuresTotal = quotas?.quota_alchimie_majeure_total ?? 0;
+  const quotaMajeuresUtilises = quotas?.quota_alchimie_majeure_utilises ?? 0;
+
+  const quotaMineuresRestant = Math.max(0, quotaMineuresTotal - quotaMineuresUtilises);
+  const quotaIntermediairesRestant = Math.max(0, quotaIntermediairesTotal - quotaIntermediairesUtilises);
+  const quotaMajeuresRestant = Math.max(0, quotaMajeuresTotal - quotaMajeuresUtilises);
+
+  const getQuotaRestantPourNiveau = (niveauRequis: number): number => {
+    if (niveauRequis === 1) return quotaMineuresRestant;
+    if (niveauRequis === 2) return quotaIntermediairesRestant;
+    if (niveauRequis === 3) return quotaMajeuresRestant;
+    return 0;
+  };
 
   const hasAlchimie = niveauAlchimie >= 1;
   const hasForge = niveauForge >= 1;
@@ -177,9 +196,6 @@ const Etape8_Artisanat_V2 = ({
     });
     return map;
   }, [personnageRecettes]);
-
-  const nbGratuites = [...recettesAcquisesParRecetteId.values()].filter((r) => r.est_gratuit).length;
-  const quotaRestant = Math.max(0, quotaRecettesTotal - nbGratuites);
 
   const acheterMutation = useMutation({
     mutationFn: async (params: {
@@ -396,18 +412,52 @@ const Etape8_Artisanat_V2 = ({
                 <CardTitle className="text-base font-heading">
                   Alchimie — niveau {niveauAlchimie}
                 </CardTitle>
-                <CardDescription>
-                  Quota gratuit restant :{" "}
-                  <strong
-                    className={
-                      quotaRestant > 0 ? "text-primary" : "text-amber-400"
-                    }
-                  >
-                    {quotaRestant} / {quotaRecettesTotal}
-                  </strong>
-                </CardDescription>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                    {niveauAlchimie >= 1 && (
+                      <div>
+                        Mineures gratuites :{" "}
+                        <strong
+                          className={
+                            quotaMineuresRestant > 0
+                              ? "text-primary"
+                              : "text-amber-400"
+                          }
+                        >
+                          {quotaMineuresUtilises} / {quotaMineuresTotal}
+                        </strong>
+                      </div>
+                    )}
+                    {niveauAlchimie >= 2 && (
+                      <div>
+                        Intermédiaires gratuites :{" "}
+                        <strong
+                          className={
+                            quotaIntermediairesRestant > 0
+                              ? "text-primary"
+                              : "text-amber-400"
+                          }
+                        >
+                          {quotaIntermediairesUtilises} / {quotaIntermediairesTotal}
+                        </strong>
+                      </div>
+                    )}
+                    {niveauAlchimie >= 3 && (
+                      <div>
+                        Majeures gratuites :{" "}
+                        <strong
+                          className={
+                            quotaMajeuresRestant > 0
+                              ? "text-primary"
+                              : "text-amber-400"
+                          }
+                        >
+                          {quotaMajeuresUtilises} / {quotaMajeuresTotal}
+                        </strong>
+                      </div>
+                    )}
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-6">
                 {loadingRecettes || loadingPersoRecettes ? (
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -418,75 +468,117 @@ const Etape8_Artisanat_V2 = ({
                     Aucune recette disponible pour ce niveau.
                   </p>
                 ) : (
-                  (recettes ?? []).map((recette) => {
-                    const acquise = recettesAcquisesParRecetteId.get(recette.id);
-                    const estAcquise = !!acquise;
-                    const estGratuite = acquise?.est_gratuit ?? false;
-                    const seraGratuite = !estAcquise && quotaRestant > 0;
-                    const xpInsuffisants =
-                      !seraGratuite &&
-                      !estAcquise &&
-                      COUT_RECETTE_SUPPLEMENTAIRE > xpDisponible;
+                  [1, 2, 3].map((niveau) => {
+                    if (niveau > niveauAlchimie) return null;
+                    const recettesNiveau = (recettes ?? []).filter(
+                      (r) => r.niveau_requis === niveau,
+                    );
+                    if (recettesNiveau.length === 0) return null;
+                    const label =
+                      niveau === 1
+                        ? "Mineures"
+                        : niveau === 2
+                          ? "Intermédiaires"
+                          : "Majeures";
+                    const quotaTotal =
+                      niveau === 1
+                        ? quotaMineuresTotal
+                        : niveau === 2
+                          ? quotaIntermediairesTotal
+                          : quotaMajeuresTotal;
+                    const quotaUtilises =
+                      niveau === 1
+                        ? quotaMineuresUtilises
+                        : niveau === 2
+                          ? quotaIntermediairesUtilises
+                          : quotaMajeuresUtilises;
 
                     return (
-                      <div
-                        key={recette.id}
-                        className={`space-y-2 rounded-lg border p-3 transition-colors ${
-                          estAcquise
-                            ? "border-primary/50 bg-primary/5"
-                            : "border-border"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="space-y-1">
-                            <strong className="font-heading text-primary">
-                              {recette.nom}
-                            </strong>
-                            {recette.effet && (
-                              <p className="text-xs text-muted-foreground">
-                                {recette.effet}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              {recette.type && (
-                                <Badge variant="outline" className="text-xs">
-                                  {TYPE_RECETTE_LABELS[recette.type] ??
-                                    recette.type}
-                                </Badge>
-                              )}
-                              {recette.niveau_requis != null && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {NIVEAU_ALCHIMIE_LABELS[
-                                    recette.niveau_requis
-                                  ] ?? `Niveau ${recette.niveau_requis}`}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                      <div key={niveau} className="space-y-3">
+                        <h3 className="text-sm font-semibold text-foreground">
+                          {label} (Niv. {niveau}) — {quotaUtilises}/
+                          {quotaTotal} gratuites
+                        </h3>
+                        <div className="space-y-3">
+                          {recettesNiveau.map((recette) => {
+                            const acquise = recettesAcquisesParRecetteId.get(
+                              recette.id,
+                            );
+                            const estAcquise = !!acquise;
+                            const estGratuite = acquise?.est_gratuit ?? false;
+                            const quotaRestantNiveau = getQuotaRestantPourNiveau(
+                              recette.niveau_requis ?? 0,
+                            );
+                            const seraGratuite =
+                              !estAcquise && quotaRestantNiveau > 0;
+                            const xpInsuffisants =
+                              !seraGratuite &&
+                              !estAcquise &&
+                              COUT_RECETTE_SUPPLEMENTAIRE > xpDisponible;
 
-                        <div className="flex flex-wrap items-center gap-3 pt-1">
-                          <label
-                            className={`flex items-center gap-2 text-sm ${xpInsuffisants ? "opacity-50" : ""}`}
-                            title={
-                              xpInsuffisants
-                                ? `XP insuffisants (manque ${COUT_RECETTE_SUPPLEMENTAIRE - xpDisponible} XP)`
-                                : undefined
-                            }
-                          >
-                            <Checkbox
-                              checked={estAcquise}
-                              disabled={mutationsPending || xpInsuffisants}
-                              onCheckedChange={() => handleToggle(recette, acquise)}
-                            />
-                            {estAcquise
-                              ? estGratuite
-                                ? "Sélectionnée (Gratuite)"
-                                : `Sélectionnée (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`
-                              : seraGratuite
-                                ? "Sélectionner (Gratuite)"
-                                : `Sélectionner (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`}
-                          </label>
+                            return (
+                              <div
+                                key={recette.id}
+                                className={`space-y-2 rounded-lg border p-3 transition-colors ${
+                                  estAcquise
+                                    ? "border-primary/50 bg-primary/5"
+                                    : "border-border"
+                                }`}
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div className="space-y-1">
+                                    <strong className="font-heading text-primary">
+                                      {recette.nom}
+                                    </strong>
+                                    {recette.effet && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {recette.effet}
+                                      </p>
+                                    )}
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                      {recette.type && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          {TYPE_RECETTE_LABELS[recette.type] ??
+                                            recette.type}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 pt-1">
+                                  <label
+                                    className={`flex items-center gap-2 text-sm ${xpInsuffisants ? "opacity-50" : ""}`}
+                                    title={
+                                      xpInsuffisants
+                                        ? `XP insuffisants (manque ${COUT_RECETTE_SUPPLEMENTAIRE - xpDisponible} XP)`
+                                        : undefined
+                                    }
+                                  >
+                                    <Checkbox
+                                      checked={estAcquise}
+                                      disabled={
+                                        mutationsPending || xpInsuffisants
+                                      }
+                                      onCheckedChange={() =>
+                                        handleToggle(recette, acquise)
+                                      }
+                                    />
+                                    {estAcquise
+                                      ? estGratuite
+                                        ? "Sélectionnée (Gratuite)"
+                                        : `Sélectionnée (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`
+                                      : seraGratuite
+                                        ? "Sélectionner (Gratuite)"
+                                        : `Sélectionner (${COUT_RECETTE_SUPPLEMENTAIRE} XP)`}
+                                  </label>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
