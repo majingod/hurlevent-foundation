@@ -5373,14 +5373,6 @@ export type Database = {
         }
         Returns: Json
       }
-      acheter_objet_forge: {
-        Args: { p_objet_id: string; p_personnage_id: string }
-        Returns: Json
-      }
-      acheter_objet_joaillerie: {
-        Args: { p_objet_id: string; p_personnage_id: string }
-        Returns: Json
-      }
       acheter_priere: {
         Args: {
           p_duree_choisie: string
