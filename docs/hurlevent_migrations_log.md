@@ -1,6 +1,137 @@
 # Hurlevent — Migrations log
 
-> **Dernière mise à jour** : 24 mai 2026 (clôture session 33).
+> **Dernière mise à jour** : 26 mai 2026 (clôture session 36).
+
+---
+
+## Session 36 — Refonte affichage artisanat (forge/joaillerie/réparations + temps rare) (26 mai 2026)
+
+**8 PRs mergées** : marathon de session focus élimination dette d'affichage artisanat. **1 migration BD** appliquée via MCP.
+
+### Migration #1 — `20260526002111_temps_rare_joaillerie_et_recap_complet.sql` (PR #173)
+
+**Cible** : table `objets_joaillerie` + vue `vue_personnage_creation_complet`.
+
+**Changements** :
+
+1. **ALTER TABLE** : ajout colonne `temps_rare_minutes integer` sur `objets_joaillerie`. Initialisée à `difficulte + 10` (règle Manuel 2026 : joaillerie temps rare = commun + 10 min). 6 objets impactés (Couronne, Pendentif, Épingle, Badge/Insigne, Bracelet, Bague).
+
+2. **CREATE OR REPLACE VIEW vue_personnage_creation_complet** : refonte de 3 clés JSONB :
+   - `objets_forge` : passe de jointure avec `personnage_objets_forge` (toujours vide depuis abandon Phase 3b) → lecture directe `objets_forge WHERE est_actif AND EXISTS (vue_artisanat_etat avec niveau_forge >= 1)`. Expose `materiaux_communs` et `materiaux_rares`.
+   - `objets_joaillerie` : pareil + nouvelle colonne `temps_rare_minutes`.
+   - `reparations_forge` : **nouvelle clé** (n'existait pas avant). Lecture directe `reparations_forge WHERE est_actif AND EXISTS (niveau_forge >= 1)`. Placée en fin de vue car `CREATE OR REPLACE VIEW` ne permet pas la réinsertion au milieu.
+
+**Conséquence** : la vue passe de 51 colonnes / 11 JSONB → **52 colonnes / 12 JSONB**.
+
+**Bug fixé** : l'étape 11 récap du wizard affichait « Aucun objet de forge » + « Aucun objet de joaillerie » même avec compétence acquise, car la vue joignait des tables d'achat individuel toujours vides depuis l'abandon de la Phase 3b en session 32. Désormais affichage correct selon niveau acquis.
+
+**Pas de migration de données** : la vue est recréée à la volée par CREATE OR REPLACE. Aucune donnée historique impactée.
+
+### Détail des 8 PRs
+
+| PR | Titre | Cible |
+|---|---|---|
+| #169 | feat(tdb): cacher bouton wizard si perso finalisé | TableauDeBord.tsx |
+| #170 | feat(etape8): filtrer matériaux rares selon niveau | Etape8_Artisanat_V2.tsx |
+| #171 | fix(fiche): retirer filtres difficulté handlePrint | PersonnageFiche.tsx |
+| #172 | feat(fiche): tab Artisanat sous-onglets + temps fab handlePrint | PersonnageFiche.tsx |
+| #173 | feat(recap): afficher forge/joaillerie/réparations selon niveau + temps rare joaillerie | migration + types.ts + Etape11 |
+| #174 | feat(etape8): sous-onglets fabrication/réparation forge + temps rare joaillerie | Etape8_Artisanat_V2.tsx |
+| #175 | feat(fiche): temps rare joaillerie + tab alchimie groupé par niveau | PersonnageFiche.tsx |
+| #176 | feat(etape8): quotas alchimie par niveau (mineures/intermédiaires/majeures) + recettes groupées | Etape8_Artisanat_V2.tsx |
+
+### Dette résolue session 36
+
+- ✅ AFFICHAGE-ARTISANAT-COMPLET (cohérence wizard ↔ fiche)
+- ✅ BUG-QUOTAS-ALCHIMIE-GLOBAL (frontend lit désormais les 6 colonnes par niveau que la vue exposait déjà)
+
+### Dettes nouvelles documentées
+
+- DETTE-RENOMMER-DIFFICULTE-EN-TEMPS : `difficulte` est en réalité temps en minutes
+- AUDIT-RPC-ACHETER-OBJET-FORGE-JOAILLERIE : RPCs probablement orphelines
+- ACCESSOIRES-FORGE-DUPLIQUES : 6 entrées vs 1 ligne manuel
+
+### Apprentissages techniques
+
+- **Cache CDN stale même avec `refs/heads/`** : faire confiance à CC si props manquent (Règle #24 v14)
+- **CC peut skipper silencieusement `str_replace`** : préférer `cp` + sanity check grep (Règle #25 v14)
+- **Vérifier BD avant migration** : la vue exposait déjà les 6 colonnes par niveau (Règle #26 v14)
+- **`<CardDescription asChild>` shadcn/ui non supporté** : utiliser `<div>` stylé
+
+---
+
+## Session 34 — Fix `sauvegarder_etape_3` append-only + cleanup (24 mai 2026)
+
+**3 PRs mergées** : MIGRATIONS-LOG-REPO-SYNC (#161, doc-only), Fix `sauvegarder_etape_3` append-only (migration 33 + commit repo), Fix trait gratuit toggleable (auto-promote FIFO frontend).
+**1 migration DB** appliquée via MCP.
+
+### Migration #1 — `20260524170622_fix_sauvegarder_etape_3_append_only.sql`
+
+**Fonction modifiée** : `sauvegarder_etape_3(p_personnage_id uuid, p_traits_raciaux_choisis jsonb) RETURNS jsonb`. Signature inchangée, body refactoré en profondeur.
+
+**Bug fixé (critique)** : la fonction faisait `DELETE FROM historique_xp WHERE personnage_id = ... AND type_mouvement = 'depense_trait'` puis re-INSERT à chaque appel, violant la convention "historique_xp append-only" établie en session 33 (XP-CLEANUP).
+
+**Conséquences du bug** :
+- Perte de l'historique des achats (audit cassé)
+- Pas de trace des remboursements (incohérent avec le pattern des autres `desacheter_*`)
+
+**Nouveau comportement** : vrai **diff** entre l'ancien JSONB `traits_raciaux_choisis` et le nouveau payload.
+
+**Algorithme en 3 phases** :
+
+1. **Recalcul du nouveau JSONB** : pour chaque trait du payload (en ordre), si index < `nb_traits_raciaux` → gratuit (xp=0), sinon → payant (lookup cout_xp via `vue_traits_par_race`).
+
+2. **Boucle 1 — Anciens traits** :
+   - Si retiré du nouveau JSONB et était payant → INSERT `remboursement` (montant=+old_xp, FK trait_id, description "Remboursement trait racial : <nom>")
+   - Si présent dans les deux mais coût différent (passage gratuit↔payant via reorganisation FIFO) :
+     - Si old_xp > 0 → INSERT `remboursement` (description "Remboursement trait racial (reorganisation)")
+     - Si new_xp > 0 → INSERT `depense_trait` (montant=-new_xp, description "Achat trait racial (reorganisation)")
+   - Si présent dans les deux et coût identique → AUCUN INSERT (idempotent)
+
+3. **Boucle 2 — Nouveaux traits ajoutés** :
+   - Si pas dans l'ancien et payant → INSERT `depense_trait` (montant=-new_xp, FK trait_id, description "Achat trait racial : <nom>")
+
+4. **UPDATE** `personnages.traits_raciaux_choisis = v_new_traits`.
+
+**Pas de DELETE dans historique_xp**. Le trigger `trg_sync_xp_personnage` resync `xp_total`/`xp_depense` automatiquement via la formule de `recalculer_xp_personnage` (corrigée session 33).
+
+**Tests pré-apply (BEGIN/ROLLBACK avec perso Demi-Elfe + 3 traits)** :
+| # | Scénario | INSERTs attendus | Obtenus |
+|---|---|---|---|
+| 1 | vide → [A grat, B payant] | 1× depense_trait -10 | ✓ |
+| 2 | [A, B] → [A] | 1× remboursement +10 | ✓ |
+| 3 | [A, B] → [B] (FIFO) | 1× remboursement +10 (reorg) | ✓ |
+| 4 | [B] → [B, C] | 1× depense_trait -10 | ✓ |
+| 5 | re-submit identique | 0 INSERT | ✓ |
+
+**Types.ts** : non régénéré (signature inchangée).
+
+**Frontend** : `Etape3_V2.tsx` inchangé (RPC consommée de la même manière, payload identique).
+
+### PR #2 — Hotfix trait gratuit toggleable (frontend uniquement, pas de migration)
+
+**Bug régression** : `Etape3_V2.tsx` contenait une garde "Sprint 5.5 Section 1" qui affichait un Dialog "Impossible de changer ce trait gratuit" quand on tentait de décocher un gratuit avec des achats payants. Cette garde implémentait l'**Option C (interdiction)** alors que le backend (fix #1 ci-dessus) implémente l'**Option B (auto-promote FIFO)**.
+
+**Découverte** : tests in vivo de Fred après le merge du fix backend. La modal apparaissait en prod, contredisant le comportement serveur validé par les 5 scénarios.
+
+**Source** : la garde était ajoutée dans une session antérieure (Sprint 5.5) **sans documentation dans le PK**. Le `cat` du fichier via Claude Code a révélé son existence (CDN GitHub raw était stale).
+
+**Fix** : 4 str_replace dans `Etape3_V2.tsx` :
+- Suppression import `Dialog` et sous-composants
+- Suppression state `blocChangementGratuit` + setter
+- Refactor `toggleGratuit` : retrait de la garde + ajout auto-promote FIFO local
+  - Quand on décoche un gratuit avec des payants en local : le 1er payant (FIFO, ordre du Set) est automatiquement promu en gratuit
+- Suppression `<Dialog>` "Impossible de changer ce trait gratuit"
+
+**Backend** : aucune modif.
+
+### PR #1 — MIGRATIONS-LOG-REPO-SYNC (PR #161, doc-only)
+
+**Cible** : `docs/hurlevent_migrations_log.md` du repo.
+
+**Méthode** : overwrite complet avec la version PK canonique (clôture session 33). Sync sessions 32 + 33 qui étaient absentes ou incomplètes.
+
+**Pas de migration DB**, pas de typecheck, pas de frontend impacté.
 
 ---
 
@@ -8,8 +139,6 @@
 
 **3 PRs mergées** : XP-CLEANUP (migration 31), C2 Phase 2 (migration 32 + UI), Hotfix Étape 7 (frontend uniquement).
 **2 migrations DB** appliquées via MCP.
-
-⚠️ **À synchroniser début session 34** : `docs/hurlevent_migrations_log.md` du repo doit être mis à jour avec ces 2 migrations (le fichier dans le repo est en retard d'une session).
 
 ### Migration #1 — `20260524031633_fix_recalculer_xp_personnage_exclure_remboursements.sql`
 
@@ -27,16 +156,6 @@
 - `xp_depense = SUM(|depense_*|) - SUM(remboursement)` (remboursements diminuent dépense)
 - `xp_disponible = xp_total - xp_depense` (inchangé en pratique → aucune régression joueur)
 
-**Tests pré-apply (BEGIN/ROLLBACK sur Valerius 7be8fd80 et 5b27f103)** :
-- `7be8fd80` : xp_total 65 → 60 (-5 remboursements), xp_depense 64 → 59 ; xp_disponible 1 → 1 ✓
-- `5b27f103` : xp_total 176 → 80 (-96 remboursements), xp_depense 150 → 54 ; xp_disponible 26 → 26 ✓
-
-**Voie 1 acceptée** : pas de recalcul forcé des persos existants. Les persos de test session 33 doivent être effacés. Le trigger `trg_sync_xp_personnage` resynchronise automatiquement au prochain mouvement XP.
-
-**Types.ts** : non régénéré (signature inchangée, seul body modifié).
-
-**Convention update** : la phrase "xp_depense ne décrémente JAMAIS" est obsolète. Les **rows** `historique_xp` restent append-only, les **colonnes calculées** peuvent décrémenter.
-
 ### Migration #2 — `20260524124018_desacheter_sort_et_priere.sql`
 
 **Nouvelles RPCs** :
@@ -46,38 +165,11 @@ desacheter_sort(p_personnage_sort_id uuid) RETURNS jsonb
 desacheter_priere(p_personnage_priere_id uuid) RETURNS jsonb
 ```
 
-**Modèle** : `desacheter_assemblage` (session 32) sans la branche `est_gratuit`. Sorts/prières sont configurables (niveau, zone, portée, durée, nom personnalisé) — plusieurs lignes possibles par sort_id avec configs différentes. Pas de quota gratuit.
+**Modèle** : `desacheter_assemblage` (session 32) sans la branche `est_gratuit`. Sorts/prières sont configurables — plusieurs lignes possibles par sort_id avec configs différentes. Pas de quota gratuit.
 
-**Pattern** :
-1. Garde-fous : `non_authentifie`, `achat_introuvable`, `personnage_introuvable`, `ownership_refuse`, `personnage_verrouille`
-2. DELETE de la ligne `personnage_sorts` / `personnage_prieres`
-3. Si `xp_depense > 0` : UPDATE `personnages.xp_depense -= xp_depense` + INSERT `historique_xp` (type='remboursement', montant positif, FK = `sort_id` / `priere_id`)
-4. Retour `{succes, erreurs, avertissements, donnees: {personnage_sort_id, sort_id, xp_rembourse, xp_total, xp_depense, xp_restant}}`
+### PR #3 — Hotfix Étape 7 (frontend uniquement)
 
-**Idempotence** : `CREATE OR REPLACE FUNCTION`.
-
-**SECURITY DEFINER** + `SET search_path TO 'public'` conformes à la convention.
-
-**Types.ts** : régénéré via MCP `Supabase:generate_typescript_types`, 2 entrées ajoutées dans `Functions` (ordre alphabétique : `desacheter_priere`, `desacheter_sort` entre `desacheter_competence` et `deverrouiller_personnage`).
-
-**Tests post-merge** : Phase 2 livrée et validée par tests in vivo (achat sort + désachat + vérification XP header + cohérence `personnages.xp_total/xp_depense`).
-
-### PR #3 — Hotfix Étape 7 (frontend uniquement, pas de migration)
-
-**Bug régression** : `Etape7_Prieres_V2.tsx` exigeait `est_croyant=true` pour accéder à l'étape, même si `Acquisition de Domaine ≥ 1`.
-
-**Source** : le backend a été corrigé en session 26 (commentaire explicite dans `acheter_priere` : "FIX session 26 : check religion supprime"). Mais le frontend a conservé la garde dans `conditionsRemplies`.
-
-**Confirmation manuel 2026** : "Acquisition de Domaine 1 — Prérequis : Linguistique et Mathématique". Aucune mention de croyance ou Classe Prêtre.
-
-**Découverte** : tests matriciels exhaustifs de Fred (14 scénarios mage/guerrier × croyant/non-croyant × diverses compétences).
-
-**Fix** : 3 str_replace dans `Etape7_Prieres_V2.tsx` :
-- Suppression `&& estCroyant` dans `conditionsRemplies`
-- Nettoyage variable inutilisée `estCroyant`
-- Adaptation texte + suppression `<p>Croyant : oui/non</p>` du bloc "conditions non remplies"
-
-**Backend** : aucune modif (vue `vue_domaines_disponibles` et RPC `acheter_priere` déjà OK depuis session 26).
+Suppression de la garde `&& estCroyant` dans `Etape7_Prieres_V2.tsx`. Le backend avait corrigé ça en session 26 ; le frontend conservait l'ancien check.
 
 ---
 
@@ -91,26 +183,12 @@ desacheter_priere(p_personnage_priere_id uuid) RETURNS jsonb
 #### `20260524004606_desacheter_recette_et_assemblage.sql` (PR #155)
 
 **Nouvelles RPCs** :
-
 ```sql
 desacheter_recette(p_personnage_recette_id uuid) RETURNS jsonb
 desacheter_assemblage(p_personnage_assemblage_id uuid) RETURNS jsonb
 ```
 
-**Modèle** : `desacheter_competence` existante.
-
-**Pattern** :
-1. DELETE de la ligne `personnage_recettes` / `personnage_assemblages`
-2. Si payant (`xp_depense > 0`) : UPDATE `personnages.xp_depense -= xp_depense` + INSERT `historique_xp` (type='remboursement', montant positif, FK = recette_id/assemblage_id)
-3. Si gratuit : juste DELETE (pas d'entrée historique pour éviter `chk_historique_xp_montant_non_nul`)
-
-**GRANT** : `EXECUTE TO authenticated`.
-
-**Garde-fous** : `non_authentifie`, `achat_introuvable`, `personnage_introuvable`, `ownership_refuse`, `personnage_verrouille`.
-
-**Types.ts** : régénéré dans la même PR (Règle #15).
-
-**Choix architectural Option D** : reproduire le pattern de `desacheter_competence` (qui produit le bug cosmétique de `xp_total` gonflé). Cohérence avec l'existant > corriger seulement ici. Le fix global a été fait en session 33 (XP-CLEANUP).
+Pattern : DELETE + remboursement si payant. Modèle `desacheter_competence`. Pour items **non configurables** avec quota gratuit.
 
 ---
 
@@ -123,23 +201,7 @@ desacheter_assemblage(p_personnage_assemblage_id uuid) RETURNS jsonb
 
 #### `20260523210202_fix_annuler_etape_inserts_par_item_avec_fk.sql` (PR #154)
 
-**Fonction modifiée** : `annuler_etape(p_personnage_id uuid, p_etape_courante integer, p_dry_run boolean DEFAULT false)`. Signature inchangée, corps refactoré.
-
-**Bug fixé** : la fonction violait `chk_historique_xp_reference_objet` pour les étapes 6-9 car les remboursements étaient des INSERTs « bulk » sans FK.
-
-Le check constraint exige EXACTEMENT 1 FK pour `type_mouvement = 'remboursement'` parmi :
-`competence_id`, `trait_id`, `sort_id`, `priere_id`, `recette_id`, `assemblage_id`, `objet_forge_id`, `objet_joaillerie_id`.
-
-**Nouveau comportement** : 1 INSERT `historique_xp` par item annulé, avec la FK appropriée.
-
-- Étape 6 : `INSERT...SELECT FROM personnage_sorts` avec `sort_id`
-- Étape 7 : `INSERT...SELECT FROM personnage_prieres` avec `priere_id`
-- Étape 8 : 3 INSERT séparés (recettes, objets_forge, objets_joaillerie) avec FK correspondante
-- Étape 9 : `INSERT...SELECT FROM personnage_assemblages` avec `assemblage_id`
-
-**Items gratuits** (`xp_depense = 0`) : DELETE sans entrée historique (montant 0 violerait `chk_historique_xp_montant_non_nul`).
-
-**Types.ts** : non régénéré (signature inchangée).
+Fix du bug `chk_historique_xp_reference_objet` pour les étapes 6-9 : 1 INSERT historique_xp par item annulé, avec la FK appropriée (sort_id, priere_id, recette_id, assemblage_id, objet_forge_id, objet_joaillerie_id).
 
 ---
 
@@ -154,9 +216,6 @@ Le check constraint exige EXACTEMENT 1 FK pour `type_mouvement = 'remboursement'
 
 Enrichit le retour `donnees` de `annuler_etape` avec un champ `items_detail` (array). Chaque entrée : `{type, type_label, nom, quantite, xp_unitaire, xp_total}`.
 
-**Groupage par compétence_id** pour gérer multi-achats (Développement Spirituel ×15, etc.).
-Pour sorts/prières/etc., 1 row = 1 item.
-
 ---
 
 ## Session 29 — Cat 1 + Cat 2 voie A backend (23 mai 2026)
@@ -168,15 +227,7 @@ Pour sorts/prières/etc., 1 row = 1 item.
 
 #### `20260523152942_annuler_etape.sql` (PR #147)
 
-**Nouvelle RPC** `annuler_etape(p_personnage_id uuid, p_etape_courante integer, p_dry_run boolean DEFAULT false) RETURNS jsonb`.
-
-Implémente la voie A de la dette catégorie 2 (navigation backward rollback). Couvre les étapes 2-11 du wizard. Un appel = annulation atomique de l'étape courante + décrémentation `etape_creation`.
-
-**Mode `p_dry_run`** : retourne les chiffres prévisionnels sans muter, pour preview UX modale.
-
-**6 garde-fous** : non_authentifie, personnage_introuvable, ownership_refuse, personnage_verrouille, etape_incoherente, etape_invalide.
-
-**Découverte session 29** : convention `historique_xp` append-only. Bug cosmétique `recalculer_xp_personnage` identifié et **résolu en session 33** (migration `20260524031633`).
+Nouvelle RPC `annuler_etape(p_personnage_id uuid, p_etape_courante integer, p_dry_run boolean DEFAULT false)` pour navigation backward rollback du wizard (étapes 2-11).
 
 ---
 
@@ -198,7 +249,7 @@ Implémente la voie A de la dette catégorie 2 (navigation backward rollback). C
 
 `20260523033121_generer_formule_magique_et_acheter_sort` (PR #142)
 
-Helper SQL `generer_formule_magique(p_cercle, p_zone, p_portee, p_duree, p_niveau)` IMMUTABLE qui retourne la formule magique déterministe selon manuel 2026 (5 mots de pouvoir). 59 mappings hardcodés. `acheter_sort` modifiée pour calculer `formule_magique` automatiquement à l'achat.
+Helper SQL `generer_formule_magique(p_cercle, p_zone, p_portee, p_duree, p_niveau)` IMMUTABLE qui retourne la formule magique déterministe selon manuel 2026 (5 mots de pouvoir). `acheter_sort` modifiée pour calculer `formule_magique` automatiquement à l'achat.
 
 ---
 
@@ -212,7 +263,7 @@ Helper SQL `generer_formule_magique(p_cercle, p_zone, p_portee, p_duree, p_nivea
 
 5 bugs interconnectés corrigés simultanément. Nouvelle helper SQL `calculer_cout_xp_magie(zone, portee, duree, niveau, base)` miroir exact du frontend.
 
-**⚠️ Point crucial pour session 33** : cette migration a aussi supprimé le check `est_croyant` de la RPC `acheter_priere` (avec commentaire explicite dans le code SQL). Le manuel 2026 n'exige pas d'être croyant pour Acquisition de Domaine. La garde frontend correspondante a été oubliée → corrigée en session 33 (hotfix Étape 7).
+**⚠️ Point crucial** : cette migration a aussi supprimé le check `est_croyant` de la RPC `acheter_priere`. La garde frontend correspondante a été oubliée → corrigée en session 33 (hotfix Étape 7).
 
 ---
 
@@ -230,4 +281,4 @@ Helper SQL `generer_formule_magique(p_cercle, p_zone, p_portee, p_duree, p_nivea
 
 ---
 
-*Fin de hurlevent_migrations_log.md (clôture session 33).*
+*Fin de hurlevent_migrations_log.md (clôture session 34).*
