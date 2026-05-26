@@ -52,14 +52,17 @@ interface Trait {
 interface Competence {
   id: string;
   personnage_id: string;
+  competence_id: string;
   nom: string;
   niveau_acquis: number;
+  niveau_max: number;
   xp_depense: number;
   choix_achat: string | null;
   appris_via_maitre: boolean;
   nom_maitre: string | null;
   statut_maitre: string;
   categorie: string;
+  type_achat: string;
   competence_description: string | null;
   description_niveau_acquis: string | null;
 }
@@ -365,48 +368,49 @@ const PersonnageFiche = () => {
   });
 
   const competencesGroupees = useMemo(() => {
+    // Grouping par competence_id (PR2 v39).
+    // Conserve les rows pour permettre un rendu spécifique selon type_achat :
+    //   - Pattern 1 'simple' : sections par niveau acquis
+    //   - Pattern 2 'multiple_sans_choix' : compteur + description générale
+    //   - Pattern 3 'multiple_choix_distinct' : liste des choix avec XP par item
+    //   - Pattern 4 + fallback : rendu row par row (sera refactoré PR3)
     const map = new Map<string, {
+      competence_id: string;
       nom: string;
       categorie: string;
-      choix_achat: string | null;
-      count: number;
-      niveau_max: number;
-      xp_total: number;
-      statut_maitre: string;
-      appris_via_maitre: boolean;
-      nom_maitre: string | null;
+      type_achat: string;
+      niveau_max_competence: number;
       competence_description: string | null;
-      description_niveau_acquis: string | null;
+      statut_maitre: string;
+      xp_total: number;
+      rows: Competence[];
     }>();
 
     (competences ?? []).forEach((c) => {
-      const cle = `${c.nom}__${c.choix_achat ?? "none"}__${c.categorie}`;
+      const cle = c.competence_id;
       const existing = map.get(cle);
       if (existing) {
-        existing.count += 1;
-        if (c.niveau_acquis > existing.niveau_max) {
-          existing.niveau_max = c.niveau_acquis;
-          existing.description_niveau_acquis = c.description_niveau_acquis;
-        }
+        existing.rows.push(c);
         existing.xp_total += c.xp_depense;
       } else {
         map.set(cle, {
+          competence_id: c.competence_id,
           nom: c.nom,
           categorie: c.categorie,
-          choix_achat: c.choix_achat,
-          count: 1,
-          niveau_max: c.niveau_acquis,
-          xp_total: c.xp_depense,
-          statut_maitre: c.statut_maitre,
-          appris_via_maitre: c.appris_via_maitre,
-          nom_maitre: c.nom_maitre,
+          type_achat: c.type_achat,
+          niveau_max_competence: c.niveau_max,
           competence_description: c.competence_description,
-          description_niveau_acquis: c.description_niveau_acquis,
+          statut_maitre: c.statut_maitre,
+          xp_total: c.xp_depense,
+          rows: [c],
         });
       }
     });
 
-    return Array.from(map.values());
+    // Tri des rows par niveau_acquis pour Pattern 1 (lecture naturelle 1 → 2 → 3)
+    const groupes = Array.from(map.values());
+    groupes.forEach((g) => g.rows.sort((a, b) => a.niveau_acquis - b.niveau_acquis));
+    return groupes;
   }, [competences]);
 
   const isOwner = user?.id === fiche?.joueur_id;
@@ -547,16 +551,31 @@ const PersonnageFiche = () => {
         ${competencesGroupees.length > 0 ? `
         <h2>Compétences</h2>
         <table>
-          <tr><th>Compétence</th><th>Catégorie</th><th>Niveau</th><th>XP</th><th>Statut</th></tr>
-          ${competencesGroupees.map((c) => `
+          <tr><th>Compétence</th><th>Catégorie</th><th>Détail</th><th>XP total</th><th>Statut</th></tr>
+          ${competencesGroupees.map((c) => {
+            let detail = "";
+            if (c.type_achat === "simple") {
+              detail = c.rows.map((r) => `Niv. ${r.niveau_acquis}`).join(", ");
+            } else if (c.type_achat === "multiple_sans_choix") {
+              detail = `× ${c.rows.length} achats`;
+            } else if (c.type_achat === "multiple_choix_distinct") {
+              detail = c.rows.map((r) => escapeHtml(resoudreChoixAffichage(r.choix_achat, langues, religions) ?? r.choix_achat ?? "?")).join(", ");
+            } else {
+              detail = c.rows.map((r) => {
+                const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
+                return `Niv. ${r.niveau_acquis}${choix ? ` (${escapeHtml(choix)})` : ""}`;
+              }).join(", ");
+            }
+            return `
             <tr>
-              <td>${escapeHtml(c.nom)}${c.choix_achat ? ` (${escapeHtml(resoudreChoixAffichage(c.choix_achat, langues, religions) ?? c.choix_achat)})` : ""}${c.count > 1 && !c.choix_achat ? ` × ${c.count}` : ""}</td>
+              <td>${escapeHtml(c.nom)}</td>
               <td>${escapeHtml(c.categorie)}</td>
-              <td>${c.niveau_max}</td>
+              <td>${detail}</td>
               <td>${c.xp_total === 0 ? "Gratuit" : c.xp_total}</td>
               <td>${escapeHtml(c.statut_maitre !== "non_requis" ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre : "—")}</td>
             </tr>
-          `).join("")}
+          `;
+          }).join("")}
         </table>
         ` : ""}
 
@@ -820,49 +839,127 @@ const PersonnageFiche = () => {
         <TabsContent value="competences" className="space-y-4 mt-6">
           {competencesGroupees.length > 0 ? (
             <div className="space-y-3">
-              {competencesGroupees.map((comp, i) => {
-                const choixResolu = resoudreChoixAffichage(comp.choix_achat, langues, religions);
-                const afficherMultiplicateur = comp.count > 1 && !comp.choix_achat;
+              {competencesGroupees.map((comp) => {
+                const headerBadges = (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {comp.xp_total === 0 ? (
+                      <Badge variant="outline" className="text-xs">Gratuit</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">{comp.xp_total} XP</Badge>
+                    )}
+                    {comp.statut_maitre !== "non_requis" && (
+                      <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
+                    )}
+                  </div>
+                );
+
                 return (
-                  <Card key={`${comp.nom}-${comp.choix_achat ?? ""}-${i}`}>
+                  <Card key={comp.competence_id}>
                     <CardContent className="pt-4 space-y-3">
+                      {/* Header commun */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1">
-                          <p className="font-medium text-foreground">
-                            {comp.nom}
-                            {choixResolu && <span className="text-muted-foreground ml-1">({choixResolu})</span>}
-                            {afficherMultiplicateur && <span className="text-muted-foreground ml-1">× {comp.count}</span>}
-                          </p>
+                          <p className="font-medium text-foreground">{comp.nom}</p>
                           <p className="text-xs text-muted-foreground">{comp.categorie}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {comp.niveau_max > 1 && (
-                            <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_max}</Badge>
-                          )}
-                          {comp.xp_total === 0 ? (
-                            <Badge variant="outline" className="text-xs">Gratuit</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs">{comp.xp_total} XP</Badge>
-                          )}
-                          {comp.statut_maitre !== "non_requis" && (
-                            <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
-                          )}
-                        </div>
+                        {headerBadges}
                       </div>
 
-                      {(comp.competence_description || comp.description_niveau_acquis) && (
-                        <div className="border-t border-border/50 pt-3 space-y-2 text-sm text-muted-foreground">
+                      {/* PATTERN 1 — simple : sections par niveau acquis */}
+                      {comp.type_achat === "simple" && (
+                        <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
                           {comp.competence_description && (
                             <p className="whitespace-pre-line">{comp.competence_description}</p>
                           )}
-                          {comp.description_niveau_acquis && (
-                            <div>
-                              <span className="font-medium text-foreground">Niveau {comp.niveau_max} : </span>
-                              <span className="whitespace-pre-line">{comp.description_niveau_acquis}</span>
+                          {comp.rows.map((r) => (
+                            <div key={r.id} className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-foreground">Niveau {r.niveau_acquis}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
+                                </Badge>
+                                {r.appris_via_maitre && r.nom_maitre && (
+                                  <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
+                                )}
+                              </div>
+                              {r.description_niveau_acquis && (
+                                <p className="whitespace-pre-line">{r.description_niveau_acquis}</p>
+                              )}
                             </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* PATTERN 2 — multiple_sans_choix : compteur + description générale */}
+                      {comp.type_achat === "multiple_sans_choix" && (
+                        <div className="border-t border-border/50 pt-3 space-y-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">× {comp.rows.length} achats</Badge>
+                          </div>
+                          {comp.competence_description && (
+                            <p className="whitespace-pre-line">{comp.competence_description}</p>
                           )}
                         </div>
                       )}
+
+                      {/* PATTERN 3 — multiple_choix_distinct : liste des choix avec XP par item */}
+                      {comp.type_achat === "multiple_choix_distinct" && (
+                        <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
+                          <div>
+                            <p className="font-medium text-foreground mb-1">Liste acquise :</p>
+                            <ul className="space-y-1">
+                              {comp.rows.map((r) => {
+                                const choixResolu = resoudreChoixAffichage(r.choix_achat, langues, religions);
+                                return (
+                                  <li key={r.id} className="flex items-center gap-2 flex-wrap">
+                                    <span>•</span>
+                                    <span className="text-foreground">{choixResolu ?? r.choix_achat ?? "?"}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
+                                    </Badge>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                          {comp.competence_description && (
+                            <p className="whitespace-pre-line">{comp.competence_description}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* PATTERN 4 + fallback — row par row (sera refactoré PR3) */}
+                      {comp.type_achat !== "simple" &&
+                        comp.type_achat !== "multiple_sans_choix" &&
+                        comp.type_achat !== "multiple_choix_distinct" && (
+                          <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
+                            {comp.competence_description && (
+                              <p className="whitespace-pre-line">{comp.competence_description}</p>
+                            )}
+                            {comp.rows.map((r) => {
+                              const choixResolu = resoudreChoixAffichage(r.choix_achat, langues, religions);
+                              return (
+                                <div key={r.id} className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-foreground">
+                                      Niveau {r.niveau_acquis}
+                                      {choixResolu && <span className="text-muted-foreground"> ({choixResolu})</span>}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
+                                    </Badge>
+                                    {r.appris_via_maitre && r.nom_maitre && (
+                                      <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
+                                    )}
+                                  </div>
+                                  {r.description_niveau_acquis && (
+                                    <p className="whitespace-pre-line">{r.description_niveau_acquis}</p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                     </CardContent>
                   </Card>
                 );
