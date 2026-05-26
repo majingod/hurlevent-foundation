@@ -3518,16 +3518,26 @@ export type Database = {
           categorie: string | null
           choix_achat: string | null
           competence_description: string | null
+          competence_id: string | null
           description_niveau_acquis: string | null
           id: string | null
           niveau_acquis: number | null
+          niveau_max: number | null
           nom: string | null
           nom_maitre: string | null
           personnage_id: string | null
           statut_maitre: string | null
+          type_achat: string | null
           xp_depense: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "personnage_competences_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: false
+            referencedRelation: "competences"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "personnage_competences_personnage_id_fkey"
             columns: ["personnage_id"]
