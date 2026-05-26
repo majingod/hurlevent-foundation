@@ -560,7 +560,24 @@ const PersonnageFiche = () => {
               detail = `× ${c.rows.length} achats`;
             } else if (c.type_achat === "multiple_choix_distinct") {
               detail = c.rows.map((r) => escapeHtml(resoudreChoixAffichage(r.choix_achat, langues, religions) ?? r.choix_achat ?? "?")).join(", ");
+            } else if (c.type_achat === "multiple_avec_choix_par_niveau") {
+              // Grouper par niveau : "Niv. 1 : Feu, Glace · Niv. 2 : Feu"
+              const parNiveau = c.rows.reduce<Record<number, string[]>>((acc, r) => {
+                const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
+                const label = choix ?? r.choix_achat ?? "";
+                (acc[r.niveau_acquis] ??= []).push(label);
+                return acc;
+              }, {});
+              detail = Object.entries(parNiveau)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([niv, choixListe]) => {
+                  const choixFiltres = choixListe.filter(Boolean);
+                  const suffixe = choixFiltres.length > 0 ? ` : ${choixFiltres.map(escapeHtml).join(", ")}` : "";
+                  return `Niv. ${niv}${suffixe}`;
+                })
+                .join(" · ");
             } else {
+              // Fallback véritable pour type_achat futur inattendu
               detail = c.rows.map((r) => {
                 const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
                 return `Niv. ${r.niveau_acquis}${choix ? ` (${escapeHtml(choix)})` : ""}`;
@@ -928,10 +945,64 @@ const PersonnageFiche = () => {
                         </div>
                       )}
 
-                      {/* PATTERN 4 + fallback — row par row (sera refactoré PR3) */}
+                      {/* PATTERN 4 — multiple_avec_choix_par_niveau : groupé par niveau + liste de choix */}
+                      {comp.type_achat === "multiple_avec_choix_par_niveau" && (
+                        <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
+                          {comp.competence_description && (
+                            <p className="whitespace-pre-line">{comp.competence_description}</p>
+                          )}
+                          {Object.entries(
+                            comp.rows.reduce<Record<number, typeof comp.rows>>((acc, r) => {
+                              (acc[r.niveau_acquis] ??= []).push(r);
+                              return acc;
+                            }, {})
+                          )
+                            .sort(([a], [b]) => Number(a) - Number(b))
+                            .map(([niveau, rowsNiveau]) => {
+                              const totalNiveau = rowsNiveau.reduce((sum, r) => sum + r.xp_depense, 0);
+                              const descriptionNiveau = rowsNiveau[0]?.description_niveau_acquis;
+                              const aDesChoix = rowsNiveau.some((r) => r.choix_achat);
+                              return (
+                                <div key={niveau} className="space-y-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-foreground">Niveau {niveau}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {totalNiveau === 0 ? "Gratuit" : `${totalNiveau} XP`}
+                                    </Badge>
+                                  </div>
+                                  {descriptionNiveau && (
+                                    <p className="whitespace-pre-line">{descriptionNiveau}</p>
+                                  )}
+                                  {aDesChoix && (
+                                    <ul className="space-y-1 ml-2">
+                                      {rowsNiveau.map((r) => {
+                                        const choixResolu = resoudreChoixAffichage(r.choix_achat, langues, religions);
+                                        return (
+                                          <li key={r.id} className="flex items-center gap-2 flex-wrap">
+                                            <span>•</span>
+                                            <span className="text-foreground">{choixResolu ?? r.choix_achat ?? "?"}</span>
+                                            <Badge variant="outline" className="text-xs">
+                                              {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
+                                            </Badge>
+                                            {r.appris_via_maitre && r.nom_maitre && (
+                                              <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
+                                            )}
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+
+                      {/* FALLBACK — type_achat futur inattendu (gardé par sécurité) */}
                       {comp.type_achat !== "simple" &&
                         comp.type_achat !== "multiple_sans_choix" &&
-                        comp.type_achat !== "multiple_choix_distinct" && (
+                        comp.type_achat !== "multiple_choix_distinct" &&
+                        comp.type_achat !== "multiple_avec_choix_par_niveau" && (
                           <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
                             {comp.competence_description && (
                               <p className="whitespace-pre-line">{comp.competence_description}</p>
