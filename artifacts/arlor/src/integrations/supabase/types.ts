@@ -3518,6 +3518,7 @@ export type Database = {
           categorie: string | null
           choix_achat: string | null
           competence_description: string | null
+          description_niveau_acquis: string | null
           id: string | null
           niveau_acquis: number | null
           nom: string | null
