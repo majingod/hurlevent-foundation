@@ -263,7 +263,7 @@ export const ForgeCard: React.FC<ForgeCardProps> = ({ data, isSelected, onSelect
     onSelect={onSelect}
   >
     {data.description && <p className="leading-relaxed">{data.description}</p>}
-    {data.temps_fabrication_minutes != null && <p className="text-gold/80 font-semibold">Difficulté : {data.temps_fabrication_minutes}</p>}
+    {data.temps_fabrication_minutes != null && <p className="text-gold/80 font-semibold">Temps de fabrication : {data.temps_fabrication_minutes} min</p>}
   </StubCard>
 );
 
@@ -309,7 +309,7 @@ export const JoaillerieCard: React.FC<JoaillerieCardProps> = ({ data, isSelected
     onSelect={onSelect}
   >
     {data.effet && <p className="leading-relaxed">{data.effet}</p>}
-    {data.temps_fabrication_minutes != null && <p className="text-gold/80 font-semibold">Difficulté : {data.temps_fabrication_minutes}</p>}
+    {data.temps_fabrication_minutes != null && <p className="text-gold/80 font-semibold">Temps de fabrication : {data.temps_fabrication_minutes} min</p>}
   </StubCard>
 );
 
