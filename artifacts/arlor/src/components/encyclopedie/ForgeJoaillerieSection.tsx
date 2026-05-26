@@ -16,7 +16,7 @@ interface ObjetForge {
   description: string | null;
   type: string | null;
   stats: Json | null;
-  difficulte: number | null;
+  temps_fabrication_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
 }
@@ -26,7 +26,7 @@ interface ObjetJoaillerie {
   nom: string | null;
   description: string | null;
   effet: string | null;
-  difficulte: number | null;
+  temps_fabrication_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
 }
@@ -231,7 +231,7 @@ const ForgeJoaillerieSection = ({
                               <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
                             )}
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
+                              <Clock className="h-3 w-3" /> Temps de fabrication : {o.temps_fabrication_minutes} min
                             </p>
                           </>
                         }
@@ -283,7 +283,7 @@ const ForgeJoaillerieSection = ({
                   <>
                     <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> Temps de fabrication : {o.difficulte} min
+                      <Clock className="h-3 w-3" /> Temps de fabrication : {o.temps_fabrication_minutes} min
                     </p>
                     {o.effet && (
                       <p className="text-xs text-stone-400 truncate">{o.effet}</p>

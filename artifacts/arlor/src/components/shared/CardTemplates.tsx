@@ -250,7 +250,7 @@ export interface ForgeCardProps extends CardBaseProps {
     id: string;
     nom: string | null;
     type?: string | null;
-    difficulte?: number | null;
+    temps_fabrication_minutes?: number | null;
     description?: string | null;
   };
 }
@@ -263,7 +263,7 @@ export const ForgeCard: React.FC<ForgeCardProps> = ({ data, isSelected, onSelect
     onSelect={onSelect}
   >
     {data.description && <p className="leading-relaxed">{data.description}</p>}
-    {data.difficulte != null && <p className="text-gold/80 font-semibold">Difficulté : {data.difficulte}</p>}
+    {data.temps_fabrication_minutes != null && <p className="text-gold/80 font-semibold">Difficulté : {data.temps_fabrication_minutes}</p>}
   </StubCard>
 );
 
@@ -298,7 +298,7 @@ export interface JoaillerieCardProps extends CardBaseProps {
     id: string;
     nom: string | null;
     effet?: string | null;
-    difficulte?: number | null;
+    temps_fabrication_minutes?: number | null;
   };
 }
 
@@ -309,7 +309,7 @@ export const JoaillerieCard: React.FC<JoaillerieCardProps> = ({ data, isSelected
     onSelect={onSelect}
   >
     {data.effet && <p className="leading-relaxed">{data.effet}</p>}
-    {data.difficulte != null && <p className="text-gold/80 font-semibold">Difficulté : {data.difficulte}</p>}
+    {data.temps_fabrication_minutes != null && <p className="text-gold/80 font-semibold">Difficulté : {data.temps_fabrication_minutes}</p>}
   </StubCard>
 );
 

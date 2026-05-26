@@ -148,7 +148,7 @@ const Etape8_Artisanat_V2 = ({
         .from("objets_forge")
         .select("*")
         .eq("est_actif", true)
-        .order("difficulte")
+        .order("temps_fabrication_minutes")
         .order("nom");
       if (error) throw error;
       return (data ?? []) as ObjetForgeRow[];
@@ -180,7 +180,7 @@ const Etape8_Artisanat_V2 = ({
         .from("objets_joaillerie")
         .select("*")
         .eq("est_actif", true)
-        .order("difficulte")
+        .order("temps_fabrication_minutes")
         .order("nom");
       if (error) throw error;
       return (data ?? []) as ObjetJoaillerieRow[];
@@ -662,9 +662,9 @@ const Etape8_Artisanat_V2 = ({
                               {obj.description}
                             </p>
                           )}
-                          {obj.difficulte != null && (
+                          {obj.temps_fabrication_minutes != null && (
                             <p className="text-xs text-muted-foreground">
-                              Temps de fabrication : {obj.difficulte} min
+                              Temps de fabrication : {obj.temps_fabrication_minutes} min
                             </p>
                           )}
                           {obj.materiaux_communs && (
@@ -810,9 +810,9 @@ const Etape8_Artisanat_V2 = ({
                           {obj.effet}
                         </p>
                       )}
-                      {obj.difficulte != null && (
+                      {obj.temps_fabrication_minutes != null && (
                         <p className="text-xs text-muted-foreground">
-                          Temps de fabrication : {obj.difficulte} min
+                          Temps de fabrication : {obj.temps_fabrication_minutes} min
                           {niveauJoaillerie >= 2 &&
                             obj.temps_rare_minutes != null && (
                               <>
