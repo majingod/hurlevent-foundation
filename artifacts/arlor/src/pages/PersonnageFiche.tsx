@@ -60,6 +60,8 @@ interface Competence {
   nom_maitre: string | null;
   statut_maitre: string;
   categorie: string;
+  competence_description: string | null;
+  description_niveau_acquis: string | null;
 }
 
 interface Sort {
@@ -373,6 +375,8 @@ const PersonnageFiche = () => {
       statut_maitre: string;
       appris_via_maitre: boolean;
       nom_maitre: string | null;
+      competence_description: string | null;
+      description_niveau_acquis: string | null;
     }>();
 
     (competences ?? []).forEach((c) => {
@@ -380,7 +384,10 @@ const PersonnageFiche = () => {
       const existing = map.get(cle);
       if (existing) {
         existing.count += 1;
-        existing.niveau_max = Math.max(existing.niveau_max, c.niveau_acquis);
+        if (c.niveau_acquis > existing.niveau_max) {
+          existing.niveau_max = c.niveau_acquis;
+          existing.description_niveau_acquis = c.description_niveau_acquis;
+        }
         existing.xp_total += c.xp_depense;
       } else {
         map.set(cle, {
@@ -393,6 +400,8 @@ const PersonnageFiche = () => {
           statut_maitre: c.statut_maitre,
           appris_via_maitre: c.appris_via_maitre,
           nom_maitre: c.nom_maitre,
+          competence_description: c.competence_description,
+          description_niveau_acquis: c.description_niveau_acquis,
         });
       }
     });
@@ -816,8 +825,8 @@ const PersonnageFiche = () => {
                 const afficherMultiplicateur = comp.count > 1 && !comp.choix_achat;
                 return (
                   <Card key={`${comp.nom}-${comp.choix_achat ?? ""}-${i}`}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
+                    <CardContent className="pt-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex-1">
                           <p className="font-medium text-foreground">
                             {comp.nom}
@@ -826,7 +835,7 @@ const PersonnageFiche = () => {
                           </p>
                           <p className="text-xs text-muted-foreground">{comp.categorie}</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           {comp.niveau_max > 1 && (
                             <Badge variant="secondary" className="text-xs">Niv. {comp.niveau_max}</Badge>
                           )}
@@ -840,6 +849,20 @@ const PersonnageFiche = () => {
                           )}
                         </div>
                       </div>
+
+                      {(comp.competence_description || comp.description_niveau_acquis) && (
+                        <div className="border-t border-border/50 pt-3 space-y-2 text-sm text-muted-foreground">
+                          {comp.competence_description && (
+                            <p className="whitespace-pre-line">{comp.competence_description}</p>
+                          )}
+                          {comp.description_niveau_acquis && (
+                            <div>
+                              <span className="font-medium text-foreground">Niveau {comp.niveau_max} : </span>
+                              <span className="whitespace-pre-line">{comp.description_niveau_acquis}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
