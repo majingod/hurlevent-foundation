@@ -94,8 +94,21 @@ interface ObjetArtisanatItem {
   nom?: string | null;
   type?: string | null;
   difficulte?: number | null;
+  temps_rare_minutes?: number | null;
   description?: string | null;
   effet?: string | null;
+  materiaux_communs?: string | null;
+  materiaux_rares?: string | null;
+}
+
+interface ReparationForgeItem {
+  nom_affichage?: string | null;
+  categorie?: string | null;
+  temps_minutes?: number | null;
+  temps_rare_minutes?: number | null;
+  materiaux?: string | null;
+  materiaux_rares?: string | null;
+  notes?: string | null;
 }
 
 interface ValidationError {
@@ -277,6 +290,12 @@ const Etape11_Recapitulatif_V2 = ({
   const recettes = asArray<RecetteItem>(recap.recettes);
   const objetsForge = asArray<ObjetArtisanatItem>(recap.objets_forge);
   const objetsJoaillerie = asArray<ObjetArtisanatItem>(recap.objets_joaillerie);
+  const reparationsForge = asArray<ReparationForgeItem>(recap.reparations_forge);
+
+  // Extraire niveaux artisanat pour conditionnels matériaux rares / temps rare
+  const quotasArtisanat = (recap.quotas_artisanat as Record<string, unknown> | null) ?? {};
+  const niveauForge = (typeof quotasArtisanat.niveau_forge === "number" ? quotasArtisanat.niveau_forge : 0) as number;
+  const niveauJoaillerie = (typeof quotasArtisanat.niveau_joaillerie === "number" ? quotasArtisanat.niveau_joaillerie : 0) as number;
 
   // Groupage par (nom, choix_achat, categorie) pour :
   // - Bug #5 : résoudre les UUIDs (langues / religions) en noms lisibles au rendu
@@ -639,7 +658,25 @@ const Etape11_Recapitulatif_V2 = ({
               Aucun objet de forge.
             </p>
           ) : (
-            <ArtisanatList items={objetsForge} />
+            <ArtisanatList items={objetsForge} kind="forge" niveau={niveauForge} />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-heading flex items-center gap-2">
+            <Hammer className="h-4 w-4" />
+            Réparations forge ({reparationsForge.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {reparationsForge.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Aucune réparation disponible.
+            </p>
+          ) : (
+            <ReparationList items={reparationsForge} niveauForge={niveauForge} />
           )}
         </CardContent>
       </Card>
@@ -657,7 +694,7 @@ const Etape11_Recapitulatif_V2 = ({
               Aucun objet de joaillerie.
             </p>
           ) : (
-            <ArtisanatList items={objetsJoaillerie} />
+            <ArtisanatList items={objetsJoaillerie} kind="joaillerie" niveau={niveauJoaillerie} />
           )}
         </CardContent>
       </Card>
@@ -758,26 +795,92 @@ const TraitRow = ({ trait }: { trait: TraitRacial }) => (
   </div>
 );
 
-const ArtisanatList = ({ items }: { items: ObjetArtisanatItem[] }) => (
+const ArtisanatList = ({
+  items,
+  kind,
+  niveau,
+}: {
+  items: ObjetArtisanatItem[];
+  kind: "forge" | "joaillerie";
+  niveau: number;
+}) => (
   <ul className="space-y-2 text-sm">
     {items.map((o, i) => (
-      <li key={i} className="border rounded-md p-2">
+      <li key={i} className="border rounded-md p-2 space-y-1">
         <div className="flex items-center justify-between gap-2">
           <span className="font-medium">{o.nom}</span>
-          {o.difficulte != null && (
-            <Badge variant="outline">Difficulté {o.difficulte}</Badge>
-          )}
+          {o.type && <Badge variant="outline">{o.type}</Badge>}
         </div>
-        {o.type && (
-          <div className="text-xs text-muted-foreground">{o.type}</div>
+        {o.difficulte != null && (
+          <div className="text-xs text-muted-foreground">
+            <strong>Temps de fabrication :</strong>{" "}
+            {kind === "joaillerie" && niveau >= 2 && o.temps_rare_minutes != null
+              ? `${o.difficulte} min (commun) — ${o.temps_rare_minutes} min (rare)`
+              : `${o.difficulte} min`}
+          </div>
         )}
         {o.effet && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground">
             <strong>Effet :</strong> {o.effet}
           </p>
         )}
         {o.description && (
-          <p className="text-xs text-muted-foreground mt-1">{o.description}</p>
+          <p className="text-xs text-muted-foreground">{o.description}</p>
+        )}
+        {o.materiaux_communs && (
+          <div className="text-xs">
+            <span className="font-medium text-amber-400">Matériaux communs :</span>{" "}
+            <span className="text-muted-foreground">{o.materiaux_communs}</span>
+          </div>
+        )}
+        {niveau >= 2 && o.materiaux_rares && (
+          <div className="text-xs">
+            <span className="font-medium text-purple-400">Matériaux rares :</span>{" "}
+            <span className="text-muted-foreground">{o.materiaux_rares}</span>
+          </div>
+        )}
+      </li>
+    ))}
+  </ul>
+);
+
+const ReparationList = ({
+  items,
+  niveauForge,
+}: {
+  items: ReparationForgeItem[];
+  niveauForge: number;
+}) => (
+  <ul className="space-y-2 text-sm">
+    {items.map((r, i) => (
+      <li key={i} className="border rounded-md p-2 space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium">{r.nom_affichage}</span>
+          {r.categorie && <Badge variant="outline">{r.categorie}</Badge>}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          <strong>Temps commun :</strong> {r.temps_minutes} min
+          {niveauForge >= 2 && r.temps_rare_minutes != null && (
+            <>
+              {" — "}
+              <strong>Temps rare :</strong> {r.temps_rare_minutes} min
+            </>
+          )}
+        </div>
+        {r.materiaux && (
+          <div className="text-xs">
+            <span className="font-medium text-amber-400">Matériaux communs :</span>{" "}
+            <span className="text-muted-foreground">{r.materiaux}</span>
+          </div>
+        )}
+        {niveauForge >= 2 && r.materiaux_rares && (
+          <div className="text-xs">
+            <span className="font-medium text-purple-400">Matériaux rares :</span>{" "}
+            <span className="text-muted-foreground">{r.materiaux_rares}</span>
+          </div>
+        )}
+        {r.notes && (
+          <p className="text-xs italic text-muted-foreground mt-1">{r.notes}</p>
         )}
       </li>
     ))}
