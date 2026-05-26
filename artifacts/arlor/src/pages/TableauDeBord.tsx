@@ -165,12 +165,14 @@ const TableauDeBord = () => {
                 </div>
 
                 <div className="mt-6 flex flex-col gap-2">
-                  <Link to={`/personnage/${p.id}`} className="w-full">
-                    <Button variant="outline" size="sm" className="w-full border-white/20 hover:bg-white/5">
-                      <User className="mr-2 h-4 w-4" />
-                      Voir la fiche
-                    </Button>
-                  </Link>
+                  {p.est_finalise && (
+                    <Link to={`/personnage/${p.id}`} className="w-full">
+                      <Button variant="outline" size="sm" className="w-full border-white/20 hover:bg-white/5">
+                        <User className="mr-2 h-4 w-4" />
+                        Voir la fiche
+                      </Button>
+                    </Link>
+                  )}
 
                   {!p.est_finalise && (
                     <Link
