@@ -420,6 +420,32 @@ const PersonnageFiche = () => {
     ? (fiche.traits_raciaux_choisis as unknown as Trait[])
     : [];
 
+  // PR4b — Flags pour masquer les onglets/sous-onglets vides
+  const hasTraits = traits.length > 0;
+  const hasSorts = (sorts?.length ?? 0) > 0;
+  const hasPrieres = (prieres?.length ?? 0) > 0;
+  const hasAlchimie = (artisanatEtat?.niveau_alchimie ?? 0) >= 1;
+  const hasForge = (artisanatEtat?.niveau_forge ?? 0) >= 1;
+  const hasJoaillerie = (artisanatEtat?.niveau_joaillerie ?? 0) >= 1;
+  const hasAssemblages = (assemblages?.length ?? 0) > 0;
+  const hasArtisanat = hasAlchimie || hasForge || hasJoaillerie || hasAssemblages;
+
+  // PR4b — Sous-onglets Artisanat dynamiques
+  type ArtisanatSubTab = { value: string; icon: typeof FlaskConical; label: string };
+  const artisanatSubTabs: ArtisanatSubTab[] = [
+    hasAlchimie && { value: "alchimie", icon: FlaskConical, label: "Alchimie" },
+    hasForge && { value: "forge", icon: Hammer, label: "Forge" },
+    hasJoaillerie && { value: "joaillerie", icon: Gem, label: "Joaillerie" },
+    hasAssemblages && { value: "assemblages", icon: Sparkles, label: "Assemblages" },
+  ].filter((x): x is ArtisanatSubTab => Boolean(x));
+  const artisanatColsClass: string = ({
+    1: "grid-cols-1",
+    2: "grid-cols-2",
+    3: "grid-cols-3",
+    4: "grid-cols-4",
+  } as Record<number, string>)[artisanatSubTabs.length] ?? "grid-cols-4";
+  const artisanatDefaultTab = artisanatSubTabs[0]?.value ?? "alchimie";
+
   const handleEditHistorique = () => {
     setHistoriqueTmp(fiche?.historique ?? "");
     setAmeTmp(fiche?.ame_personnage ?? "");
@@ -752,11 +778,11 @@ const PersonnageFiche = () => {
         <div className="overflow-x-auto -mx-2 px-2">
           <TabsList className="inline-flex w-max">
             <TabsTrigger value="infos">Infos</TabsTrigger>
-            <TabsTrigger value="traits">Traits</TabsTrigger>
+            {hasTraits && <TabsTrigger value="traits">Traits</TabsTrigger>}
             <TabsTrigger value="competences">Compétences</TabsTrigger>
-            <TabsTrigger value="sorts">Sorts</TabsTrigger>
-            <TabsTrigger value="prieres">Prières</TabsTrigger>
-            <TabsTrigger value="artisanat">Artisanat</TabsTrigger>
+            {hasSorts && <TabsTrigger value="sorts">Sorts</TabsTrigger>}
+            {hasPrieres && <TabsTrigger value="prieres">Prières</TabsTrigger>}
+            {hasArtisanat && <TabsTrigger value="artisanat">Artisanat</TabsTrigger>}
             <TabsTrigger value="historique">Historique</TabsTrigger>
             <TabsTrigger value="export">Export</TabsTrigger>
           </TabsList>
@@ -1128,20 +1154,16 @@ const PersonnageFiche = () => {
 
         {/* Artisanat */}
         <TabsContent value="artisanat" className="space-y-4 mt-6">
-          <Tabs defaultValue="alchimie" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="alchimie" className="gap-1">
-                <FlaskConical className="h-3 w-3" /> Alchimie
-              </TabsTrigger>
-              <TabsTrigger value="forge" className="gap-1">
-                <Hammer className="h-3 w-3" /> Forge
-              </TabsTrigger>
-              <TabsTrigger value="joaillerie" className="gap-1">
-                <Gem className="h-3 w-3" /> Joaillerie
-              </TabsTrigger>
-              <TabsTrigger value="assemblages" className="gap-1">
-                <Sparkles className="h-3 w-3" /> Assemblages
-              </TabsTrigger>
+          <Tabs defaultValue={artisanatDefaultTab} className="w-full">
+            <TabsList className={`grid w-full ${artisanatColsClass}`}>
+              {artisanatSubTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger key={tab.value} value={tab.value} className="gap-1">
+                    <Icon className="h-3 w-3" /> {tab.label}
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
 
             {/* Sous-onglet Alchimie */}
