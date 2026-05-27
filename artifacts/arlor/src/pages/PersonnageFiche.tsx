@@ -446,6 +446,12 @@ const PersonnageFiche = () => {
   } as Record<number, string>)[artisanatSubTabs.length] ?? "grid-cols-4";
   const artisanatDefaultTab = artisanatSubTabs[0]?.value ?? "alchimie";
 
+  // DETTE-MANIPULATIONS-ALCHIMIQUES-ECRAN — calcul partagé avec le sous-onglet Alchimie
+  const niveauAlchimieEcran = artisanatEtat?.niveau_alchimie ?? 0;
+  const manipulationsFiltrees = (manipulations ?? []).filter(
+    (m) => (m.niveau ?? 0) <= niveauAlchimieEcran
+  );
+
   const handleEditHistorique = () => {
     setHistoriqueTmp(fiche?.historique ?? "");
     setAmeTmp(fiche?.ame_personnage ?? "");
@@ -1168,41 +1174,62 @@ const PersonnageFiche = () => {
 
             {/* Sous-onglet Alchimie */}
             <TabsContent value="alchimie" className="space-y-3 mt-4">
-              {(artisanatEtat?.niveau_alchimie ?? 0) < 1 ? (
+              {niveauAlchimieEcran < 1 ? (
                 <p className="text-center py-8 text-muted-foreground">Aucune compétence en alchimie.</p>
-              ) : !recettes || recettes.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">Aucune recette acquise.</p>
+              ) : (!recettes || recettes.length === 0) && manipulationsFiltrees.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucune recette ni manipulation acquise.</p>
               ) : (
                 <div className="space-y-4">
-                  <div className="text-xs text-muted-foreground border-b border-border/50 pb-2">
-                    Total : {recettes.length} recette{recettes.length > 1 ? "s" : ""}
-                    {[1, 2, 3].map((n) => {
-                      const count = recettes.filter((r) => r.niveau_requis === n).length;
-                      const label = n === 1 ? "mineures" : n === 2 ? "intermédiaires" : "majeures";
-                      return count > 0 ? ` • ${count} ${label}` : "";
-                    }).join("")}
-                  </div>
-                  {[1, 2, 3].map((n) => {
-                    const recettesNiveau = recettes.filter((r) => r.niveau_requis === n);
-                    if (recettesNiveau.length === 0) return null;
-                    const label = n === 1 ? "Mineures" : n === 2 ? "Intermédiaires" : "Majeures";
-                    return (
-                      <div key={n} className="space-y-2">
-                        <h3 className="text-sm font-semibold text-foreground">
-                          {label} (Niv. {n}) — {recettesNiveau.length}
-                        </h3>
-                        <div className="space-y-2">
-                          {recettesNiveau.map((recette) => (
-                            <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
-                              <p className="font-medium text-foreground">{recette.nom}</p>
-                              <p className="text-xs text-muted-foreground">{recette.type}</p>
-                              {recette.effet && <p className="text-xs text-muted-foreground mt-1"><strong>Effet :</strong> {recette.effet}</p>}
-                            </div>
-                          ))}
-                        </div>
+                  {recettes && recettes.length > 0 && (
+                    <>
+                      <div className="text-xs text-muted-foreground border-b border-border/50 pb-2">
+                        Total : {recettes.length} recette{recettes.length > 1 ? "s" : ""}
+                        {[1, 2, 3].map((n) => {
+                          const count = recettes.filter((r) => r.niveau_requis === n).length;
+                          const label = n === 1 ? "mineures" : n === 2 ? "intermédiaires" : "majeures";
+                          return count > 0 ? ` • ${count} ${label}` : "";
+                        }).join("")}
                       </div>
-                    );
-                  })}
+                      {[1, 2, 3].map((n) => {
+                        const recettesNiveau = recettes.filter((r) => r.niveau_requis === n);
+                        if (recettesNiveau.length === 0) return null;
+                        const label = n === 1 ? "Mineures" : n === 2 ? "Intermédiaires" : "Majeures";
+                        return (
+                          <div key={n} className="space-y-2">
+                            <h3 className="text-sm font-semibold text-foreground">
+                              {label} (Niv. {n}) — {recettesNiveau.length}
+                            </h3>
+                            <div className="space-y-2">
+                              {recettesNiveau.map((recette) => (
+                                <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
+                                  <p className="font-medium text-foreground">{recette.nom}</p>
+                                  <p className="text-xs text-muted-foreground">{recette.type}</p>
+                                  {recette.effet && <p className="text-xs text-muted-foreground mt-1"><strong>Effet :</strong> {recette.effet}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                  {manipulationsFiltrees.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        Manipulations alchimiques — {manipulationsFiltrees.length}
+                      </h3>
+                      <div className="space-y-2">
+                        {manipulationsFiltrees.map((m) => (
+                          <div key={m.id} className="p-2 rounded border border-border/50 text-sm">
+                            <p className="font-medium text-foreground">{m.nom}</p>
+                            {m.manipulations && (
+                              <p className="text-xs text-muted-foreground mt-1">{m.manipulations}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
