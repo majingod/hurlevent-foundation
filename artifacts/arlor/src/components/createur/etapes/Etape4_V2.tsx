@@ -236,6 +236,32 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     if (perso?.classe_id) reset({ classe_id: perso.classe_id });
   }, [perso, reset]);
 
+  // Validité formulaire pour griser le bouton Suivant.
+  // Reproduit la logique de onSubmit (les toast.error restent en backup
+  // pour les race conditions et les RPC errors).
+  const isValid = useMemo(() => {
+    if (!classeIdSelectionnee) return false;
+    // Chaque compétence avec choix doit avoir un choix renseigné, sauf
+    // fallback automatique pour religion si le perso est déjà croyant.
+    for (const c of competencesAvecChoix) {
+      if (choixParCompetence[c.id]) continue;
+      if (c.type_choix === "religion" && dejaCroyant && perso?.religion_id) continue;
+      return false;
+    }
+    // Si une compétence religion est requise mais le perso n'est pas croyant,
+    // exiger le consentement explicite (devenirCroyant).
+    const compReligion = competencesAvecChoix.find((c) => c.type_choix === "religion");
+    if (compReligion && !dejaCroyant && !devenirCroyant) return false;
+    return true;
+  }, [
+    classeIdSelectionnee,
+    competencesAvecChoix,
+    choixParCompetence,
+    dejaCroyant,
+    perso?.religion_id,
+    devenirCroyant,
+  ]);
+
   const onSubmit = async (values: Etape4Form) => {
     if (!values.classe_id) {
       toast.error("Choisis une classe.");
@@ -539,7 +565,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         </Button>
         <Button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !isValid}
           className="bg-gold text-black hover:bg-gold/90"
         >
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -66,6 +66,18 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
   const justificationLength = (justification ?? "").trim().length;
   const justificationValide = justificationLength >= JUSTIFICATION_MIN;
+
+  const sousTypeChimeride = watch("sous_type_chimeride");
+
+  // Validité formulaire pour griser le bouton Suivant.
+  // Reproduit la logique de onSubmit (les toast.error restent en backup
+  // pour les race conditions et les RPC errors).
+  const isValid = useMemo(() => {
+    if (!raceId) return false;
+    if (estChimeride && !sousTypeChimeride) return false;
+    if (necessiteJustification && !justificationValide) return false;
+    return true;
+  }, [raceId, estChimeride, sousTypeChimeride, necessiteJustification, justificationValide]);
 
   const { data: races = [], isLoading } = useQuery({
     queryKey: ["v2-races"],
@@ -419,7 +431,7 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         </Button>
         <Button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !isValid}
           className="bg-gold text-black hover:bg-gold/90"
         >
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
