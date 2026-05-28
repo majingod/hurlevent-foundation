@@ -104,6 +104,21 @@ const TAB_CONFIG: { key: string; label: string; categories: string[] }[] = [
   { key: "pretre", label: "Prêtre", categories: ["pretre", "prêtre"] },
 ];
 
+/**
+ * Libellés affichés pour les classes dans les pastilles (PR C2 session 48).
+ * Source : décision design Hybride 2 + icônes par classe.
+ * Synchroniser ces clés avec normalizeCategorie() (minuscule, sans accent).
+ */
+const CLASSE_LABELS: Record<string, string> = {
+  guerrier: "Classe Guerrier ⚔️",
+  voleur: "Classe Voleur 🗡️",
+  mage: "Classe Mage 🔮",
+  pretre: "Classe Prêtre ⚜️",
+};
+
+/** Catégories qui correspondent à une classe jouable (pour BlocClasses). */
+const CLASSES_JOUABLES = ["guerrier", "voleur", "mage", "pretre"] as const;
+
 // type_achat qui cascade en DB (suppression ascendante des niveaux >= N)
 const TYPES_ACHAT_CASCADE = new Set([
   "simple",
@@ -184,13 +199,51 @@ function parsePrereqRaison(raison: string): { label: string; items: string[] } {
   return { label, items: items.length > 0 ? items : [rest] };
 }
 
-/** Pastille rouge pour afficher un prérequis / blocage de façon lisible. */
-function PastilleBlocage({ children }: { children: ReactNode }) {
+/**
+ * Statut d'une pastille pour afficher le contexte d'un prérequis ou d'une classe.
+ * - acquis : vert (✓) — la condition est remplie
+ * - manquant : rouge (✗) — la condition n'est pas remplie (bloquant)
+ * - restriction : orange (⚠) — accessible mais avec limitation (ex: hors classe max 2)
+ */
+type StatusPastille = "acquis" | "manquant" | "restriction";
+
+const PASTILLE_STYLES: Record<StatusPastille, string> = {
+  acquis: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+  manquant: "border-red-500/40 bg-red-500/10 text-red-300",
+  restriction: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+};
+
+const PASTILLE_MARKERS: Record<StatusPastille, string> = {
+  acquis: "✓",
+  manquant: "✗",
+  restriction: "⚠",
+};
+
+/** Pastille colorée avec marker pour afficher un statut (acquis / manquant / restriction). */
+function PastilleStatus({
+  status,
+  children,
+}: {
+  status: StatusPastille;
+  children: ReactNode;
+}) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-xs text-red-300">
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${PASTILLE_STYLES[status]}`}
+    >
+      <span aria-hidden>{PASTILLE_MARKERS[status]}</span>
       {children}
     </span>
   );
+}
+
+/**
+ * Pastille rouge legacy pour les blocages (prérequis manquants, verrous mutuels).
+ * Conservée pour compatibilité avec MessageBlocage existant. À terme (PR C3),
+ * MessageBlocage sera refondu pour utiliser PastilleStatus directement.
+ */
+function PastilleBlocage({ children }: { children: ReactNode }) {
+  return <PastilleStatus status="manquant">{children}</PastilleStatus>;
 }
 
 /** Bloc message de blocage : un libellé + une ou plusieurs pastilles rouges. */
@@ -207,11 +260,98 @@ function MessageBlocage({
         <Lock className="h-3 w-3" />
         {label}
       </span>
-      {items.map((item) => (
-        <PastilleBlocage key={item}>{item}</PastilleBlocage>
-      ))}
+      {items.map((item) => {
+        // Mapping : si l'item est une catégorie de classe (guerrier/voleur/mage/pretre),
+        // l'afficher avec le label complet (CLASSE_LABELS). Sinon, tel quel.
+        const display = CLASSE_LABELS[item] ?? item;
+        return <PastilleBlocage key={item}>{display}</PastilleBlocage>;
+      })}
     </div>
   );
+}
+
+/**
+ * Bloc "Classes" affiché en permanence sur chaque card de compétence.
+ * Reflète la sémantique métier de classes_requises et categorie :
+ *
+ * - Compétence générale (est_general=true OU categorie='generale')
+ *   → pastille verte "Toutes les Classes ✨"
+ *
+ * - classes_requises set (STRICTEMENT réservée)
+ *   → pastille verte (joueur dans la liste) ou rouge (joueur exclu) par classe listée
+ *
+ * - classes_requises NULL + categorie ∈ {guerrier, voleur, mage, pretre}
+ *   → compétence rattachée à la catégorie mais ACCESSIBLE hors classe au max niveau 2
+ *   → si joueur match catégorie : pastille verte
+ *   → si joueur ≠ catégorie : pastille orange + pastille "Accessible max niveau 2"
+ *
+ * - Cas non couvert (fallback) : ne rien afficher
+ */
+function BlocClasses({
+  comp,
+  classeJoueur,
+  normalizeCategorieFn,
+}: {
+  comp: CompetenceWithNiveaux;
+  classeJoueur: string;
+  normalizeCategorieFn: (cat: string | null) => string;
+}) {
+  const cat = normalizeCategorieFn(comp.categorie);
+  const isGenerale = comp.est_general || cat === "generale";
+
+  const sectionLabel = (
+    <span className="flex items-center gap-1 text-xs text-foreground/70">
+      <span aria-hidden>🛡️</span> Classes :
+    </span>
+  );
+
+  // Cas 1 : compétence générale (accessible à toutes les classes)
+  if (isGenerale) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {sectionLabel}
+        <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
+      </div>
+    );
+  }
+
+  // Cas 2 : classes_requises set (strictement réservée)
+  if (comp.classes_requises && comp.classes_requises.length > 0) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {sectionLabel}
+        {comp.classes_requises.map((c) => (
+          <PastilleStatus
+            key={c}
+            status={c === classeJoueur ? "acquis" : "manquant"}
+          >
+            {CLASSE_LABELS[c] ?? c}
+          </PastilleStatus>
+        ))}
+      </div>
+    );
+  }
+
+  // Cas 3 : classes_requises NULL + catégorie de classe (accessible hors classe max 2)
+  if ((CLASSES_JOUABLES as readonly string[]).includes(cat)) {
+    const joueurMatch = cat === classeJoueur;
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {sectionLabel}
+        <PastilleStatus status={joueurMatch ? "acquis" : "restriction"}>
+          {CLASSE_LABELS[cat] ?? cat}
+        </PastilleStatus>
+        {!joueurMatch && (
+          <PastilleStatus status="restriction">
+            Accessible max niveau 2
+          </PastilleStatus>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback : pas d'info de classe à afficher
+  return null;
 }
 
 // =========================================================================
@@ -1898,24 +2038,104 @@ const Etape5_Competences_V2 = ({
         ? getPrereqInfo(comp)?.raisonPourNiveau(1) ?? "Prérequis non rempli."
         : null;
 
+    // Calcul du badge coût XP en haut à droite (PR C2 session 48).
+    // Affiché uniquement pour les compétences "simple_par_defaut" (type_choix === null,
+    // soit 89% du catalogue). Les compétences à choix multiples gardent leur UI body.
+    const coutBadge = (() => {
+      if (comp.type_choix) return null; // Skip pour multiple_choix_distinct, etc.
+      if (compBloqueeClasse) return null; // Bloc Classes rouge dit déjà tout
+      if (prereqCompBloquee) return null; // MessageBlocage rouge dit déjà tout
+
+      const niveauMaxClasse = niveauMaxAccessible(comp);
+      const prereqInfo = getPrereqInfo(comp);
+      const niveauMaxPrereq = prereqInfo?.niveauMaxAchetable ?? Infinity;
+      const niveauxDispo = comp.niveaux_parsed.map((n) => n.niveau);
+      if (niveauxDispo.length === 0) return null;
+      const niveauMaxComp = Math.max(...niveauxDispo);
+      const niveauMaxEffectif = Math.min(
+        niveauMaxClasse,
+        niveauMaxPrereq,
+        niveauMaxComp,
+      );
+
+      const achatsComp = achatsParCompetence.get(comp.id) ?? [];
+      const niveauxAchetes = achatsComp.map((a) => a.niveau_acquis);
+      const dernierAchete = niveauxAchetes.length
+        ? Math.max(...niveauxAchetes)
+        : 0;
+
+      // Cas "tout maîtrisé" : dernier acheté >= niveau max de la compétence
+      if (dernierAchete >= niveauMaxComp) {
+        return (
+          <Badge
+            variant="outline"
+            className="text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+          >
+            Maîtrisée ✓
+          </Badge>
+        );
+      }
+
+      // Prochain niveau à acheter
+      const prochain = dernierAchete + 1;
+      if (prochain > niveauMaxEffectif) return null; // Bloqué partiel
+
+      const niveauInfo = comp.niveaux_parsed.find((n) => n.niveau === prochain);
+      if (!niveauInfo) return null;
+
+      return (
+        <Badge variant="outline" className="text-xs whitespace-nowrap">
+          Niv {prochain} → {niveauInfo.cout_xp} XP
+        </Badge>
+      );
+    })();
+
     return (
       <Card key={comp.id}>
         <CardHeader className="pb-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-sm font-heading">{comp.nom}</CardTitle>
-            {comp.est_general && (
-              <Badge variant="outline" className="text-xs">
-                Générale
-              </Badge>
-            )}
+          {/* Ligne 1 : nom + coût XP en haut à droite */}
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base font-heading font-bold leading-tight">
+                {comp.nom}
+              </CardTitle>
+              {comp.description && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {comp.description}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              {coutBadge}
+              {comp.est_general && (
+                <Badge variant="outline" className="text-xs">
+                  Générale
+                </Badge>
+              )}
+            </div>
           </div>
-          {comp.description && (
-            <p className="text-xs text-muted-foreground">{comp.description}</p>
-          )}
-          {compBloqueeClasse && (() => {
-            const detail = blocageDetail(comp);
-            return detail ? <MessageBlocage {...detail} /> : null;
-          })()}
+
+          {/* Bloc Classes : TOUJOURS affiché si applicable (PR C2) */}
+          <div className="mt-3">
+            <BlocClasses
+              comp={comp}
+              classeJoueur={classeNom}
+              normalizeCategorieFn={normalizeCategorie}
+            />
+          </div>
+
+          {/* Verrou mutuel "Déjà acquise via" : reste géré par MessageBlocage.
+              On exclut "Réservé aux classes" qui est maintenant géré par BlocClasses
+              pour éviter la duplication d'info. */}
+          {compBloqueeClasse &&
+            (() => {
+              const detail = blocageDetail(comp);
+              if (!detail) return null;
+              if (detail.label.startsWith("Réservé")) return null; // Géré par BlocClasses
+              return <MessageBlocage {...detail} />;
+            })()}
+
+          {/* Prereq bloquant total : MessageBlocage rouge (sera refondu en PR C3) */}
           {!compBloqueeClasse && prereqCompBloquee && raisonPrereqGlobal && (
             <MessageBlocage {...parsePrereqRaison(raisonPrereqGlobal)} />
           )}
