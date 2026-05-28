@@ -346,7 +346,7 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
             </Button>
             <Button
               onClick={onSubmit}
-              disabled={submitting}
+              disabled={submitting || !gratuitChoixComplet}
               className="bg-gold text-black hover:bg-gold/90"
             >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
