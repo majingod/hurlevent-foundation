@@ -333,14 +333,19 @@ function BlocClasses({
   }
 
   // Cas 3 : classes_requises NULL + catégorie de classe (accessible hors classe max 2)
+  // La pastille de limite n'est affichée que si le joueur est HORS de cette classe
+  // (pour sa propre classe, il n'y a pas de limite de niveau).
   if ((CLASSES_JOUABLES as readonly string[]).includes(cat)) {
+    const joueurMatch = cat === classeJoueur;
     return (
       <div className="flex flex-wrap items-center gap-1.5">
         {sectionLabel}
         <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
-        <PastilleStatus status="restriction">
-          Accessible max niveau 2 sauf pour {CLASSE_LABELS[cat] ?? cat}
-        </PastilleStatus>
+        {!joueurMatch && (
+          <PastilleStatus status="restriction">
+            Accessible max niveau 2 sauf pour {CLASSE_LABELS[cat] ?? cat}
+          </PastilleStatus>
+        )}
       </div>
     );
   }
