@@ -706,8 +706,10 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
   const grouped = groupBy(filtered, (c) => c.categorie ?? "autre");
   const getPrerequisText = (niv: any): string | null => {
     const raw = niv.prerequis;
-    if (!Array.isArray(raw) || raw.length === 0) return null;
-    return raw.join(", ");
+    if (!raw) return null;
+    if (typeof raw === "string") return raw.trim() || null;
+    if (Array.isArray(raw) && raw.length > 0) return raw.join(", ");
+    return null;
   };
   const orderedKeys = ["general", "guerrier", "voleur", "mage", "pretre"];
   const keys = [...orderedKeys.filter((k) => k in grouped), ...Object.keys(grouped).filter((k) => !orderedKeys.includes(k))];
