@@ -162,6 +162,7 @@ const TableauDeBord = () => {
                   <p><span className="text-white/60">Race :</span> {p.race_nom}</p>
                   <p><span className="text-white/60">Classe :</span> {p.classe_nom}</p>
                   <p><span className="text-white/60">Niveau :</span> {p.niveau}</p>
+                  <p><span className="text-white/60">XP dépensés :</span> {p.xp_depense} / {p.xp_total}</p>
                 </div>
 
                 <div className="mt-6 flex flex-col gap-2">
