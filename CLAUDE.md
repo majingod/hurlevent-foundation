@@ -47,11 +47,12 @@ pré-existant.
 pnpm --filter @workspace/arlor typecheck
 ```
 
-Le repo a actuellement ~16 erreurs TypeScript pré-existantes (types Supabase
-générés incomplets pour certaines RPC, namespace `JSX` global). Ne pas
-considérer un échec du typecheck comme un bloqueur tant qu'on n'ajoute pas
-de **nouvelles** erreurs (vérifier en comparant le nombre d'erreurs avant et
-après les changements).
+Le repo est à **0 erreur TypeScript** sur `main` (vérifié session 46
+post-PR #191 — refactor étape 11, −762 lignes de code mort).
+
+Toute erreur introduite par un changement est un **bloqueur à fixer avant
+merge** : ne pas merger une PR qui dégrade le compteur, ne pas laisser
+passer une régression typecheck.
 
 ### Dev server
 
