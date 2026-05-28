@@ -771,7 +771,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   }
 
   return (
-    <div className="container max-w-6xl py-8 space-y-6">
+    <div className={mode === 'route' ? 'container max-w-6xl py-8 space-y-6' : 'space-y-6'}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-4xl font-bold text-primary">{fiche.nom}</h1>
