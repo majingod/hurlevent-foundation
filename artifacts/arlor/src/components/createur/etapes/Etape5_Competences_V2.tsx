@@ -46,7 +46,7 @@ type FamilleCriminelleRow =
 interface NiveauInfo {
   niveau: number;
   cout_xp: number;
-  description_niveau?: string;
+  description?: string;
   prerequis?: string | null;
 }
 
@@ -134,8 +134,8 @@ function parseNiveaux(raw: Json | null): NiveauInfo[] {
       return {
         niveau: typeof obj.niveau === "number" ? obj.niveau : Number(obj.niveau ?? 1),
         cout_xp: typeof obj.cout_xp === "number" ? obj.cout_xp : Number(obj.cout_xp ?? 0),
-        description_niveau:
-          typeof obj.description_niveau === "string" ? obj.description_niveau : undefined,
+        description:
+          typeof obj.description === "string" ? obj.description : undefined,
         prerequis: typeof obj.prerequis === "string" ? obj.prerequis : null,
       } as NiveauInfo;
     })
@@ -1119,8 +1119,8 @@ const Etape5_Competences_V2 = ({
               </Badge>
             )}
           </div>
-          {niv.description_niveau && (
-            <p className="text-muted-foreground">{niv.description_niveau}</p>
+          {niv.description && (
+            <p className="text-muted-foreground">{niv.description}</p>
           )}
           {!compBloqueeClasse && niveauHorsClasse && (
             <p className="flex items-center gap-1 text-red-400">
@@ -1247,8 +1247,8 @@ const Etape5_Competences_V2 = ({
                 </>
               )}
             </div>
-            {niv1.description_niveau && (
-              <p className="text-muted-foreground">{niv1.description_niveau}</p>
+            {niv1.description && (
+              <p className="text-muted-foreground">{niv1.description}</p>
             )}
           </Label>
         </div>
@@ -1538,8 +1538,8 @@ const Etape5_Competences_V2 = ({
                   </Badge>
                 )}
               </div>
-              {niv1.description_niveau && (
-                <p className="text-muted-foreground">{niv1.description_niveau}</p>
+              {niv1.description && (
+                <p className="text-muted-foreground">{niv1.description}</p>
               )}
             </Label>
           </div>
