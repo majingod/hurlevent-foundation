@@ -314,7 +314,7 @@ const PersonnageNouveauV2 = () => {
         toast.error(msg);
         return;
       }
-      await queryClient.invalidateQueries({
+      await queryClient.refetchQueries({
         queryKey: ["v2-personnage", personnageId],
       });
       setEtape(donneesAnnulation.etape_apres);
