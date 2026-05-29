@@ -105,6 +105,20 @@ const TAB_CONFIG: { key: string; label: string; categories: string[] }[] = [
 ];
 
 /**
+ * Filtres de statut de l'étape 5 (C3c). Filtre GLOBAL partagé entre onglets.
+ * Sémantique non-exclusive : une compétence partiellement achetée apparaît
+ * à la fois dans "acquises" et "disponibles".
+ */
+type FiltreCompetence = "toutes" | "acquises" | "disponibles" | "bloquees";
+
+const FILTRE_OPTIONS: { key: FiltreCompetence; label: string }[] = [
+  { key: "toutes", label: "Toutes" },
+  { key: "acquises", label: "Acquises" },
+  { key: "disponibles", label: "Disponibles" },
+  { key: "bloquees", label: "Bloquées" },
+];
+
+/**
  * Libellés affichés pour les classes dans les pastilles (PR C2 session 48).
  * Source : décision design Hybride 2 + icônes par classe.
  * Synchroniser ces clés avec normalizeCategorie() (minuscule, sans accent).
@@ -431,6 +445,9 @@ const Etape5_Competences_V2 = ({
 
   // Confirmation cascade de décochage
   const [cascadeDialog, setCascadeDialog] = useState<CascadeContext | null>(null);
+
+  // Filtre de statut global (C3c) — partagé entre tous les onglets.
+  const [filtre, setFiltre] = useState<FiltreCompetence>("toutes");
 
   // =======================================================================
   // QUERIES
@@ -848,6 +865,62 @@ const Etape5_Competences_V2 = ({
   const prereqBloqueTotal = (comp: CompetenceWithNiveaux): boolean => {
     const info = getPrereqInfo(comp);
     return !!info && info.niveauMaxAchetable === 0;
+  };
+
+  // =======================================================================
+  // PRÉDICATS DE FILTRE (C3c)
+  // =======================================================================
+
+  /** Au moins un niveau a été acheté. */
+  const estAcquiseFiltre = (comp: CompetenceWithNiveaux): boolean =>
+    (achatsParCompetence.get(comp.id) ?? []).length > 0;
+
+  /**
+   * Totalement bloquée : aucun niveau n'est achetable.
+   * - classeBloque : blocage tout-ou-rien (classe / verrou mutuel)
+   * - prereqBloqueTotal : niveau_max_achetable === 0
+   * - tous les niveaux au-delà du plafond de classe (cas "entièrement
+   *   hors-classe", rarissime mais correct)
+   */
+  const estBloqueeFiltre = (comp: CompetenceWithNiveaux): boolean => {
+    if (classeBloque(comp) || prereqBloqueTotal(comp)) return true;
+    const plafondClasse = niveauMaxAccessible(comp);
+    return (
+      comp.niveaux_parsed.length > 0 &&
+      comp.niveaux_parsed.every((niv) => niv.niveau > plafondClasse)
+    );
+  };
+
+  /**
+   * Au moins un niveau encore achetable : non bloquée, et au moins un niveau
+   * sous les plafonds classe ET prereq qui n'est pas déjà acheté.
+   * Sémantique non-exclusive : peut être vraie en même temps qu'estAcquiseFiltre.
+   */
+  const estDisponibleFiltre = (comp: CompetenceWithNiveaux): boolean => {
+    if (estBloqueeFiltre(comp)) return false;
+    const achetes = new Set(
+      (achatsParCompetence.get(comp.id) ?? []).map((a) => a.niveau_acquis),
+    );
+    const plafondPrereq =
+      getPrereqInfo(comp)?.niveauMaxAchetable ?? Number.POSITIVE_INFINITY;
+    const plafond = Math.min(niveauMaxAccessible(comp), plafondPrereq);
+    return comp.niveaux_parsed.some(
+      (niv) => niv.niveau <= plafond && !achetes.has(niv.niveau),
+    );
+  };
+
+  /** Applique le filtre courant à une compétence. */
+  const matchFiltre = (comp: CompetenceWithNiveaux): boolean => {
+    switch (filtre) {
+      case "acquises":
+        return estAcquiseFiltre(comp);
+      case "disponibles":
+        return estDisponibleFiltre(comp);
+      case "bloquees":
+        return estBloqueeFiltre(comp);
+      default:
+        return true;
+    }
   };
 
   // =======================================================================
@@ -2239,6 +2312,21 @@ const Etape5_Competences_V2 = ({
 
   return (
     <div className="space-y-4">
+      {/* Filtres de statut (C3c) — barre globale au-dessus des onglets. */}
+      <div className="flex flex-wrap gap-1.5">
+        {FILTRE_OPTIONS.map((f) => (
+          <Button
+            key={f.key}
+            type="button"
+            size="sm"
+            variant={filtre === f.key ? "default" : "outline"}
+            onClick={() => setFiltre(f.key)}
+            className="flex-shrink-0"
+          >
+            {f.label}
+          </Button>
+        ))}
+      </div>
       <Tabs defaultValue="generale" className="w-full">
         {/* Sprint 5.5 Section 2.3 : sous-menu scrollable horizontalement
             sur mobile. Pattern aligné sur Encyclopedie.tsx (cercles de
@@ -2255,17 +2343,28 @@ const Etape5_Competences_V2 = ({
             </TabsTrigger>
           ))}
         </TabsList>
-        {TAB_CONFIG.map((t) => (
-          <TabsContent key={t.key} value={t.key} className="space-y-3">
-            {(competencesParTab[t.key] ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucune compétence dans cette catégorie.
-              </p>
-            ) : (
-              competencesParTab[t.key].map((c) => renderCompetence(c))
-            )}
-          </TabsContent>
-        ))}
+        {TAB_CONFIG.map((t) => {
+          const compsFiltrees = (competencesParTab[t.key] ?? []).filter(
+            matchFiltre,
+          );
+          const messageVide =
+            filtre === "acquises"
+              ? "Aucune compétence acquise dans cette catégorie."
+              : filtre === "disponibles"
+                ? "Aucune compétence disponible dans cette catégorie."
+                : filtre === "bloquees"
+                  ? "Aucune compétence bloquée dans cette catégorie."
+                  : "Aucune compétence dans cette catégorie.";
+          return (
+            <TabsContent key={t.key} value={t.key} className="space-y-3">
+              {compsFiltrees.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{messageVide}</p>
+              ) : (
+                compsFiltrees.map((c) => renderCompetence(c))
+              )}
+            </TabsContent>
+          );
+        })}
       </Tabs>
 
       {/* Dialog maître requis */}
