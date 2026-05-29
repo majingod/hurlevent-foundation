@@ -184,21 +184,6 @@ function resoudreChoixAffichage(
   return choixAchat;
 }
 
-// raison vient de la RPC sous la forme "Prérequis manquant(s) : A niveau 1, B niveau 2".
-// On découpe sur le premier ":" pour séparer le label des items, puis sur les
-// virgules pour les items. Fallback : tout en un seul item.
-function parsePrereqRaison(raison: string): { label: string; items: string[] } {
-  const colonIdx = raison.indexOf(":");
-  if (colonIdx === -1) return { label: "Prérequis manquant :", items: [raison] };
-  const label = raison.slice(0, colonIdx + 1).trim();
-  const rest = raison.slice(colonIdx + 1).trim();
-  const items = rest
-    .split(/,\s*/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return { label, items: items.length > 0 ? items : [rest] };
-}
-
 /**
  * Statut d'une pastille pour afficher le contexte d'un prérequis ou d'une classe.
  * - acquis : vert (✓) — la condition est remplie
@@ -355,6 +340,62 @@ function BlocClasses({
 }
 
 // =========================================================================
+// BLOC PRÉREQUIS (C3b)
+// =========================================================================
+
+/** Une pastille de prérequis : statut + libellé. */
+type PastillePrereq = { statut: StatusPastille; label: string };
+
+/** Une ligne du bloc Prérequis : un niveau + ses pastilles. */
+type LignePrereq = {
+  niveau: number;
+  /** Affiche le préfixe "Niv N :" devant les pastilles. */
+  prefixe: boolean;
+  pastilles: PastillePrereq[];
+};
+
+/** Données calculées du bloc Prérequis pour une compétence. */
+type BlocPrerequisData = { afficher: boolean; lignes: LignePrereq[] };
+
+/**
+ * Bloc "Prérequis" affiché sous BlocClasses dans la CardHeader (C3b).
+ * Composant PUR : reçoit les lignes déjà calculées par buildPrerequisBloc.
+ *
+ * Mise en page (option D) : préfixe "Niv N :" dans une colonne à gauche,
+ * pastilles du même niveau empilées et alignées dans une colonne à droite.
+ * Pour une compétence à un seul niveau (niv 1), pas de préfixe : les pastilles
+ * sont simplement empilées sous le label.
+ */
+function BlocPrerequis({ data }: { data: BlocPrerequisData }) {
+  if (!data.afficher) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="flex items-center gap-1 text-xs text-foreground/70">
+        <span aria-hidden>🔒</span> Prérequis :
+      </span>
+      <div className="flex flex-col gap-1 pl-1">
+        {data.lignes.map((ligne) => (
+          <div key={ligne.niveau} className="flex items-start gap-1.5">
+            {ligne.prefixe && (
+              <span className="shrink-0 pt-0.5 text-xs text-foreground/60">
+                Niv {ligne.niveau} :
+              </span>
+            )}
+            <div className="flex flex-col items-start gap-1">
+              {ligne.pastilles.map((p, i) => (
+                <PastilleStatus key={i} status={p.statut}>
+                  {p.label}
+                </PastilleStatus>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =========================================================================
 // COMPOSANT
 // =========================================================================
 
@@ -471,6 +512,11 @@ const Etape5_Competences_V2 = ({
         {
           niveau_max_achetable: number;
           raisons_par_niveau: Record<string, string>;
+          // C3b : typé manuellement (signature RPC inchangée, pas de regen types.ts)
+          prereqs_par_niveau?: Record<
+            string,
+            Array<{ label: string; statut: "acquis" | "manquant" }>
+          >;
         }
       >;
     },
@@ -628,6 +674,72 @@ const Etape5_Competences_V2 = ({
     const isOwnClass = !!classeNom && cat === classeNom;
     if (isGenerale || isOwnClass) return 3;
     return 2;
+  };
+
+  /**
+   * Calcule les données du bloc Prérequis (C3b) pour une compétence.
+   * Option 2 exhaustive : on liste TOUS les niveaux de la compétence.
+   *
+   * Sources fusionnées :
+   * - prereqs_par_niveau (RPC) : prérequis inter-compétences (✓/✗), couvre
+   *   aussi les cas spéciaux Dépeçage et DSS. La RPC ne renvoie que les niveaux
+   *   contraints, d'où l'itération sur comp.niveaux_parsed.
+   * - needsMaster(comp, N) (frontend) : pastille "Maître Requis" (orange).
+   * - niveauMaxAccessible(comp) (frontend) : un niveau au-delà du max est
+   *   "Inaccessible hors de votre classe" (rouge, écrase tout).
+   *
+   * Le bloc s'affiche dès qu'au moins un niveau a une contrainte réelle
+   * (un prérequis, un maître, ou une inaccessibilité hors-classe).
+   */
+  const buildPrerequisBloc = (
+    comp: CompetenceWithNiveaux,
+  ): BlocPrerequisData => {
+    const niveaux = comp.niveaux_parsed;
+    if (niveaux.length === 0) return { afficher: false, lignes: [] };
+
+    const niveauMax = niveauMaxAccessible(comp);
+    const prereqsParNiveau = prerequisMap?.[comp.id]?.prereqs_par_niveau ?? {};
+
+    // Pas de préfixe "Niv N :" si la compétence n'a qu'un seul niveau (niv 1).
+    const skipPrefixe = niveaux.length === 1 && niveaux[0].niveau === 1;
+
+    let auMoinsUneContrainte = false;
+
+    const lignes: LignePrereq[] = niveaux.map((niv) => {
+      const N = niv.niveau;
+      const pastilles: PastillePrereq[] = [];
+
+      if (N > niveauMax) {
+        // Hors-classe : écrase tout le reste pour ce niveau.
+        pastilles.push({
+          statut: "manquant",
+          label: "Inaccessible hors de votre classe",
+        });
+        auMoinsUneContrainte = true;
+      } else {
+        // Prérequis inter-compétences depuis la RPC (peut être absent).
+        for (const p of prereqsParNiveau[String(N)] ?? []) {
+          pastilles.push({
+            statut: p.statut === "acquis" ? "acquis" : "manquant",
+            label: p.label,
+          });
+          auMoinsUneContrainte = true;
+        }
+        // Pastille "Maître Requis" (frontend).
+        if (needsMaster(comp, N)) {
+          pastilles.push({ statut: "restriction", label: "Maître Requis" });
+          auMoinsUneContrainte = true;
+        }
+        // Aucune contrainte sur ce niveau → pastille verte neutre.
+        if (pastilles.length === 0) {
+          pastilles.push({ statut: "acquis", label: "Aucun Prérequis" });
+        }
+      }
+
+      return { niveau: N, prefixe: !skipPrefixe, pastilles };
+    });
+
+    return { afficher: auMoinsUneContrainte, lignes };
   };
 
   /**
@@ -1191,7 +1303,6 @@ const Etape5_Competences_V2 = ({
   ) => {
     const dejaAchete = (niveauxAchetes.get(comp.id) ?? new Set()).has(niv.niveau);
     const niveauPrecedentRequis = niv.niveau > 1 && niv.niveau - 1 > maxAchete;
-    const requiresMaster = needsMaster(comp, niv.niveau);
     const achat = findAchatPourNiveau(comp, niv.niveau);
     const estGratuit = achat?.xp_depense === 0;
     const niveauMax = niveauMaxAccessible(comp);
@@ -1199,7 +1310,6 @@ const Etape5_Competences_V2 = ({
     const prereqInfo = getPrereqInfo(comp);
     const prereqBloque =
       !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
-    const raisonPrereq = prereqInfo?.raisonPourNiveau(niv.niveau) ?? null;
     const compBloqueeClasse = classeBloque(comp);
     const xpInsuffisants =
       !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
@@ -1245,14 +1355,6 @@ const Etape5_Competences_V2 = ({
             <Badge variant="secondary" className="text-xs">
               {niv.cout_xp} XP
             </Badge>
-            {requiresMaster && !niveauHorsClasse && !compBloqueeClasse && (
-              <Badge
-                variant="outline"
-                className="text-xs border-amber-600/40 text-amber-500"
-              >
-                Maître requis
-              </Badge>
-            )}
             {estGratuit && (
               <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
                 Acquis gratuitement
@@ -1261,17 +1363,6 @@ const Etape5_Competences_V2 = ({
           </div>
           {niv.description && (
             <p className="text-muted-foreground">{niv.description}</p>
-          )}
-          {!compBloqueeClasse && niveauHorsClasse && (
-            <p className="flex items-center gap-1 text-red-400">
-              <Lock className="h-3 w-3" />
-              Niveau {niv.niveau} inaccessible hors de votre classe (max : {niveauMax})
-            </p>
-          )}
-          {!compBloqueeClasse && !prereqBloqueTotal(comp) && prereqBloque && !niveauHorsClasse && !dejaAchete && raisonPrereq && (
-            <MessageBlocage
-              {...parsePrereqRaison(raisonPrereq)}
-            />
           )}
           {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && !compBloqueeClasse && (
             <p className="flex items-center gap-1 text-muted-foreground">
@@ -1713,7 +1804,6 @@ const Etape5_Competences_V2 = ({
                   const niveauPrecedentMin = isCriminelles ? 2 : 1;
                   const niveauPrecedentRequis =
                     niv.niveau > niveauPrecedentMin && niv.niveau - 1 > maxAchete;
-                  const requiresMaster = needsMaster(comp, niv.niveau);
                   const achatCible = achatsDuChoix.find(
                     (a) => a.niveau_acquis === niv.niveau,
                   );
@@ -1723,8 +1813,6 @@ const Etape5_Competences_V2 = ({
                   const prereqInfo = getPrereqInfo(comp);
                   const prereqBloque =
                     !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
-                  const raisonPrereq =
-                    prereqInfo?.raisonPourNiveau(niv.niveau) ?? null;
                   const xpInsuffisants =
                     !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
                   const disabled =
@@ -1769,23 +1857,10 @@ const Etape5_Competences_V2 = ({
                           <Badge variant="secondary" className="text-xs">
                             {niv.cout_xp} XP
                           </Badge>
-                          {requiresMaster && !niveauHorsClasse && !compBloqueeClasse && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs border-amber-600/40 text-amber-500"
-                            >
-                              Maître
-                            </Badge>
-                          )}
                           {estGratuit && (
                             <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
                               Gratuit
                             </Badge>
-                          )}
-                          {!compBloqueeClasse && niveauHorsClasse && (
-                            <span className="flex items-center gap-1 text-red-400">
-                              <Lock className="h-3 w-3" /> Hors classe (max : {niveauMax})
-                            </span>
                           )}
                           {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && !compBloqueeClasse && (
                             <span className="flex items-center gap-1 text-muted-foreground">
@@ -1793,9 +1868,6 @@ const Etape5_Competences_V2 = ({
                             </span>
                           )}
                         </div>
-                        {!compBloqueeClasse && !prereqCompBloquee && prereqBloque && !niveauHorsClasse && !dejaAchete && raisonPrereq && (
-                          <MessageBlocage {...parsePrereqRaison(raisonPrereq)} />
-                        )}
                       </Label>
                     </div>
                   );
@@ -2033,10 +2105,6 @@ const Etape5_Competences_V2 = ({
 
     const compBloqueeClasse = classeBloque(comp);
     const prereqCompBloquee = prereqBloqueTotal(comp);
-    const raisonPrereqGlobal =
-      prereqCompBloquee
-        ? getPrereqInfo(comp)?.raisonPourNiveau(1) ?? "Prérequis non rempli."
-        : null;
 
     // Calcul du badge coût XP en haut à droite (PR C2 session 48).
     // Affiché uniquement pour les compétences "simple_par_defaut" (type_choix === null,
@@ -2129,6 +2197,17 @@ const Etape5_Competences_V2 = ({
             />
           </div>
 
+          {/* Bloc Prérequis : affiché si au moins un niveau a une contrainte (C3b) */}
+          {(() => {
+            const blocPrereq = buildPrerequisBloc(comp);
+            if (!blocPrereq.afficher) return null;
+            return (
+              <div className="mt-2">
+                <BlocPrerequis data={blocPrereq} />
+              </div>
+            );
+          })()}
+
           {/* Verrou mutuel "Déjà acquise via" : reste géré par MessageBlocage.
               On exclut "Réservé aux classes" qui est maintenant géré par BlocClasses
               pour éviter la duplication d'info. */}
@@ -2139,11 +2218,6 @@ const Etape5_Competences_V2 = ({
               if (detail.label.startsWith("Réservé")) return null; // Géré par BlocClasses
               return <MessageBlocage {...detail} />;
             })()}
-
-          {/* Prereq bloquant total : MessageBlocage rouge (sera refondu en PR C3) */}
-          {!compBloqueeClasse && prereqCompBloquee && raisonPrereqGlobal && (
-            <MessageBlocage {...parsePrereqRaison(raisonPrereqGlobal)} />
-          )}
         </CardHeader>
         <CardContent className="space-y-2">{body}</CardContent>
       </Card>
