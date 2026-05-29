@@ -326,7 +326,7 @@ function BlocClasses({
       <div className="flex flex-wrap items-center gap-1.5">
         {sectionLabel}
         <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
-        {!joueurMatch && (
+        {!joueurMatch && comp.niveaux_parsed.some((n) => n.niveau > 2) && (
           <PastilleStatus status="restriction">
             Accessible max niveau 2 sauf pour {CLASSE_LABELS[cat] ?? cat}
           </PastilleStatus>
