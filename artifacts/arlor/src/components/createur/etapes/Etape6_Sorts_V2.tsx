@@ -122,6 +122,27 @@ const Etape6_Sorts_V2 = ({
     enabled: !!personnageId,
   });
 
+  // Compétence "Acquisition de Sort" : niveau ≥ 1 (gate opt-in étape 6)
+  const { data: acquisitionSort, isLoading: loadingAcquisition } = useQuery({
+    queryKey: ["acquisition-sort", personnageId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personnage_competences")
+        .select("niveau_acquis, competences!inner(nom)")
+        .eq("personnage_id", personnageId)
+        .eq("competences.nom", "Acquisition de Sort")
+        .order("niveau_acquis", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const niveau = data?.[0]?.niveau_acquis ?? 0;
+      return niveau;
+    },
+    enabled: !!personnageId,
+  });
+
+  const niveauAcquisition = acquisitionSort ?? 0;
+  const conditionsRemplies = niveauAcquisition >= 1;
+
   const cercleObj = cerclesDisponibles?.find(
     (c) => c.cercle === cercleSelectionne,
   );
@@ -335,12 +356,12 @@ const Etape6_Sorts_V2 = ({
     if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
     if (etapeCreation == null || etapeCreation > 6) return;
-    if (loadingCercles) return;
-    if (cerclesDisponibles && cerclesDisponibles.length > 0) return;
+    if (loadingAcquisition) return;
+    if (conditionsRemplies) return;
     if (avancerMutation.isPending) return;
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
-  }, [autoSkipActif, etapeCreation, loadingCercles, cerclesDisponibles, avancerMutation]);
+  }, [autoSkipActif, etapeCreation, loadingAcquisition, conditionsRemplies, avancerMutation]);
 
   const peutAcheter =
     !!sortSelectionne &&
@@ -363,11 +384,58 @@ const Etape6_Sorts_V2 = ({
     });
   };
 
-  if (loadingCercles) {
+  if (loadingCercles || loadingAcquisition) {
     return (
       <div className="flex items-center justify-center p-8 text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Chargement des cercles disponibles…
+      </div>
+    );
+  }
+
+  if (!conditionsRemplies) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-heading">
+              Étape 6 — Sorts arcaniques indisponibles
+            </CardTitle>
+            <CardDescription>
+              Pour acquérir des sorts, ce personnage doit posséder la compétence
+              « Acquisition de Sort » au niveau 1 minimum.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              • Acquisition de Sort :{" "}
+              <strong
+                className={
+                  niveauAcquisition >= 1 ? "text-primary" : "text-destructive"
+                }
+              >
+                niveau {niveauAcquisition}
+              </strong>
+            </p>
+          </CardContent>
+        </Card>
+        <div className="flex justify-between pt-4">
+          {onPrevious && (
+            <Button variant="outline" onClick={onPrevious}>
+              ← Précédent
+            </Button>
+          )}
+          <Button
+            className="ml-auto"
+            onClick={() => avancerMutation.mutate()}
+            disabled={avancerMutation.isPending}
+          >
+            {avancerMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Suivant →
+          </Button>
+        </div>
       </div>
     );
   }

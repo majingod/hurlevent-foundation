@@ -2357,6 +2357,14 @@ const Etape5_Competences_V2 = ({
                   : "Aucune compétence dans cette catégorie.";
           return (
             <TabsContent key={t.key} value={t.key} className="space-y-3">
+              {(t.key === "mage" || t.key === "pretre") && (
+                <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  💡{" "}
+                  {t.key === "mage"
+                    ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
+                    : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."}
+                </p>
+              )}
               {compsFiltrees.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{messageVide}</p>
               ) : (
