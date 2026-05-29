@@ -125,15 +125,15 @@ const Etape7_Prieres_V2 = ({
     enabled: !!personnageId,
   });
 
-  // Compétence "Acquisition de Domaine" : niveau ≥ 1
-  const { data: acquisitionDomaine, isLoading: loadingAcquisition } = useQuery({
-    queryKey: ["acquisition-domaine", personnageId],
+  // Compétence "Acquisition de Prière" : niveau ≥ 1 (gate opt-in étape 7)
+  const { data: acquisitionPriere, isLoading: loadingAcquisition } = useQuery({
+    queryKey: ["acquisition-priere", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnage_competences")
         .select("niveau_acquis, competences!inner(nom)")
         .eq("personnage_id", personnageId)
-        .eq("competences.nom", "Acquisition de Domaine")
+        .eq("competences.nom", "Acquisition de Prière")
         .order("niveau_acquis", { ascending: false })
         .limit(1);
       if (error) throw error;
@@ -143,7 +143,7 @@ const Etape7_Prieres_V2 = ({
     enabled: !!personnageId,
   });
 
-  const niveauAcquisition = acquisitionDomaine ?? 0;
+  const niveauAcquisition = acquisitionPriere ?? 0;
   const religionId = personnage?.religion_id ?? null;
   // Pas de prérequis "est_croyant" pour Acquisition de Domaine selon le Manuel 2026.
   // Le backend a déjà été corrigé en session 26 (RPC acheter_priere + vue
@@ -462,12 +462,12 @@ const Etape7_Prieres_V2 = ({
             </CardTitle>
             <CardDescription>
               Pour acquérir des prières, ce personnage doit posséder la compétence
-              « Acquisition de Domaine » au niveau 1 minimum.
+              « Acquisition de Prière » au niveau 1 minimum.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
             <p>
-              • Acquisition de Domaine :{" "}
+              • Acquisition de Prière :{" "}
               <strong
                 className={
                   niveauAcquisition >= 1 ? "text-primary" : "text-destructive"
