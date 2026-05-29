@@ -207,6 +207,7 @@ export type Database = {
         Row: {
           categorie: string | null
           classes_requises: string[] | null
+          desachat_force: boolean
           description: string | null
           est_actif: boolean | null
           est_general: boolean | null
@@ -222,6 +223,7 @@ export type Database = {
         Insert: {
           categorie?: string | null
           classes_requises?: string[] | null
+          desachat_force?: boolean
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
@@ -237,6 +239,7 @@ export type Database = {
         Update: {
           categorie?: string | null
           classes_requises?: string[] | null
+          desachat_force?: boolean
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
