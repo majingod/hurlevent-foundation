@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Lock, Minus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Lock, Minus, Plus, X } from "lucide-react";
 
 // =========================================================================
 // TYPES
@@ -448,6 +448,22 @@ const Etape5_Competences_V2 = ({
 
   // Filtre de statut global (C3c) — partagé entre tous les onglets.
   const [filtre, setFiltre] = useState<FiltreCompetence>("toutes");
+
+  // Densité C : compétences dont le détail "N niveaux" est déplié (par id).
+  const [detailsDeplies, setDetailsDeplies] = useState<Set<string>>(
+    new Set(),
+  );
+  const toggleDetailsDeplies = (compId: string) => {
+    setDetailsDeplies((prev) => {
+      const next = new Set(prev);
+      if (next.has(compId)) {
+        next.delete(compId);
+      } else {
+        next.add(compId);
+      }
+      return next;
+    });
+  };
 
   // =======================================================================
   // QUERIES
@@ -1434,7 +1450,7 @@ const Etape5_Competences_V2 = ({
               </Badge>
             )}
           </div>
-          {niv.description && (
+          {comp.niveaux_parsed.length < 2 && niv.description && (
             <p className="text-muted-foreground">{niv.description}</p>
           )}
           {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && !compBloqueeClasse && (
@@ -2140,14 +2156,70 @@ const Etape5_Competences_V2 = ({
     const maxAchete = niveauxAchetesPourComp.size
       ? Math.max(...niveauxAchetesPourComp)
       : 0;
+    const niveaux = comp.niveaux_parsed;
+    const aPlusieursNiveaux = niveaux.length >= 2;
+    const deplie = detailsDeplies.has(comp.id);
+    // Compact (densité C) : détail verbatim du plus haut niveau acquis.
+    const niveauHaut =
+      maxAchete > 0 ? niveaux.find((n) => n.niveau === maxAchete) : null;
     return (
       <div className="space-y-2">
-        {comp.niveaux_parsed.length === 0 && (
+        {niveaux.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
             Aucun niveau défini pour cette compétence.
           </p>
         )}
-        {comp.niveaux_parsed.map((niv) => renderNiveauSimple(comp, niv, maxAchete))}
+        {niveaux.map((niv) => renderNiveauSimple(comp, niv, maxAchete))}
+
+        {/* Compact : détail du plus haut niveau acquis (densité C, multi-niveaux) */}
+        {aPlusieursNiveaux && niveauHaut?.description && (
+          <div className="rounded border border-border/60 bg-background/40 p-2 text-xs text-muted-foreground">
+            <strong className="text-foreground">
+              Niveau {niveauHaut.niveau} :
+            </strong>{" "}
+            {niveauHaut.description}
+          </div>
+        )}
+
+        {/* Toggle « Voir le détail des N niveaux » (densité C) */}
+        {aPlusieursNiveaux && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-auto px-1 py-1 text-xs text-muted-foreground"
+              onClick={() => toggleDetailsDeplies(comp.id)}
+            >
+              {deplie ? (
+                <ChevronDown className="mr-1 h-3 w-3" />
+              ) : (
+                <ChevronRight className="mr-1 h-3 w-3" />
+              )}
+              {deplie
+                ? `Masquer le détail des ${niveaux.length} niveaux`
+                : `Voir le détail des ${niveaux.length} niveaux`}
+            </Button>
+
+            {deplie && (
+              <div className="space-y-2 border-l-2 border-border pl-3">
+                {niveaux.map((niv) => (
+                  <div key={`detail-${niv.niveau}`} className="space-y-1 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong>Niveau {niv.niveau}</strong>
+                      <Badge variant="secondary" className="text-xs">
+                        {niv.cout_xp} XP
+                      </Badge>
+                    </div>
+                    {niv.description && (
+                      <p className="text-muted-foreground">{niv.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     );
   };
