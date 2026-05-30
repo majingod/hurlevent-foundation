@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2,
@@ -22,6 +31,9 @@ import {
   Crown,
   Wrench,
   Bomb,
+  Lock,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { COUT_RECETTE_SUPPLEMENTAIRE } from "@/constants/artisanat";
 import { TYPE_RECETTE_LABELS } from "@/constants/labels";
@@ -38,6 +50,19 @@ type PiegeRow = Database["public"]["Tables"]["pieges"]["Row"];
 type PersonnagePiegeRow =
   Database["public"]["Tables"]["personnage_pieges"]["Row"];
 type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
+
+/**
+ * Contexte de la modale de confirmation de cascade (décochage d'un palier de
+ * piège). Miroir du `CascadeContext` de l'étape 5 : décocher le palier N d'une
+ * famille supprime N + tous les paliers supérieurs (cascade ascendante DB) et
+ * rembourse uniquement les paliers payés.
+ */
+interface CascadePiegeContext {
+  piegeNom: string;
+  cible: PersonnagePiegeRow;
+  paliersAnnules: PersonnagePiegeRow[];
+  xpTotalRembourse: number;
+}
 
 interface Etape9Props {
   personnageId: string;
@@ -75,6 +100,15 @@ const Etape9_Artisanat_V2 = ({
   onPrevious,
 }: Etape9Props) => {
   const queryClient = useQueryClient();
+
+  // Modale de confirmation de cascade (décochage d'un palier de piège).
+  const [cascadePiege, setCascadePiege] = useState<CascadePiegeContext | null>(
+    null,
+  );
+  // Familles dont le détail verbatim des 3 niveaux est déplié (densité C).
+  const [famillesDepliees, setFamillesDepliees] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Quotas (vue_artisanat_quotas)
   const { data: quotas, isLoading: loadingQuotas } = useQuery({
@@ -151,11 +185,11 @@ const Etape9_Artisanat_V2 = ({
     quotaPiegesNiv3Total - quotaPiegesNiv3Utilises,
   );
 
-  // Quota gratuit restant pour le palier VISÉ par une amélioration
-  // (niveau actuel + 1).
-  const getQuotaPiegeRestantPourPalier = (palierVise: number): number => {
-    if (palierVise === 2) return quotaPiegesNiv2Restant;
-    if (palierVise === 3) return quotaPiegesNiv3Restant;
+  // Quota gratuit restant pour un niveau de palier donné (1, 2 ou 3).
+  const quotaPiegeRestantPourNiveau = (niveau: number): number => {
+    if (niveau === 1) return quotaPiegesNiv1Restant;
+    if (niveau === 2) return quotaPiegesNiv2Restant;
+    if (niveau === 3) return quotaPiegesNiv3Restant;
     return 0;
   };
 
@@ -258,7 +292,7 @@ const Etape9_Artisanat_V2 = ({
     },
   );
 
-  // Pièges possédés par le personnage (1 ligne par famille, niveau_actuel).
+  // Pièges possédés par le personnage (post-PR-2 : 1 ligne par palier acquis).
   const { data: personnagePieges, isLoading: loadingPersoPieges } = useQuery({
     queryKey: ["personnage-pieges", personnageId],
     queryFn: async () => {
@@ -296,14 +330,25 @@ const Etape9_Artisanat_V2 = ({
     );
   }, [piegesCatalogue]);
 
-  // Map piege_nom → ligne de possession (pour connaître niveau_actuel + id).
-  const piegesPossedesParNom = useMemo(() => {
-    const map = new Map<string, PersonnagePiegeRow>();
+  // Map piege_nom → Map<niveau_acquis, ligne de possession>.
+  // Post-PR-2 : 1 ligne par palier acquis (miroir personnage_competences).
+  const paliersParFamille = useMemo(() => {
+    const map = new Map<string, Map<number, PersonnagePiegeRow>>();
     (personnagePieges ?? []).forEach((pp) => {
-      map.set(pp.piege_nom, pp);
+      const inner =
+        map.get(pp.piege_nom) ?? new Map<number, PersonnagePiegeRow>();
+      inner.set(pp.niveau_acquis, pp);
+      map.set(pp.piege_nom, inner);
     });
     return map;
   }, [personnagePieges]);
+
+  // Niveau de palier le plus haut acquis pour une famille (0 si aucun).
+  const maxAcquisPourFamille = (nom: string): number => {
+    const inner = paliersParFamille.get(nom);
+    if (!inner || inner.size === 0) return 0;
+    return Math.max(...Array.from(inner.keys()));
+  };
 
   const acheterMutation = useMutation({
     mutationFn: async (params: {
@@ -398,33 +443,6 @@ const Etape9_Artisanat_V2 = ({
     },
   });
 
-  const ameliorerPiegeMutation = useMutation({
-    mutationFn: async (params: { p_personnage_piege_id: string }) => {
-      const { data, error } = await supabase.rpc("ameliorer_piege", params);
-      if (error) throw error;
-      const payload = (data ?? {}) as Record<string, any>;
-      if (payload.succes !== true) {
-        throw new Error(
-          (payload.erreurs?.[0]?.message as string | undefined) ??
-            (payload.erreurs?.[0]?.code as string | undefined) ??
-            "Amélioration du piège impossible.",
-        );
-      }
-      return payload;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (q) =>
-          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
-      });
-      toast.success("Piège amélioré !");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-      onError?.(error);
-    },
-  });
-
   const desacheterPiegeMutation = useMutation({
     mutationFn: async (params: { p_personnage_piege_id: string }) => {
       const { data, error } = await supabase.rpc("desacheter_piege", params);
@@ -452,21 +470,62 @@ const Etape9_Artisanat_V2 = ({
     },
   });
 
-  const handleAcheterPiege = (famille: PiegeRow[]) => {
-    const niv1 = famille.find((p) => p.niveau === 1) ?? famille[0];
-    if (!niv1) return;
+  // Achat d'un palier précis (niveau 1/2/3) d'une famille. Le coût XP est
+  // calculé en interne par la RPC ; on ne transmet que l'id du palier visé.
+  const handleAcheterPiege = (paliersCatalogue: PiegeRow[], niveau: number) => {
+    const palier = paliersCatalogue.find((p) => p.niveau === niveau);
+    if (!palier) return;
     acheterPiegeMutation.mutate({
       p_personnage_id: personnageId,
-      p_piege_id: niv1.id,
+      p_piege_id: palier.id,
     });
   };
 
-  const handleAmeliorerPiege = (possede: PersonnagePiegeRow) => {
-    ameliorerPiegeMutation.mutate({ p_personnage_piege_id: possede.id });
+  // Décochage d'un palier. La DB (desacheter_piege) supprime ce palier + tous
+  // les paliers supérieurs de la même famille (cascade ascendante) et rembourse
+  // uniquement les paliers payés. Si >1 palier sera supprimé → modale de
+  // confirmation (miroir cascadeDialog étape 5). Un palier gratuit reste
+  // décochable (la DB ne le bloque pas).
+  const handleDecocherPiege = (nom: string, niveau: number) => {
+    const inner = paliersParFamille.get(nom);
+    const cible = inner?.get(niveau);
+    if (!inner || !cible) return;
+    const aSupprimer = Array.from(inner.values()).filter(
+      (pp) => pp.niveau_acquis >= niveau,
+    );
+    if (aSupprimer.length <= 1) {
+      desacheterPiegeMutation.mutate({ p_personnage_piege_id: cible.id });
+      return;
+    }
+    const xpRembourse = aSupprimer.reduce(
+      (s, pp) => s + (pp.xp_depense ?? 0),
+      0,
+    );
+    setCascadePiege({
+      piegeNom: nom,
+      cible,
+      paliersAnnules: aSupprimer.sort(
+        (a, b) => a.niveau_acquis - b.niveau_acquis,
+      ),
+      xpTotalRembourse: xpRembourse,
+    });
   };
 
-  const handleRetirerPiege = (possede: PersonnagePiegeRow) => {
-    desacheterPiegeMutation.mutate({ p_personnage_piege_id: possede.id });
+  const confirmCascadePiege = () => {
+    if (!cascadePiege) return;
+    desacheterPiegeMutation.mutate({
+      p_personnage_piege_id: cascadePiege.cible.id,
+    });
+    setCascadePiege(null);
+  };
+
+  const toggleFamilleDepliee = (nom: string) => {
+    setFamillesDepliees((prev) => {
+      const next = new Set(prev);
+      if (next.has(nom)) next.delete(nom);
+      else next.add(nom);
+      return next;
+    });
   };
 
   // Avance etape_creation de 9 a 10 cote serveur. Les etapes 5-9 n'ont pas
@@ -585,9 +644,7 @@ const Etape9_Artisanat_V2 = ({
 
   const mutationsPending = acheterMutation.isPending || desacheterMutation.isPending;
   const mutationsPiegesPending =
-    acheterPiegeMutation.isPending ||
-    ameliorerPiegeMutation.isPending ||
-    desacheterPiegeMutation.isPending;
+    acheterPiegeMutation.isPending || desacheterPiegeMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -878,84 +935,149 @@ const Etape9_Artisanat_V2 = ({
                   </p>
                 ) : (
                   famillesPieges.map(([nom, niveaux]) => {
-                    const possede = piegesPossedesParNom.get(nom);
-                    const niveauActuel = possede?.niveau_actuel ?? 0;
-                    const niv1 =
-                      niveaux.find((p) => p.niveau === 1) ?? niveaux[0];
-                    // Ligne affichée = niveau possédé, sinon niv 1.
-                    const ligneAffichee =
-                      niveaux.find((p) => p.niveau === niveauActuel) ?? niv1;
-                    // Construction = matériaux niv 1 (peuplé niv 1 seulement).
-                    const construction = niv1?.construction ?? null;
-
-                    // NON POSSÉDÉ : bouton Sélectionner (achat niv 1).
-                    const coutNiv1 = niv1?.cout_xp ?? 0;
-                    const seraGratuitAchat = quotaPiegesNiv1Restant > 0;
-                    const xpInsuffisantAchat =
-                      !seraGratuitAchat && coutNiv1 > xpDisponible;
-
-                    // POSSÉDÉ < 3 : bouton Améliorer (palier visé).
-                    const palierVise = niveauActuel + 1;
-                    const ligneSuivante = niveaux.find(
-                      (p) => p.niveau === palierVise,
-                    );
-                    const coutPalier = ligneSuivante?.cout_xp ?? 0;
-                    const quotaPalierRestant =
-                      getQuotaPiegeRestantPourPalier(palierVise);
-                    const seraGratuitAmel = quotaPalierRestant > 0;
-                    const xpInsuffisantAmel =
-                      !seraGratuitAmel && coutPalier > xpDisponible;
-
-                    const estPossede = niveauActuel >= 1;
-                    const estMax = niveauActuel >= 3;
+                    const maxAcquis = maxAcquisPourFamille(nom);
+                    const estPossede = maxAcquis >= 1;
+                    const depliee = famillesDepliees.has(nom);
+                    // Ligne catalogue du palier le plus haut acquis (détail
+                    // verbatim toujours visible), sinon niv 1.
+                    const ligneHaute =
+                      niveaux.find((p) => p.niveau === maxAcquis) ??
+                      niveaux.find((p) => p.niveau === 1) ??
+                      niveaux[0];
+                    const construction =
+                      niveaux.find((p) => p.niveau === 1)?.construction ?? null;
 
                     return (
                       <div
                         key={nom}
-                        className={`space-y-2 rounded-lg border p-3 transition-colors ${
+                        className={`space-y-3 rounded-lg border p-3 transition-colors ${
                           estPossede
                             ? "border-primary/50 bg-primary/5"
                             : "border-border"
                         }`}
                       >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <strong className="font-heading text-primary">
-                                {nom}
-                              </strong>
-                              {estPossede && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Niveau {niveauActuel}
-                                  {estMax ? " (max)" : ""}
+                        {/* En-tête famille */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <strong className="font-heading text-primary">
+                            {nom}
+                          </strong>
+                          {estPossede && (
+                            <Badge variant="secondary" className="text-xs">
+                              Niveau {maxAcquis}
+                              {maxAcquis >= 3 ? " (max)" : ""}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Cases à cocher par niveau (grisage séquentiel) */}
+                        <div className="space-y-2">
+                          {niveaux.map((palier) => {
+                            const niv = palier.niveau ?? 0;
+                            const acquis =
+                              paliersParFamille.get(nom)?.has(niv) ?? false;
+                            const ligneAcquise =
+                              paliersParFamille.get(nom)?.get(niv) ?? null;
+                            const niveauPrecedentRequis =
+                              niv > 1 && niv - 1 > maxAcquis;
+                            const cout = palier.cout_xp ?? 0;
+                            const seraGratuit =
+                              quotaPiegeRestantPourNiveau(niv) > 0;
+                            const xpInsuffisant =
+                              !acquis && !seraGratuit && cout > xpDisponible;
+                            const disabled = acquis
+                              ? mutationsPiegesPending
+                              : niveauPrecedentRequis ||
+                                mutationsPiegesPending ||
+                                xpInsuffisant;
+                            return (
+                              <div
+                                key={niv}
+                                className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
+                                  niveauPrecedentRequis && !acquis
+                                    ? "opacity-50"
+                                    : ""
+                                }`}
+                              >
+                                <Checkbox
+                                  id={`piege-${nom}-${niv}`}
+                                  checked={acquis}
+                                  disabled={disabled}
+                                  title={
+                                    xpInsuffisant
+                                      ? `XP insuffisants (manque ${cout - xpDisponible} XP)`
+                                      : undefined
+                                  }
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      handleAcheterPiege(niveaux, niv);
+                                    } else {
+                                      handleDecocherPiege(nom, niv);
+                                    }
+                                  }}
+                                />
+                                <Label
+                                  htmlFor={`piege-${nom}-${niv}`}
+                                  className="flex-1 cursor-pointer space-y-1 text-xs"
+                                >
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <strong>Niveau {niv}</strong>
+                                    {acquis && ligneAcquise?.est_gratuit ? (
+                                      <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
+                                        Acquis gratuitement
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs"
+                                      >
+                                        {seraGratuit && !acquis
+                                          ? "Gratuit"
+                                          : `${cout} XP`}
+                                      </Badge>
+                                    )}
+                                    {palier.niveau_effet != null && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        Effet de niveau {palier.niveau_effet}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {niveauPrecedentRequis && !acquis && (
+                                    <p className="flex items-center gap-1 text-muted-foreground">
+                                      <Lock className="h-3 w-3" />
+                                      Acheter d'abord le niveau {niv - 1}
+                                    </p>
+                                  )}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Détail verbatim du palier le plus haut acquis */}
+                        {estPossede && ligneHaute && (
+                          <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2 text-xs">
+                            <div className="flex flex-wrap gap-2">
+                              {ligneHaute.cible && (
+                                <Badge variant="outline" className="text-xs">
+                                  Cible : {ligneHaute.cible}
+                                </Badge>
+                              )}
+                              {ligneHaute.duree && (
+                                <Badge variant="outline" className="text-xs">
+                                  Durée : {ligneHaute.duree}
                                 </Badge>
                               )}
                             </div>
-                            {ligneAffichee?.effets && (
-                              <p className="text-xs text-muted-foreground">
-                                {ligneAffichee.effets}
+                            {ligneHaute.effets && (
+                              <p className="text-muted-foreground">
+                                {ligneHaute.effets}
                               </p>
                             )}
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              {ligneAffichee?.cible && (
-                                <Badge variant="outline" className="text-xs">
-                                  Cible : {ligneAffichee.cible}
-                                </Badge>
-                              )}
-                              {ligneAffichee?.duree && (
-                                <Badge variant="outline" className="text-xs">
-                                  Durée : {ligneAffichee.duree}
-                                </Badge>
-                              )}
-                              {estPossede &&
-                                (possede?.xp_depense ?? 0) > 0 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {possede?.xp_depense} XP dépensés
-                                  </Badge>
-                                )}
-                            </div>
                             {construction && (
-                              <p className="text-xs">
+                              <p>
                                 <span className="text-amber-400">
                                   Construction :
                                 </span>{" "}
@@ -963,62 +1085,65 @@ const Etape9_Artisanat_V2 = ({
                               </p>
                             )}
                           </div>
-                        </div>
+                        )}
 
-                        <div className="flex flex-wrap items-center gap-2 pt-1">
-                          {!estPossede && (
-                            <Button
-                              size="sm"
-                              disabled={
-                                mutationsPiegesPending || xpInsuffisantAchat
-                              }
-                              onClick={() => handleAcheterPiege(niveaux)}
-                              title={
-                                xpInsuffisantAchat
-                                  ? `XP insuffisants (manque ${coutNiv1 - xpDisponible} XP)`
-                                  : undefined
-                              }
-                            >
-                              {seraGratuitAchat
-                                ? "Sélectionner (Gratuit)"
-                                : `Sélectionner (${coutNiv1} XP)`}
-                            </Button>
+                        {/* Toggle « Voir le détail des 3 niveaux » (densité C) */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-1 py-1 text-xs text-muted-foreground"
+                          onClick={() => toggleFamilleDepliee(nom)}
+                        >
+                          {depliee ? (
+                            <ChevronDown className="mr-1 h-3 w-3" />
+                          ) : (
+                            <ChevronRight className="mr-1 h-3 w-3" />
                           )}
+                          {depliee
+                            ? "Masquer le détail des 3 niveaux"
+                            : "Voir le détail des 3 niveaux"}
+                        </Button>
 
-                          {estPossede && !estMax && (
-                            <Button
-                              size="sm"
-                              disabled={
-                                mutationsPiegesPending || xpInsuffisantAmel
-                              }
-                              onClick={() =>
-                                possede && handleAmeliorerPiege(possede)
-                              }
-                              title={
-                                xpInsuffisantAmel
-                                  ? `XP insuffisants (manque ${coutPalier - xpDisponible} XP)`
-                                  : undefined
-                              }
-                            >
-                              {seraGratuitAmel
-                                ? `Améliorer → niv ${palierVise} (Gratuit)`
-                                : `Améliorer → niv ${palierVise} (${coutPalier} XP)`}
-                            </Button>
-                          )}
-
-                          {estPossede && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={mutationsPiegesPending}
-                              onClick={() =>
-                                possede && handleRetirerPiege(possede)
-                              }
-                            >
-                              Retirer
-                            </Button>
-                          )}
-                        </div>
+                        {depliee && (
+                          <div className="space-y-2 border-l-2 border-border pl-3">
+                            {niveaux.map((palier) => (
+                              <div
+                                key={`detail-${palier.niveau}`}
+                                className="space-y-1 text-xs"
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <strong>Niveau {palier.niveau}</strong>
+                                  {palier.niveau_effet != null && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      Effet de niveau {palier.niveau_effet}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {palier.cible && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Cible : {palier.cible}
+                                    </Badge>
+                                  )}
+                                  {palier.duree && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Durée : {palier.duree}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {palier.effets && (
+                                  <p className="text-muted-foreground">
+                                    {palier.effets}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -1285,6 +1410,65 @@ const Etape9_Artisanat_V2 = ({
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Modale de confirmation cascade — décochage d'un palier de piège */}
+      <Dialog
+        open={!!cascadePiege}
+        onOpenChange={(open) => {
+          if (!open) setCascadePiege(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Annuler ce piège ?</DialogTitle>
+            <DialogDescription>
+              {cascadePiege && (
+                <>
+                  Annuler le niveau {cascadePiege.cible.niveau_acquis} de{" "}
+                  <strong>{cascadePiege.piegeNom}</strong> annulera aussi tous
+                  les niveaux supérieurs de ce piège.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {cascadePiege && (
+            <div className="space-y-2 py-2 text-sm">
+              <p className="font-semibold">
+                Paliers qui seront annulés (
+                {cascadePiege.paliersAnnules.length}) :
+              </p>
+              <ul className="ml-4 list-disc space-y-1 text-xs">
+                {cascadePiege.paliersAnnules.map((pp) => (
+                  <li key={pp.id}>
+                    Niveau {pp.niveau_acquis} —{" "}
+                    {pp.est_gratuit
+                      ? "gratuit"
+                      : `${pp.xp_depense} XP remboursés`}
+                  </li>
+                ))}
+              </ul>
+              <p className="pt-2 font-semibold text-green-500">
+                Total remboursé : {cascadePiege.xpTotalRembourse} XP
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCascadePiege(null)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmCascadePiege}
+              disabled={mutationsPiegesPending}
+            >
+              {mutationsPiegesPending && (
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              )}
+              Confirmer l'annulation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex justify-between pt-4">
         {onPrevious && (
