@@ -444,6 +444,7 @@ export type Database = {
           objet_joaillerie_id: string | null
           personnage_id: string
           personnage_source_id: string | null
+          piege_id: string | null
           priere_id: string | null
           recette_id: string | null
           sort_id: string | null
@@ -464,6 +465,7 @@ export type Database = {
           objet_joaillerie_id?: string | null
           personnage_id: string
           personnage_source_id?: string | null
+          piege_id?: string | null
           priere_id?: string | null
           recette_id?: string | null
           sort_id?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           objet_joaillerie_id?: string | null
           personnage_id?: string
           personnage_source_id?: string | null
+          piege_id?: string | null
           priere_id?: string | null
           recette_id?: string | null
           sort_id?: string | null
@@ -748,6 +751,13 @@ export type Database = {
             columns: ["personnage_source_id"]
             isOneToOne: false
             referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_piege_id_fkey"
+            columns: ["piege_id"]
+            isOneToOne: false
+            referencedRelation: "pieges"
             referencedColumns: ["id"]
           },
           {
@@ -1818,6 +1828,150 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnage_pieges: {
+        Row: {
+          amelioration_niv2_gratuite: boolean
+          amelioration_niv3_gratuite: boolean
+          created_at: string
+          date_acquisition: string
+          est_gratuit: boolean
+          id: string
+          niveau_actuel: number
+          personnage_id: string
+          piege_id: string
+          piege_nom: string
+          updated_at: string
+          xp_depense: number
+        }
+        Insert: {
+          amelioration_niv2_gratuite?: boolean
+          amelioration_niv3_gratuite?: boolean
+          created_at?: string
+          date_acquisition?: string
+          est_gratuit?: boolean
+          id?: string
+          niveau_actuel?: number
+          personnage_id: string
+          piege_id: string
+          piege_nom: string
+          updated_at?: string
+          xp_depense?: number
+        }
+        Update: {
+          amelioration_niv2_gratuite?: boolean
+          amelioration_niv3_gratuite?: boolean
+          created_at?: string
+          date_acquisition?: string
+          est_gratuit?: boolean
+          id?: string
+          niveau_actuel?: number
+          personnage_id?: string
+          piege_id?: string
+          piege_nom?: string
+          updated_at?: string
+          xp_depense?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_piege_id_fkey"
+            columns: ["piege_id"]
+            isOneToOne: false
+            referencedRelation: "pieges"
             referencedColumns: ["id"]
           },
         ]
@@ -3161,6 +3315,7 @@ export type Database = {
           niveau_alchimie: number | null
           niveau_forge: number | null
           niveau_joaillerie: number | null
+          niveau_pieges: number | null
           niveau_runes: number | null
           personnage_id: string | null
         }
@@ -3173,6 +3328,7 @@ export type Database = {
           niveau_alchimie: number | null
           niveau_forge: number | null
           niveau_joaillerie: number | null
+          niveau_pieges: number | null
           niveau_runes: number | null
           personnage_id: string | null
           quota_alchimie_intermediaire_total: number | null
@@ -3183,6 +3339,12 @@ export type Database = {
           quota_alchimie_mineure_utilises: number | null
           quota_assemblages_total: number | null
           quota_assemblages_utilises: number | null
+          quota_pieges_amelioration_niv2_total: number | null
+          quota_pieges_amelioration_niv2_utilises: number | null
+          quota_pieges_amelioration_niv3_total: number | null
+          quota_pieges_amelioration_niv3_utilises: number | null
+          quota_pieges_niv1_total: number | null
+          quota_pieges_niv1_utilises: number | null
           quota_recettes_total: number | null
         }
         Relationships: []
@@ -4667,6 +4829,7 @@ export type Database = {
           niveau_domaine: number | null
           niveau_forge: number | null
           niveau_joaillerie: number | null
+          niveau_pieges: number | null
           niveau_runes: number | null
           personnage_id: string | null
           xp_disponible: number | null
@@ -5387,6 +5550,10 @@ export type Database = {
         }
         Returns: Json
       }
+      acheter_piege: {
+        Args: { p_personnage_id: string; p_piege_id: string }
+        Returns: Json
+      }
       acheter_priere: {
         Args: {
           p_duree_choisie: string
@@ -5421,6 +5588,10 @@ export type Database = {
       }
       ajouter_presence_tardive: {
         Args: { p_evenement_id: string; p_personnage_id: string }
+        Returns: Json
+      }
+      ameliorer_piege: {
+        Args: { p_personnage_piege_id: string }
         Returns: Json
       }
       annuler_etape: {
@@ -5479,6 +5650,10 @@ export type Database = {
       }
       desacheter_competence: {
         Args: { p_personnage_competence_id: string }
+        Returns: Json
+      }
+      desacheter_piege: {
+        Args: { p_personnage_piege_id: string }
         Returns: Json
       }
       desacheter_priere: {
