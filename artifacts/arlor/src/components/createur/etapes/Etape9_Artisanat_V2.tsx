@@ -28,7 +28,7 @@ type PersonnageRecetteRow =
   Database["public"]["Tables"]["personnage_recettes"]["Row"];
 type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
-interface Etape8Props {
+interface Etape9Props {
   personnageId: string;
   /**
    * Etape de creation actuelle cote serveur (personnages.etape_creation).
@@ -45,7 +45,7 @@ interface Etape8Props {
   /**
    * Drapeau parent : true seulement si on est sur l'etape la plus haute
    * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
-   * en arriere), l'auto-skip est desactive meme si etapeCreation === 8.
+   * en arriere), l'auto-skip est desactive meme si etapeCreation === 9.
    * Defaut true pour compatibilite.
    */
   autoSkipActif?: boolean;
@@ -54,7 +54,7 @@ interface Etape8Props {
   onPrevious?: () => void;
 }
 
-const Etape8_Artisanat_V2 = ({
+const Etape9_Artisanat_V2 = ({
   personnageId,
   etapeCreation,
   xpDisponible = 0,
@@ -62,7 +62,7 @@ const Etape8_Artisanat_V2 = ({
   onSuccess,
   onError,
   onPrevious,
-}: Etape8Props) => {
+}: Etape9Props) => {
   const queryClient = useQueryClient();
 
   // Quotas (vue_artisanat_quotas)
@@ -257,14 +257,14 @@ const Etape8_Artisanat_V2 = ({
     }
   };
 
-  // Avance etape_creation de 8 a 9 cote serveur. Les etapes 5-9 n'ont pas
+  // Avance etape_creation de 9 a 10 cote serveur. Les etapes 5-9 n'ont pas
   // de sauvegarder_etape_N : sans cet appel, le bouton « Suivant » ne ferait
   // que relire etape_creation et resterait bloque sur l'etape courante.
   const avancerMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc("avancer_etape", {
         p_personnage_id: personnageId,
-        p_etape_courante: 8,
+        p_etape_courante: 9,
       });
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
@@ -290,8 +290,8 @@ const Etape8_Artisanat_V2 = ({
     },
   });
 
-  // Auto-skip : si l'utilisateur arrive sur l'etape 8 en avancement
-  // (etapeCreation === 8) et qu'aucune competence d'artisanat n'est
+  // Auto-skip : si l'utilisateur arrive sur l'etape 9 en avancement
+  // (etapeCreation === 9) et qu'aucune competence d'artisanat n'est
   // acquise, on fait avancer etape_creation cote serveur immediatement.
   // La garde useRef + etapeCreation === N protege contre le re-trigger
   // et permet la navigation backward.
@@ -299,7 +299,7 @@ const Etape8_Artisanat_V2 = ({
   useEffect(() => {
     if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
-    if (etapeCreation == null || etapeCreation > 8) return;
+    if (etapeCreation == null || etapeCreation > 9) return;
     if (loadingQuotas) return;
     if (hasAlchimie || hasForge || hasJoaillerie) return;
     if (avancerMutation.isPending) return;
@@ -330,7 +330,7 @@ const Etape8_Artisanat_V2 = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-heading">
-              Étape 8 — Artisanat
+              Étape 9 — Artisanat
             </CardTitle>
             <CardDescription>
               Aucune compétence d'artisanat acquise — cette étape ne s'applique
@@ -374,7 +374,7 @@ const Etape8_Artisanat_V2 = ({
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
-          Étape 8 — Artisanat
+          Étape 9 — Artisanat
         </h2>
         <p className="text-sm text-muted-foreground">
           Sélectionnez vos recettes gratuites et complétez avec des recettes
@@ -868,4 +868,4 @@ const Etape8_Artisanat_V2 = ({
   );
 };
 
-export default Etape8_Artisanat_V2;
+export default Etape9_Artisanat_V2;

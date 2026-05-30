@@ -26,8 +26,8 @@ import Etape4_V2 from "@/components/createur/etapes/Etape4_V2";
 import Etape5_Competences_V2 from "@/components/createur/etapes/Etape5_Competences_V2";
 import Etape6_Sorts_V2 from "@/components/createur/etapes/Etape6_Sorts_V2";
 import Etape7_Prieres_V2 from "@/components/createur/etapes/Etape7_Prieres_V2";
-import Etape8_Artisanat_V2 from "@/components/createur/etapes/Etape8_Artisanat_V2";
-import Etape9_Assemblages_V2 from "@/components/createur/etapes/Etape9_Assemblages_V2";
+import Etape8_Assemblages_V2 from "@/components/createur/etapes/Etape8_Assemblages_V2";
+import Etape9_Artisanat_V2 from "@/components/createur/etapes/Etape9_Artisanat_V2";
 import Etape10_Historique_V2 from "@/components/createur/etapes/Etape10_Historique_V2";
 import Etape11_Recapitulatif_V2 from "@/components/createur/etapes/Etape11_Recapitulatif_V2";
 
@@ -457,7 +457,7 @@ const PersonnageNouveauV2 = () => {
           />
         )}
         {etape === 8 && (
-          <Etape8_Artisanat_V2
+          <Etape8_Assemblages_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             xpDisponible={xpDisponible}
@@ -467,7 +467,7 @@ const PersonnageNouveauV2 = () => {
           />
         )}
         {etape === 9 && (
-          <Etape9_Assemblages_V2
+          <Etape9_Artisanat_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             xpDisponible={xpDisponible}

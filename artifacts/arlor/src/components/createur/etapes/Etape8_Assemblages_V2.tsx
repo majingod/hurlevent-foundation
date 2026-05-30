@@ -21,7 +21,7 @@ type PersonnageAssemblageRow =
   Database["public"]["Tables"]["personnage_assemblages"]["Row"];
 type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
-interface Etape9Props {
+interface Etape8Props {
   personnageId: string;
   /**
    * Etape de creation actuelle cote serveur (personnages.etape_creation).
@@ -38,7 +38,7 @@ interface Etape9Props {
   /**
    * Drapeau parent : true seulement si on est sur l'etape la plus haute
    * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
-   * en arriere), l'auto-skip est desactive meme si etapeCreation === 9.
+   * en arriere), l'auto-skip est desactive meme si etapeCreation === 8.
    * Defaut true pour compatibilite.
    */
   autoSkipActif?: boolean;
@@ -47,7 +47,7 @@ interface Etape9Props {
   onPrevious?: () => void;
 }
 
-const Etape9_Assemblages_V2 = ({
+const Etape8_Assemblages_V2 = ({
   personnageId,
   etapeCreation,
   xpDisponible = 0,
@@ -55,7 +55,7 @@ const Etape9_Assemblages_V2 = ({
   onSuccess,
   onError,
   onPrevious,
-}: Etape9Props) => {
+}: Etape8Props) => {
   const queryClient = useQueryClient();
 
   // Quotas (vue_artisanat_quotas)
@@ -166,14 +166,14 @@ const Etape9_Assemblages_V2 = ({
     },
   });
 
-  // Avance etape_creation de 9 a 10 cote serveur. Les etapes 5-9 n'ont pas
+  // Avance etape_creation de 8 a 9 cote serveur. Les etapes 5-9 n'ont pas
   // de sauvegarder_etape_N : sans cet appel, le bouton « Suivant » ne ferait
   // que relire etape_creation et resterait bloque sur l'etape courante.
   const avancerMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc("avancer_etape", {
         p_personnage_id: personnageId,
-        p_etape_courante: 9,
+        p_etape_courante: 8,
       });
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
@@ -199,8 +199,8 @@ const Etape9_Assemblages_V2 = ({
     },
   });
 
-  // Auto-skip : si l'utilisateur arrive sur l'etape 9 en avancement
-  // (etapeCreation === 9) et qu'il ne possede pas la competence
+  // Auto-skip : si l'utilisateur arrive sur l'etape 8 en avancement
+  // (etapeCreation === 8) et qu'il ne possede pas la competence
   // « Assemblage de Runes » (niveauRunes < 1, donc hasAssemblage = false),
   // on fait avancer etape_creation cote serveur immediatement. La garde
   // useRef + etapeCreation === N protege contre le re-trigger et permet
@@ -209,7 +209,7 @@ const Etape9_Assemblages_V2 = ({
   useEffect(() => {
     if (!autoSkipActif) return;
     if (skipDeclencheRef.current) return;
-    if (etapeCreation == null || etapeCreation > 9) return;
+    if (etapeCreation == null || etapeCreation > 8) return;
     if (loadingQuotas) return;
     if (hasAssemblage) return;
     if (avancerMutation.isPending) return;
@@ -245,7 +245,7 @@ const Etape9_Assemblages_V2 = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-heading">
-              Étape 9 — Assemblages de runes
+              Étape 8 — Assemblages de runes
             </CardTitle>
             <CardDescription>
               Vous ne possédez pas la compétence « Assemblage de Runes ». Vous
@@ -280,7 +280,7 @@ const Etape9_Assemblages_V2 = ({
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
-          Étape 9 — Assemblages de runes
+          Étape 8 — Assemblages de runes
         </h2>
         <p className="text-sm text-muted-foreground">
           Sélectionnez vos assemblages gratuits et complétez avec des
@@ -423,4 +423,4 @@ const Etape9_Assemblages_V2 = ({
   );
 };
 
-export default Etape9_Assemblages_V2;
+export default Etape8_Assemblages_V2;
