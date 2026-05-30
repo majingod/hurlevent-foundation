@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Sparkles, Clock } from "lucide-react";
+import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Sparkles, Clock, Bomb, ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
@@ -15,6 +15,8 @@ import type { Database, Json } from "@/integrations/supabase/types";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
+type PiegeRow = Database["public"]["Tables"]["pieges"]["Row"];
+type PersonnagePiegeRow = Database["public"]["Tables"]["personnage_pieges"]["Row"];
 
 type FichePersonnageViewMode = 'route' | 'wizard-preview';
 
@@ -127,6 +129,7 @@ interface ArtisanatEtat {
   niveau_alchimie: number | null;
   niveau_forge: number | null;
   niveau_joaillerie: number | null;
+  niveau_pieges: number | null;
 }
 
 interface ManipulationAlchimique {
@@ -188,6 +191,15 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const [historiqueTmp, setHistoriqueTmp] = useState("");
   const [ameTmp, setAmeTmp] = useState("");
   const [saving, setSaving] = useState(false);
+  // PR-4 — toggle densité C par famille de piège (lecture seule)
+  const [piegesDepliees, setPiegesDepliees] = useState<Set<string>>(new Set());
+  const togglePiegeDepliee = (nom: string) =>
+    setPiegesDepliees((prev) => {
+      const next = new Set(prev);
+      if (next.has(nom)) next.delete(nom);
+      else next.add(nom);
+      return next;
+    });
 
   // DATA-FIRST : vue_fiche_personnage joint personnages + races + classes + religions
   // Remplace 3 requêtes en cascade (personnage → race → classe → religion)
@@ -287,7 +299,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     queryFn: async () => {
       const { data } = await supabase
         .from("vue_artisanat_etat")
-        .select("niveau_alchimie, niveau_forge, niveau_joaillerie")
+        .select("niveau_alchimie, niveau_forge, niveau_joaillerie, niveau_pieges")
         .eq("personnage_id", personnageId!)
         .maybeSingle();
       return (data as ArtisanatEtat) ?? null;
@@ -348,6 +360,33 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
       return (data ?? []) as ObjetJoaillerie[];
     },
     enabled: !!(artisanatEtat?.niveau_joaillerie && artisanatEtat.niveau_joaillerie >= 1),
+  });
+
+  // PR-4 — Pièges : catalogue + possession (lecture seule, mirror étape 9)
+  const { data: piegesCatalogue } = useQuery({
+    queryKey: ["pieges-catalogue-fiche"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pieges")
+        .select("*")
+        .eq("est_actif", true)
+        .order("nom")
+        .order("niveau");
+      return (data ?? []) as PiegeRow[];
+    },
+    enabled: !!(artisanatEtat?.niveau_pieges && artisanatEtat.niveau_pieges >= 1),
+  });
+
+  const { data: personnagePieges } = useQuery({
+    queryKey: ["personnage-pieges-fiche", personnageId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("personnage_pieges")
+        .select("*")
+        .eq("personnage_id", personnageId!);
+      return (data ?? []) as PersonnagePiegeRow[];
+    },
+    enabled: !!personnageId && !!(artisanatEtat?.niveau_pieges && artisanatEtat.niveau_pieges >= 1),
   });
 
   const { data: langues } = useQuery({
@@ -433,7 +472,8 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const hasForge = (artisanatEtat?.niveau_forge ?? 0) >= 1;
   const hasJoaillerie = (artisanatEtat?.niveau_joaillerie ?? 0) >= 1;
   const hasAssemblages = (assemblages?.length ?? 0) > 0;
-  const hasArtisanat = hasAlchimie || hasForge || hasJoaillerie || hasAssemblages;
+  const hasPieges = (artisanatEtat?.niveau_pieges ?? 0) >= 1;
+  const hasArtisanat = hasAlchimie || hasForge || hasJoaillerie || hasAssemblages || hasPieges;
 
   // PR4b — Sous-onglets Artisanat dynamiques
   type ArtisanatSubTab = { value: string; icon: typeof FlaskConical; label: string };
@@ -442,14 +482,32 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     hasForge && { value: "forge", icon: Hammer, label: "Forge" },
     hasJoaillerie && { value: "joaillerie", icon: Gem, label: "Joaillerie" },
     hasAssemblages && { value: "assemblages", icon: Sparkles, label: "Assemblages" },
+    hasPieges && { value: "pieges", icon: Bomb, label: "Pièges" },
   ].filter((x): x is ArtisanatSubTab => Boolean(x));
   const artisanatColsClass: string = ({
     1: "grid-cols-1",
     2: "grid-cols-2",
     3: "grid-cols-3",
     4: "grid-cols-4",
+    5: "grid-cols-5",
   } as Record<number, string>)[artisanatSubTabs.length] ?? "grid-cols-4";
   const artisanatDefaultTab = artisanatSubTabs[0]?.value ?? "alchimie";
+
+  // PR-4 — Pièges possédés (lecture seule). Catalogue indexé par (nom, niveau).
+  const piegeCatalogueParNomNiveau = new Map<string, PiegeRow>();
+  (piegesCatalogue ?? []).forEach((p) => {
+    piegeCatalogueParNomNiveau.set(`${p.nom}__${p.niveau}`, p);
+  });
+  const famillesPiegesPossedees: [string, number[]][] = (() => {
+    const map = new Map<string, number[]>();
+    (personnagePieges ?? []).forEach((pp) => {
+      const arr = map.get(pp.piege_nom) ?? [];
+      arr.push(pp.niveau_acquis);
+      map.set(pp.piege_nom, arr);
+    });
+    map.forEach((arr) => arr.sort((a, b) => a - b));
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "fr"));
+  })();
 
   // DETTE-MANIPULATIONS-ALCHIMIQUES-ECRAN — calcul partagé avec le sous-onglet Alchimie
   const niveauAlchimieEcran = artisanatEtat?.niveau_alchimie ?? 0;
@@ -502,6 +560,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     const niveauAlchimie = artisanatEtat?.niveau_alchimie ?? 0;
     const niveauForge = artisanatEtat?.niveau_forge ?? 0;
     const niveauJoaillerie = artisanatEtat?.niveau_joaillerie ?? 0;
+    const niveauPieges = artisanatEtat?.niveau_pieges ?? 0;
 
     const sortsByCercle: Record<string, Sort[]> = {};
     (sorts ?? []).forEach((s) => {
@@ -526,6 +585,20 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
       2: "Recettes intermédiaires (Niv. 2)",
       3: "Recettes majeures (Niv. 3)",
     };
+
+    // PR-4 — Pièges possédés pour l'impression
+    const piegeCatPrint = new Map<string, PiegeRow>();
+    (piegesCatalogue ?? []).forEach((p) => piegeCatPrint.set(`${p.nom}__${p.niveau}`, p));
+    const famillesPiegesPrint: [string, number[]][] = (() => {
+      const map = new Map<string, number[]>();
+      (personnagePieges ?? []).forEach((pp) => {
+        const arr = map.get(pp.piege_nom) ?? [];
+        arr.push(pp.niveau_acquis);
+        map.set(pp.piege_nom, arr);
+      });
+      map.forEach((a) => a.sort((x, y) => x - y));
+      return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "fr"));
+    })();
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -748,6 +821,25 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             </div>
           `).join("")}
         ` : ""}
+        ` : ""}
+
+        ${famillesPiegesPrint.length > 0 ? `
+        <h2>Pièges (Niv. ${niveauPieges})</h2>
+        ${famillesPiegesPrint.map(([nom, niveaux]) => {
+          const nMax = niveaux[niveaux.length - 1];
+          const pal = piegeCatPrint.get(`${nom}__${nMax}`);
+          return `
+          <div class="card">
+            <div class="card-row">
+              <div class="card-title">${escapeHtml(nom)}</div>
+              <span class="badge">Niv. ${niveaux.join(", ")}</span>
+            </div>
+            ${pal?.niveau_effet != null ? `<div class="muted">Effet de niveau ${pal.niveau_effet}</div>` : ""}
+            ${pal?.cible ? `<div class="muted">Cible : ${escapeHtml(pal.cible)}</div>` : ""}
+            ${pal?.duree ? `<div class="muted">Durée : ${escapeHtml(pal.duree)}</div>` : ""}
+            ${pal?.effets ? `<div class="desc">${escapeHtml(pal.effets)}</div>` : ""}
+          </div>`;
+        }).join("")}
         ` : ""}
 
         ${fiche.historique || fiche.ame_personnage ? `
@@ -1365,6 +1457,104 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                       {asm.cout_ps && <p className="text-xs text-muted-foreground">Coût PS : {asm.cout_ps}</p>}
                     </div>
                   ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Sous-onglet Pièges (PR-4, lecture seule) */}
+            <TabsContent value="pieges" className="space-y-3 mt-4">
+              {famillesPiegesPossedees.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucun piège acquis.</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-xs text-muted-foreground border-b border-border/50 pb-2">
+                    Total : {famillesPiegesPossedees.length} piège{famillesPiegesPossedees.length > 1 ? "s" : ""} maîtrisé{famillesPiegesPossedees.length > 1 ? "s" : ""}
+                  </div>
+                  {famillesPiegesPossedees.map(([nom, niveaux]) => {
+                    const niveauMax = niveaux[niveaux.length - 1];
+                    const palierHaut = piegeCatalogueParNomNiveau.get(`${nom}__${niveauMax}`);
+                    const depliee = piegesDepliees.has(nom);
+                    return (
+                      <Card key={nom}>
+                        <CardHeader className="pb-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <CardTitle className="font-heading text-base">{nom}</CardTitle>
+                            {niveaux.map((n) => (
+                              <Badge key={n} className="bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent text-xs">
+                                Niv. {n}
+                              </Badge>
+                            ))}
+                            {palierHaut?.niveau_effet != null && (
+                              <Badge variant="outline" className="text-xs">Effet de niveau {palierHaut.niveau_effet}</Badge>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-xs">
+                          {palierHaut && (
+                            <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2">
+                              <div className="flex flex-wrap gap-2">
+                                {palierHaut.cible && (
+                                  <Badge variant="outline" className="text-xs">Cible : {palierHaut.cible}</Badge>
+                                )}
+                                {palierHaut.duree && (
+                                  <Badge variant="outline" className="text-xs">Durée : {palierHaut.duree}</Badge>
+                                )}
+                              </div>
+                              {palierHaut.effets && (
+                                <p className="text-muted-foreground">{palierHaut.effets}</p>
+                              )}
+                              {palierHaut.construction && (
+                                <p><span className="text-amber-400">Construction :</span> {palierHaut.construction}</p>
+                              )}
+                            </div>
+                          )}
+                          {niveaux.length > 1 && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-1 py-1 text-xs text-muted-foreground"
+                                onClick={() => togglePiegeDepliee(nom)}
+                              >
+                                {depliee ? <ChevronDown className="mr-1 h-3 w-3" /> : <ChevronRight className="mr-1 h-3 w-3" />}
+                                {depliee ? "Masquer le détail par niveau" : "Voir le détail par niveau"}
+                              </Button>
+                              {depliee && (
+                                <div className="space-y-2 border-l-2 border-border pl-3">
+                                  {niveaux.map((n) => {
+                                    const palier = piegeCatalogueParNomNiveau.get(`${nom}__${n}`);
+                                    if (!palier) return null;
+                                    return (
+                                      <div key={n} className="space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <strong>Niveau {n}</strong>
+                                          {palier.niveau_effet != null && (
+                                            <Badge variant="outline" className="text-xs">Effet de niveau {palier.niveau_effet}</Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {palier.cible && (
+                                            <Badge variant="outline" className="text-xs">Cible : {palier.cible}</Badge>
+                                          )}
+                                          {palier.duree && (
+                                            <Badge variant="outline" className="text-xs">Durée : {palier.duree}</Badge>
+                                          )}
+                                        </div>
+                                        {palier.effets && (
+                                          <p className="text-muted-foreground">{palier.effets}</p>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
