@@ -223,6 +223,13 @@ const PersonnageNouveauV2 = () => {
     setEtapeMaxAtteinte((m) => Math.max(m, etape));
   }, [etape]);
 
+  // SCROLL-TO-TOP : remonter en haut du wizard à chaque changement d'étape.
+  // Les étapes sont du state (setEtape), pas une route → le ScrollToTop global
+  // (basé sur pathname) ne se déclenche pas ici.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [etape]);
+
   const xpTotal = personnage?.xp_total ?? 0;
   const xpDepense = personnage?.xp_depense ?? 0;
   const xpTotalAffiche = xpTotal + xpGainCourant;
