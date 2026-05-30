@@ -509,6 +509,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "historique_xp_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_encyclopedie"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "historique_xp_evenement_id_fkey"
             columns: ["evenement_id"]
             isOneToOne: false
@@ -1491,6 +1498,13 @@ export type Database = {
             columns: ["competence_id"]
             isOneToOne: false
             referencedRelation: "competences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_encyclopedie"
             referencedColumns: ["id"]
           },
           {
@@ -3549,6 +3563,60 @@ export type Database = {
           },
         ]
       }
+      vue_competences_encyclopedie: {
+        Row: {
+          categorie: string | null
+          classes_requises: string[] | null
+          desachat_force: boolean | null
+          description: string | null
+          est_actif: boolean | null
+          est_general: boolean | null
+          id: string | null
+          niveaux: Json | null
+          nom: string | null
+          prerequis_competences: Json | null
+          prerequis_labels: Json | null
+          recherche_tsv: unknown
+          type_achat: string | null
+          type_choix: string | null
+          verrouillage_croise: boolean | null
+        }
+        Insert: {
+          categorie?: string | null
+          classes_requises?: string[] | null
+          desachat_force?: boolean | null
+          description?: string | null
+          est_actif?: boolean | null
+          est_general?: boolean | null
+          id?: string | null
+          niveaux?: Json | null
+          nom?: string | null
+          prerequis_competences?: Json | null
+          prerequis_labels?: never
+          recherche_tsv?: unknown
+          type_achat?: string | null
+          type_choix?: string | null
+          verrouillage_croise?: boolean | null
+        }
+        Update: {
+          categorie?: string | null
+          classes_requises?: string[] | null
+          desachat_force?: boolean | null
+          description?: string | null
+          est_actif?: boolean | null
+          est_general?: boolean | null
+          id?: string | null
+          niveaux?: Json | null
+          nom?: string | null
+          prerequis_competences?: Json | null
+          prerequis_labels?: never
+          recherche_tsv?: unknown
+          type_achat?: string | null
+          type_choix?: string | null
+          verrouillage_croise?: boolean | null
+        }
+        Relationships: []
+      }
       vue_competences_maitre_admin: {
         Row: {
           competence_nom: string | null
@@ -3695,6 +3763,13 @@ export type Database = {
             columns: ["competence_id"]
             isOneToOne: false
             referencedRelation: "competences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_encyclopedie"
             referencedColumns: ["id"]
           },
           {
@@ -5598,6 +5673,10 @@ export type Database = {
       }
       approuver_race_demande: { Args: { p_demande_id: string }; Returns: Json }
       archiver_personnage: { Args: { p_personnage_id: string }; Returns: Json }
+      assembler_prerequis_labels: {
+        Args: { p_competence_id: string }
+        Returns: Json
+      }
       attribuer_competences_gratuites_classe: {
         Args: { p_choix_par_competence?: Json; p_personnage_id: string }
         Returns: Json
@@ -5664,6 +5743,14 @@ export type Database = {
         Returns: Json
       }
       est_animateur_ou_admin: { Args: never; Returns: boolean }
+      formater_classes_requises_label: {
+        Args: { p_classes: string[] }
+        Returns: string
+      }
+      formater_prereq_label: {
+        Args: { p_niveau_min: number; p_nom: string }
+        Returns: string
+      }
       generer_formule_magique: {
         Args: {
           p_cercle: string
