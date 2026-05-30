@@ -1834,13 +1834,11 @@ export type Database = {
       }
       personnage_pieges: {
         Row: {
-          amelioration_niv2_gratuite: boolean
-          amelioration_niv3_gratuite: boolean
           created_at: string
           date_acquisition: string
           est_gratuit: boolean
           id: string
-          niveau_actuel: number
+          niveau_acquis: number
           personnage_id: string
           piege_id: string
           piege_nom: string
@@ -1848,13 +1846,11 @@ export type Database = {
           xp_depense: number
         }
         Insert: {
-          amelioration_niv2_gratuite?: boolean
-          amelioration_niv3_gratuite?: boolean
           created_at?: string
           date_acquisition?: string
           est_gratuit?: boolean
           id?: string
-          niveau_actuel?: number
+          niveau_acquis?: number
           personnage_id: string
           piege_id: string
           piege_nom: string
@@ -1862,13 +1858,11 @@ export type Database = {
           xp_depense?: number
         }
         Update: {
-          amelioration_niv2_gratuite?: boolean
-          amelioration_niv3_gratuite?: boolean
           created_at?: string
           date_acquisition?: string
           est_gratuit?: boolean
           id?: string
-          niveau_actuel?: number
+          niveau_acquis?: number
           personnage_id?: string
           piege_id?: string
           piege_nom?: string
@@ -5588,10 +5582,6 @@ export type Database = {
       }
       ajouter_presence_tardive: {
         Args: { p_evenement_id: string; p_personnage_id: string }
-        Returns: Json
-      }
-      ameliorer_piege: {
-        Args: { p_personnage_piege_id: string }
         Returns: Json
       }
       annuler_etape: {
