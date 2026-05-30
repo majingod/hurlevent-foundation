@@ -124,18 +124,20 @@ const PiegesSection = ({
                 <div className="space-y-3 border-t border-primary/10 pt-3 mt-1">
                   {niveaux.map((n) => (
                     <div key={n.id} className="rounded border border-border/60 p-3 space-y-1 text-xs">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <Badge className="bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent text-xs">
                           Niveau {n.niveau}
                         </Badge>
+                        {n.niveau_effet != null && (
+                          <Badge variant="outline" className="text-xs">
+                            Effet de niveau {n.niveau_effet}
+                          </Badge>
+                        )}
                         <span className="text-primary font-medium">{n.cout_xp} XP</span>
                       </div>
                       <p><span className="font-medium text-foreground">Cible :</span> {n.cible}</p>
                       <p><span className="font-medium text-foreground">Durée :</span> {n.duree}</p>
                       <p><span className="font-medium text-foreground">Effets :</span> {n.effets}</p>
-                      {n.niveau_effet != null && (
-                        <p><span className="font-medium text-foreground">Niveau de résistance requis :</span> {n.niveau_effet}</p>
-                      )}
                       {n.construction && (
                         <p className="mt-1 pt-1 border-t border-border/40">
                           <span className="font-medium text-foreground">Construction :</span> {n.construction}
