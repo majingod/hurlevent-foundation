@@ -47,7 +47,6 @@ interface NiveauInfo {
   niveau: number;
   cout_xp: number;
   description?: string;
-  prerequis?: string | null;
 }
 
 interface CompetenceWithNiveaux extends CompetenceRow {
@@ -165,7 +164,6 @@ function parseNiveaux(raw: Json | null): NiveauInfo[] {
         cout_xp: typeof obj.cout_xp === "number" ? obj.cout_xp : Number(obj.cout_xp ?? 0),
         description:
           typeof obj.description === "string" ? obj.description : undefined,
-        prerequis: typeof obj.prerequis === "string" ? obj.prerequis : null,
       } as NiveauInfo;
     })
     .filter((n): n is NiveauInfo => n !== null)
