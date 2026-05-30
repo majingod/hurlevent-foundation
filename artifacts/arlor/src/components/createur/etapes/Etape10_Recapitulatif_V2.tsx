@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, ScrollText } from "lucide-react";
 import FichePersonnageView from "@/components/personnage/FichePersonnageView";
 
-interface Etape11Props {
+interface Etape10Props {
   personnageId: string;
   onSuccess?: () => void;
   onPrevious?: () => void;
@@ -35,11 +35,11 @@ interface ValidationResult {
   [k: string]: unknown;
 }
 
-const Etape11_Recapitulatif_V2 = ({
+const Etape10_Recapitulatif_V2 = ({
   personnageId,
   onSuccess,
   onPrevious,
-}: Etape11Props) => {
+}: Etape10Props) => {
   const finaliserMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc("valider_personnage_final", {
@@ -94,7 +94,7 @@ const Etape11_Recapitulatif_V2 = ({
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2">
           <ScrollText className="h-5 w-5" />
-          Étape 11 — Récapitulatif et finalisation
+          Étape 10 — Récapitulatif et finalisation
         </h2>
         <p className="text-sm text-muted-foreground">
           Vérifiez l'ensemble des informations de votre personnage avant de le
@@ -133,4 +133,4 @@ const Etape11_Recapitulatif_V2 = ({
   );
 };
 
-export default Etape11_Recapitulatif_V2;
+export default Etape10_Recapitulatif_V2;

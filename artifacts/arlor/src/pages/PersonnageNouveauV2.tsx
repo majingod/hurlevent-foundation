@@ -28,10 +28,9 @@ import Etape6_Sorts_V2 from "@/components/createur/etapes/Etape6_Sorts_V2";
 import Etape7_Prieres_V2 from "@/components/createur/etapes/Etape7_Prieres_V2";
 import Etape8_Assemblages_V2 from "@/components/createur/etapes/Etape8_Assemblages_V2";
 import Etape9_Artisanat_V2 from "@/components/createur/etapes/Etape9_Artisanat_V2";
-import Etape10_Historique_V2 from "@/components/createur/etapes/Etape10_Historique_V2";
-import Etape11_Recapitulatif_V2 from "@/components/createur/etapes/Etape11_Recapitulatif_V2";
+import Etape10_Recapitulatif_V2 from "@/components/createur/etapes/Etape10_Recapitulatif_V2";
 
-const TOTAL_STEPS = 11;
+const TOTAL_STEPS = 10;
 
 interface PersonnageRow {
   id: string;
@@ -255,8 +254,8 @@ const PersonnageNouveauV2 = () => {
       },
     });
 
-    // Personnage finalisé (étape 11 → 12) : sortir du wizard.
-    // Le toast de succès est déjà affiché par Etape11_Recapitulatif_V2.
+    // Personnage finalisé (étape 10 → 11) : sortir du wizard.
+    // Le toast de succès est déjà affiché par Etape10_Recapitulatif_V2.
     if ((result.etape_creation ?? 0) > TOTAL_STEPS) {
       navigate("/tableau-de-bord");
       return;
@@ -477,14 +476,7 @@ const PersonnageNouveauV2 = () => {
           />
         )}
         {etape === 10 && (
-          <Etape10_Historique_V2
-            personnageId={personnageId}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-        {etape === 11 && (
-          <Etape11_Recapitulatif_V2
+          <Etape10_Recapitulatif_V2
             personnageId={personnageId}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}

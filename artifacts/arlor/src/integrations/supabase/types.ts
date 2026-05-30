@@ -5600,14 +5600,6 @@ export type Database = {
         }
         Returns: Json
       }
-      sauvegarder_etape_10: {
-        Args: {
-          p_ame_personnage: string
-          p_historique: string
-          p_personnage_id: string
-        }
-        Returns: Json
-      }
       sauvegarder_etape_2: {
         Args: {
           p_justification?: string
@@ -5639,7 +5631,6 @@ export type Database = {
       }
       valider_etape_1: { Args: { p_personnage_id: string }; Returns: Json }
       valider_etape_10: { Args: { p_personnage_id: string }; Returns: Json }
-      valider_etape_11: { Args: { p_personnage_id: string }; Returns: Json }
       valider_etape_2: { Args: { p_personnage_id: string }; Returns: Json }
       valider_etape_3: { Args: { p_personnage_id: string }; Returns: Json }
       valider_etape_4: { Args: { p_personnage_id: string }; Returns: Json }
