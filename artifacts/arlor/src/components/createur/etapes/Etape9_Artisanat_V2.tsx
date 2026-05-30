@@ -14,7 +14,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Hammer, Gem, Crown, Wrench } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  Hammer,
+  Gem,
+  Crown,
+  Wrench,
+  Bomb,
+} from "lucide-react";
 import { COUT_RECETTE_SUPPLEMENTAIRE } from "@/constants/artisanat";
 import { TYPE_RECETTE_LABELS } from "@/constants/labels";
 
@@ -26,6 +34,9 @@ type ReparationForgeRow =
   Database["public"]["Tables"]["reparations_forge"]["Row"];
 type PersonnageRecetteRow =
   Database["public"]["Tables"]["personnage_recettes"]["Row"];
+type PiegeRow = Database["public"]["Tables"]["pieges"]["Row"];
+type PersonnagePiegeRow =
+  Database["public"]["Tables"]["personnage_pieges"]["Row"];
 type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
 interface Etape9Props {
@@ -108,6 +119,46 @@ const Etape9_Artisanat_V2 = ({
   const hasForge = niveauForge >= 1;
   const hasJoaillerie = niveauJoaillerie >= 1;
 
+  // Pièges (compétence « Création et désarmement de piège », 3 niveaux).
+  // Gate de l'onglet = niveau_pieges >= 1.
+  const niveauPieges = quotas?.niveau_pieges ?? 0;
+  const hasPieges = niveauPieges >= 1;
+
+  // Quotas gratuits pièges (pools indépendants par palier) :
+  // niv 1 comp → 3 pièges niv1 gratuits ; niv 2 → 2 améliorations→niv2 ;
+  // niv 3 → 1 amélioration→niv3.
+  const quotaPiegesNiv1Total = quotas?.quota_pieges_niv1_total ?? 0;
+  const quotaPiegesNiv1Utilises = quotas?.quota_pieges_niv1_utilises ?? 0;
+  const quotaPiegesNiv2Total =
+    quotas?.quota_pieges_amelioration_niv2_total ?? 0;
+  const quotaPiegesNiv2Utilises =
+    quotas?.quota_pieges_amelioration_niv2_utilises ?? 0;
+  const quotaPiegesNiv3Total =
+    quotas?.quota_pieges_amelioration_niv3_total ?? 0;
+  const quotaPiegesNiv3Utilises =
+    quotas?.quota_pieges_amelioration_niv3_utilises ?? 0;
+
+  const quotaPiegesNiv1Restant = Math.max(
+    0,
+    quotaPiegesNiv1Total - quotaPiegesNiv1Utilises,
+  );
+  const quotaPiegesNiv2Restant = Math.max(
+    0,
+    quotaPiegesNiv2Total - quotaPiegesNiv2Utilises,
+  );
+  const quotaPiegesNiv3Restant = Math.max(
+    0,
+    quotaPiegesNiv3Total - quotaPiegesNiv3Utilises,
+  );
+
+  // Quota gratuit restant pour le palier VISÉ par une amélioration
+  // (niveau actuel + 1).
+  const getQuotaPiegeRestantPourPalier = (palierVise: number): number => {
+    if (palierVise === 2) return quotaPiegesNiv2Restant;
+    if (palierVise === 3) return quotaPiegesNiv3Restant;
+    return 0;
+  };
+
   // Recettes accessibles (niveau_requis ≤ niveau_alchimie)
   const { data: recettes, isLoading: loadingRecettes } = useQuery({
     queryKey: ["recettes-disponibles", niveauAlchimie],
@@ -188,7 +239,38 @@ const Etape9_Artisanat_V2 = ({
     enabled: hasJoaillerie,
   });
 
-  // Map recette_id → personnage_recette (pour pouvoir désacheter)
+  // Catalogue pièges (27 = 9 familles × 3 niveaux). Toutes les lignes sont
+  // récupérées pour connaître les coûts par palier (achat niv1 + montées).
+  const { data: piegesCatalogue, isLoading: loadingPiegesCatalogue } = useQuery(
+    {
+      queryKey: ["pieges-catalogue"],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("pieges")
+          .select("*")
+          .eq("est_actif", true)
+          .order("nom")
+          .order("niveau");
+        if (error) throw error;
+        return (data ?? []) as PiegeRow[];
+      },
+      enabled: hasPieges,
+    },
+  );
+
+  // Pièges possédés par le personnage (1 ligne par famille, niveau_actuel).
+  const { data: personnagePieges, isLoading: loadingPersoPieges } = useQuery({
+    queryKey: ["personnage-pieges", personnageId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personnage_pieges")
+        .select("*")
+        .eq("personnage_id", personnageId);
+      if (error) throw error;
+      return (data ?? []) as PersonnagePiegeRow[];
+    },
+    enabled: !!personnageId && hasPieges,
+  });
   const recettesAcquisesParRecetteId = useMemo(() => {
     const map = new Map<string, PersonnageRecetteRow>();
     (personnageRecettes ?? []).forEach((r) => {
@@ -196,6 +278,32 @@ const Etape9_Artisanat_V2 = ({
     });
     return map;
   }, [personnageRecettes]);
+
+  // Catalogue groupé par famille (nom), trié par niveau croissant à
+  // l'intérieur de chaque famille, familles triées alphabétiquement.
+  const famillesPieges = useMemo(() => {
+    const map = new Map<string, PiegeRow[]>();
+    (piegesCatalogue ?? []).forEach((p) => {
+      const arr = map.get(p.nom) ?? [];
+      arr.push(p);
+      map.set(p.nom, arr);
+    });
+    map.forEach((arr) =>
+      arr.sort((a, b) => (a.niveau ?? 0) - (b.niveau ?? 0)),
+    );
+    return Array.from(map.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0], "fr"),
+    );
+  }, [piegesCatalogue]);
+
+  // Map piege_nom → ligne de possession (pour connaître niveau_actuel + id).
+  const piegesPossedesParNom = useMemo(() => {
+    const map = new Map<string, PersonnagePiegeRow>();
+    (personnagePieges ?? []).forEach((pp) => {
+      map.set(pp.piege_nom, pp);
+    });
+    return map;
+  }, [personnagePieges]);
 
   const acheterMutation = useMutation({
     mutationFn: async (params: {
@@ -257,6 +365,110 @@ const Etape9_Artisanat_V2 = ({
     }
   };
 
+  // --- Mutations pièges (retour enveloppe standard {succes, erreurs, ...}) ---
+  // Contrairement à acheter_recette, les RPC pièges renvoient les erreurs
+  // métier dans data.succes=false → il faut inspecter le payload.
+  const acheterPiegeMutation = useMutation({
+    mutationFn: async (params: {
+      p_personnage_id: string;
+      p_piege_id: string;
+    }) => {
+      const { data, error } = await supabase.rpc("acheter_piege", params);
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        throw new Error(
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+            (payload.erreurs?.[0]?.code as string | undefined) ??
+            "Achat du piège impossible.",
+        );
+      }
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
+      });
+      toast.success("Piège acquis !");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
+  const ameliorerPiegeMutation = useMutation({
+    mutationFn: async (params: { p_personnage_piege_id: string }) => {
+      const { data, error } = await supabase.rpc("ameliorer_piege", params);
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        throw new Error(
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+            (payload.erreurs?.[0]?.code as string | undefined) ??
+            "Amélioration du piège impossible.",
+        );
+      }
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
+      });
+      toast.success("Piège amélioré !");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
+  const desacheterPiegeMutation = useMutation({
+    mutationFn: async (params: { p_personnage_piege_id: string }) => {
+      const { data, error } = await supabase.rpc("desacheter_piege", params);
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        throw new Error(
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+            (payload.erreurs?.[0]?.code as string | undefined) ??
+            "Retrait du piège impossible.",
+        );
+      }
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
+      });
+      toast.success("Piège retiré.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+      onError?.(error);
+    },
+  });
+
+  const handleAcheterPiege = (famille: PiegeRow[]) => {
+    const niv1 = famille.find((p) => p.niveau === 1) ?? famille[0];
+    if (!niv1) return;
+    acheterPiegeMutation.mutate({
+      p_personnage_id: personnageId,
+      p_piege_id: niv1.id,
+    });
+  };
+
+  const handleAmeliorerPiege = (possede: PersonnagePiegeRow) => {
+    ameliorerPiegeMutation.mutate({ p_personnage_piege_id: possede.id });
+  };
+
+  const handleRetirerPiege = (possede: PersonnagePiegeRow) => {
+    desacheterPiegeMutation.mutate({ p_personnage_piege_id: possede.id });
+  };
+
   // Avance etape_creation de 9 a 10 cote serveur. Les etapes 5-9 n'ont pas
   // de sauvegarder_etape_N : sans cet appel, le bouton « Suivant » ne ferait
   // que relire etape_creation et resterait bloque sur l'etape courante.
@@ -301,7 +513,7 @@ const Etape9_Artisanat_V2 = ({
     if (skipDeclencheRef.current) return;
     if (etapeCreation == null || etapeCreation > 9) return;
     if (loadingQuotas) return;
-    if (hasAlchimie || hasForge || hasJoaillerie) return;
+    if (hasAlchimie || hasForge || hasJoaillerie || hasPieges) return;
     if (avancerMutation.isPending) return;
     skipDeclencheRef.current = true;
     avancerMutation.mutate();
@@ -312,6 +524,7 @@ const Etape9_Artisanat_V2 = ({
     hasAlchimie,
     hasForge,
     hasJoaillerie,
+    hasPieges,
     avancerMutation,
   ]);
 
@@ -324,7 +537,7 @@ const Etape9_Artisanat_V2 = ({
     );
   }
 
-  if (!hasAlchimie && !hasForge && !hasJoaillerie) {
+  if (!hasAlchimie && !hasForge && !hasJoaillerie && !hasPieges) {
     return (
       <div className="space-y-6">
         <Card>
@@ -359,16 +572,22 @@ const Etape9_Artisanat_V2 = ({
     );
   }
 
-  const tabsCount = [hasAlchimie, hasForge, hasJoaillerie].filter(
+  const tabsCount = [hasAlchimie, hasPieges, hasForge, hasJoaillerie].filter(
     Boolean,
   ).length;
   const defaultTab = hasAlchimie
     ? "alchimie"
-    : hasForge
-      ? "forge"
-      : "joaillerie";
+    : hasPieges
+      ? "pieges"
+      : hasForge
+        ? "forge"
+        : "joaillerie";
 
   const mutationsPending = acheterMutation.isPending || desacheterMutation.isPending;
+  const mutationsPiegesPending =
+    acheterPiegeMutation.isPending ||
+    ameliorerPiegeMutation.isPending ||
+    desacheterPiegeMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -390,6 +609,11 @@ const Etape9_Artisanat_V2 = ({
           {hasAlchimie && (
             <TabsTrigger value="alchimie" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" /> Alchimie
+            </TabsTrigger>
+          )}
+          {hasPieges && (
+            <TabsTrigger value="pieges" className="flex items-center gap-2">
+              <Bomb className="h-4 w-4" /> Pièges
             </TabsTrigger>
           )}
           {hasForge && (
@@ -579,6 +803,221 @@ const Etape9_Artisanat_V2 = ({
                               </div>
                             );
                           })}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Pièges — carte par famille, montée de palier (s60) */}
+        {hasPieges && (
+          <TabsContent value="pieges" className="mt-6 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-heading">
+                  Pièges — niveau {niveauPieges}
+                </CardTitle>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  {niveauPieges >= 1 && (
+                    <div>
+                      Pièges niv 1 gratuits :{" "}
+                      <strong
+                        className={
+                          quotaPiegesNiv1Restant > 0
+                            ? "text-primary"
+                            : "text-amber-400"
+                        }
+                      >
+                        {quotaPiegesNiv1Utilises} / {quotaPiegesNiv1Total}
+                      </strong>
+                    </div>
+                  )}
+                  {niveauPieges >= 2 && (
+                    <div>
+                      Améliorations → niv 2 gratuites :{" "}
+                      <strong
+                        className={
+                          quotaPiegesNiv2Restant > 0
+                            ? "text-primary"
+                            : "text-amber-400"
+                        }
+                      >
+                        {quotaPiegesNiv2Utilises} / {quotaPiegesNiv2Total}
+                      </strong>
+                    </div>
+                  )}
+                  {niveauPieges >= 3 && (
+                    <div>
+                      Améliorations → niv 3 gratuites :{" "}
+                      <strong
+                        className={
+                          quotaPiegesNiv3Restant > 0
+                            ? "text-primary"
+                            : "text-amber-400"
+                        }
+                      >
+                        {quotaPiegesNiv3Utilises} / {quotaPiegesNiv3Total}
+                      </strong>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loadingPiegesCatalogue || loadingPersoPieges ? (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Chargement des pièges…
+                  </div>
+                ) : famillesPieges.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun piège disponible.
+                  </p>
+                ) : (
+                  famillesPieges.map(([nom, niveaux]) => {
+                    const possede = piegesPossedesParNom.get(nom);
+                    const niveauActuel = possede?.niveau_actuel ?? 0;
+                    const niv1 =
+                      niveaux.find((p) => p.niveau === 1) ?? niveaux[0];
+                    // Ligne affichée = niveau possédé, sinon niv 1.
+                    const ligneAffichee =
+                      niveaux.find((p) => p.niveau === niveauActuel) ?? niv1;
+                    // Construction = matériaux niv 1 (peuplé niv 1 seulement).
+                    const construction = niv1?.construction ?? null;
+
+                    // NON POSSÉDÉ : bouton Sélectionner (achat niv 1).
+                    const coutNiv1 = niv1?.cout_xp ?? 0;
+                    const seraGratuitAchat = quotaPiegesNiv1Restant > 0;
+                    const xpInsuffisantAchat =
+                      !seraGratuitAchat && coutNiv1 > xpDisponible;
+
+                    // POSSÉDÉ < 3 : bouton Améliorer (palier visé).
+                    const palierVise = niveauActuel + 1;
+                    const ligneSuivante = niveaux.find(
+                      (p) => p.niveau === palierVise,
+                    );
+                    const coutPalier = ligneSuivante?.cout_xp ?? 0;
+                    const quotaPalierRestant =
+                      getQuotaPiegeRestantPourPalier(palierVise);
+                    const seraGratuitAmel = quotaPalierRestant > 0;
+                    const xpInsuffisantAmel =
+                      !seraGratuitAmel && coutPalier > xpDisponible;
+
+                    const estPossede = niveauActuel >= 1;
+                    const estMax = niveauActuel >= 3;
+
+                    return (
+                      <div
+                        key={nom}
+                        className={`space-y-2 rounded-lg border p-3 transition-colors ${
+                          estPossede
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <strong className="font-heading text-primary">
+                                {nom}
+                              </strong>
+                              {estPossede && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Niveau {niveauActuel}
+                                  {estMax ? " (max)" : ""}
+                                </Badge>
+                              )}
+                            </div>
+                            {ligneAffichee?.effets && (
+                              <p className="text-xs text-muted-foreground">
+                                {ligneAffichee.effets}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {ligneAffichee?.cible && (
+                                <Badge variant="outline" className="text-xs">
+                                  Cible : {ligneAffichee.cible}
+                                </Badge>
+                              )}
+                              {ligneAffichee?.duree && (
+                                <Badge variant="outline" className="text-xs">
+                                  Durée : {ligneAffichee.duree}
+                                </Badge>
+                              )}
+                              {estPossede &&
+                                (possede?.xp_depense ?? 0) > 0 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {possede?.xp_depense} XP dépensés
+                                  </Badge>
+                                )}
+                            </div>
+                            {construction && (
+                              <p className="text-xs">
+                                <span className="text-amber-400">
+                                  Construction :
+                                </span>{" "}
+                                {construction}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          {!estPossede && (
+                            <Button
+                              size="sm"
+                              disabled={
+                                mutationsPiegesPending || xpInsuffisantAchat
+                              }
+                              onClick={() => handleAcheterPiege(niveaux)}
+                              title={
+                                xpInsuffisantAchat
+                                  ? `XP insuffisants (manque ${coutNiv1 - xpDisponible} XP)`
+                                  : undefined
+                              }
+                            >
+                              {seraGratuitAchat
+                                ? "Sélectionner (Gratuit)"
+                                : `Sélectionner (${coutNiv1} XP)`}
+                            </Button>
+                          )}
+
+                          {estPossede && !estMax && (
+                            <Button
+                              size="sm"
+                              disabled={
+                                mutationsPiegesPending || xpInsuffisantAmel
+                              }
+                              onClick={() =>
+                                possede && handleAmeliorerPiege(possede)
+                              }
+                              title={
+                                xpInsuffisantAmel
+                                  ? `XP insuffisants (manque ${coutPalier - xpDisponible} XP)`
+                                  : undefined
+                              }
+                            >
+                              {seraGratuitAmel
+                                ? `Améliorer → niv ${palierVise} (Gratuit)`
+                                : `Améliorer → niv ${palierVise} (${coutPalier} XP)`}
+                            </Button>
+                          )}
+
+                          {estPossede && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={mutationsPiegesPending}
+                              onClick={() =>
+                                possede && handleRetirerPiege(possede)
+                              }
+                            >
+                              Retirer
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
