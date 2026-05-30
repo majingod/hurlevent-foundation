@@ -838,6 +838,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             ${pal?.cible ? `<div class="muted">Cible : ${escapeHtml(pal.cible)}</div>` : ""}
             ${pal?.duree ? `<div class="muted">Durée : ${escapeHtml(pal.duree)}</div>` : ""}
             ${pal?.effets ? `<div class="desc">${escapeHtml(pal.effets)}</div>` : ""}
+            ${piegeCatPrint.get(`${nom}__1`)?.construction ? `<div class="muted"><strong>Construction :</strong> ${escapeHtml(piegeCatPrint.get(`${nom}__1`)!.construction!)}</div>` : ""}
           </div>`;
         }).join("")}
         ` : ""}
@@ -1473,6 +1474,8 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                   {famillesPiegesPossedees.map(([nom, niveaux]) => {
                     const niveauMax = niveaux[niveaux.length - 1];
                     const palierHaut = piegeCatalogueParNomNiveau.get(`${nom}__${niveauMax}`);
+                    // Construction = info de famille (rangée sur le niv 1), miroir wizard
+                    const constructionFamille = piegeCatalogueParNomNiveau.get(`${nom}__1`)?.construction ?? null;
                     const depliee = piegesDepliees.has(nom);
                     return (
                       <Card key={nom}>
@@ -1492,19 +1495,17 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                         <CardContent className="space-y-2 text-xs">
                           {palierHaut && (
                             <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2">
-                              <div className="flex flex-wrap gap-2">
-                                {palierHaut.cible && (
-                                  <Badge variant="outline" className="text-xs">Cible : {palierHaut.cible}</Badge>
-                                )}
-                                {palierHaut.duree && (
-                                  <Badge variant="outline" className="text-xs">Durée : {palierHaut.duree}</Badge>
-                                )}
-                              </div>
-                              {palierHaut.effets && (
-                                <p className="text-muted-foreground">{palierHaut.effets}</p>
+                              {palierHaut.cible && (
+                                <p><span className="font-medium text-foreground">Cible :</span> {palierHaut.cible}</p>
                               )}
-                              {palierHaut.construction && (
-                                <p><span className="text-amber-400">Construction :</span> {palierHaut.construction}</p>
+                              {palierHaut.duree && (
+                                <p><span className="font-medium text-foreground">Durée :</span> {palierHaut.duree}</p>
+                              )}
+                              {palierHaut.effets && (
+                                <p><span className="font-medium text-foreground">Effets :</span> {palierHaut.effets}</p>
+                              )}
+                              {constructionFamille && (
+                                <p className="pt-1 border-t border-border/40"><span className="font-medium text-amber-400">Construction :</span> {constructionFamille}</p>
                               )}
                             </div>
                           )}
@@ -1533,16 +1534,14 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                                             <Badge variant="outline" className="text-xs">Effet de niveau {palier.niveau_effet}</Badge>
                                           )}
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
-                                          {palier.cible && (
-                                            <Badge variant="outline" className="text-xs">Cible : {palier.cible}</Badge>
-                                          )}
-                                          {palier.duree && (
-                                            <Badge variant="outline" className="text-xs">Durée : {palier.duree}</Badge>
-                                          )}
-                                        </div>
+                                        {palier.cible && (
+                                          <p><span className="font-medium text-foreground">Cible :</span> {palier.cible}</p>
+                                        )}
+                                        {palier.duree && (
+                                          <p><span className="font-medium text-foreground">Durée :</span> {palier.duree}</p>
+                                        )}
                                         {palier.effets && (
-                                          <p className="text-muted-foreground">{palier.effets}</p>
+                                          <p><span className="font-medium text-foreground">Effets :</span> {palier.effets}</p>
                                         )}
                                       </div>
                                     );
