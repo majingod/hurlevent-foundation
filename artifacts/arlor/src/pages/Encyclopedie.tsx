@@ -214,7 +214,7 @@ const Encyclopedie = () => {
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
         supabase.from("traits_raciaux").select(`id, nom, description, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
         supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
-        supabase.from("vue_competences_encyclopedie" as "competences").select("*").eq("est_actif", true).order("categorie").order("nom"),
+        supabase.from("vue_competences_encyclopedie").select("*").eq("est_actif", true).order("categorie").order("nom"),
         supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
         supabase.from("prieres").select("*").eq("est_actif", true).order("domaine").order("niveau").order("nom"),
         supabase.from("religions").select("*").eq("est_actif", true).order("nom"),
