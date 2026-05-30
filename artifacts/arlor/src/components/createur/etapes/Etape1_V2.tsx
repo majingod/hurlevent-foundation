@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -42,6 +43,8 @@ interface Etape1Form {
   ouvertures_terrain: number;
   est_croyant: "oui" | "non" | "";
   religion_id: string;
+  historique: string;
+  ame_personnage: string;
 }
 
 const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
@@ -62,6 +65,8 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
       ouvertures_terrain: 0,
       est_croyant: "",
       religion_id: "",
+      historique: "",
+      ame_personnage: "",
     },
   });
 
@@ -103,7 +108,7 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
       const { data } = await supabase
         .from("personnages")
         .select(
-          "nom, gn_completes, mini_gn_completes, ouvertures_terrain, est_croyant, religion_id"
+          "nom, gn_completes, mini_gn_completes, ouvertures_terrain, est_croyant, religion_id, historique, ame_personnage"
         )
         .eq("id", personnageId)
         .single();
@@ -120,6 +125,8 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
             ? "non"
             : "",
         religion_id: data.religion_id ?? "",
+        historique: data.historique ?? "",
+        ame_personnage: data.ame_personnage ?? "",
       });
     };
     charger();
@@ -149,6 +156,8 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
       p_ouvertures_terrain: Number(values.ouvertures_terrain) || 0,
       p_est_croyant: croyant,
       p_religion_id: (croyant ? values.religion_id : null) as unknown as string,
+      p_historique: values.historique,
+      p_ame_personnage: values.ame_personnage,
     });
     setSubmitting(false);
 
@@ -354,6 +363,36 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
           />
         </div>
       )}
+
+      <div className="space-y-2">
+        <Label htmlFor="historique" className="text-base text-gold">
+          Historique du personnage
+        </Label>
+        <Textarea
+          id="historique"
+          placeholder="Racontez l'histoire de votre personnage, ses origines, ses motivations, les événements qui l'ont marqué..."
+          {...register("historique")}
+          className="min-h-[160px] resize-none bg-white/5 border-white/10"
+        />
+        <p className="text-xs italic text-white/40">
+          Aucune limite de caractères. Modifiable plus tard.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="ame_personnage" className="text-base text-gold">
+          Âme du personnage
+        </Label>
+        <Textarea
+          id="ame_personnage"
+          placeholder="Décrivez la personnalité profonde, les valeurs, les traits de caractère, les motivations cachées de votre personnage..."
+          {...register("ame_personnage")}
+          className="min-h-[160px] resize-none bg-white/5 border-white/10"
+        />
+        <p className="text-xs italic text-white/40">
+          Aucune limite de caractères. Modifiable plus tard.
+        </p>
+      </div>
 
       <div className="flex justify-end">
         <Button
