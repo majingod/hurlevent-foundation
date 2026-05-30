@@ -53,6 +53,7 @@ interface Competence {
   categorie: string | null;
   niveaux: Json | null;
   est_general: boolean | null;
+  prerequis_labels: Json | null;
 }
 
 interface Sort {
@@ -213,7 +214,7 @@ const Encyclopedie = () => {
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
         supabase.from("traits_raciaux").select(`id, nom, description, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
         supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
-        supabase.from("competences").select("*").eq("est_actif", true).order("categorie").order("nom"),
+        supabase.from("vue_competences_encyclopedie" as "competences").select("*").eq("est_actif", true).order("categorie").order("nom"),
         supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
         supabase.from("prieres").select("*").eq("est_actif", true).order("domaine").order("niveau").order("nom"),
         supabase.from("religions").select("*").eq("est_actif", true).order("nom"),
@@ -439,7 +440,7 @@ const NoResults = () => (
 
 const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: string }) => {
   const filtered = filterByText(races, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.nom_latin ?? "", r.exigences_costume ?? ""]);
-  
+
   return (
     <div className="space-y-6">
       <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Races de Destéa</h2>
@@ -704,12 +705,12 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
     return matchTexte && matchCategorie;
   });
   const grouped = groupBy(filtered, (c) => c.categorie ?? "autre");
-  const getPrerequisText = (niv: any): string | null => {
-    const raw = niv.prerequis;
-    if (!raw) return null;
-    if (typeof raw === "string") return raw.trim() || null;
-    if (Array.isArray(raw) && raw.length > 0) return raw.join(", ");
-    return null;
+  const getPrerequisLabels = (prerequisLabels: any, niveauNum: number): string | null => {
+    if (!prerequisLabels || typeof prerequisLabels !== "object") return null;
+    const items = prerequisLabels[String(niveauNum)];
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const txt = items.map((it: any) => it?.label).filter(Boolean).join(", ");
+    return txt || null;
   };
   const orderedKeys = ["general", "guerrier", "voleur", "mage", "pretre"];
   const keys = [...orderedKeys.filter((k) => k in grouped), ...Object.keys(grouped).filter((k) => !orderedKeys.includes(k))];
@@ -753,7 +754,8 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
                             </p>
                             {niv.description && <p className="text-muted-foreground text-xs">{niv.description}</p>}
                             {(() => {
-                             const prerequisText = getPrerequisText(niv);
+                             const niveauNum = niv.niveau ?? i + 1;
+                             const prerequisText = getPrerequisLabels(c.prerequis_labels, niveauNum);
                              return prerequisText ? (
                                <p className="text-xs mt-1 font-medium">⚡ Prérequis : {prerequisText}</p>
                              ) : null;
