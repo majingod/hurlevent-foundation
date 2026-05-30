@@ -2312,6 +2312,9 @@ const Etape5_Competences_V2 = ({
 
   return (
     <div className="space-y-4">
+      <h2 className="font-heading text-xl font-semibold text-foreground">
+        Étape 5 — Achat de compétences
+      </h2>
       {/* Filtres de statut (C3c) — barre globale au-dessus des onglets. */}
       <div className="flex flex-wrap gap-1.5">
         {FILTRE_OPTIONS.map((f) => (

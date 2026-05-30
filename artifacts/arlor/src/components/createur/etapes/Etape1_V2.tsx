@@ -49,6 +49,9 @@ interface Etape1Form {
 
 const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
+  // XP des GN/mini-GN/ouvertures DÉJÀ sauvegardé (donc déjà inclus dans xp_total serveur).
+  // Sert à ne remonter au header que la portion NON sauvegardée (évite le double-compte).
+  const [gainSauvegarde, setGainSauvegarde] = useState(0);
 
   const {
     register,
@@ -85,8 +88,8 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
   // Remonte l'XP gagné estimé au header parent, en temps réel
   useEffect(() => {
     const gainEstime = xpGn + xpMiniGn + xpOuvertures;
-    onXpGainChange?.(gainEstime);
-  }, [xpGn, xpMiniGn, xpOuvertures, onXpGainChange]);
+    onXpGainChange?.(gainEstime - gainSauvegarde);
+  }, [xpGn, xpMiniGn, xpOuvertures, gainSauvegarde, onXpGainChange]);
 
   // Charger les religions actives
   const { data: religions = [], isLoading: loadingReligions } = useQuery({
@@ -128,6 +131,11 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
         historique: data.historique ?? "",
         ame_personnage: data.ame_personnage ?? "",
       });
+      setGainSauvegarde(
+        (data.gn_completes ?? 0) * XP_GN_REGULIER +
+          (data.mini_gn_completes ?? 0) * XP_MINI_GN +
+          (data.ouvertures_terrain ?? 0) * XP_OUVERTURE_TERRAIN
+      );
     };
     charger();
   }, [personnageId, reset]);
