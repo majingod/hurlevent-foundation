@@ -3,6 +3,7 @@ import { CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
+import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 
 const CIBLE_FILTERS: { value: string | null; label: string }[] = [
   { value: null, label: "Tous" },
@@ -22,6 +23,7 @@ interface Assemblage {
   cout_ps: number | null;
   effet_maitrise: string | null;
   cout_ps_maitrise: number | null;
+  texte_manuel: string | null;
 }
 
 const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: Assemblage[]; searchQuery?: string }) => {
@@ -35,6 +37,7 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
     });
   };
   const [cibleFilter, setCibleFilter] = useState<string | null>(null);
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   useEffect(() => {
     if (!searchQuery) return;
@@ -72,6 +75,12 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
           </Button>
         ))}
       </div>
+      {filtered.length > 0 && filtered.some((a) => a.texte_manuel) && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(filtered.map((a) => a.id))}
+          onToggle={() => toggleAll(filtered.map((a) => a.id))}
+        />
+      )}
       {filtered.length === 0 && (q || cibleFilter !== null) && (
         <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
       )}
@@ -109,6 +118,11 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
                   {a.cout_ps_maitrise != null && <span className="text-xs ml-1">({a.cout_ps_maitrise} PS)</span>}
                 </p>
               )}
+              <ToggleManuel
+                texte={a.texte_manuel}
+                isOpen={isManuelOpen(a.id)}
+                onToggle={() => toggleManuel(a.id)}
+              />
             </div>
           </EncyclopedieCard>
         ))}

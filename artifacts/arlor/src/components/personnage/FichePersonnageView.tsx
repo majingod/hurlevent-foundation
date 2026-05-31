@@ -11,6 +11,7 @@ import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
+import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
@@ -113,6 +114,7 @@ interface Assemblage {
   description: string | null;
   effet: string | null;
   runes_requises: string[] | null;
+  texte_manuel: string | null;
 }
 
 interface Recette {
@@ -459,6 +461,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   const isOwner = user?.id === fiche?.joueur_id;
   const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   const traits = Array.isArray(fiche?.traits_raciaux_choisis)
     ? (fiche.traits_raciaux_choisis as unknown as Trait[])
@@ -1451,11 +1454,34 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               {!assemblages || assemblages.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
+                  {assemblages.some((a) => a.texte_manuel) && (
+                    <ManuelGlobalSwitch
+                      allOpen={isAllOpen(assemblages.map((a) => a.id))}
+                      onToggle={() => toggleAll(assemblages.map((a) => a.id))}
+                    />
+                  )}
                   {assemblages.map((asm) => (
-                    <div key={asm.id} className="p-2 rounded border border-border/50 text-sm">
-                      <p className="font-medium text-foreground">{asm.nom}</p>
-                      {asm.cout_ps && <p className="text-xs text-muted-foreground">Coût PS : {asm.cout_ps}</p>}
+                    <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-foreground">{asm.nom}</p>
+                        {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
+                        {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
+                      </div>
+                      {asm.runes_requises && asm.runes_requises.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {asm.runes_requises.map((rune, i) => (
+                            <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
+                          ))}
+                        </div>
+                      )}
+                      {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
+                      {asm.description && <p className="text-muted-foreground whitespace-pre-line">{asm.description}</p>}
+                      <ToggleManuel
+                        texte={asm.texte_manuel}
+                        isOpen={isManuelOpen(asm.id)}
+                        onToggle={() => toggleManuel(asm.id)}
+                      />
                     </div>
                   ))}
                 </div>
