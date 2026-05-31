@@ -76,6 +76,7 @@ interface CascadeItem {
   nom: string;
   quantite: number;
   xp_total: number;
+  niveaux?: number[];
 }
 
 interface CascadeContext {
@@ -1263,7 +1264,7 @@ const Etape5_Competences_V2 = ({
     comp: CompetenceWithNiveaux,
     achat: PersonnageCompetenceRow,
   ) => {
-    if (achat.xp_depense === 0) {
+    if (achat.xp_depense === 0 && !comp.desachat_force) {
       toast.error("Une compétence gratuite ne peut pas être désachetée.");
       return;
     }
@@ -1421,7 +1422,7 @@ const Etape5_Competences_V2 = ({
       prereqBloque ||
       niveauPrecedentRequis ||
       mutationEnCours ||
-      (dejaAchete && estGratuit) ||
+      (dejaAchete && estGratuit && !comp.desachat_force) ||
       xpInsuffisants;
 
     return (
@@ -2537,8 +2538,10 @@ const Etape5_Competences_V2 = ({
                       {it.type_label} :
                     </span>{" "}
                     {it.nom}
-                    {it.quantite > 1 ? ` (${it.quantite} niveaux)` : ""} —{" "}
-                    {it.xp_total} XP
+                    {it.niveaux && it.niveaux.length > 0
+                      ? ` (niv ${it.niveaux.join(", ")})`
+                      : ""}{" "}
+                    — {it.xp_total} XP
                   </li>
                 ))}
               </ul>
