@@ -159,7 +159,6 @@ const Etape6_Sorts_V2 = ({
         .eq("cercle", cercleSelectionne)
         .lte("niveau", niveauMaxCercle)
         .eq("est_actif", true)
-        .order("niveau")
         .order("nom");
       if (error) throw error;
       return (data ?? []) as SortRow[];

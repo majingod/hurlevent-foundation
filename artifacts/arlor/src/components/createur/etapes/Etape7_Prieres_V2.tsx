@@ -208,7 +208,6 @@ const Etape7_Prieres_V2 = ({
         .eq("domaine", domaineSelectionne)
         .lte("niveau", niveauMaxDomaine)
         .eq("est_actif", true)
-        .order("niveau")
         .order("nom");
       if (error) throw error;
       return (data ?? []) as PriereRow[];
