@@ -28,6 +28,7 @@ export type Database = {
           id: string
           nom: string | null
           runes_requises: string[] | null
+          texte_manuel: string | null
         }
         Insert: {
           cible?: string | null
@@ -42,6 +43,7 @@ export type Database = {
           id?: string
           nom?: string | null
           runes_requises?: string[] | null
+          texte_manuel?: string | null
         }
         Update: {
           cible?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           id?: string
           nom?: string | null
           runes_requises?: string[] | null
+          texte_manuel?: string | null
         }
         Relationships: []
       }
@@ -3367,6 +3370,7 @@ export type Database = {
           nom: string | null
           personnage_id: string | null
           runes_requises: string[] | null
+          texte_manuel: string | null
           xp_depense: number | null
         }
         Relationships: [
@@ -5717,12 +5721,10 @@ export type Database = {
         Args: { p_personnage_assemblage_id: string }
         Returns: Json
       }
-      desacheter_competence:
-        | { Args: { p_personnage_competence_id: string }; Returns: Json }
-        | {
-            Args: { p_dry_run?: boolean; p_personnage_competence_id: string }
-            Returns: Json
-          }
+      desacheter_competence: {
+        Args: { p_dry_run?: boolean; p_personnage_competence_id: string }
+        Returns: Json
+      }
       desacheter_piege: {
         Args: { p_personnage_piege_id: string }
         Returns: Json
