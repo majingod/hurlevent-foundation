@@ -888,11 +888,11 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           <TabsList className="inline-flex w-max">
             <TabsTrigger value="infos">Infos</TabsTrigger>
             {hasTraits && <TabsTrigger value="traits">Traits</TabsTrigger>}
+            <TabsTrigger value="historique">Historique</TabsTrigger>
             <TabsTrigger value="competences">Compétences</TabsTrigger>
             {hasSorts && <TabsTrigger value="sorts">Sorts</TabsTrigger>}
             {hasPrieres && <TabsTrigger value="prieres">Prières</TabsTrigger>}
             {hasArtisanat && <TabsTrigger value="artisanat">Artisanat</TabsTrigger>}
-            <TabsTrigger value="historique">Historique</TabsTrigger>
             {mode === 'route' && <TabsTrigger value="export">Export</TabsTrigger>}
           </TabsList>
         </div>
