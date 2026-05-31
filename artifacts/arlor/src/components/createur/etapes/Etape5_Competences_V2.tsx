@@ -70,10 +70,18 @@ interface DropdownOption {
   label: string;
 }
 
+interface CascadeItem {
+  type: string;
+  type_label: string;
+  nom: string;
+  quantite: number;
+  xp_total: number;
+}
+
 interface CascadeContext {
   competence: CompetenceWithNiveaux;
-  achatCible: PersonnageCompetenceRow;
-  achatsAnnules: PersonnageCompetenceRow[];
+  achatCibleId: string;
+  items: CascadeItem[];
   xpTotalRembourse: number;
 }
 
@@ -133,12 +141,6 @@ const CLASSE_LABELS: Record<string, string> = {
 const CLASSES_JOUABLES = ["guerrier", "voleur", "mage", "pretre"] as const;
 
 // type_achat qui cascade en DB (suppression ascendante des niveaux >= N)
-const TYPES_ACHAT_CASCADE = new Set([
-  "simple",
-  "unique_avec_choix",
-  "multiple_avec_choix_par_niveau",
-]);
-
 // Compétences dupliquées mage/pretre en DB, soumises au trigger
 // verifier_verrous_competences. Verrou mutuel : ne peut pas acheter
 // les 2 versions sur le même personnage.
@@ -175,7 +177,7 @@ function normalizeCategorie(value: string | null | undefined): string {
   return value
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[̀-ͯ]/g, "");
 }
 
 function resoudreChoixAffichage(
@@ -1155,11 +1157,19 @@ const Etape5_Competences_V2 = ({
     },
     onSuccess: (data) => {
       invalidateAll();
-      const nbLignes = (data?.donnees?.nb_lignes_supprimees as number) ?? 1;
-      const xpRembourse = (data?.donnees?.xp_total_rembourse as number) ?? 0;
-      toast.success(
-        `${nbLignes} niveau${nbLignes > 1 ? "x" : ""} annulé${nbLignes > 1 ? "s" : ""} (${xpRembourse} XP remboursés)`,
-      );
+      const d = (data?.donnees ?? {}) as Record<string, number>;
+      const nbComp = d.count_competences ?? 0;
+      const nbSorts = d.count_sorts ?? 0;
+      const nbPrieres = d.count_prieres ?? 0;
+      const xpRembourse = d.xp_rembourse ?? 0;
+      const parts: string[] = [];
+      if (nbComp > 0)
+        parts.push(`${nbComp} niveau${nbComp > 1 ? "x" : ""} de compétence`);
+      if (nbSorts > 0) parts.push(`${nbSorts} sort${nbSorts > 1 ? "s" : ""}`);
+      if (nbPrieres > 0)
+        parts.push(`${nbPrieres} prière${nbPrieres > 1 ? "s" : ""}`);
+      const resume = parts.length > 0 ? parts.join(", ") : "achat";
+      toast.success(`${resume} annulé(s) — ${xpRembourse} XP remboursés`);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -1243,10 +1253,11 @@ const Etape5_Competences_V2 = ({
   };
 
   /**
-   * Décochage d'un achat. Si la compétence cascade et qu'il y a des niveaux
-   * > N à supprimer aussi, on ouvre la modale de confirmation. Sinon
-   * (ligne unique : multiple_choix_distinct/multiple_sans_choix, ou dernier niveau
-   * d'une séquence), on supprime direct sans modale.
+   * Décochage d'un achat. On demande au serveur un APERÇU (dry-run) de la
+   * cascade complète (niveaux supérieurs de la même compétence + dépendants
+   * inter-compétences + sorts/prières si un enabler est touché). Si la cascade
+   * ne retire qu'un seul niveau d'une seule compétence (aucun sort/prière), on
+   * supprime directement ; sinon on ouvre la modale de confirmation.
    */
   const handleUncheck = (
     comp: CompetenceWithNiveaux,
@@ -1257,49 +1268,53 @@ const Etape5_Competences_V2 = ({
       return;
     }
 
-    if (!TYPES_ACHAT_CASCADE.has(comp.type_achat ?? "")) {
-      // multiple_choix_distinct ou multiple_sans_choix : suppression unique, pas de cascade
-      desacheterMutation.mutate({ p_personnage_competence_id: achat.id });
-      return;
-    }
-
-    // Sprint 5.5f : Calcul des achats cascade (niveau >= achat.niveau_acquis
-    // sur cette compétence). Pour multiple_avec_choix_par_niveau, si la ligne
-    // cible a un choix_achat défini, la cascade ne touche QUE le même
-    // choix_achat (miroir de desacheter_competence côté DB depuis 5.5e).
-    // Si la ligne cible a choix_achat = NULL (cas Connaissances Criminelles
-    // niveau 1 = savoir général sans choix), cascade sur tout.
-    const achatsCompetence = achatsParCompetence.get(comp.id) ?? [];
-    const aSupprimer = achatsCompetence.filter((a) => {
-      if (a.niveau_acquis < achat.niveau_acquis) return false;
-      if (
-        comp.type_achat === "multiple_avec_choix_par_niveau" &&
-        achat.choix_achat != null
-      ) {
-        return a.choix_achat === achat.choix_achat;
+    void (async () => {
+      let donnees: Record<string, unknown>;
+      try {
+        const { data, error } = await supabase.rpc("desacheter_competence", {
+          p_personnage_competence_id: achat.id,
+          p_dry_run: true,
+        });
+        if (error) throw error;
+        const payload = (data ?? {}) as Record<string, any>;
+        if (payload.succes !== true) {
+          throw new Error(
+            (payload.erreurs?.[0]?.message as string | undefined) ??
+              "Impossible de calculer l'aperçu du retrait.",
+          );
+        }
+        donnees = (payload.donnees ?? {}) as Record<string, unknown>;
+      } catch (e) {
+        toast.error((e as Error).message);
+        return;
       }
-      return true;
-    });
-    const xpRembourse = aSupprimer.reduce((sum, a) => sum + (a.xp_depense ?? 0), 0);
 
-    if (aSupprimer.length === 1) {
-      // Pas de cascade réelle → suppression directe
-      desacheterMutation.mutate({ p_personnage_competence_id: achat.id });
-      return;
-    }
+      const items = (donnees.items_detail ?? []) as CascadeItem[];
+      const nbLignes = (donnees.count_competences as number) ?? 0;
+      const aDesSortsOuPrieres =
+        ((donnees.count_sorts as number) ?? 0) > 0 ||
+        ((donnees.count_prieres as number) ?? 0) > 0;
 
-    setCascadeDialog({
-      competence: comp,
-      achatCible: achat,
-      achatsAnnules: aSupprimer,
-      xpTotalRembourse: xpRembourse,
-    });
+      // Pas de cascade réelle (1 seul niveau d'1 seule compétence, aucun
+      // sort/prière) → suppression directe sans modale.
+      if (nbLignes <= 1 && !aDesSortsOuPrieres) {
+        desacheterMutation.mutate({ p_personnage_competence_id: achat.id });
+        return;
+      }
+
+      setCascadeDialog({
+        competence: comp,
+        achatCibleId: achat.id,
+        items,
+        xpTotalRembourse: (donnees.xp_rembourse as number) ?? 0,
+      });
+    })();
   };
 
   const confirmCascade = () => {
     if (!cascadeDialog) return;
     desacheterMutation.mutate({
-      p_personnage_competence_id: cascadeDialog.achatCible.id,
+      p_personnage_competence_id: cascadeDialog.achatCibleId,
     });
     setCascadeDialog(null);
   };
@@ -2504,25 +2519,8 @@ const Etape5_Competences_V2 = ({
             <DialogDescription>
               {cascadeDialog && (
                 <>
-                  Annuler le niveau {cascadeDialog.achatCible.niveau_acquis} de{" "}
-                  <strong>{cascadeDialog.competence.nom}</strong>
-                  {cascadeDialog.achatCible.choix_achat && (
-                    <>
-                      {" "}
-                      ({" "}
-                      <em>
-                        {resoudreChoixAffichage(
-                          cascadeDialog.achatCible.choix_achat,
-                          cascadeDialog.competence.type_choix,
-                          religions ?? [],
-                          langues ?? [],
-                        )}
-                      </em>
-                      )
-                    </>
-                  )}{" "}
-                  annulera aussi tous les niveaux supérieurs de cette
-                  compétence.
+                  Retirer <strong>{cascadeDialog.competence.nom}</strong>{" "}
+                  annulera aussi tout ce qui en dépend. Voici le détail :
                 </>
               )}
             </DialogDescription>
@@ -2530,25 +2528,19 @@ const Etape5_Competences_V2 = ({
           {cascadeDialog && (
             <div className="space-y-2 py-2 text-sm">
               <p className="font-semibold">
-                Achats qui seront annulés ({cascadeDialog.achatsAnnules.length}) :
+                Ce qui sera annulé ({cascadeDialog.items.length}) :
               </p>
               <ul className="ml-4 list-disc space-y-1 text-xs">
-                {cascadeDialog.achatsAnnules
-                  .sort((a, b) => a.niveau_acquis - b.niveau_acquis)
-                  .map((a) => {
-                    const choix = resoudreChoixAffichage(
-                      a.choix_achat,
-                      cascadeDialog.competence.type_choix,
-                      religions ?? [],
-                      langues ?? [],
-                    );
-                    return (
-                      <li key={a.id}>
-                        Niveau {a.niveau_acquis}
-                        {choix ? ` (${choix})` : ""} — {a.xp_depense} XP
-                      </li>
-                    );
-                  })}
+                {cascadeDialog.items.map((it, idx) => (
+                  <li key={`${it.type}-${it.nom}-${idx}`}>
+                    <span className="text-muted-foreground">
+                      {it.type_label} :
+                    </span>{" "}
+                    {it.nom}
+                    {it.quantite > 1 ? ` (${it.quantite} niveaux)` : ""} —{" "}
+                    {it.xp_total} XP
+                  </li>
+                ))}
               </ul>
               <p className="pt-2 font-semibold text-green-500">
                 Total remboursé : {cascadeDialog.xpTotalRembourse} XP
