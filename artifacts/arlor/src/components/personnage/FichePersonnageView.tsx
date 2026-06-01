@@ -10,6 +10,7 @@ import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Clock, Bomb, Chevr
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
+import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 import type { Database, Json } from "@/integrations/supabase/types";
@@ -125,6 +126,8 @@ interface Recette {
   niveau_requis: number;
   description: string | null;
   effet: string | null;
+  formule: string | null;
+  ingredients: Json | null;
 }
 
 interface ArtisanatEtat {
@@ -756,13 +759,19 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         <h2>Alchimie (Niv. ${niveauAlchimie})</h2>
         ${[1, 2, 3].filter((n) => n <= niveauAlchimie && recettesByNiveau[n]?.length > 0).map((n) => `
           <h3>${niveauLabels[n]}</h3>
-          ${(recettesByNiveau[n] ?? []).map((r) => `
+          ${(recettesByNiveau[n] ?? []).map((r) => {
+            const { composants, manipulations } = parseIngredientsRecette(r.ingredients);
+            return `
             <div class="card">
               <div class="card-title">${escapeHtml(r.nom)}</div>
               ${r.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(r.effet)}</div>` : ""}
+              ${r.formule ? `<div class="desc"><strong>Formule :</strong> ${escapeHtml(r.formule)}</div>` : ""}
+              ${composants.length > 0 ? `<div class="desc"><strong>Ingrédients :</strong> ${escapeHtml(composants.map(formaterComposant).join(" · "))}</div>` : ""}
+              ${manipulations.length > 0 ? `<div class="desc"><strong>Préparation :</strong> ${escapeHtml(manipulations.map((e, i) => `${i + 1}. ${e}`).join("  "))}</div>` : ""}
               ${r.description ? `<div class="desc">${escapeHtml(r.description)}</div>` : ""}
             </div>
-          `).join("")}
+          `;
+          }).join("")}
         `).join("")}
         ${(manipulations ?? []).filter((m) => (m.niveau ?? 0) <= niveauAlchimie).length > 0 ? `
           <h3>Manipulations alchimiques</h3>
@@ -1428,13 +1437,33 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                               {label} (Niv. {n}) — {recettesNiveau.length}
                             </h3>
                             <div className="space-y-2">
-                              {recettesNiveau.map((recette) => (
-                                <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
+                              {recettesNiveau.map((recette) => {
+                                const { composants, manipulations } = parseIngredientsRecette(recette.ingredients);
+                                return (
+                                <div key={recette.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
                                   <p className="font-medium text-foreground">{recette.nom}</p>
                                   <p className="text-xs text-muted-foreground">{recette.type}</p>
-                                  {recette.effet && <p className="text-xs text-muted-foreground mt-1"><strong>Effet :</strong> {recette.effet}</p>}
+                                  {recette.effet && <p className="text-xs text-muted-foreground"><strong>Effet :</strong> {recette.effet}</p>}
+                                  {recette.formule && <p className="text-xs text-muted-foreground"><strong>Formule :</strong> {recette.formule}</p>}
+                                  {composants.length > 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      <strong>Ingrédients :</strong> {composants.map(formaterComposant).join(" · ")}
+                                    </p>
+                                  )}
+                                  {manipulations.length > 0 && (
+                                    <div className="text-xs text-muted-foreground">
+                                      <strong>Préparation :</strong>
+                                      <ol className="list-decimal list-inside mt-0.5 space-y-0.5">
+                                        {manipulations.map((etape, i) => (
+                                          <li key={i}>{etape}</li>
+                                        ))}
+                                      </ol>
+                                    </div>
+                                  )}
+                                  {recette.description && <p className="text-xs text-muted-foreground italic">{recette.description}</p>}
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         );
