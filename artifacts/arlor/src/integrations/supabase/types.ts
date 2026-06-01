@@ -171,6 +171,7 @@ export type Database = {
         Row: {
           competences_gratuites: Json | null
           description: string | null
+          description_courte: string | null
           emoji: string | null
           est_actif: boolean | null
           id: string
@@ -183,6 +184,7 @@ export type Database = {
         Insert: {
           competences_gratuites?: Json | null
           description?: string | null
+          description_courte?: string | null
           emoji?: string | null
           est_actif?: boolean | null
           id?: string
@@ -195,6 +197,7 @@ export type Database = {
         Update: {
           competences_gratuites?: Json | null
           description?: string | null
+          description_courte?: string | null
           emoji?: string | null
           est_actif?: boolean | null
           id?: string
@@ -2838,6 +2841,7 @@ export type Database = {
         Row: {
           cout_xp_base: number | null
           description: string | null
+          description_courte: string | null
           domaine: string
           duree: string | null
           duree_incantation: string | null
@@ -2854,6 +2858,7 @@ export type Database = {
         Insert: {
           cout_xp_base?: number | null
           description?: string | null
+          description_courte?: string | null
           domaine: string
           duree?: string | null
           duree_incantation?: string | null
@@ -2870,6 +2875,7 @@ export type Database = {
         Update: {
           cout_xp_base?: number | null
           description?: string | null
+          description_courte?: string | null
           domaine?: string
           duree?: string | null
           duree_incantation?: string | null
@@ -2982,6 +2988,7 @@ export type Database = {
       races: {
         Row: {
           description: string | null
+          description_courte: string | null
           emoji: string | null
           esperance_vie: string | null
           est_actif: boolean | null
@@ -2997,6 +3004,7 @@ export type Database = {
         }
         Insert: {
           description?: string | null
+          description_courte?: string | null
           emoji?: string | null
           esperance_vie?: string | null
           est_actif?: boolean | null
@@ -3012,6 +3020,7 @@ export type Database = {
         }
         Update: {
           description?: string | null
+          description_courte?: string | null
           emoji?: string | null
           esperance_vie?: string | null
           est_actif?: boolean | null
@@ -3230,6 +3239,7 @@ export type Database = {
           cercle: string
           cout_xp_base: number | null
           description: string | null
+          description_courte: string | null
           duree: string | null
           est_actif: boolean
           id: string
@@ -3244,6 +3254,7 @@ export type Database = {
           cercle: string
           cout_xp_base?: number | null
           description?: string | null
+          description_courte?: string | null
           duree?: string | null
           est_actif?: boolean
           id?: string
@@ -3258,6 +3269,7 @@ export type Database = {
           cercle?: string
           cout_xp_base?: number | null
           description?: string | null
+          description_courte?: string | null
           duree?: string | null
           est_actif?: boolean
           id?: string
@@ -4373,8 +4385,12 @@ export type Database = {
       vue_fiche_personnage: {
         Row: {
           ame_personnage: string | null
+          classe_description: string | null
+          classe_description_courte: string | null
+          classe_emoji: string | null
           classe_id: string | null
           classe_nom: string | null
+          classe_role_combat: string | null
           est_actif: boolean | null
           est_mort: boolean | null
           gn_completes: number | null
@@ -4387,7 +4403,13 @@ export type Database = {
           ouvertures_terrain: number | null
           ps_max: number | null
           pv_max: number | null
+          race_description: string | null
+          race_description_courte: string | null
+          race_emoji: string | null
+          race_esperance_vie: string | null
+          race_exigences_costume: string | null
           race_id: string | null
+          race_image_url: string | null
           race_nom: string | null
           race_nom_latin: string | null
           religion_id: string | null
@@ -5038,6 +5060,7 @@ export type Database = {
           personnage_id: string | null
           portee_choisie: string | null
           priere_description: string | null
+          priere_description_courte: string | null
           zone_choisie: string | null
         }
         Relationships: [
@@ -5314,6 +5337,7 @@ export type Database = {
           personnage_id: string | null
           portee_choisie: string | null
           sort_description: string | null
+          sort_description_courte: string | null
           sort_nom_base: string | null
           zone_choisie: string | null
         }
@@ -5834,6 +5858,14 @@ export type Database = {
           titre: string
           type: string
         }[]
+      }
+      reconcilier_assemblages: {
+        Args: { p_personnage_id: string }
+        Returns: undefined
+      }
+      reconcilier_recettes: {
+        Args: { p_personnage_id: string }
+        Returns: undefined
       }
       refuser_maitre_competence: {
         Args: { p_personnage_competence_id: string; p_raison?: string }
