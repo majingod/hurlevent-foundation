@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/accordion";
 import type { Json } from "@/integrations/supabase/types";
 import { NIVEAU_ALCHIMIE_LABELS, TYPE_RECETTE_LABELS } from "@/constants/labels";
+import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 
 interface Recette {
   id: string;
@@ -176,7 +177,7 @@ const AlchimieSection = ({
                 </h4>
                 <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
                   {byNiveau[niv].map((r) => {
-                    const ings = Array.isArray(r.ingredients) ? r.ingredients : [];
+                    const { composants, manipulations } = parseIngredientsRecette(r.ingredients);
                     return (
                       <AccordionItem key={r.id} value={r.id}>
                         <AccordionTrigger className="font-heading text-base hover:no-underline">
@@ -185,16 +186,26 @@ const AlchimieSection = ({
                         <AccordionContent className="text-sm text-muted-foreground space-y-2">
                           {r.effet && <p><span className="font-medium text-foreground">Effet :</span> {r.effet}</p>}
                           {r.formule && <p><span className="font-medium text-foreground">Formule :</span> {r.formule}</p>}
-                          {ings.length > 0 && (
+                          {composants.length > 0 && (
                             <div>
                               <span className="font-medium text-foreground">Ingrédients :</span>
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {ings.map((ing: any, i: number) => (
+                                {composants.map((c, i) => (
                                   <Badge key={i} variant="outline" className="text-xs">
-                                    {String(typeof ing === "object" ? ing.nom ?? ing : ing)}
+                                    {formaterComposant(c)}
                                   </Badge>
                                 ))}
                               </div>
+                            </div>
+                          )}
+                          {manipulations.length > 0 && (
+                            <div>
+                              <span className="font-medium text-foreground">Préparation :</span>
+                              <ol className="list-decimal list-inside mt-1 space-y-0.5">
+                                {manipulations.map((etape, i) => (
+                                  <li key={i}>{etape}</li>
+                                ))}
+                              </ol>
                             </div>
                           )}
                           {r.description && <p className="mt-2">{r.description}</p>}
