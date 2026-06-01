@@ -6,14 +6,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Clock, Bomb, ChevronDown, ChevronRight } from "lucide-react";
+import { Printer, X, Check, Hammer, Gem, FlaskConical, Clock, Bomb, ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
-import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
+import type {
+  FichePersonnage,
+  Trait,
+  Competence,
+  Sort,
+  Priere,
+  Assemblage,
+  Recette,
+  ArtisanatEtat,
+  ManipulationAlchimique,
+  ObjetForge,
+  ReparationForge,
+  ObjetJoaillerie,
+} from "./sections/types";
+import { InfosCard } from "./sections/InfosCard";
+import { HistoriqueAmeCard } from "./sections/HistoriqueAmeCard";
+import { TraitsSection } from "./sections/TraitsSection";
+import { SortsSection } from "./sections/SortsSection";
+import { PrieresSection } from "./sections/PrieresSection";
+import { AssemblagesSection } from "./sections/AssemblagesSection";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
@@ -25,155 +44,6 @@ type FichePersonnageViewMode = 'route' | 'wizard-preview';
 interface FichePersonnageViewProps {
   personnageId: string;
   mode: FichePersonnageViewMode;
-}
-
-// ── Interfaces alignées sur les vues SQL ──────────────────────
-
-interface FichePersonnage {
-  id: string;
-  nom: string;
-  niveau: number;
-  xp_total: number;
-  xp_depense: number;
-  pv_max: number;
-  ps_max: number;
-  historique: string | null;
-  ame_personnage: string | null;
-  joueur_id: string;
-  race_id: string;
-  classe_id: string;
-  religion_id: string | null;
-  gn_completes: number;
-  mini_gn_completes: number;
-  ouvertures_terrain: number;
-  traits_raciaux_choisis: Json | null;
-  race_nom: string | null;
-  race_nom_latin: string | null;
-  classe_nom: string | null;
-  religion_nom: string | null;
-}
-
-interface Trait {
-  id: string;
-  nom: string;
-  description: string | null;
-}
-
-interface Competence {
-  id: string;
-  personnage_id: string;
-  competence_id: string;
-  nom: string;
-  niveau_acquis: number;
-  niveau_max: number;
-  xp_depense: number;
-  choix_achat: string | null;
-  appris_via_maitre: boolean;
-  nom_maitre: string | null;
-  statut_maitre: string;
-  categorie: string;
-  type_achat: string;
-  competence_description: string | null;
-  description_niveau_acquis: string | null;
-}
-
-interface Sort {
-  id: string;
-  personnage_id: string;
-  nom_personnalise: string;
-  formule_magique: string | null;
-  niveau_sort: number;
-  zone_choisie: string | null;
-  portee_choisie: string | null;
-  duree_choisie: string | null;
-  cercle: string;
-  cout_xp_base: number;
-  sort_nom_base: string | null;
-  sort_description: string | null;
-}
-
-interface Priere {
-  id: string;
-  personnage_id: string;
-  nom_personnalise: string;
-  niveau_priere: number;
-  zone_choisie: string | null;
-  portee_choisie: string | null;
-  duree_choisie: string | null;
-  domaine: string;
-  priere_description: string | null;
-  duree_incantation: string | null;
-  cout_xp_base: number | null;
-}
-
-interface Assemblage {
-  id: string;
-  personnage_id: string;
-  nom: string;
-  cible: string | null;
-  cout_ps: number | null;
-  description: string | null;
-  effet: string | null;
-  runes_requises: string[] | null;
-  texte_manuel: string | null;
-}
-
-interface Recette {
-  id: string;
-  personnage_id: string;
-  nom: string;
-  type: string;
-  niveau_requis: number;
-  description: string | null;
-  effet: string | null;
-  formule: string | null;
-  ingredients: Json | null;
-}
-
-interface ArtisanatEtat {
-  niveau_alchimie: number | null;
-  niveau_forge: number | null;
-  niveau_joaillerie: number | null;
-  niveau_pieges: number | null;
-}
-
-interface ManipulationAlchimique {
-  id: string;
-  nom: string | null;
-  niveau: number | null;
-  manipulations: string | null;
-}
-
-interface ObjetForge {
-  id: string;
-  nom: string | null;
-  description: string | null;
-  type: string | null;
-  temps_fabrication_minutes: number | null;
-  materiaux_communs: string | null;
-  materiaux_rares: string | null;
-}
-
-interface ReparationForge {
-  id: string;
-  nom_affichage: string;
-  categorie: string;
-  materiaux: string;
-  materiaux_rares: string;
-  temps_minutes: number;
-  temps_rare_minutes: number;
-  notes: string | null;
-}
-
-interface ObjetJoaillerie {
-  id: string;
-  nom: string | null;
-  description: string | null;
-  effet: string | null;
-  temps_fabrication_minutes: number | null;
-  temps_rare_minutes: number | null;
-  materiaux_communs: string | null;
-  materiaux_rares: string | null;
 }
 
 const resoudreChoixAffichage = (
@@ -464,7 +334,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   const isOwner = user?.id === fiche?.joueur_id;
   const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   const traits = Array.isArray(fiche?.traits_raciaux_choisis)
     ? (fiche.traits_raciaux_choisis as unknown as Trait[])
@@ -907,55 +776,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
         {/* Infos générales */}
         <TabsContent value="infos" className="space-y-4 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Informations générales</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Race</p>
-                <p className="font-medium text-foreground">{fiche.race_nom}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Classe</p>
-                <p className="font-medium text-foreground">{fiche.classe_nom}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Niveau</p>
-                <p className="font-medium text-foreground">{fiche.niveau}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">XP Total</p>
-                <p className="font-medium text-foreground">{fiche.xp_total}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">XP Dépensé</p>
-                <p className="font-medium text-foreground">{fiche.xp_depense}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">XP Disponible</p>
-                <p className="font-medium text-primary">{xpDisponible}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">PV Max</p>
-                <p className="font-medium text-foreground">{fiche.pv_max}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">PS Max</p>
-                <p className="font-medium text-foreground">{fiche.ps_max}</p>
-              </div>
-              {fiche.religion_nom && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Religion</p>
-                  <p className="font-medium text-foreground">{fiche.religion_nom}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs text-muted-foreground">GN Complétés</p>
-                <p className="font-medium text-foreground">{fiche.gn_completes}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
           {editingHistorique && isOwner && mode === 'route' ? (
             <Card>
               <CardHeader>
@@ -998,71 +819,19 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               </CardContent>
             </Card>
           ) : (
-            <>
-              {fiche.historique && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Historique</CardTitle>
-                    {isOwner && mode === 'route' && (
-                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.historique}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {fiche.ame_personnage && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Âme</CardTitle>
-                    {isOwner && mode === 'route' && !fiche.historique && (
-                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.ame_personnage}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {!fiche.historique && !fiche.ame_personnage && (
-                <p className="text-center py-8 text-muted-foreground">
-                  {isOwner ? "Aucun historique ou âme renseigné. " : "Aucun historique ou âme renseigné."}
-                  {isOwner && mode === 'route' && (
-                    <Button size="sm" variant="link" onClick={handleEditHistorique}>
-                      Ajouter
-                    </Button>
-                  )}
-                </p>
-              )}
-            </>
+            <HistoriqueAmeCard
+              historique={fiche.historique}
+              ame_personnage={fiche.ame_personnage}
+              canEdit={isOwner && mode === 'route'}
+              isOwner={isOwner}
+              onEdit={handleEditHistorique}
+            />
           )}
         </TabsContent>
 
         {/* Traits raciaux */}
         <TabsContent value="traits" className="space-y-4 mt-6">
-          {traits && traits.length > 0 ? (
-            <div className="space-y-3">
-              {traits.map((trait) => (
-                <Card key={trait.id}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">{trait.nom}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{trait.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-muted-foreground">Aucun trait racial.</p>
-          )}
+          <TraitsSection traits={traits} />
         </TabsContent>
 
         {/* Compétences */}
@@ -1250,149 +1019,17 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
         {/* Sorts */}
         <TabsContent value="sorts" className="space-y-4 mt-6">
-          {sorts && sorts.length > 0 ? (
-            <div className="space-y-3">
-              {sorts.map((sort) => (
-                <Card key={sort.id}>
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-foreground">{sort.nom_personnalise}</p>
-                        <p className="text-xs text-muted-foreground">{sort.cercle} • Niveau {sort.niveau_sort}</p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs shrink-0">
-                        {calculerCoutPS(calculerCoutXP(
-                          sort.zone_choisie ?? "",
-                          sort.portee_choisie ?? "",
-                          sort.duree_choisie ?? "",
-                          sort.niveau_sort,
-                          Number(sort.cout_xp_base),
-                        ))} PS
-                      </Badge>
-                    </div>
-
-                    {sort.sort_nom_base && sort.sort_nom_base !== sort.nom_personnalise && (
-                      <p className="text-xs italic text-muted-foreground">Basé sur : {sort.sort_nom_base}</p>
-                    )}
-
-                    {sort.formule_magique && (
-                      <div className="inline-block rounded bg-muted px-2 py-1 font-mono text-xs">
-                        Formule : {sort.formule_magique}
-                      </div>
-                    )}
-
-                    {(sort.zone_choisie || sort.portee_choisie || sort.duree_choisie) && (
-                      <p className="text-xs text-muted-foreground">
-                        {[
-                          sort.zone_choisie && `Zone : ${sort.zone_choisie}`,
-                          sort.portee_choisie && `Portée : ${sort.portee_choisie}`,
-                          sort.duree_choisie && `Durée : ${sort.duree_choisie}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ")}
-                      </p>
-                    )}
-
-                    {sort.sort_description && (
-                      <p className="border-t border-border/50 pt-2 text-sm text-foreground/90">
-                        {sort.sort_description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-muted-foreground">Aucun sort arcanique.</p>
-          )}
+          <SortsSection sorts={sorts ?? []} />
         </TabsContent>
 
         {/* Prières */}
         <TabsContent value="prieres" className="space-y-4 mt-6">
-          {prieres && prieres.length > 0 ? (
-            <div className="space-y-3">
-              {prieres.map((priere) => (
-                <Card key={priere.id}>
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
-                        <p className="text-xs text-muted-foreground">{priere.domaine} • Niveau {priere.niveau_priere}</p>
-                      </div>
-                      {priere.cout_xp_base != null && (
-                        <Badge variant="secondary" className="text-xs shrink-0">
-                          {calculerCoutPS(calculerCoutXP(priere.zone_choisie ?? "", priere.portee_choisie ?? "", priere.duree_choisie ?? "", priere.niveau_priere, Number(priere.cout_xp_base)))} PS
-                        </Badge>
-                      )}
-                    </div>
-
-                    {(priere.duree_incantation ||
-                      priere.zone_choisie ||
-                      priere.portee_choisie ||
-                      priere.duree_choisie) && (
-                      <p className="text-xs text-muted-foreground">
-                        {[
-                          priere.duree_incantation && `Incantation : ${priere.duree_incantation}`,
-                          priere.zone_choisie && `Zone : ${priere.zone_choisie}`,
-                          priere.portee_choisie && `Portée : ${priere.portee_choisie}`,
-                          priere.duree_choisie && `Durée : ${priere.duree_choisie}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ")}
-                      </p>
-                    )}
-
-                    {priere.priere_description && (
-                      <p className="border-t border-border/50 pt-2 text-sm text-foreground/90">
-                        {priere.priere_description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-muted-foreground">Aucune prière.</p>
-          )}
+          <PrieresSection prieres={prieres ?? []} />
         </TabsContent>
 
         {/* Assemblages de runes */}
         <TabsContent value="assemblages" className="space-y-4 mt-6">
-          {!assemblages || assemblages.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>
-          ) : (
-            <div className="space-y-3">
-              {assemblages.some((a) => a.texte_manuel) && (
-                <ManuelGlobalSwitch
-                  allOpen={isAllOpen(assemblages.map((a) => a.id))}
-                  onToggle={() => toggleAll(assemblages.map((a) => a.id))}
-                />
-              )}
-              {assemblages.map((asm) => (
-                <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-foreground">{asm.nom}</p>
-                    {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
-                    {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
-                  </div>
-                  {asm.runes_requises && asm.runes_requises.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {asm.runes_requises.map((rune, i) => (
-                        <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
-                      ))}
-                    </div>
-                  )}
-                  {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
-                  {asm.description && <p className="text-muted-foreground whitespace-pre-line">{asm.description}</p>}
-                  <ToggleManuel
-                    texte={asm.texte_manuel}
-                    isOpen={isManuelOpen(asm.id)}
-                    onToggle={() => toggleManuel(asm.id)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <AssemblagesSection assemblages={assemblages} />
         </TabsContent>
 
         {/* Artisanat */}
