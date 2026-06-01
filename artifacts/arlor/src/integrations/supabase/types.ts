@@ -5199,7 +5199,9 @@ export type Database = {
         Row: {
           description: string | null
           effet: string | null
+          formule: string | null
           id: string | null
+          ingredients: Json | null
           niveau_requis: number | null
           nom: string | null
           personnage_id: string | null
