@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -62,6 +62,7 @@ const resoudreChoixAffichage = (
 const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [editingHistorique, setEditingHistorique] = useState(false);
   const [historiqueTmp, setHistoriqueTmp] = useState("");
   const [ameTmp, setAmeTmp] = useState("");
@@ -408,6 +409,9 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         .eq("id", fiche.id);
 
       if (error) throw error;
+      await queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.includes(personnageId),
+      });
       toast.success("Historique et âme sauvegardés !");
       setEditingHistorique(false);
     } catch (err: any) {
