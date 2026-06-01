@@ -1,23 +1,50 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Clock, Bomb, ChevronDown, ChevronRight } from "lucide-react";
+import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
+import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
-import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
+import type {
+  FichePersonnage,
+  Trait,
+  Competence,
+  Sort,
+  Priere,
+  Assemblage,
+  Recette,
+  ArtisanatEtat,
+  ManipulationAlchimique,
+  ObjetForge,
+  ReparationForge,
+  ObjetJoaillerie,
+  CompetenceGroupee,
+  PiegeRow,
+  PersonnagePiegeRow,
+} from "./sections/types";
+import { InfosCard } from "./sections/InfosCard";
+import { HistoriqueAmeCard } from "./sections/HistoriqueAmeCard";
+import { TraitsSection } from "./sections/TraitsSection";
+import { SortsSection } from "./sections/SortsSection";
+import { PrieresSection } from "./sections/PrieresSection";
+import { AssemblagesSection } from "./sections/AssemblagesSection";
+import { CompetencesSection } from "./sections/CompetencesSection";
+import { AlchimieSection } from "./sections/AlchimieSection";
+import { ForgeSection } from "./sections/ForgeSection";
+import { JoaillerieSection } from "./sections/JoaillerieSection";
+import { PiegesSection } from "./sections/PiegesSection";
+import { resoudreChoixAffichage } from "./sections/helpers";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
-type PiegeRow = Database["public"]["Tables"]["pieges"]["Row"];
-type PersonnagePiegeRow = Database["public"]["Tables"]["personnage_pieges"]["Row"];
 
 type FichePersonnageViewMode = 'route' | 'wizard-preview';
 
@@ -26,182 +53,14 @@ interface FichePersonnageViewProps {
   mode: FichePersonnageViewMode;
 }
 
-// ── Interfaces alignées sur les vues SQL ──────────────────────
-
-interface FichePersonnage {
-  id: string;
-  nom: string;
-  niveau: number;
-  xp_total: number;
-  xp_depense: number;
-  pv_max: number;
-  ps_max: number;
-  historique: string | null;
-  ame_personnage: string | null;
-  joueur_id: string;
-  race_id: string;
-  classe_id: string;
-  religion_id: string | null;
-  gn_completes: number;
-  mini_gn_completes: number;
-  ouvertures_terrain: number;
-  traits_raciaux_choisis: Json | null;
-  race_nom: string | null;
-  race_nom_latin: string | null;
-  classe_nom: string | null;
-  religion_nom: string | null;
-}
-
-interface Trait {
-  id: string;
-  nom: string;
-  description: string | null;
-}
-
-interface Competence {
-  id: string;
-  personnage_id: string;
-  competence_id: string;
-  nom: string;
-  niveau_acquis: number;
-  niveau_max: number;
-  xp_depense: number;
-  choix_achat: string | null;
-  appris_via_maitre: boolean;
-  nom_maitre: string | null;
-  statut_maitre: string;
-  categorie: string;
-  type_achat: string;
-  competence_description: string | null;
-  description_niveau_acquis: string | null;
-}
-
-interface Sort {
-  id: string;
-  personnage_id: string;
-  nom_personnalise: string;
-  formule_magique: string | null;
-  niveau_sort: number;
-  zone_choisie: string | null;
-  portee_choisie: string | null;
-  duree_choisie: string | null;
-  cercle: string;
-  cout_xp_base: number;
-  sort_nom_base: string | null;
-  sort_description: string | null;
-}
-
-interface Priere {
-  id: string;
-  personnage_id: string;
-  nom_personnalise: string;
-  niveau_priere: number;
-  zone_choisie: string | null;
-  portee_choisie: string | null;
-  duree_choisie: string | null;
-  domaine: string;
-  priere_description: string | null;
-  duree_incantation: string | null;
-  cout_xp_base: number | null;
-}
-
-interface Assemblage {
-  id: string;
-  personnage_id: string;
-  nom: string;
-  cible: string | null;
-  cout_ps: number | null;
-  description: string | null;
-  effet: string | null;
-  runes_requises: string[] | null;
-  texte_manuel: string | null;
-}
-
-interface Recette {
-  id: string;
-  personnage_id: string;
-  nom: string;
-  type: string;
-  niveau_requis: number;
-  description: string | null;
-  effet: string | null;
-}
-
-interface ArtisanatEtat {
-  niveau_alchimie: number | null;
-  niveau_forge: number | null;
-  niveau_joaillerie: number | null;
-  niveau_pieges: number | null;
-}
-
-interface ManipulationAlchimique {
-  id: string;
-  nom: string | null;
-  niveau: number | null;
-  manipulations: string | null;
-}
-
-interface ObjetForge {
-  id: string;
-  nom: string | null;
-  description: string | null;
-  type: string | null;
-  temps_fabrication_minutes: number | null;
-  materiaux_communs: string | null;
-  materiaux_rares: string | null;
-}
-
-interface ReparationForge {
-  id: string;
-  nom_affichage: string;
-  categorie: string;
-  materiaux: string;
-  materiaux_rares: string;
-  temps_minutes: number;
-  temps_rare_minutes: number;
-  notes: string | null;
-}
-
-interface ObjetJoaillerie {
-  id: string;
-  nom: string | null;
-  description: string | null;
-  effet: string | null;
-  temps_fabrication_minutes: number | null;
-  temps_rare_minutes: number | null;
-  materiaux_communs: string | null;
-  materiaux_rares: string | null;
-}
-
-const resoudreChoixAffichage = (
-  choixAchat: string | null,
-  langues: { id: string; nom: string | null }[] | undefined,
-  religions: { id: string; nom: string | null }[] | undefined,
-): string | null => {
-  if (!choixAchat) return null;
-  const enLangue = langues?.find((l) => l.id === choixAchat);
-  if (enLangue?.nom) return enLangue.nom;
-  const enReligion = religions?.find((r) => r.id === choixAchat);
-  if (enReligion?.nom) return enReligion.nom;
-  return choixAchat;
-};
-
 const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [editingHistorique, setEditingHistorique] = useState(false);
   const [historiqueTmp, setHistoriqueTmp] = useState("");
   const [ameTmp, setAmeTmp] = useState("");
   const [saving, setSaving] = useState(false);
-  // PR-4 — toggle densité C par famille de piège (lecture seule)
-  const [piegesDepliees, setPiegesDepliees] = useState<Set<string>>(new Set());
-  const togglePiegeDepliee = (nom: string) =>
-    setPiegesDepliees((prev) => {
-      const next = new Set(prev);
-      if (next.has(nom)) next.delete(nom);
-      else next.add(nom);
-      return next;
-    });
 
   // DATA-FIRST : vue_fiche_personnage joint personnages + races + classes + religions
   // Remplace 3 requêtes en cascade (personnage → race → classe → religion)
@@ -420,17 +279,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     //   - Pattern 2 'multiple_sans_choix' : compteur + description générale
     //   - Pattern 3 'multiple_choix_distinct' : liste des choix avec XP par item
     //   - Pattern 4 + fallback : rendu row par row (sera refactoré PR3)
-    const map = new Map<string, {
-      competence_id: string;
-      nom: string;
-      categorie: string;
-      type_achat: string;
-      niveau_max_competence: number;
-      competence_description: string | null;
-      statut_maitre: string;
-      xp_total: number;
-      rows: Competence[];
-    }>();
+    const map = new Map<string, CompetenceGroupee>();
 
     (competences ?? []).forEach((c) => {
       const cle = c.competence_id;
@@ -461,7 +310,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   const isOwner = user?.id === fiche?.joueur_id;
   const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   const traits = Array.isArray(fiche?.traits_raciaux_choisis)
     ? (fiche.traits_raciaux_choisis as unknown as Trait[])
@@ -495,28 +343,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   } as Record<number, string>)[artisanatSubTabs.length] ?? "grid-cols-4";
   const artisanatDefaultTab = artisanatSubTabs[0]?.value ?? "alchimie";
 
-  // PR-4 — Pièges possédés (lecture seule). Catalogue indexé par (nom, niveau).
-  const piegeCatalogueParNomNiveau = new Map<string, PiegeRow>();
-  (piegesCatalogue ?? []).forEach((p) => {
-    piegeCatalogueParNomNiveau.set(`${p.nom}__${p.niveau}`, p);
-  });
-  const famillesPiegesPossedees: [string, number[]][] = (() => {
-    const map = new Map<string, number[]>();
-    (personnagePieges ?? []).forEach((pp) => {
-      const arr = map.get(pp.piege_nom) ?? [];
-      arr.push(pp.niveau_acquis);
-      map.set(pp.piege_nom, arr);
-    });
-    map.forEach((arr) => arr.sort((a, b) => a - b));
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "fr"));
-  })();
-
-  // DETTE-MANIPULATIONS-ALCHIMIQUES-ECRAN — calcul partagé avec le sous-onglet Alchimie
-  const niveauAlchimieEcran = artisanatEtat?.niveau_alchimie ?? 0;
-  const manipulationsFiltrees = (manipulations ?? []).filter(
-    (m) => (m.niveau ?? 0) <= niveauAlchimieEcran
-  );
-
   const handleEditHistorique = () => {
     setHistoriqueTmp(fiche?.historique ?? "");
     setAmeTmp(fiche?.ame_personnage ?? "");
@@ -536,6 +362,9 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         .eq("id", fiche.id);
 
       if (error) throw error;
+      await queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.includes(personnageId),
+      });
       toast.success("Historique et âme sauvegardés !");
       setEditingHistorique(false);
     } catch (err: any) {
@@ -756,13 +585,19 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         <h2>Alchimie (Niv. ${niveauAlchimie})</h2>
         ${[1, 2, 3].filter((n) => n <= niveauAlchimie && recettesByNiveau[n]?.length > 0).map((n) => `
           <h3>${niveauLabels[n]}</h3>
-          ${(recettesByNiveau[n] ?? []).map((r) => `
+          ${(recettesByNiveau[n] ?? []).map((r) => {
+            const { composants, manipulations } = parseIngredientsRecette(r.ingredients);
+            return `
             <div class="card">
               <div class="card-title">${escapeHtml(r.nom)}</div>
               ${r.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(r.effet)}</div>` : ""}
+              ${r.formule ? `<div class="desc"><strong>Formule :</strong> ${escapeHtml(r.formule)}</div>` : ""}
+              ${composants.length > 0 ? `<div class="desc"><strong>Ingrédients :</strong> ${escapeHtml(composants.map(formaterComposant).join(" · "))}</div>` : ""}
+              ${manipulations.length > 0 ? `<div class="desc"><strong>Préparation :</strong> ${escapeHtml(manipulations.map((e, i) => `${i + 1}. ${e}`).join("  "))}</div>` : ""}
               ${r.description ? `<div class="desc">${escapeHtml(r.description)}</div>` : ""}
             </div>
-          `).join("")}
+          `;
+          }).join("")}
         `).join("")}
         ${(manipulations ?? []).filter((m) => (m.niveau ?? 0) <= niveauAlchimie).length > 0 ? `
           <h3>Manipulations alchimiques</h3>
@@ -899,55 +734,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
         {/* Infos générales */}
         <TabsContent value="infos" className="space-y-4 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Informations générales</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Race</p>
-                <p className="font-medium text-foreground">{fiche.race_nom}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Classe</p>
-                <p className="font-medium text-foreground">{fiche.classe_nom}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Niveau</p>
-                <p className="font-medium text-foreground">{fiche.niveau}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">XP Total</p>
-                <p className="font-medium text-foreground">{fiche.xp_total}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">XP Dépensé</p>
-                <p className="font-medium text-foreground">{fiche.xp_depense}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">XP Disponible</p>
-                <p className="font-medium text-primary">{xpDisponible}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">PV Max</p>
-                <p className="font-medium text-foreground">{fiche.pv_max}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">PS Max</p>
-                <p className="font-medium text-foreground">{fiche.ps_max}</p>
-              </div>
-              {fiche.religion_nom && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Religion</p>
-                  <p className="font-medium text-foreground">{fiche.religion_nom}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs text-muted-foreground">GN Complétés</p>
-                <p className="font-medium text-foreground">{fiche.gn_completes}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
           {editingHistorique && isOwner && mode === 'route' ? (
             <Card>
               <CardHeader>
@@ -990,401 +777,43 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               </CardContent>
             </Card>
           ) : (
-            <>
-              {fiche.historique && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Historique</CardTitle>
-                    {isOwner && mode === 'route' && (
-                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.historique}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {fiche.ame_personnage && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Âme</CardTitle>
-                    {isOwner && mode === 'route' && !fiche.historique && (
-                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.ame_personnage}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {!fiche.historique && !fiche.ame_personnage && (
-                <p className="text-center py-8 text-muted-foreground">
-                  {isOwner ? "Aucun historique ou âme renseigné. " : "Aucun historique ou âme renseigné."}
-                  {isOwner && mode === 'route' && (
-                    <Button size="sm" variant="link" onClick={handleEditHistorique}>
-                      Ajouter
-                    </Button>
-                  )}
-                </p>
-              )}
-            </>
+            <HistoriqueAmeCard
+              historique={fiche.historique}
+              ame_personnage={fiche.ame_personnage}
+              canEdit={isOwner && mode === 'route'}
+              isOwner={isOwner}
+              onEdit={handleEditHistorique}
+            />
           )}
         </TabsContent>
 
         {/* Traits raciaux */}
         <TabsContent value="traits" className="space-y-4 mt-6">
-          {traits && traits.length > 0 ? (
-            <div className="space-y-3">
-              {traits.map((trait) => (
-                <Card key={trait.id}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">{trait.nom}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{trait.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-muted-foreground">Aucun trait racial.</p>
-          )}
+          <TraitsSection traits={traits} />
         </TabsContent>
 
         {/* Compétences */}
         <TabsContent value="competences" className="space-y-4 mt-6">
-          {competencesGroupees.length > 0 ? (
-            <div className="space-y-3">
-              {competencesGroupees.map((comp) => {
-                const headerBadges = (
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {comp.xp_total === 0 ? (
-                      <Badge variant="outline" className="text-xs">Gratuit</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">Coût total : {comp.xp_total} XP</Badge>
-                    )}
-                    {comp.statut_maitre !== "non_requis" && (
-                      <Badge className="text-xs">{STATUT_MAITRE_LABELS[comp.statut_maitre] || comp.statut_maitre}</Badge>
-                    )}
-                  </div>
-                );
-
-                return (
-                  <Card key={comp.competence_id}>
-                    <CardContent className="pt-4 space-y-3">
-                      {/* Header commun */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{comp.nom}</p>
-                          <p className="text-xs text-muted-foreground">{comp.categorie}</p>
-                        </div>
-                        {headerBadges}
-                      </div>
-
-                      {/* PATTERN 1 — simple : sections par niveau acquis */}
-                      {comp.type_achat === "simple" && (
-                        <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
-                          {comp.competence_description && (
-                            <p className="whitespace-pre-line">{comp.competence_description}</p>
-                          )}
-                          {comp.rows.map((r) => (
-                            <div key={r.id} className="space-y-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-foreground">Niveau {r.niveau_acquis}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
-                                </Badge>
-                                {r.appris_via_maitre && r.nom_maitre && (
-                                  <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
-                                )}
-                              </div>
-                              {r.description_niveau_acquis && (
-                                <p className="whitespace-pre-line">{r.description_niveau_acquis}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* PATTERN 2 — multiple_sans_choix : compteur + description générale */}
-                      {comp.type_achat === "multiple_sans_choix" && (
-                        <div className="border-t border-border/50 pt-3 space-y-2 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">× {comp.rows.length} achats</Badge>
-                          </div>
-                          {comp.competence_description && (
-                            <p className="whitespace-pre-line">{comp.competence_description}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* PATTERN 3 — multiple_choix_distinct : liste des choix avec XP par item */}
-                      {comp.type_achat === "multiple_choix_distinct" && (
-                        <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
-                          <div>
-                            <p className="font-medium text-foreground mb-1">Liste acquise :</p>
-                            <ul className="space-y-1">
-                              {comp.rows.map((r) => {
-                                const choixResolu = resoudreChoixAffichage(r.choix_achat, langues, religions);
-                                return (
-                                  <li key={r.id} className="flex items-center gap-2 flex-wrap">
-                                    <span>•</span>
-                                    <span className="text-foreground">{choixResolu ?? r.choix_achat ?? "?"}</span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
-                                    </Badge>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                          {comp.competence_description && (
-                            <p className="whitespace-pre-line">{comp.competence_description}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* PATTERN 4 — multiple_avec_choix_par_niveau : groupé par niveau + liste de choix */}
-                      {comp.type_achat === "multiple_avec_choix_par_niveau" && (
-                        <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
-                          {comp.competence_description && (
-                            <p className="whitespace-pre-line">{comp.competence_description}</p>
-                          )}
-                          {Object.entries(
-                            comp.rows.reduce<Record<number, typeof comp.rows>>((acc, r) => {
-                              (acc[r.niveau_acquis] ??= []).push(r);
-                              return acc;
-                            }, {})
-                          )
-                            .sort(([a], [b]) => Number(a) - Number(b))
-                            .map(([niveau, rowsNiveau]) => {
-                              const descriptionNiveau = rowsNiveau[0]?.description_niveau_acquis;
-                              const aDesChoix = rowsNiveau.some((r) => r.choix_achat);
-                              return (
-                                <div key={niveau} className="space-y-2">
-                                  <div className="font-medium text-foreground">Niveau {niveau}</div>
-                                  {aDesChoix && (
-                                    <ul className="space-y-1 ml-2">
-                                      {rowsNiveau.map((r) => {
-                                        const choixResolu = resoudreChoixAffichage(r.choix_achat, langues, religions);
-                                        return (
-                                          <li key={r.id} className="flex items-center gap-2 flex-wrap">
-                                            <span>•</span>
-                                            <span className="text-foreground">{choixResolu ?? r.choix_achat ?? "?"}</span>
-                                            <Badge variant="outline" className="text-xs">
-                                              {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
-                                            </Badge>
-                                            {r.appris_via_maitre && r.nom_maitre && (
-                                              <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
-                                            )}
-                                          </li>
-                                        );
-                                      })}
-                                    </ul>
-                                  )}
-                                  {descriptionNiveau && (
-                                    <p className="whitespace-pre-line">{descriptionNiveau}</p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
-
-                      {/* FALLBACK — type_achat futur inattendu (gardé par sécurité) */}
-                      {comp.type_achat !== "simple" &&
-                        comp.type_achat !== "multiple_sans_choix" &&
-                        comp.type_achat !== "multiple_choix_distinct" &&
-                        comp.type_achat !== "multiple_avec_choix_par_niveau" && (
-                          <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
-                            {comp.competence_description && (
-                              <p className="whitespace-pre-line">{comp.competence_description}</p>
-                            )}
-                            {comp.rows.map((r) => {
-                              const choixResolu = resoudreChoixAffichage(r.choix_achat, langues, religions);
-                              return (
-                                <div key={r.id} className="space-y-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-medium text-foreground">
-                                      Niveau {r.niveau_acquis}
-                                      {choixResolu && <span className="text-muted-foreground"> ({choixResolu})</span>}
-                                    </span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {r.xp_depense === 0 ? "Gratuit" : `${r.xp_depense} XP`}
-                                    </Badge>
-                                    {r.appris_via_maitre && r.nom_maitre && (
-                                      <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
-                                    )}
-                                  </div>
-                                  {r.description_niveau_acquis && (
-                                    <p className="whitespace-pre-line">{r.description_niveau_acquis}</p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-muted-foreground">Aucune compétence acquise.</p>
-          )}
+          <CompetencesSection
+            competencesGroupees={competencesGroupees}
+            langues={langues}
+            religions={religions}
+          />
         </TabsContent>
 
         {/* Sorts */}
         <TabsContent value="sorts" className="space-y-4 mt-6">
-          {sorts && sorts.length > 0 ? (
-            <div className="space-y-3">
-              {sorts.map((sort) => (
-                <Card key={sort.id}>
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-foreground">{sort.nom_personnalise}</p>
-                        <p className="text-xs text-muted-foreground">{sort.cercle} • Niveau {sort.niveau_sort}</p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs shrink-0">
-                        {calculerCoutPS(calculerCoutXP(
-                          sort.zone_choisie ?? "",
-                          sort.portee_choisie ?? "",
-                          sort.duree_choisie ?? "",
-                          sort.niveau_sort,
-                          Number(sort.cout_xp_base),
-                        ))} PS
-                      </Badge>
-                    </div>
-
-                    {sort.sort_nom_base && sort.sort_nom_base !== sort.nom_personnalise && (
-                      <p className="text-xs italic text-muted-foreground">Basé sur : {sort.sort_nom_base}</p>
-                    )}
-
-                    {sort.formule_magique && (
-                      <div className="inline-block rounded bg-muted px-2 py-1 font-mono text-xs">
-                        Formule : {sort.formule_magique}
-                      </div>
-                    )}
-
-                    {(sort.zone_choisie || sort.portee_choisie || sort.duree_choisie) && (
-                      <p className="text-xs text-muted-foreground">
-                        {[
-                          sort.zone_choisie && `Zone : ${sort.zone_choisie}`,
-                          sort.portee_choisie && `Portée : ${sort.portee_choisie}`,
-                          sort.duree_choisie && `Durée : ${sort.duree_choisie}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ")}
-                      </p>
-                    )}
-
-                    {sort.sort_description && (
-                      <p className="border-t border-border/50 pt-2 text-sm text-foreground/90">
-                        {sort.sort_description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-muted-foreground">Aucun sort arcanique.</p>
-          )}
+          <SortsSection sorts={sorts ?? []} />
         </TabsContent>
 
         {/* Prières */}
         <TabsContent value="prieres" className="space-y-4 mt-6">
-          {prieres && prieres.length > 0 ? (
-            <div className="space-y-3">
-              {prieres.map((priere) => (
-                <Card key={priere.id}>
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
-                        <p className="text-xs text-muted-foreground">{priere.domaine} • Niveau {priere.niveau_priere}</p>
-                      </div>
-                      {priere.cout_xp_base != null && (
-                        <Badge variant="secondary" className="text-xs shrink-0">
-                          {calculerCoutPS(calculerCoutXP(priere.zone_choisie ?? "", priere.portee_choisie ?? "", priere.duree_choisie ?? "", priere.niveau_priere, Number(priere.cout_xp_base)))} PS
-                        </Badge>
-                      )}
-                    </div>
-
-                    {(priere.duree_incantation ||
-                      priere.zone_choisie ||
-                      priere.portee_choisie ||
-                      priere.duree_choisie) && (
-                      <p className="text-xs text-muted-foreground">
-                        {[
-                          priere.duree_incantation && `Incantation : ${priere.duree_incantation}`,
-                          priere.zone_choisie && `Zone : ${priere.zone_choisie}`,
-                          priere.portee_choisie && `Portée : ${priere.portee_choisie}`,
-                          priere.duree_choisie && `Durée : ${priere.duree_choisie}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ")}
-                      </p>
-                    )}
-
-                    {priere.priere_description && (
-                      <p className="border-t border-border/50 pt-2 text-sm text-foreground/90">
-                        {priere.priere_description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-8 text-muted-foreground">Aucune prière.</p>
-          )}
+          <PrieresSection prieres={prieres ?? []} />
         </TabsContent>
 
         {/* Assemblages de runes */}
         <TabsContent value="assemblages" className="space-y-4 mt-6">
-          {!assemblages || assemblages.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>
-          ) : (
-            <div className="space-y-3">
-              {assemblages.some((a) => a.texte_manuel) && (
-                <ManuelGlobalSwitch
-                  allOpen={isAllOpen(assemblages.map((a) => a.id))}
-                  onToggle={() => toggleAll(assemblages.map((a) => a.id))}
-                />
-              )}
-              {assemblages.map((asm) => (
-                <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-foreground">{asm.nom}</p>
-                    {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
-                    {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
-                  </div>
-                  {asm.runes_requises && asm.runes_requises.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {asm.runes_requises.map((rune, i) => (
-                        <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
-                      ))}
-                    </div>
-                  )}
-                  {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
-                  {asm.description && <p className="text-muted-foreground whitespace-pre-line">{asm.description}</p>}
-                  <ToggleManuel
-                    texte={asm.texte_manuel}
-                    isOpen={isManuelOpen(asm.id)}
-                    onToggle={() => toggleManuel(asm.id)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <AssemblagesSection assemblages={assemblages} />
         </TabsContent>
 
         {/* Artisanat */}
@@ -1403,272 +832,36 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
             {/* Sous-onglet Alchimie */}
             <TabsContent value="alchimie" className="space-y-3 mt-4">
-              {niveauAlchimieEcran < 1 ? (
-                <p className="text-center py-8 text-muted-foreground">Aucune compétence en alchimie.</p>
-              ) : (!recettes || recettes.length === 0) && manipulationsFiltrees.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">Aucune recette ni manipulation acquise.</p>
-              ) : (
-                <div className="space-y-4">
-                  {recettes && recettes.length > 0 && (
-                    <>
-                      <div className="text-xs text-muted-foreground border-b border-border/50 pb-2">
-                        Total : {recettes.length} recette{recettes.length > 1 ? "s" : ""}
-                        {[1, 2, 3].map((n) => {
-                          const count = recettes.filter((r) => r.niveau_requis === n).length;
-                          const label = n === 1 ? "mineures" : n === 2 ? "intermédiaires" : "majeures";
-                          return count > 0 ? ` • ${count} ${label}` : "";
-                        }).join("")}
-                      </div>
-                      {[1, 2, 3].map((n) => {
-                        const recettesNiveau = recettes.filter((r) => r.niveau_requis === n);
-                        if (recettesNiveau.length === 0) return null;
-                        const label = n === 1 ? "Mineures" : n === 2 ? "Intermédiaires" : "Majeures";
-                        return (
-                          <div key={n} className="space-y-2">
-                            <h3 className="text-sm font-semibold text-foreground">
-                              {label} (Niv. {n}) — {recettesNiveau.length}
-                            </h3>
-                            <div className="space-y-2">
-                              {recettesNiveau.map((recette) => (
-                                <div key={recette.id} className="p-2 rounded border border-border/50 text-sm">
-                                  <p className="font-medium text-foreground">{recette.nom}</p>
-                                  <p className="text-xs text-muted-foreground">{recette.type}</p>
-                                  {recette.effet && <p className="text-xs text-muted-foreground mt-1"><strong>Effet :</strong> {recette.effet}</p>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-                  {manipulationsFiltrees.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-foreground">
-                        Manipulations alchimiques — {manipulationsFiltrees.length}
-                      </h3>
-                      <div className="space-y-2">
-                        {manipulationsFiltrees.map((m) => (
-                          <div key={m.id} className="p-2 rounded border border-border/50 text-sm">
-                            <p className="font-medium text-foreground">{m.nom}</p>
-                            {m.manipulations && (
-                              <p className="text-xs text-muted-foreground mt-1">{m.manipulations}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              <AlchimieSection
+                artisanatEtat={artisanatEtat}
+                recettes={recettes}
+                manipulations={manipulations}
+              />
             </TabsContent>
 
             {/* Sous-onglet Forge */}
             <TabsContent value="forge" className="space-y-6 mt-4">
-              {(artisanatEtat?.niveau_forge ?? 0) < 1 ? (
-                <p className="text-center py-8 text-muted-foreground">Aucune compétence en forge.</p>
-              ) : (
-                <>
-                  {/* Section Fabrication */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-primary">Fabrication</h3>
-                    {!objetsForge || objetsForge.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Aucun objet de forge disponible.</p>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {objetsForge.map((obj) => (
-                          <Card key={obj.id} className="border-border/50">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-sm">{obj.nom}</CardTitle>
-                              {obj.type && <p className="text-xs text-muted-foreground">{obj.type}</p>}
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> Temps de fabrication : {obj.temps_fabrication_minutes} min
-                              </p>
-                            </CardHeader>
-                            <CardContent className="space-y-1 text-xs pt-0">
-                              {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
-                              {obj.materiaux_communs && (
-                                <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {obj.materiaux_communs}</p>
-                              )}
-                              {(artisanatEtat?.niveau_forge ?? 0) >= 2 && obj.materiaux_rares && (
-                                <p><span className="text-purple-400 font-medium">Matériaux rares :</span> {obj.materiaux_rares}</p>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Section Réparation */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-primary">Réparation</h3>
-                    {!reparationsForge || reparationsForge.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Aucune réparation disponible.</p>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {reparationsForge.map((rep) => (
-                          <Card key={rep.id} className="border-border/50">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-sm">{rep.nom_affichage}</CardTitle>
-                              <p className="text-xs text-muted-foreground">{rep.categorie}</p>
-                            </CardHeader>
-                            <CardContent className="space-y-1 text-xs pt-0">
-                              <p className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> <span className="font-medium">Temps commun :</span> {rep.temps_minutes} min
-                              </p>
-                              {(artisanatEtat?.niveau_forge ?? 0) >= 2 && (
-                                <p className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" /> <span className="font-medium">Temps rare :</span> {rep.temps_rare_minutes} min
-                                </p>
-                              )}
-                              <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {rep.materiaux}</p>
-                              {(artisanatEtat?.niveau_forge ?? 0) >= 2 && (
-                                <p><span className="text-purple-400 font-medium">Matériaux rares :</span> {rep.materiaux_rares}</p>
-                              )}
-                              {rep.notes && <p className="italic text-muted-foreground mt-1">{rep.notes}</p>}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
+              <ForgeSection
+                artisanatEtat={artisanatEtat}
+                objetsForge={objetsForge}
+                reparationsForge={reparationsForge}
+              />
             </TabsContent>
 
             {/* Sous-onglet Joaillerie */}
             <TabsContent value="joaillerie" className="space-y-3 mt-4">
-              {(artisanatEtat?.niveau_joaillerie ?? 0) < 1 ? (
-                <p className="text-center py-8 text-muted-foreground">Aucune compétence en joaillerie.</p>
-              ) : !objetsJoaillerie || objetsJoaillerie.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun objet de joaillerie disponible.</p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {objetsJoaillerie.map((obj) => (
-                    <Card key={obj.id} className="border-border/50">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">{obj.nom}</CardTitle>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> Temps de fabrication : {obj.temps_fabrication_minutes} min
-                          {(artisanatEtat?.niveau_joaillerie ?? 0) >= 2 && obj.temps_rare_minutes != null && (
-                            <>
-                              {" (commun) — "}
-                              {obj.temps_rare_minutes} min (rare)
-                            </>
-                          )}
-                        </p>
-                      </CardHeader>
-                      <CardContent className="space-y-1 text-xs pt-0">
-                        {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
-                        {obj.effet && <p><span className="font-medium">Effet :</span> {obj.effet}</p>}
-                        {obj.materiaux_communs && (
-                          <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {obj.materiaux_communs}</p>
-                        )}
-                        {(artisanatEtat?.niveau_joaillerie ?? 0) >= 2 && obj.materiaux_rares && (
-                          <p><span className="text-purple-400 font-medium">Matériaux rares :</span> {obj.materiaux_rares}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+              <JoaillerieSection
+                artisanatEtat={artisanatEtat}
+                objetsJoaillerie={objetsJoaillerie}
+              />
             </TabsContent>
 
             {/* Sous-onglet Pièges (PR-4, lecture seule) */}
             <TabsContent value="pieges" className="space-y-3 mt-4">
-              {famillesPiegesPossedees.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">Aucun piège acquis.</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="text-xs text-muted-foreground border-b border-border/50 pb-2">
-                    Total : {famillesPiegesPossedees.length} piège{famillesPiegesPossedees.length > 1 ? "s" : ""} maîtrisé{famillesPiegesPossedees.length > 1 ? "s" : ""}
-                  </div>
-                  {famillesPiegesPossedees.map(([nom, niveaux]) => {
-                    const niveauMax = niveaux[niveaux.length - 1];
-                    const palierHaut = piegeCatalogueParNomNiveau.get(`${nom}__${niveauMax}`);
-                    // Construction = info de famille (rangée sur le niv 1), miroir wizard
-                    const constructionFamille = piegeCatalogueParNomNiveau.get(`${nom}__1`)?.construction ?? null;
-                    const depliee = piegesDepliees.has(nom);
-                    return (
-                      <Card key={nom}>
-                        <CardHeader className="pb-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle className="font-heading text-base">{nom}</CardTitle>
-                            {niveaux.map((n) => (
-                              <Badge key={n} className="bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent text-xs">
-                                Niv. {n}
-                              </Badge>
-                            ))}
-                            {palierHaut?.niveau_effet != null && (
-                              <Badge variant="outline" className="text-xs">Effet de niveau {palierHaut.niveau_effet}</Badge>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-xs">
-                          {palierHaut && (
-                            <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2">
-                              {palierHaut.cible && (
-                                <p><span className="font-medium text-foreground">Cible :</span> {palierHaut.cible}</p>
-                              )}
-                              {palierHaut.duree && (
-                                <p><span className="font-medium text-foreground">Durée :</span> {palierHaut.duree}</p>
-                              )}
-                              {palierHaut.effets && (
-                                <p><span className="font-medium text-foreground">Effets :</span> {palierHaut.effets}</p>
-                              )}
-                              {constructionFamille && (
-                                <p className="pt-1 border-t border-border/40"><span className="font-medium text-amber-400">Construction :</span> {constructionFamille}</p>
-                              )}
-                            </div>
-                          )}
-                          {niveaux.length > 1 && (
-                            <>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-auto px-1 py-1 text-xs text-muted-foreground"
-                                onClick={() => togglePiegeDepliee(nom)}
-                              >
-                                {depliee ? <ChevronDown className="mr-1 h-3 w-3" /> : <ChevronRight className="mr-1 h-3 w-3" />}
-                                {depliee ? "Masquer le détail par niveau" : "Voir le détail par niveau"}
-                              </Button>
-                              {depliee && (
-                                <div className="space-y-2 border-l-2 border-border pl-3">
-                                  {niveaux.map((n) => {
-                                    const palier = piegeCatalogueParNomNiveau.get(`${nom}__${n}`);
-                                    if (!palier) return null;
-                                    return (
-                                      <div key={n} className="space-y-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                          <strong>Niveau {n}</strong>
-                                          {palier.niveau_effet != null && (
-                                            <Badge variant="outline" className="text-xs">Effet de niveau {palier.niveau_effet}</Badge>
-                                          )}
-                                        </div>
-                                        {palier.cible && (
-                                          <p><span className="font-medium text-foreground">Cible :</span> {palier.cible}</p>
-                                        )}
-                                        {palier.duree && (
-                                          <p><span className="font-medium text-foreground">Durée :</span> {palier.duree}</p>
-                                        )}
-                                        {palier.effets && (
-                                          <p><span className="font-medium text-foreground">Effets :</span> {palier.effets}</p>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
+              <PiegesSection
+                piegesCatalogue={piegesCatalogue}
+                personnagePieges={personnagePieges}
+              />
             </TabsContent>
           </Tabs>
         </TabsContent>
