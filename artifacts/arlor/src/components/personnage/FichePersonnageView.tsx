@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Sparkles, Clock, Bomb, ChevronDown, ChevronRight } from "lucide-react";
+import { Printer, Edit2, X, Check, Hammer, Gem, FlaskConical, Clock, Bomb, ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
@@ -476,16 +476,15 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const hasJoaillerie = (artisanatEtat?.niveau_joaillerie ?? 0) >= 1;
   const hasAssemblages = (assemblages?.length ?? 0) > 0;
   const hasPieges = (artisanatEtat?.niveau_pieges ?? 0) >= 1;
-  const hasArtisanat = hasAlchimie || hasForge || hasJoaillerie || hasAssemblages || hasPieges;
+  const hasArtisanat = hasAlchimie || hasForge || hasJoaillerie || hasPieges;
 
   // PR4b — Sous-onglets Artisanat dynamiques
   type ArtisanatSubTab = { value: string; icon: typeof FlaskConical; label: string };
   const artisanatSubTabs: ArtisanatSubTab[] = [
     hasAlchimie && { value: "alchimie", icon: FlaskConical, label: "Alchimie" },
+    hasPieges && { value: "pieges", icon: Bomb, label: "Pièges" },
     hasForge && { value: "forge", icon: Hammer, label: "Forge" },
     hasJoaillerie && { value: "joaillerie", icon: Gem, label: "Joaillerie" },
-    hasAssemblages && { value: "assemblages", icon: Sparkles, label: "Assemblages" },
-    hasPieges && { value: "pieges", icon: Bomb, label: "Pièges" },
   ].filter((x): x is ArtisanatSubTab => Boolean(x));
   const artisanatColsClass: string = ({
     1: "grid-cols-1",
@@ -892,6 +891,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             <TabsTrigger value="competences">Compétences</TabsTrigger>
             {hasSorts && <TabsTrigger value="sorts">Sorts</TabsTrigger>}
             {hasPrieres && <TabsTrigger value="prieres">Prières</TabsTrigger>}
+            {hasAssemblages && <TabsTrigger value="assemblages">Assemblages</TabsTrigger>}
             {hasArtisanat && <TabsTrigger value="artisanat">Artisanat</TabsTrigger>}
             {mode === 'route' && <TabsTrigger value="export">Export</TabsTrigger>}
           </TabsList>
@@ -948,6 +948,93 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               </div>
             </CardContent>
           </Card>
+          {editingHistorique && isOwner && mode === 'route' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Modifier historique et âme</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Historique</label>
+                  <Textarea
+                    value={historiqueTmp}
+                    onChange={(e) => setHistoriqueTmp(e.target.value)}
+                    className="min-h-[150px]"
+                    placeholder="Historique du personnage…"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Âme</label>
+                  <Textarea
+                    value={ameTmp}
+                    onChange={(e) => setAmeTmp(e.target.value)}
+                    className="min-h-[150px]"
+                    placeholder="Âme du personnage…"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingHistorique(false)}
+                    disabled={saving}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Annuler
+                  </Button>
+                  <Button
+                    onClick={handleSaveHistorique}
+                    disabled={saving}
+                  >
+                    <Check className="h-4 w-4 mr-1" /> {saving ? "Sauvegarde…" : "Sauvegarder"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {fiche.historique && (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-base">Historique</CardTitle>
+                    {isOwner && mode === 'route' && (
+                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.historique}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {fiche.ame_personnage && (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-base">Âme</CardTitle>
+                    {isOwner && mode === 'route' && !fiche.historique && (
+                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.ame_personnage}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!fiche.historique && !fiche.ame_personnage && (
+                <p className="text-center py-8 text-muted-foreground">
+                  {isOwner ? "Aucun historique ou âme renseigné. " : "Aucun historique ou âme renseigné."}
+                  {isOwner && mode === 'route' && (
+                    <Button size="sm" variant="link" onClick={handleEditHistorique}>
+                      Ajouter
+                    </Button>
+                  )}
+                </p>
+              )}
+            </>
+          )}
         </TabsContent>
 
         {/* Traits raciaux */}
@@ -1261,6 +1348,45 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           )}
         </TabsContent>
 
+        {/* Assemblages de runes */}
+        <TabsContent value="assemblages" className="space-y-4 mt-6">
+          {!assemblages || assemblages.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>
+          ) : (
+            <div className="space-y-3">
+              {assemblages.some((a) => a.texte_manuel) && (
+                <ManuelGlobalSwitch
+                  allOpen={isAllOpen(assemblages.map((a) => a.id))}
+                  onToggle={() => toggleAll(assemblages.map((a) => a.id))}
+                />
+              )}
+              {assemblages.map((asm) => (
+                <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-foreground">{asm.nom}</p>
+                    {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
+                    {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
+                  </div>
+                  {asm.runes_requises && asm.runes_requises.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {asm.runes_requises.map((rune, i) => (
+                        <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
+                  {asm.description && <p className="text-muted-foreground whitespace-pre-line">{asm.description}</p>}
+                  <ToggleManuel
+                    texte={asm.texte_manuel}
+                    isOpen={isManuelOpen(asm.id)}
+                    onToggle={() => toggleManuel(asm.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
         {/* Artisanat */}
         <TabsContent value="artisanat" className="space-y-4 mt-6">
           <Tabs defaultValue={artisanatDefaultTab} className="w-full">
@@ -1449,45 +1575,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               )}
             </TabsContent>
 
-            {/* Sous-onglet Assemblages */}
-            <TabsContent value="assemblages" className="space-y-3 mt-4">
-              {!assemblages || assemblages.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>
-              ) : (
-                <div className="space-y-3">
-                  {assemblages.some((a) => a.texte_manuel) && (
-                    <ManuelGlobalSwitch
-                      allOpen={isAllOpen(assemblages.map((a) => a.id))}
-                      onToggle={() => toggleAll(assemblages.map((a) => a.id))}
-                    />
-                  )}
-                  {assemblages.map((asm) => (
-                    <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium text-foreground">{asm.nom}</p>
-                        {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
-                        {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
-                      </div>
-                      {asm.runes_requises && asm.runes_requises.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {asm.runes_requises.map((rune, i) => (
-                            <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
-                          ))}
-                        </div>
-                      )}
-                      {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
-                      {asm.description && <p className="text-muted-foreground whitespace-pre-line">{asm.description}</p>}
-                      <ToggleManuel
-                        texte={asm.texte_manuel}
-                        isOpen={isManuelOpen(asm.id)}
-                        onToggle={() => toggleManuel(asm.id)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
             {/* Sous-onglet Pièges (PR-4, lecture seule) */}
             <TabsContent value="pieges" className="space-y-3 mt-4">
               {famillesPiegesPossedees.length === 0 ? (
@@ -1584,97 +1671,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               )}
             </TabsContent>
           </Tabs>
-        </TabsContent>
-
-        {/* Historique et Âme */}
-        <TabsContent value="historique" className="space-y-4 mt-6">
-          {editingHistorique && isOwner && mode === 'route' ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Modifier historique et âme</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Historique</label>
-                  <Textarea
-                    value={historiqueTmp}
-                    onChange={(e) => setHistoriqueTmp(e.target.value)}
-                    className="min-h-[150px]"
-                    placeholder="Historique du personnage…"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Âme</label>
-                  <Textarea
-                    value={ameTmp}
-                    onChange={(e) => setAmeTmp(e.target.value)}
-                    className="min-h-[150px]"
-                    placeholder="Âme du personnage…"
-                  />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => setEditingHistorique(false)}
-                    disabled={saving}
-                  >
-                    <X className="h-4 w-4 mr-1" /> Annuler
-                  </Button>
-                  <Button
-                    onClick={handleSaveHistorique}
-                    disabled={saving}
-                  >
-                    <Check className="h-4 w-4 mr-1" /> {saving ? "Sauvegarde…" : "Sauvegarder"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {fiche.historique && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Historique</CardTitle>
-                    {isOwner && mode === 'route' && (
-                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.historique}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {fiche.ame_personnage && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Âme</CardTitle>
-                    {isOwner && mode === 'route' && !fiche.historique && (
-                      <Button size="sm" variant="outline" onClick={handleEditHistorique}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground whitespace-pre-line">{fiche.ame_personnage}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {!fiche.historique && !fiche.ame_personnage && (
-                <p className="text-center py-8 text-muted-foreground">
-                  {isOwner ? "Aucun historique ou âme renseigné. " : "Aucun historique ou âme renseigné."}
-                  {isOwner && mode === 'route' && (
-                    <Button size="sm" variant="link" onClick={handleEditHistorique}>
-                      Ajouter
-                    </Button>
-                  )}
-                </p>
-              )}
-            </>
-          )}
         </TabsContent>
 
         {/* Export */}
