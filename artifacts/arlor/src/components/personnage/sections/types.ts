@@ -1,4 +1,4 @@
-import type { Json } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 
 // ── Interfaces alignées sur les vues SQL ──────────────────────
 // Partagées entre FichePersonnageView (parent) et les briques sections/*.
@@ -50,6 +50,20 @@ export interface Competence {
   type_achat: string;
   competence_description: string | null;
   description_niveau_acquis: string | null;
+}
+
+// Regroupement des rows d'une compétence par competence_id (cf. useMemo
+// competencesGroupees du parent). Partagé avec CompetencesSection.
+export interface CompetenceGroupee {
+  competence_id: string;
+  nom: string;
+  categorie: string;
+  type_achat: string;
+  niveau_max_competence: number;
+  competence_description: string | null;
+  statut_maitre: string;
+  xp_total: number;
+  rows: Competence[];
 }
 
 export interface Sort {
@@ -150,3 +164,8 @@ export interface ObjetJoaillerie {
   materiaux_communs: string | null;
   materiaux_rares: string | null;
 }
+
+// Lignes brutes des tables pièges (lecture seule, miroir wizard étape 9).
+// Partagées entre le parent (queries) et PiegesSection.
+export type PiegeRow = Database["public"]["Tables"]["pieges"]["Row"];
+export type PersonnagePiegeRow = Database["public"]["Tables"]["personnage_pieges"]["Row"];
