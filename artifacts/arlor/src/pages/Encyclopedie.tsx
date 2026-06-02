@@ -782,7 +782,6 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
                                <p className="text-xs mt-1 font-medium">⚡ Prérequis : {prerequisText}</p>
                              ) : null;
                              })()}
-                            {niv.effet && <p className="text-muted-foreground text-xs">{niv.effet}</p>}
                           </div>
                         ))}
                       </div>
