@@ -186,7 +186,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_forge")
-        .select("id, nom, description, type, temps_fabrication_minutes, materiaux_communs, materiaux_rares")
+        .select("id, nom, description, type, cout_xp, temps_fabrication_minutes, materiaux_communs, materiaux_rares")
         .eq("est_actif", true)
         .order("temps_fabrication_minutes")
         .order("nom");
@@ -214,7 +214,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_joaillerie")
-        .select("id, nom, description, effet, temps_fabrication_minutes, temps_rare_minutes, materiaux_communs, materiaux_rares")
+        .select("id, nom, description, effet, cout_xp, temps_fabrication_minutes, temps_rare_minutes, materiaux_communs, materiaux_rares")
         .eq("est_actif", true)
         .order("temps_fabrication_minutes")
         .order("nom");
@@ -376,7 +376,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           ame_personnage: ameTmp.trim(),
         })
         .eq("id", fiche.id);
-
       if (error) throw error;
       await queryClient.invalidateQueries({
         predicate: (q) => q.queryKey.includes(personnageId),
