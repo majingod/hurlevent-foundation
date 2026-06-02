@@ -7,11 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
-import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
-import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import type { Database } from "@/integrations/supabase/types";
 import type {
   FichePersonnage,
@@ -42,8 +39,8 @@ import { AlchimieSection } from "./sections/AlchimieSection";
 import { ForgeSection } from "./sections/ForgeSection";
 import { JoaillerieSection } from "./sections/JoaillerieSection";
 import { PiegesSection } from "./sections/PiegesSection";
-import { resoudreChoixAffichage } from "./sections/helpers";
 import { ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
+import { FicheImprimable } from "./FicheImprimable";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
@@ -394,383 +391,16 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     }
   };
 
-  const escapeHtml = (value: unknown) =>
-    String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-
-  const handlePrint = (mode: 'fiche' | 'manuel') => {
-    if (!fiche) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
-    // BLOC 3 — sélection court/verbatim selon le mode d'impression.
-    // 'fiche' = description courte (fallback verbatim si pas de courte) ; 'manuel' = verbatim.
-    const descDiv = (court?: string | null, complet?: string | null) => {
-      const d = mode === 'fiche' ? (court ?? complet) : complet;
-      return d ? `<div class="desc">${escapeHtml(d)}</div>` : "";
-    };
-
-    const niveauAlchimie = artisanatEtat?.niveau_alchimie ?? 0;
-    const niveauForge = artisanatEtat?.niveau_forge ?? 0;
-    const niveauJoaillerie = artisanatEtat?.niveau_joaillerie ?? 0;
-    const niveauPieges = artisanatEtat?.niveau_pieges ?? 0;
-
-    const sortsByCercle: Record<string, Sort[]> = {};
-    (sorts ?? []).forEach((s) => {
-      if (!sortsByCercle[s.cercle]) sortsByCercle[s.cercle] = [];
-      sortsByCercle[s.cercle].push(s);
-    });
-
-    const prieresByDomaine: Record<string, Priere[]> = {};
-    (prieres ?? []).forEach((p) => {
-      if (!prieresByDomaine[p.domaine]) prieresByDomaine[p.domaine] = [];
-      prieresByDomaine[p.domaine].push(p);
-    });
-
-    const recettesByNiveau: Record<number, Recette[]> = {};
-    (recettes ?? []).forEach((r) => {
-      if (!recettesByNiveau[r.niveau_requis]) recettesByNiveau[r.niveau_requis] = [];
-      recettesByNiveau[r.niveau_requis].push(r);
-    });
-
-    const niveauLabels: Record<number, string> = {
-      1: "Recettes mineures (Niv. 1)",
-      2: "Recettes intermédiaires (Niv. 2)",
-      3: "Recettes majeures (Niv. 3)",
-    };
-
-    // PR-4 — Pièges possédés pour l'impression
-    const piegeCatPrint = new Map<string, PiegeRow>();
-    (piegesCatalogue ?? []).forEach((p) => piegeCatPrint.set(`${p.nom}__${p.niveau}`, p));
-    const famillesPiegesPrint: [string, number[]][] = (() => {
-      const map = new Map<string, number[]>();
-      (personnagePieges ?? []).forEach((pp) => {
-        const arr = map.get(pp.piege_nom) ?? [];
-        arr.push(pp.niveau_acquis);
-        map.set(pp.piege_nom, arr);
-      });
-      map.forEach((a) => a.sort((x, y) => x - y));
-      return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "fr"));
-    })();
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="fr">
-      <head>
-        <meta charset="UTF-8">
-        <title>Fiche de ${escapeHtml(fiche.nom)}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; color: #111; }
-          h1 { font-size: 24px; margin-bottom: 4px; }
-          h2 { font-size: 18px; margin-top: 24px; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 4px; }
-          h3 { font-size: 15px; margin-top: 16px; margin-bottom: 8px; color: #444; }
-          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-          .item { margin-bottom: 6px; }
-          .label { font-weight: bold; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 12px; }
-          th { background-color: #f0f0f0; font-weight: bold; }
-          .card { border: 1px solid #ccc; border-radius: 4px; padding: 10px; margin-bottom: 10px; page-break-inside: avoid; }
-          .card-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-          .card-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-          .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 3px; padding: 1px 6px; font-size: 11px; white-space: nowrap; }
-          .muted { color: #666; font-size: 11px; margin-top: 2px; }
-          .desc { font-size: 12px; color: #333; margin-top: 6px; border-top: 1px solid #eee; padding-top: 4px; }
-          .formula { font-family: monospace; background: #fef3c7; padding: 2px 6px; border-radius: 2px; font-size: 12px; margin-top: 4px; display: inline-block; }
-          @media print {
-            .card { page-break-inside: avoid; }
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            p, span, div { overflow: visible !important; max-height: none !important; }
-          }
-        </style>
-      </head>
-      <body>
-        <h1>Fiche de ${escapeHtml(fiche.nom)}</h1>
-        <p class="muted">${escapeHtml(fiche.race_nom ?? "")}${fiche.race_nom_latin ? ` (${escapeHtml(fiche.race_nom_latin)})` : ""} — ${escapeHtml(fiche.classe_nom ?? "")} — Niveau ${fiche.niveau}</p>
-
-        <h2>Informations générales</h2>
-        <div class="grid">
-          <div class="item"><span class="label">PV Max :</span> ${fiche.pv_max}</div>
-          <div class="item"><span class="label">PS Max :</span> ${fiche.ps_max}</div>
-          <div class="item"><span class="label">XP Total :</span> ${fiche.xp_total}</div>
-          <div class="item"><span class="label">XP Dépensé :</span> ${fiche.xp_depense}</div>
-          <div class="item"><span class="label">XP Disponible :</span> ${xpDisponible}</div>
-          ${fiche.religion_nom ? `<div class="item"><span class="label">Religion :</span> ${escapeHtml(fiche.religion_nom)}</div>` : ""}
-          <div class="item"><span class="label">GN complétés :</span> ${fiche.gn_completes}</div>
-          <div class="item"><span class="label">Mini-GN :</span> ${fiche.mini_gn_completes}</div>
-          <div class="item"><span class="label">Ouvertures terrain :</span> ${fiche.ouvertures_terrain}</div>
-        </div>
-
-        <h2>Identité</h2>
-        <div class="card">
-          <div class="card-title">${fiche.race_emoji ? `${escapeHtml(fiche.race_emoji)} ` : ""}Race — ${escapeHtml(fiche.race_nom ?? "")}${fiche.race_nom_latin ? ` <em>(${escapeHtml(fiche.race_nom_latin)})</em>` : ""}</div>
-          ${fiche.race_esperance_vie ? `<div class="muted"><strong>Espérance de vie :</strong> ${escapeHtml(fiche.race_esperance_vie)}</div>` : ""}
-          ${fiche.race_exigences_costume ? `<div class="muted"><strong>Exigences de costume :</strong> ${escapeHtml(fiche.race_exigences_costume)}</div>` : ""}
-          ${descDiv(fiche.race_description_courte, fiche.race_description)}
-        </div>
-        <div class="card">
-          <div class="card-title">${fiche.classe_emoji ? `${escapeHtml(fiche.classe_emoji)} ` : ""}Classe — ${escapeHtml(fiche.classe_nom ?? "")}</div>
-          ${fiche.classe_role_combat ? `<div class="muted"><strong>Rôle de combat :</strong> ${escapeHtml(fiche.classe_role_combat)}</div>` : ""}
-          ${descDiv(fiche.classe_description_courte, fiche.classe_description)}
-        </div>
-
-        ${traits && traits.length > 0 ? `
-        <h2>Traits raciaux</h2>
-        ${traits.map((t) => `
-          <div class="card">
-            <div class="card-title">${escapeHtml(t.nom)}</div>
-            ${t.description ? `<div class="desc">${escapeHtml(t.description)}</div>` : ""}
-          </div>
-        `).join("")}
-        ` : ""}
-
-        ${competencesGroupees.length > 0 ? `
-        <h2>Compétences</h2>
-        ${mode === 'manuel' ? competencesGroupees.map((c) => {
-            let detail = "";
-            if (c.type_achat === "simple") {
-              detail = c.rows.map((r) => `Niv. ${r.niveau_acquis}`).join(", ");
-            } else if (c.type_achat === "multiple_sans_choix") {
-              detail = `× ${c.rows.length} achats`;
-            } else if (c.type_achat === "multiple_choix_distinct") {
-              detail = c.rows.map((r) => escapeHtml(resoudreChoixAffichage(r.choix_achat, langues, religions) ?? r.choix_achat ?? "?")).join(", ");
-            } else {
-              detail = c.rows.map((r) => {
-                const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
-                return `Niv. ${r.niveau_acquis}${choix ? ` (${escapeHtml(choix)})` : ""}`;
-              }).join(", ");
-            }
-            const parNiveau = new Map<number, string>();
-            c.rows.forEach((r) => {
-              if (r.description_niveau_acquis && !parNiveau.has(r.niveau_acquis)) {
-                parNiveau.set(r.niveau_acquis, r.description_niveau_acquis);
-              }
-            });
-            const verbatim = [...parNiveau.entries()]
-              .sort((a, b) => a[0] - b[0])
-              .map(([niv, d]) => `<div class="desc"><strong>Niveau ${niv}</strong> — ${escapeHtml(d)}</div>`)
-              .join("");
-            const statut = c.statut_maitre !== "non_requis"
-              ? ` &bull; ${escapeHtml(STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre)}`
-              : "";
-            return `
-            <div class="card">
-              <div class="card-row">
-                <div class="card-title">${escapeHtml(c.nom)}</div>
-                <span class="badge">${c.xp_total === 0 ? "Gratuit" : c.xp_total + " XP"}</span>
-              </div>
-              <div class="muted">${escapeHtml(c.categorie)}${detail ? ` &bull; ${detail}` : ""}${statut}</div>
-              ${verbatim}
-            </div>
-          `;
-          }).join("") : `
-        <table>
-          <tr><th>Compétence</th><th>Catégorie</th><th>Détail</th><th>Description</th><th>XP total</th><th>Statut</th></tr>
-          ${competencesGroupees.map((c) => {
-            let detail = "";
-            if (c.type_achat === "simple") {
-              detail = c.rows.map((r) => `Niv. ${r.niveau_acquis}`).join(", ");
-            } else if (c.type_achat === "multiple_sans_choix") {
-              detail = `× ${c.rows.length} achats`;
-            } else if (c.type_achat === "multiple_choix_distinct") {
-              detail = c.rows.map((r) => escapeHtml(resoudreChoixAffichage(r.choix_achat, langues, religions) ?? r.choix_achat ?? "?")).join(", ");
-            } else {
-              detail = c.rows.map((r) => {
-                const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
-                return `Niv. ${r.niveau_acquis}${choix ? ` (${escapeHtml(choix)})` : ""}`;
-              }).join(", ");
-            }
-            return `
-            <tr>
-              <td>${escapeHtml(c.nom)}</td>
-              <td>${escapeHtml(c.categorie)}</td>
-              <td>${detail}</td>
-              <td>${escapeHtml(c.competence_description ?? "")}</td>
-              <td>${c.xp_total === 0 ? "Gratuit" : c.xp_total}</td>
-              <td>${escapeHtml(c.statut_maitre !== "non_requis" ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre : "—")}</td>
-            </tr>
-          `;
-          }).join("")}
-        </table>
-        `}
-        ` : ""}
-
-        ${(sorts ?? []).length > 0 ? `
-        <h2>Sorts arcaniques</h2>
-        ${Object.entries(sortsByCercle).map(([cercle, sortsDuCercle]) => `
-          <h3>${escapeHtml(cercle)}</h3>
-          ${sortsDuCercle.map((s) => `
-            <div class="card">
-              <div class="card-row">
-                <div class="card-title">${escapeHtml(s.nom_personnalise)}</div>
-                <span class="badge">${calculerCoutPS(calculerCoutXP(s.zone_choisie ?? "", s.portee_choisie ?? "", s.duree_choisie ?? "", s.niveau_sort, Number(s.cout_xp_base)))} PS</span>
-              </div>
-              ${s.sort_nom_base && s.sort_nom_base !== s.nom_personnalise ? `<div class="muted">Basé sur : ${escapeHtml(s.sort_nom_base)}</div>` : ""}
-              ${s.formule_magique ? `<div class="formula">Formule : ${escapeHtml(s.formule_magique)}</div>` : ""}
-              <div class="muted">
-                ${s.zone_choisie ? `Zone : ${escapeHtml(s.zone_choisie)}` : ""}
-                ${s.portee_choisie ? ` &bull; Portée : ${escapeHtml(s.portee_choisie)}` : ""}
-                ${s.duree_choisie ? ` &bull; Durée : ${escapeHtml(s.duree_choisie)}` : ""}
-              </div>
-              ${descDiv(s.sort_description_courte, s.sort_description)}
-            </div>
-          `).join("")}
-        `).join("")}
-        ` : ""}
-
-        ${(prieres ?? []).length > 0 ? `
-        <h2>Prières divines</h2>
-        ${Object.entries(prieresByDomaine).map(([domaine, prieresDuDomaine]) => `
-          <h3>${escapeHtml(domaine)}</h3>
-          ${prieresDuDomaine.map((p) => `
-            <div class="card">
-              <div class="card-row">
-                <div class="card-title">${escapeHtml(p.nom_personnalise)}</div>
-                ${p.cout_xp_base != null ? `<span class="badge">${calculerCoutPS(calculerCoutXP(p.zone_choisie ?? "", p.portee_choisie ?? "", p.duree_choisie ?? "", p.niveau_priere, Number(p.cout_xp_base)))} PS</span>` : ""}
-              </div>
-              <div class="muted">
-                ${p.duree_incantation ? `Incantation : ${escapeHtml(p.duree_incantation)}` : ""}
-                ${p.zone_choisie ? ` &bull; Zone : ${escapeHtml(p.zone_choisie)}` : ""}
-                ${p.portee_choisie ? ` &bull; Portée : ${escapeHtml(p.portee_choisie)}` : ""}
-                ${p.duree_choisie ? ` &bull; Durée : ${escapeHtml(p.duree_choisie)}` : ""}
-              </div>
-              ${descDiv(p.priere_description_courte, p.priere_description)}
-            </div>
-          `).join("")}
-        `).join("")}
-        ` : ""}
-
-        ${(assemblages ?? []).length > 0 ? `
-        <h2>Assemblages de runes</h2>
-        ${(assemblages ?? []).map((a) => `
-          <div class="card">
-            <div class="card-row">
-              <div class="card-title">${escapeHtml(a.nom)}</div>
-              ${a.cout_ps != null ? `<span class="badge">${a.cout_ps} PS</span>` : ""}
-            </div>
-            ${a.cible ? `<div class="muted">Cible : ${escapeHtml(a.cible)}</div>` : ""}
-            ${a.runes_requises && a.runes_requises.length > 0 ? `<div class="muted">Runes : ${a.runes_requises.map(escapeHtml).join(", ")}</div>` : ""}
-            ${a.description ? `<div class="desc">${escapeHtml(a.description)}</div>` : ""}
-            ${a.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(a.effet)}</div>` : ""}
-            ${mode === 'manuel' && a.texte_manuel ? `<div class="desc">${escapeHtml(a.texte_manuel)}</div>` : ""}
-          </div>
-        `).join("")}
-        ` : ""}
-
-        ${niveauAlchimie >= 1 ? `
-        <h2>Alchimie (Niv. ${niveauAlchimie})</h2>
-        ${[1, 2, 3].filter((n) => n <= niveauAlchimie && recettesByNiveau[n]?.length > 0).map((n) => `
-          <h3>${niveauLabels[n]}</h3>
-          ${(recettesByNiveau[n] ?? []).map((r) => {
-            const { composants, manipulations } = parseIngredientsRecette(r.ingredients);
-            return `
-            <div class="card">
-              <div class="card-title">${escapeHtml(r.nom)}</div>
-              ${r.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(r.effet)}</div>` : ""}
-              ${r.formule ? `<div class="desc"><strong>Formule :</strong> ${escapeHtml(r.formule)}</div>` : ""}
-              ${composants.length > 0 ? `<div class="desc"><strong>Ingrédients :</strong> ${escapeHtml(composants.map(formaterComposant).join(" · "))}</div>` : ""}
-              ${manipulations.length > 0 ? `<div class="desc"><strong>Préparation :</strong> ${escapeHtml(manipulations.map((e, i) => `${i + 1}. ${e}`).join("  "))}</div>` : ""}
-              ${r.description ? `<div class="desc">${escapeHtml(r.description)}</div>` : ""}
-            </div>
-          `;
-          }).join("")}
-        `).join("")}
-        ${(manipulations ?? []).filter((m) => (m.niveau ?? 0) <= niveauAlchimie).length > 0 ? `
-          <h3>Manipulations alchimiques</h3>
-          ${(manipulations ?? []).filter((m) => (m.niveau ?? 0) <= niveauAlchimie).map((m) => `
-            <div class="card">
-              <div class="card-title">${escapeHtml(m.nom ?? "")}</div>
-              ${m.manipulations ? `<div class="desc">${escapeHtml(m.manipulations)}</div>` : ""}
-            </div>
-          `).join("")}
-        ` : ""}
-        ` : ""}
-
-        ${niveauForge >= 1 ? `
-        <h2>Forge (Niv. ${niveauForge})</h2>
-        ${(objetsForge ?? []).length > 0 ? `
-          <h3>Fabrication</h3>
-          ${(objetsForge ?? []).map((o) => `
-            <div class="card">
-              <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
-              ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
-              ${o.type ? `<div class="muted">Type : ${escapeHtml(o.type)}</div>` : ""}
-              ${o.temps_fabrication_minutes != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.temps_fabrication_minutes} min</div>` : ""}
-              ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
-              ${niveauForge >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
-              ${niveauForge >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
-            </div>
-          `).join("")}
-        ` : ""}
-        ${(reparationsForge ?? []).length > 0 ? `
-          <h3>Réparation</h3>
-          ${(reparationsForge ?? []).map((rep) => `
-            <div class="card">
-              <div class="card-title">${escapeHtml(rep.nom_affichage)}</div>
-              <div class="muted">Catégorie : ${escapeHtml(rep.categorie)}</div>
-              <div class="muted"><strong>Temps commun :</strong> ${rep.temps_minutes} min</div>
-              ${niveauForge >= 2 ? `<div class="muted"><strong>Temps rare :</strong> ${rep.temps_rare_minutes} min</div>` : ""}
-              <div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(rep.materiaux)}</div>
-              ${niveauForge >= 2 ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(rep.materiaux_rares)}</div>` : ""}
-              ${rep.notes ? `<div class="muted" style="font-style: italic; margin-top: 4px;">${escapeHtml(rep.notes)}</div>` : ""}
-            </div>
-          `).join("")}
-        ` : ""}
-        ` : ""}
-
-        ${niveauJoaillerie >= 1 ? `
-        <h2>Joaillerie (Niv. ${niveauJoaillerie})</h2>
-        ${(objetsJoaillerie ?? []).length > 0 ? `
-          <h3>Fabrication</h3>
-          ${(objetsJoaillerie ?? []).map((o) => `
-            <div class="card">
-              <div class="card-title">${escapeHtml(o.nom ?? "")}</div>
-              ${o.description ? `<div class="desc">${escapeHtml(o.description)}</div>` : ""}
-              ${o.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(o.effet)}</div>` : ""}
-              ${o.temps_fabrication_minutes != null ? `<div class="muted"><strong>Temps de fabrication :</strong> ${o.temps_fabrication_minutes} min${niveauJoaillerie >= 2 && o.temps_rare_minutes != null ? ` (commun) — ${o.temps_rare_minutes} min (rare)` : ""}</div>` : ""}
-              ${o.materiaux_communs ? `<div class="muted"><strong>Matériaux communs :</strong> ${escapeHtml(o.materiaux_communs)}</div>` : ""}
-              ${niveauJoaillerie >= 2 && o.materiaux_rares ? `<div class="muted"><strong>Matériaux rares :</strong> ${escapeHtml(o.materiaux_rares)}</div>` : ""}
-              ${niveauJoaillerie >= 3 ? `<div class="muted"><em>Accès aux matériaux légendaires disponible.</em></div>` : ""}
-            </div>
-          `).join("")}
-        ` : ""}
-        ` : ""}
-
-        ${famillesPiegesPrint.length > 0 ? `
-        <h2>Pièges (Niv. ${niveauPieges})</h2>
-        ${famillesPiegesPrint.map(([nom, niveaux]) => {
-          const nMax = niveaux[niveaux.length - 1];
-          const pal = piegeCatPrint.get(`${nom}__${nMax}`);
-          return `
-          <div class="card">
-            <div class="card-row">
-              <div class="card-title">${escapeHtml(nom)}</div>
-              <span class="badge">Niv. ${niveaux.join(", ")}</span>
-            </div>
-            ${pal?.niveau_effet != null ? `<div class="muted">Effet de niveau ${pal.niveau_effet}</div>` : ""}
-            ${pal?.cible ? `<div class="muted">Cible : ${escapeHtml(pal.cible)}</div>` : ""}
-            ${pal?.duree ? `<div class="muted">Durée : ${escapeHtml(pal.duree)}</div>` : ""}
-            ${pal?.effets ? `<div class="desc">${escapeHtml(pal.effets)}</div>` : ""}
-            ${piegeCatPrint.get(`${nom}__1`)?.construction ? `<div class="muted"><strong>Construction :</strong> ${escapeHtml(piegeCatPrint.get(`${nom}__1`)!.construction!)}</div>` : ""}
-          </div>`;
-        }).join("")}
-        ` : ""}
-
-        ${fiche.historique || fiche.ame_personnage ? `
-        <h2>Historique et âme</h2>
-        ${fiche.historique ? `<h3>Historique</h3><p>${escapeHtml(fiche.historique).replace(/\n/g, "<br>")}</p>` : ""}
-        ${fiche.ame_personnage ? `<h3>Âme</h3><p>${escapeHtml(fiche.ame_personnage).replace(/\n/g, "<br>")}</p>` : ""}
-        ` : ""}
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+  // PDF-PATTERN-4 PR-2 — déclenchement impression (vue FicheImprimable + window.print).
+  const [printMode, setPrintMode] = useState<'fiche' | 'manuel'>('fiche');
+  const [printNonce, setPrintNonce] = useState(0);
+  const triggerPrint = (m: 'fiche' | 'manuel') => {
+    setPrintMode(m);
+    setPrintNonce((n) => n + 1);
   };
+  useEffect(() => {
+    if (printNonce > 0) window.print();
+  }, [printNonce]);
 
   if (ficheLoading) {
     return <p className="text-center py-12 text-muted-foreground">Chargement…</p>;
@@ -791,11 +421,11 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         </div>
         {mode === 'route' && (
           <div className="flex gap-2 flex-wrap justify-end">
-            <Button onClick={() => handlePrint('fiche')} variant="outline" size="sm" className="gap-2">
+            <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
               Fiche
             </Button>
-            <Button onClick={() => handlePrint('manuel')} variant="outline" size="sm" className="gap-2">
+            <Button onClick={() => triggerPrint('manuel')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
               Manuel
             </Button>
@@ -995,11 +625,11 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                 <CardTitle className="text-base">Options d'export</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button onClick={() => handlePrint('fiche')} className="w-full gap-2">
+                <Button onClick={() => triggerPrint('fiche')} className="w-full gap-2">
                   <Printer className="h-4 w-4" />
                   Imprimer (Fiche)
                 </Button>
-                <Button onClick={() => handlePrint('manuel')} variant="outline" className="w-full gap-2">
+                <Button onClick={() => triggerPrint('manuel')} variant="outline" className="w-full gap-2">
                   <Printer className="h-4 w-4" />
                   Imprimer (Manuel)
                 </Button>
@@ -1012,6 +642,29 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           </TabsContent>
         )}
       </Tabs>
+
+      {mode === 'route' && (
+        <FicheImprimable
+          printMode={printMode}
+          fiche={fiche}
+          xpDisponible={xpDisponible}
+          traits={traits}
+          competencesGroupees={competencesGroupees}
+          sorts={sorts ?? []}
+          prieres={prieres ?? []}
+          assemblages={assemblages ?? []}
+          recettes={recettes ?? []}
+          manipulations={manipulations ?? []}
+          objetsForge={objetsForge ?? []}
+          reparationsForge={reparationsForge ?? []}
+          objetsJoaillerie={objetsJoaillerie ?? []}
+          artisanatEtat={artisanatEtat ?? null}
+          piegesCatalogue={piegesCatalogue ?? []}
+          personnagePieges={personnagePieges ?? []}
+          langues={langues}
+          religions={religions}
+        />
+      )}
     </div>
   );
 };
