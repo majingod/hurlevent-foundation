@@ -113,6 +113,7 @@ export interface Assemblage {
   nom: string;
   cible: string | null;
   cout_ps: number | null;
+  xp_depense: number;
   description: string | null;
   effet: string | null;
   runes_requises: string[] | null;
@@ -125,6 +126,7 @@ export interface Recette {
   nom: string;
   type: string;
   niveau_requis: number;
+  xp_depense: number;
   description: string | null;
   effet: string | null;
   formule: string | null;
@@ -150,6 +152,7 @@ export interface ObjetForge {
   nom: string | null;
   description: string | null;
   type: string | null;
+  cout_xp: number | null;
   temps_fabrication_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
@@ -171,6 +174,7 @@ export interface ObjetJoaillerie {
   nom: string | null;
   description: string | null;
   effet: string | null;
+  cout_xp: number | null;
   temps_fabrication_minutes: number | null;
   temps_rare_minutes: number | null;
   materiaux_communs: string | null;
