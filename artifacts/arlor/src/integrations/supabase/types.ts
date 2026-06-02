@@ -3085,9 +3085,13 @@ export type Database = {
           est_actif: boolean | null
           fondateur: string | null
           id: string
+          lore_fiche: string | null
+          lore_manuel: string | null
           nom: string | null
           pouvoir_symbole: string | null
           recherche_tsv: unknown
+          rituels_fiche: string[] | null
+          rituels_manuel: string[] | null
           symbole_sacre: string | null
         }
         Insert: {
@@ -3099,9 +3103,13 @@ export type Database = {
           est_actif?: boolean | null
           fondateur?: string | null
           id?: string
+          lore_fiche?: string | null
+          lore_manuel?: string | null
           nom?: string | null
           pouvoir_symbole?: string | null
           recherche_tsv?: unknown
+          rituels_fiche?: string[] | null
+          rituels_manuel?: string[] | null
           symbole_sacre?: string | null
         }
         Update: {
@@ -3113,9 +3121,13 @@ export type Database = {
           est_actif?: boolean | null
           fondateur?: string | null
           id?: string
+          lore_fiche?: string | null
+          lore_manuel?: string | null
           nom?: string | null
           pouvoir_symbole?: string | null
           recherche_tsv?: unknown
+          rituels_fiche?: string[] | null
+          rituels_manuel?: string[] | null
           symbole_sacre?: string | null
         }
         Relationships: []
