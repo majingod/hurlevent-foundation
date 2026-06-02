@@ -265,8 +265,8 @@ export const FicheImprimable = ({
           {p.cout_xp_base != null && <span className="fp-badge">{xp} XP</span>}
         </div>
         <div className="fp-row"><span className="fp-k">Niveau de la prière :</span> {p.niveau_priere}</div>
-        {p.duree_incantation && (
-          <div className="fp-row"><span className="fp-k">Incantation :</span> {p.duree_incantation}</div>
+        {p.duree_incantation_calculee != null && (
+          <div className="fp-row"><span className="fp-k">Incantation :</span> {p.duree_incantation_calculee} s</div>
         )}
         {p.zone_choisie && <div className="fp-row"><span className="fp-k">Zone :</span> {p.zone_choisie}</div>}
         {p.portee_choisie && <div className="fp-row"><span className="fp-k">Portée :</span> {p.portee_choisie}</div>}

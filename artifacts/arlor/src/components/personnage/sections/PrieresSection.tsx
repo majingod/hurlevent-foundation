@@ -50,13 +50,13 @@ export const PrieresSection = ({
               )}
             </div>
 
-            {(priere.duree_incantation ||
+            {(priere.duree_incantation_calculee != null ||
               priere.zone_choisie ||
               priere.portee_choisie ||
               priere.duree_choisie) && (
               <p className="text-xs text-muted-foreground">
                 {[
-                  priere.duree_incantation && `Incantation : ${priere.duree_incantation}`,
+                  priere.duree_incantation_calculee != null && `Incantation : ${priere.duree_incantation_calculee} s`,
                   priere.zone_choisie && `Zone : ${priere.zone_choisie}`,
                   priere.portee_choisie && `Portée : ${priere.portee_choisie}`,
                   priere.duree_choisie && `Durée : ${priere.duree_choisie}`,

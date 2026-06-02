@@ -37,6 +37,7 @@ import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
   calculerCoutPS,
   calculerCoutXP,
+  calculerDureeIncantation,
   filterDureesDisponibles,
   filterPorteesDisponibles,
   getNoteZone,
@@ -297,6 +298,10 @@ const Etape7_Prieres_V2 = ({
         )
       : 0;
   const coutPS = coutXp > 0 ? calculerCoutPS(coutXp) : 0;
+  const dureeIncantation =
+    priereSelectionnee && zoneChoisie && porteeChoisie && dureeChoisie
+      ? calculerDureeIncantation(porteeChoisie, zoneChoisie, dureeChoisie, niveauPriere)
+      : 0;
 
   const zoneEstUnique = priereSelectionnee?.zone_effet
     ? isZoneUnique(priereSelectionnee.zone_effet)
@@ -631,11 +636,6 @@ const Etape7_Prieres_V2 = ({
                         {p.description}
                       </p>
                     )}
-                    {p.duree_incantation && (
-                      <p className="text-xs italic text-muted-foreground">
-                        Durée d'incantation : {p.duree_incantation}
-                      </p>
-                    )}
                   </CardContent>
                 </Card>
               ))
@@ -748,10 +748,10 @@ const Etape7_Prieres_V2 = ({
                 <span>Coût PS à l'invocation :</span>
                 <strong>{coutPS} PS</strong>
               </div>
-              {priereSelectionnee.duree_incantation && (
+              {dureeIncantation > 0 && (
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Durée d'incantation :</span>
-                  <span>{priereSelectionnee.duree_incantation}</span>
+                  <span>{dureeIncantation} s</span>
                 </div>
               )}
             </div>
@@ -834,6 +834,8 @@ const Etape7_Prieres_V2 = ({
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {pp.zone_choisie} • {pp.portee_choisie} • {pp.duree_choisie}
+                  {pp.duree_incantation_calculee != null &&
+                    ` • Incantation : ${pp.duree_incantation_calculee} s`}
                 </p>
                 <p className="text-xs">
                   <strong>{pp.xp_depense} XP</strong> •{" "}

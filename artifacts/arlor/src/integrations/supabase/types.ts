@@ -5054,6 +5054,7 @@ export type Database = {
           domaine: string | null
           duree_choisie: string | null
           duree_incantation: string | null
+          duree_incantation_calculee: number | null
           id: string | null
           niveau_priere: number | null
           nom_personnalise: string | null
