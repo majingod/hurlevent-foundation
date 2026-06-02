@@ -203,6 +203,7 @@ const Evenements = () => {
     } else {
       toast.success("Inscription envoyée ! En attente de confirmation.");
       queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["evenements-publies"] });
       setModalOpen(false);
     }
   };
