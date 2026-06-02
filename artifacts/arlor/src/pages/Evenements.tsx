@@ -14,6 +14,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { CalendarDays, MapPin, Users, Sparkles } from "lucide-react";
 import { useState } from "react";
@@ -35,6 +45,12 @@ interface Evenement {
 interface Personnage {
   id: string;
   nom: string | null;
+}
+
+interface Inscription {
+  id: string;
+  evenement_id: string | null;
+  statut: string | null;
 }
 
 /* ---------- helpers ---------- */
@@ -78,6 +94,11 @@ const Evenements = () => {
   const [selectedPersonnage, setSelectedPersonnage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Désinscription (1A : uniquement les inscriptions « en_attente »)
+  const [desinscrireEvent, setDesinscrireEvent] = useState<Evenement | null>(null);
+  const [desinscrireIds, setDesinscrireIds] = useState<string[]>([]);
+  const [desinscribing, setDesinscribing] = useState(false);
+
   // DATA-FIRST : vue_evenements_publies calcule nb_inscrits côté DB
   // Remplace la boucle N+1 (1 requête events + N requêtes COUNT)
   const { data: evenements = [], isLoading } = useQuery({
@@ -91,15 +112,15 @@ const Evenements = () => {
     },
   });
 
-  const { data: inscriptions } = useQuery({
+  const { data: inscriptions = [] } = useQuery({
     queryKey: ["mes-inscriptions", user?.id],
     queryFn: async () => {
-      if (!user) return new Set<string>();
+      if (!user) return [] as Inscription[];
       const { data } = await supabase
         .from("inscriptions_evenements")
-        .select("evenement_id")
+        .select("id, evenement_id, statut")
         .eq("joueur_id", user.id);
-      return new Set((data ?? []).map((i) => i.evenement_id!));
+      return (data ?? []) as Inscription[];
     },
     enabled: !!user,
   });
@@ -186,6 +207,30 @@ const Evenements = () => {
     }
   };
 
+  const ouvrirDesinscription = (ev: Evenement, ids: string[]) => {
+    setDesinscrireEvent(ev);
+    setDesinscrireIds(ids);
+  };
+
+  const confirmerDesinscription = async () => {
+    if (!user || desinscrireIds.length === 0) return;
+    setDesinscribing(true);
+    const { error } = await supabase
+      .from("inscriptions_evenements")
+      .delete()
+      .in("id", desinscrireIds);
+    setDesinscribing(false);
+    if (error) {
+      toast.error("Erreur lors de la désinscription.");
+    } else {
+      toast.success("Désinscription effectuée.");
+      queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["evenements-publies"] });
+    }
+    setDesinscrireEvent(null);
+    setDesinscrireIds([]);
+  };
+
   const isComplet = (ev: Evenement) =>
     ev.max_participants != null && ev.nb_inscrits >= ev.max_participants;
 
@@ -203,7 +248,11 @@ const Evenements = () => {
         <div className="space-y-6">
           {evenements.map((ev) => {
             const complet = isComplet(ev);
-            const dejaInscrit = inscriptions?.has(ev.id) ?? false;
+            const mesInscriptions = inscriptions.filter((i) => i.evenement_id === ev.id);
+            const enAttente = mesInscriptions.filter((i) => i.statut === "en_attente");
+            const confirmee = mesInscriptions.some(
+              (i) => i.statut === "present" || i.statut === "absent"
+            );
 
             return (
               <Card key={ev.id} className="border-primary/10">
@@ -237,9 +286,20 @@ const Evenements = () => {
                     </span>
                   </div>
 
-                  {dejaInscrit ? (
+                  {enAttente.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">En attente de confirmation</Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => ouvrirDesinscription(ev, enAttente.map((i) => i.id))}
+                      >
+                        Se désinscrire
+                      </Button>
+                    </div>
+                  ) : confirmee ? (
                     <Button disabled size="sm" variant="secondary">
-                      Déjà inscrit
+                      Inscription confirmée
                     </Button>
                   ) : complet ? (
                     <Button disabled size="sm" variant="secondary">
@@ -304,6 +364,40 @@ const Evenements = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ── Confirmation de désinscription ── */}
+      <AlertDialog
+        open={!!desinscrireEvent}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDesinscrireEvent(null);
+            setDesinscrireIds([]);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading">
+              Se désinscrire de {desinscrireEvent?.titre} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ton inscription en attente sera retirée et ta place libérée. Tu pourras te réinscrire tant qu'il reste des places.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={desinscribing}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={desinscribing}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmerDesinscription();
+              }}
+            >
+              {desinscribing ? "Désinscription…" : "Se désinscrire"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
