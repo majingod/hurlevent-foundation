@@ -46,7 +46,16 @@ interface FicheImprimableProps {
   piegesCatalogue: PiegeRow[];
   personnagePieges: PersonnagePiegeRow[];
   langues: { id: string; nom: string | null }[] | undefined;
-  religions: { id: string; nom: string | null }[] | undefined;
+  religions:
+    | {
+        id: string;
+        nom: string | null;
+        lore_fiche?: string | null;
+        rituels_fiche?: string[] | null;
+        lore_manuel?: string | null;
+        rituels_manuel?: string[] | null;
+      }[]
+    | undefined;
 }
 
 const PRINT_CSS = `
@@ -351,6 +360,35 @@ export const FicheImprimable = ({
           )}
         </div>
       )}
+
+      {(() => {
+        const rel = fiche.religion_id ? religions?.find((r) => r.id === fiche.religion_id) : null;
+        if (!rel) return null;
+        const lore = printMode === "fiche" ? rel.lore_fiche : rel.lore_manuel;
+        const rituels = (printMode === "fiche" ? rel.rituels_fiche : rel.rituels_manuel) ?? [];
+        if (!lore && rituels.length === 0) return null;
+        return (
+          <>
+            <h2>Religion — {rel.nom}</h2>
+            <div className="fp-card">
+              {lore && (
+                <p className="fp-prose" style={{ whiteSpace: "pre-line" }}>
+                  {lore}
+                </p>
+              )}
+              {rituels.length > 0 && (
+                <ul style={{ margin: "6px 0 0", paddingLeft: "18px" }}>
+                  {rituels.map((r, i) => (
+                    <li key={i} style={{ whiteSpace: "pre-line", marginBottom: "2px" }}>
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
       {/* 2. Identité & traits (hors périmètre recette) */}
       <h2>Identité &amp; traits</h2>

@@ -3,6 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import ReligionDetails from "@/components/shared/ReligionDetails";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
   // XP des GN/mini-GN/ouvertures DÉJÀ sauvegardé (donc déjà inclus dans xp_total serveur).
   // Sert à ne remonter au header que la portion NON sauvegardée (évite le double-compte).
   const [gainSauvegarde, setGainSauvegarde] = useState(0);
+  const [religionManuelOpen, setReligionManuelOpen] = useState(false);
 
   const {
     register,
@@ -97,7 +99,9 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("religions")
-        .select("id, nom, description")
+        .select(
+          "id, nom, description, dirigeant, fondateur, symbole_sacre, pouvoir_symbole, domaines_principaux, domaines_proscrits, lore_fiche, rituels_fiche, lore_manuel, rituels_manuel"
+        )
         .eq("est_actif", true)
         .order("nom");
       if (error) throw error;
@@ -369,6 +373,19 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
               </Select>
             )}
           />
+          {(() => {
+            const relChoisie = religions.find((r: any) => r.id === watch("religion_id"));
+            if (!relChoisie) return null;
+            return (
+              <div className="rounded-lg border border-gold/20 bg-card p-4">
+                <ReligionDetails
+                  religion={relChoisie}
+                  isManuelOpen={religionManuelOpen}
+                  onToggleManuel={() => setReligionManuelOpen((v) => !v)}
+                />
+              </div>
+            );
+          })()}
         </div>
       )}
 
