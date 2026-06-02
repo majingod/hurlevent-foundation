@@ -336,10 +336,13 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
       ...(sorts ?? []).filter((s) => s.sort_description).map((s) => s.id),
       ...(prieres ?? []).filter((p) => p.priere_description).map((p) => p.id),
       ...(assemblages ?? []).filter((a) => a.texte_manuel).map((a) => a.id),
+      ...competencesGroupees
+        .filter((c) => c.rows.some((r) => r.description_niveau_acquis))
+        .map((c) => c.competence_id),
       "race",
       "classe",
     ],
-    [sorts, prieres, assemblages],
+    [sorts, prieres, assemblages, competencesGroupees],
   );
 
   // PR4b — Sous-onglets Artisanat dynamiques
@@ -527,8 +530,46 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
         ${competencesGroupees.length > 0 ? `
         <h2>Compétences</h2>
+        ${mode === 'manuel' ? competencesGroupees.map((c) => {
+            let detail = "";
+            if (c.type_achat === "simple") {
+              detail = c.rows.map((r) => `Niv. ${r.niveau_acquis}`).join(", ");
+            } else if (c.type_achat === "multiple_sans_choix") {
+              detail = `× ${c.rows.length} achats`;
+            } else if (c.type_achat === "multiple_choix_distinct") {
+              detail = c.rows.map((r) => escapeHtml(resoudreChoixAffichage(r.choix_achat, langues, religions) ?? r.choix_achat ?? "?")).join(", ");
+            } else {
+              detail = c.rows.map((r) => {
+                const choix = resoudreChoixAffichage(r.choix_achat, langues, religions);
+                return `Niv. ${r.niveau_acquis}${choix ? ` (${escapeHtml(choix)})` : ""}`;
+              }).join(", ");
+            }
+            const parNiveau = new Map<number, string>();
+            c.rows.forEach((r) => {
+              if (r.description_niveau_acquis && !parNiveau.has(r.niveau_acquis)) {
+                parNiveau.set(r.niveau_acquis, r.description_niveau_acquis);
+              }
+            });
+            const verbatim = [...parNiveau.entries()]
+              .sort((a, b) => a[0] - b[0])
+              .map(([niv, d]) => `<div class="desc"><strong>Niveau ${niv}</strong> — ${escapeHtml(d)}</div>`)
+              .join("");
+            const statut = c.statut_maitre !== "non_requis"
+              ? ` &bull; ${escapeHtml(STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre)}`
+              : "";
+            return `
+            <div class="card">
+              <div class="card-row">
+                <div class="card-title">${escapeHtml(c.nom)}</div>
+                <span class="badge">${c.xp_total === 0 ? "Gratuit" : c.xp_total + " XP"}</span>
+              </div>
+              <div class="muted">${escapeHtml(c.categorie)}${detail ? ` &bull; ${detail}` : ""}${statut}</div>
+              ${verbatim}
+            </div>
+          `;
+          }).join("") : `
         <table>
-          <tr><th>Compétence</th><th>Catégorie</th><th>Détail</th><th>XP total</th><th>Statut</th></tr>
+          <tr><th>Compétence</th><th>Catégorie</th><th>Détail</th><th>Description</th><th>XP total</th><th>Statut</th></tr>
           ${competencesGroupees.map((c) => {
             let detail = "";
             if (c.type_achat === "simple") {
@@ -548,12 +589,14 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               <td>${escapeHtml(c.nom)}</td>
               <td>${escapeHtml(c.categorie)}</td>
               <td>${detail}</td>
+              <td>${escapeHtml(c.competence_description ?? "")}</td>
               <td>${c.xp_total === 0 ? "Gratuit" : c.xp_total}</td>
               <td>${escapeHtml(c.statut_maitre !== "non_requis" ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre : "—")}</td>
             </tr>
           `;
           }).join("")}
         </table>
+        `}
         ` : ""}
 
         ${(sorts ?? []).length > 0 ? `
@@ -854,6 +897,10 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             competencesGroupees={competencesGroupees}
             langues={langues}
             religions={religions}
+            isManuelOpen={isManuelOpen}
+            toggleManuel={toggleManuel}
+            isAllOpen={isAllOpen}
+            toggleAll={toggleAll}
           />
         </TabsContent>
 

@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { resoudreChoixAffichage } from "./helpers";
 import type { CompetenceGroupee } from "./types";
@@ -8,15 +9,57 @@ interface CompetencesSectionProps {
   competencesGroupees: CompetenceGroupee[];
   langues: { id: string; nom: string | null }[] | undefined;
   religions: { id: string; nom: string | null }[] | undefined;
+  isManuelOpen: (id: string) => boolean;
+  toggleManuel: (id: string) => void;
+  isAllOpen: (ids: string[]) => boolean;
+  toggleAll: (ids: string[]) => void;
 }
+
+// Verbatim concaténé par compétence : 1 entrée par niveau acquis (dédup),
+// triée par niveau. Couvre les 4 patterns type_achat (validé s87 ②).
+const construireVerbatim = (comp: CompetenceGroupee): string => {
+  const parNiveau = new Map<number, string>();
+  for (const r of comp.rows) {
+    if (r.description_niveau_acquis && !parNiveau.has(r.niveau_acquis)) {
+      parNiveau.set(r.niveau_acquis, r.description_niveau_acquis);
+    }
+  }
+  return [...parNiveau.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([niveau, desc]) => `Niveau ${niveau} — ${desc}`)
+    .join("\n\n");
+};
 
 export const CompetencesSection = ({
   competencesGroupees,
   langues,
   religions,
+  isManuelOpen,
+  toggleManuel,
+  isAllOpen,
+  toggleAll,
 }: CompetencesSectionProps) => {
-  return competencesGroupees.length > 0 ? (
+  if (competencesGroupees.length === 0) {
+    return <p className="text-center py-8 text-muted-foreground">Aucune compétence acquise.</p>;
+  }
+
+  const verbatimParComp = new Map<string, string>(
+    competencesGroupees.map((c) => [c.competence_id, construireVerbatim(c)]),
+  );
+  const idsVerbatim = competencesGroupees
+    .filter((c) => (verbatimParComp.get(c.competence_id) ?? "").length > 0)
+    .map((c) => c.competence_id);
+
+  return (
     <div className="space-y-3">
+      {idsVerbatim.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(idsVerbatim)}
+          onToggle={() => toggleAll(idsVerbatim)}
+          title="Cet onglet"
+          subtitle="Verbatim du manuel pour les compétences"
+        />
+      )}
       {competencesGroupees.map((comp) => {
         const headerBadges = (
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -60,9 +103,6 @@ export const CompetencesSection = ({
                           <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
                         )}
                       </div>
-                      {r.description_niveau_acquis && (
-                        <p className="whitespace-pre-line">{r.description_niveau_acquis}</p>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -120,7 +160,6 @@ export const CompetencesSection = ({
                   )
                     .sort(([a], [b]) => Number(a) - Number(b))
                     .map(([niveau, rowsNiveau]) => {
-                      const descriptionNiveau = rowsNiveau[0]?.description_niveau_acquis;
                       const aDesChoix = rowsNiveau.some((r) => r.choix_achat);
                       return (
                         <div key={niveau} className="space-y-2">
@@ -143,9 +182,6 @@ export const CompetencesSection = ({
                                 );
                               })}
                             </ul>
-                          )}
-                          {descriptionNiveau && (
-                            <p className="whitespace-pre-line">{descriptionNiveau}</p>
                           )}
                         </div>
                       );
@@ -178,21 +214,23 @@ export const CompetencesSection = ({
                               <Badge className="text-xs">Maître : {r.nom_maitre}</Badge>
                             )}
                           </div>
-                          {r.description_niveau_acquis && (
-                            <p className="whitespace-pre-line">{r.description_niveau_acquis}</p>
-                          )}
                         </div>
                       );
                     })}
                   </div>
                 )}
+
+              {/* Toggle « Texte du manuel » — verbatim par niveau replié (s87 ①) */}
+              <ToggleManuel
+                texte={verbatimParComp.get(comp.competence_id)}
+                isOpen={isManuelOpen(comp.competence_id)}
+                onToggle={() => toggleManuel(comp.competence_id)}
+              />
             </CardContent>
           </Card>
         );
       })}
     </div>
-  ) : (
-    <p className="text-center py-8 text-muted-foreground">Aucune compétence acquise.</p>
   );
 };
 
