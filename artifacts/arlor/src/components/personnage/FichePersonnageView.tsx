@@ -422,11 +422,11 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           <div className="flex gap-2 flex-wrap justify-end">
             <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
-              Fiche
+              Fiche Version Courte
             </Button>
             <Button onClick={() => triggerPrint('manuel')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
-              Manuel
+              Fiche Version Détaillée
             </Button>
           </div>
         )}
@@ -626,15 +626,15 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               <CardContent className="space-y-3">
                 <Button onClick={() => triggerPrint('fiche')} className="w-full gap-2">
                   <Printer className="h-4 w-4" />
-                  Imprimer (Fiche)
+                  Imprimer (Fiche Version Courte)
                 </Button>
                 <Button onClick={() => triggerPrint('manuel')} variant="outline" className="w-full gap-2">
                   <Printer className="h-4 w-4" />
-                  Imprimer (Manuel)
+                  Imprimer (Fiche Version Détaillée)
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  <strong>Fiche</strong> : descriptions courtes (résumé de jeu, version compacte).{" "}
-                  <strong>Manuel</strong> : texte verbatim complet du manuel (sorts, prières, race, classe, assemblages).
+                  <strong>Fiche Version Courte</strong> : descriptions courtes (résumé de jeu, version compacte).{" "}
+                  <strong>Fiche Version Détaillée</strong> : texte verbatim complet du manuel (sorts, prières, race, classe, assemblages).
                 </p>
               </CardContent>
             </Card>
