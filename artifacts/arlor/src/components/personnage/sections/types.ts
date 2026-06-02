@@ -104,6 +104,7 @@ export interface Priere {
   priere_description: string | null;
   priere_description_courte: string | null;
   duree_incantation: string | null;
+  duree_incantation_calculee: number | null;
   cout_xp_base: number | null;
 }
 

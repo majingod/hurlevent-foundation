@@ -50,3 +50,58 @@ export const DUREES: { label: string; cout: number }[] = [
   { label: "50 Minutes",  cout: 8 },
   { label: "60 Minutes",  cout: 9 },
 ];
+
+// ============================================================
+// SECONDES DE PRIÈRE (durée d'incantation) — manuel 2026
+// « Construction des sorts de prêtre ». Tables PROPRES aux prières,
+// distinctes des colonnes de coût XP ci-dessus.
+// ⚠️ MIROIR EXACT de la fonction SQL public.calculer_duree_incantation_priere
+// (migration 20260602164244). Toute modif ici DOIT être répliquée côté SQL.
+// ============================================================
+export const SECONDES_BASE_DOMAINE = 2;
+
+export const SECONDES_PORTEE: Record<string, number> = {
+  "Toucher":  1,
+  "5 Pieds":  2,
+  "10 Pieds": 3,
+  "25 Pieds": 5,
+  "50 Pieds": 7,
+  "À vue":    10,
+};
+
+export const SECONDES_ZONE: Record<string, number> = {
+  "Personnelle":    1,
+  "1 Cible":        2,
+  "2 Cibles":       3,
+  "3 Cibles":       5,
+  "4 Cibles":       7,
+  "5 Cibles":       10,
+  "Rayon 3 pieds":  2,
+  "Rayon 6 pieds":  4,
+  "Rayon 10 pieds": 5,
+  "Rayon 25 pieds": 8,
+  "Rayon 50 pieds": 15,
+};
+
+export const SECONDES_DUREE: Record<string, number> = {
+  "Instantanée": 1,
+  "1 Minute":    2,
+  "5 Minutes":   3,
+  "10 Minutes":  4,
+  "20 Minutes":  5,
+  "30 Minutes":  6,
+  "40 Minutes":  7,
+  "50 Minutes":  8,
+  "60 Minutes":  9,
+};
+
+// Niveau → secondes (paliers manuel 2026, jusqu'à niv 20)
+export function secondesNiveauPriere(niveau: number): number {
+  if (niveau <= 3)  return 1;
+  if (niveau <= 6)  return 2;
+  if (niveau <= 9)  return 3;
+  if (niveau <= 12) return 5;
+  if (niveau <= 15) return 7;
+  if (niveau <= 18) return 10;
+  return 13; // 19-20
+}

@@ -6,7 +6,16 @@
 //   - Fiche personnage (onglets Sorts et Prières)
 // ============================================================
 
-import { PORTEES, DUREES, COUT_ZONE } from "@/constants/magie";
+import {
+  PORTEES,
+  DUREES,
+  COUT_ZONE,
+  SECONDES_BASE_DOMAINE,
+  SECONDES_PORTEE,
+  SECONDES_ZONE,
+  SECONDES_DUREE,
+  secondesNiveauPriere,
+} from "@/constants/magie";
 
 // --- Calcul du coût PS à partir du coût XP ---
 // Formule : Math.ceil(coutXp / 5 + 0.5)
@@ -57,10 +66,11 @@ export function calculerDureeIncantation(
   dureeChoisie: string,
   niveau: number
 ): number {
-  const secPortee = PORTEES.find(p => p.label === porteeChoisie)?.cout ?? 0;
-  const secZone   = COUT_ZONE[zoneChoisie]                              ?? 0;
-  const secDuree  = DUREES.find(d => d.label === dureeChoisie)?.cout    ?? 0;
-  return Math.ceil((2 + secPortee + secZone + secDuree + niveau) / 2);
+  const secPortee = SECONDES_PORTEE[porteeChoisie] ?? 0;
+  const secZone   = SECONDES_ZONE[zoneChoisie]     ?? 0;
+  const secDuree  = SECONDES_DUREE[dureeChoisie]   ?? 0;
+  const secNiveau = secondesNiveauPriere(niveau);
+  return Math.ceil((SECONDES_BASE_DOMAINE + secPortee + secZone + secDuree + secNiveau) / 2);
 }
 
 // --- Note contextuelle selon zone_effet (sort/prière ciblant un mort ou un objet) ---
