@@ -1,15 +1,40 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
 import type { Sort } from "./types";
 
 interface SortsSectionProps {
   sorts: Sort[];
+  isManuelOpen: (id: string) => boolean;
+  toggleManuel: (id: string) => void;
+  isAllOpen: (ids: string[]) => boolean;
+  toggleAll: (ids: string[]) => void;
 }
 
-export const SortsSection = ({ sorts }: SortsSectionProps) => {
-  return sorts && sorts.length > 0 ? (
+export const SortsSection = ({
+  sorts,
+  isManuelOpen,
+  toggleManuel,
+  isAllOpen,
+  toggleAll,
+}: SortsSectionProps) => {
+  if (!sorts || sorts.length === 0) {
+    return <p className="text-center py-8 text-muted-foreground">Aucun sort arcanique.</p>;
+  }
+
+  const idsVerbatim = sorts.filter((s) => s.sort_description).map((s) => s.id);
+
+  return (
     <div className="space-y-3">
+      {idsVerbatim.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(idsVerbatim)}
+          onToggle={() => toggleAll(idsVerbatim)}
+          title="Cet onglet"
+          subtitle="Verbatim du manuel pour les sorts"
+        />
+      )}
       {sorts.map((sort) => (
         <Card key={sort.id}>
           <CardContent className="pt-4 space-y-2">
@@ -51,17 +76,21 @@ export const SortsSection = ({ sorts }: SortsSectionProps) => {
               </p>
             )}
 
-            {sort.sort_description && (
-              <p className="border-t border-border/50 pt-2 text-sm text-foreground/90">
-                {sort.sort_description}
+            {(sort.sort_description_courte ?? sort.sort_description) && (
+              <p className="border-t border-border/50 pt-2 text-sm text-foreground/90 whitespace-pre-line">
+                {sort.sort_description_courte ?? sort.sort_description}
               </p>
             )}
+
+            <ToggleManuel
+              texte={sort.sort_description}
+              isOpen={isManuelOpen(sort.id)}
+              onToggle={() => toggleManuel(sort.id)}
+            />
           </CardContent>
         </Card>
       ))}
     </div>
-  ) : (
-    <p className="text-center py-8 text-muted-foreground">Aucun sort arcanique.</p>
   );
 };
 

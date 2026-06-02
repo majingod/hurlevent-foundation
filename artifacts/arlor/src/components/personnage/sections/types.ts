@@ -24,7 +24,17 @@ export interface FichePersonnage {
   traits_raciaux_choisis: Json | null;
   race_nom: string | null;
   race_nom_latin: string | null;
+  race_emoji: string | null;
+  race_description: string | null;
+  race_description_courte: string | null;
+  race_esperance_vie: string | null;
+  race_exigences_costume: string | null;
+  race_image_url: string | null;
   classe_nom: string | null;
+  classe_emoji: string | null;
+  classe_description: string | null;
+  classe_description_courte: string | null;
+  classe_role_combat: string | null;
   religion_nom: string | null;
 }
 
@@ -79,6 +89,7 @@ export interface Sort {
   cout_xp_base: number;
   sort_nom_base: string | null;
   sort_description: string | null;
+  sort_description_courte: string | null;
 }
 
 export interface Priere {
@@ -91,6 +102,7 @@ export interface Priere {
   duree_choisie: string | null;
   domaine: string;
   priere_description: string | null;
+  priere_description_courte: string | null;
   duree_incantation: string | null;
   cout_xp_base: number | null;
 }
