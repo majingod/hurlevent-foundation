@@ -21,6 +21,7 @@ import LoreSection from "@/components/encyclopedie/LoreSection";
 import PiegesSection from "@/components/encyclopedie/PiegesSection";
 import RaceCard from "@/components/encyclopedie/RaceCard";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
+import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 
 /* ── types ── */
 
@@ -685,6 +686,7 @@ const CATEGORIES = [
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
   const [categorieActive, setCategorieActive] = useState<string | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   useEffect(() => {
     if (!searchQuery) return;
@@ -715,6 +717,19 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
   const orderedKeys = ["general", "guerrier", "voleur", "mage", "pretre"];
   const keys = [...orderedKeys.filter((k) => k in grouped), ...Object.keys(grouped).filter((k) => !orderedKeys.includes(k))];
 
+  // Verbatim concaténé par compétence : tous les niveaux[].description (s87 ①).
+  const construireVerbatim = (niveaux: any[]): string =>
+    niveaux
+      .map((niv: any, i: number) => (niv?.description ? `Niveau ${niv.niveau ?? i + 1} — ${niv.description}` : null))
+      .filter(Boolean)
+      .join("\n\n");
+  const verbatimParComp = new Map<string, string>(
+    filtered.map((c) => [c.id, construireVerbatim(Array.isArray(c.niveaux) ? c.niveaux : [])]),
+  );
+  const idsVerbatim = filtered
+    .filter((c) => (verbatimParComp.get(c.id) ?? "").length > 0)
+    .map((c) => c.id);
+
   return (
     <div className="space-y-8">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Compétences</h2>
@@ -732,6 +747,14 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
           </button>
         ))}
       </div>
+      {idsVerbatim.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(idsVerbatim)}
+          onToggle={() => toggleAll(idsVerbatim)}
+          title="Cet onglet"
+          subtitle="Verbatim du manuel pour les compétences"
+        />
+      )}
       {filtered.length === 0 ? <NoResults /> : keys.map((cat) => (
         <section key={cat}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{labelCategorie[cat] ?? cat}</h3>
@@ -752,7 +775,6 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
                             <p className="font-medium text-foreground text-xs mb-1">
                               Niveau {niv.niveau ?? i + 1}{niv.cout_xp != null && ` — ${niv.cout_xp} XP`}
                             </p>
-                            {niv.description && <p className="text-muted-foreground text-xs">{niv.description}</p>}
                             {(() => {
                              const niveauNum = niv.niveau ?? i + 1;
                              const prerequisText = getPrerequisLabels(c.prerequis_labels, niveauNum);
@@ -765,6 +787,11 @@ const CompetencesSection = ({ competences, searchQuery }: { competences: Compete
                         ))}
                       </div>
                     )}
+                    <ToggleManuel
+                      texte={verbatimParComp.get(c.id)}
+                      isOpen={isManuelOpen(c.id)}
+                      onToggle={() => toggleManuel(c.id)}
+                    />
                   </AccordionContent>
                 </AccordionItem>
               );
