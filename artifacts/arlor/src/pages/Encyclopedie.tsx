@@ -1074,6 +1074,7 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
               id={r.id}
               isOpen={expanded.has(r.id)}
               onToggle={() => toggleExpanded(r.id)}
+              maxHeight={isManuelOpen(r.id) ? 20000 : 4000}
               header={
                 <>
                   <CardTitle className="font-heading text-xl">{r.nom}</CardTitle>
