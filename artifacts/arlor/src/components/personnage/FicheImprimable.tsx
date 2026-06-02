@@ -59,25 +59,26 @@ const PRINT_CSS = `
   }
   #fiche-imprimable .fp-card { break-inside: avoid; }
   #fiche-imprimable h2, #fiche-imprimable h3 { break-after: avoid; }
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+/* Impression économe en encre (option A) : aucun aplat de couleur,
+   badges/formules en contour fin, filets de titre gris fins, texte noir. */
 #fiche-imprimable { font-family: Arial, sans-serif; color: #111; margin: 0; }
-#fiche-imprimable h1 { font-family: Georgia, "Times New Roman", serif; font-size: 24px; margin: 0 0 2px; }
-#fiche-imprimable .fp-sub { color: #666; font-size: 13px; margin: 0 0 16px; }
-#fiche-imprimable h2 { font-family: Georgia, serif; font-size: 17px; margin: 22px 0 8px; border-bottom: 2px solid #333; padding-bottom: 3px; }
-#fiche-imprimable h3 { font-size: 12.5px; margin: 12px 0 5px; color: #444; font-weight: bold; }
-#fiche-imprimable .fp-grid { display: grid; gap: 9px; }
+#fiche-imprimable h1 { font-family: Georgia, "Times New Roman", serif; font-size: 23px; margin: 0 0 2px; }
+#fiche-imprimable .fp-sub { color: #555; font-size: 12px; margin: 0 0 14px; }
+#fiche-imprimable h2 { font-family: Georgia, serif; font-size: 16px; margin: 18px 0 7px; border-bottom: 1px solid #999; padding-bottom: 2px; }
+#fiche-imprimable h3 { font-size: 11.5px; margin: 10px 0 4px; color: #444; font-weight: bold; }
+#fiche-imprimable .fp-grid { display: grid; gap: 8px; }
 #fiche-imprimable .fp-kv { display: grid; gap: 3px 14px; margin-bottom: 8px; }
 #fiche-imprimable .fp-kv .fp-item { font-size: 12px; }
 #fiche-imprimable .fp-label { font-weight: bold; }
-#fiche-imprimable .fp-prose { font-size: 11.5px; color: #333; white-space: pre-wrap; margin: 0 0 6px; }
-#fiche-imprimable .fp-card { border: 1px solid #ccc; border-radius: 4px; padding: 9px 11px; }
-#fiche-imprimable .fp-card-title { font-weight: bold; font-size: 13px; }
+#fiche-imprimable .fp-prose { font-size: 11.5px; color: #222; white-space: pre-wrap; margin: 0 0 6px; }
+#fiche-imprimable .fp-card { border: 1px solid #bbb; border-radius: 4px; padding: 8px 10px; }
+#fiche-imprimable .fp-card-title { font-weight: bold; font-size: 12.5px; }
 #fiche-imprimable .fp-card-row { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
-#fiche-imprimable .fp-badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 3px; padding: 1px 6px; font-size: 10.5px; white-space: nowrap; }
-#fiche-imprimable .fp-muted { color: #666; font-size: 10.5px; margin-top: 2px; }
-#fiche-imprimable .fp-desc { font-size: 11px; color: #333; margin-top: 5px; border-top: 1px solid #eee; padding-top: 4px; white-space: pre-wrap; }
-#fiche-imprimable .fp-formula { font-family: monospace; background: #fef3c7; padding: 1px 6px; border-radius: 2px; font-size: 10.5px; display: inline-block; margin-top: 3px; }
+#fiche-imprimable .fp-badge { display: inline-block; border: 1px solid #777; border-radius: 3px; padding: 0 5px; font-size: 10px; white-space: nowrap; color: #333; }
+#fiche-imprimable .fp-muted { color: #555; font-size: 10.5px; margin-top: 2px; }
+#fiche-imprimable .fp-desc { font-size: 11px; color: #222; margin-top: 5px; border-top: 1px solid #ddd; padding-top: 4px; white-space: pre-wrap; }
+#fiche-imprimable .fp-formula { font-family: monospace; border: 1px dashed #999; padding: 1px 5px; border-radius: 2px; font-size: 10px; display: inline-block; margin-top: 3px; color: #333; }
 `;
 
 export const FicheImprimable = ({
