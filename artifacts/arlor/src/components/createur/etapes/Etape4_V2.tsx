@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ReligionCard from "@/components/encyclopedie/ReligionCard";
+import ReligionDetails from "@/components/shared/ReligionDetails";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 interface Etape4Form {
@@ -45,6 +45,7 @@ interface CompetenceInfo {
 
 const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
+  const [religionManuelOpen, setReligionManuelOpen] = useState(false);
   const [choixParCompetence, setChoixParCompetence] = useState<
     Record<string, string>
   >({});
@@ -530,10 +531,13 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                     </SelectContent>
                   </Select>
                   {religionChoisie && (
-                    <ReligionCard
-                      religion={religionChoisie}
-                      isSelected={false}
-                    />
+                    <div className="rounded-lg border border-gold/20 bg-card p-4">
+                      <ReligionDetails
+                        religion={religionChoisie}
+                        isManuelOpen={religionManuelOpen}
+                        onToggleManuel={() => setReligionManuelOpen((v) => !v)}
+                      />
+                    </div>
                   )}
                   {!dejaCroyant && (
                     <label className="flex items-start gap-2 text-xs text-white/70">

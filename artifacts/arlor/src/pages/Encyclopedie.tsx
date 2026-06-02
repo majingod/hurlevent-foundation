@@ -21,6 +21,7 @@ import LoreSection from "@/components/encyclopedie/LoreSection";
 import PiegesSection from "@/components/encyclopedie/PiegesSection";
 import RaceCard from "@/components/encyclopedie/RaceCard";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
+import ReligionDetails from "@/components/shared/ReligionDetails";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 
 /* ── types ── */
@@ -93,6 +94,10 @@ interface Religion {
   pouvoir_symbole: string | null;
   dirigeant: string | null;
   fondateur: string | null;
+  lore_fiche: string | null;
+  rituels_fiche: string[] | null;
+  lore_manuel: string | null;
+  rituels_manuel: string[] | null;
 }
 
 interface TraitRacial {
@@ -1034,6 +1039,7 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
 };
 
 const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; searchQuery: string }) => {
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpanded = (id: string) => {
     setExpanded(prev => {
@@ -1054,6 +1060,12 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-primary mb-4">Religions et Ordres</h2>
+      {filtered.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(filtered.map((r) => r.id))}
+          onToggle={() => toggleAll(filtered.map((r) => r.id))}
+        />
+      )}
       {filtered.length === 0 ? <NoResults /> : (
         <div className="space-y-4">
           {filtered.map((r) => (
@@ -1087,12 +1099,13 @@ const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; s
                 </>
               }
             >
-              <div className="border-t border-primary/10 pt-3 mt-2 space-y-2">
-                {r.symbole_sacre && <p><span className="font-medium text-foreground">Symbole sacré :</span> {r.symbole_sacre}</p>}
-                {r.pouvoir_symbole && <p><span className="font-medium text-foreground">Pouvoir du symbole :</span> {r.pouvoir_symbole}</p>}
-                {r.dirigeant && <p><span className="font-medium text-foreground">Dirigeant :</span> {r.dirigeant}</p>}
-                {r.fondateur && <p><span className="font-medium text-foreground">Fondateur :</span> {r.fondateur}</p>}
-                {r.description_longue && <p className="mt-2 whitespace-pre-line">{r.description_longue}</p>}
+              <div className="border-t border-primary/10 pt-3 mt-2">
+                <ReligionDetails
+                  religion={r}
+                  hideDomaines
+                  isManuelOpen={isManuelOpen(r.id)}
+                  onToggleManuel={() => toggleManuel(r.id)}
+                />
               </div>
             </EncyclopedieCard>
           ))}

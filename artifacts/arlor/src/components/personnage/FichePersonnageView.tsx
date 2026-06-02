@@ -41,6 +41,7 @@ import { JoaillerieSection } from "./sections/JoaillerieSection";
 import { PiegesSection } from "./sections/PiegesSection";
 import { ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 import { FicheImprimable } from "./FicheImprimable";
+import ReligionDetails from "@/components/shared/ReligionDetails";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
@@ -266,9 +267,11 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     queryFn: async () => {
       const { data, error } = await supabase
         .from("religions")
-        .select("id, nom");
+        .select(
+          "id, nom, dirigeant, fondateur, symbole_sacre, pouvoir_symbole, domaines_principaux, domaines_proscrits, lore_fiche, rituels_fiche, lore_manuel, rituels_manuel"
+        );
       if (error) throw error;
-      return (data ?? []) as Pick<ReligionRow, "id" | "nom">[];
+      return (data ?? []) as ReligionRow[];
     },
   });
 
@@ -463,6 +466,26 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             toggleAll={toggleAll}
           />
           <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
+          {(() => {
+            const maReligion = fiche.religion_id
+              ? religions?.find((r) => r.id === fiche.religion_id)
+              : null;
+            if (!maReligion) return null;
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Religion — {maReligion.nom}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ReligionDetails
+                    religion={maReligion}
+                    isManuelOpen={isManuelOpen(maReligion.id)}
+                    onToggleManuel={() => toggleManuel(maReligion.id)}
+                  />
+                </CardContent>
+              </Card>
+            );
+          })()}
           {editingHistorique && isOwner && mode === 'route' ? (
             <Card>
               <CardHeader>
