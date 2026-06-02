@@ -399,10 +399,17 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
-  const handlePrint = () => {
+  const handlePrint = (mode: 'fiche' | 'manuel') => {
     if (!fiche) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    // BLOC 3 — sélection court/verbatim selon le mode d'impression.
+    // 'fiche' = description courte (fallback verbatim si pas de courte) ; 'manuel' = verbatim.
+    const descDiv = (court?: string | null, complet?: string | null) => {
+      const d = mode === 'fiche' ? (court ?? complet) : complet;
+      return d ? `<div class="desc">${escapeHtml(d)}</div>` : "";
+    };
 
     const niveauAlchimie = artisanatEtat?.niveau_alchimie ?? 0;
     const niveauForge = artisanatEtat?.niveau_forge ?? 0;
@@ -495,6 +502,19 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           <div class="item"><span class="label">Ouvertures terrain :</span> ${fiche.ouvertures_terrain}</div>
         </div>
 
+        <h2>Identité</h2>
+        <div class="card">
+          <div class="card-title">${fiche.race_emoji ? `${escapeHtml(fiche.race_emoji)} ` : ""}Race — ${escapeHtml(fiche.race_nom ?? "")}${fiche.race_nom_latin ? ` <em>(${escapeHtml(fiche.race_nom_latin)})</em>` : ""}</div>
+          ${fiche.race_esperance_vie ? `<div class="muted"><strong>Espérance de vie :</strong> ${escapeHtml(fiche.race_esperance_vie)}</div>` : ""}
+          ${fiche.race_exigences_costume ? `<div class="muted"><strong>Exigences de costume :</strong> ${escapeHtml(fiche.race_exigences_costume)}</div>` : ""}
+          ${descDiv(fiche.race_description_courte, fiche.race_description)}
+        </div>
+        <div class="card">
+          <div class="card-title">${fiche.classe_emoji ? `${escapeHtml(fiche.classe_emoji)} ` : ""}Classe — ${escapeHtml(fiche.classe_nom ?? "")}</div>
+          ${fiche.classe_role_combat ? `<div class="muted"><strong>Rôle de combat :</strong> ${escapeHtml(fiche.classe_role_combat)}</div>` : ""}
+          ${descDiv(fiche.classe_description_courte, fiche.classe_description)}
+        </div>
+
         ${traits && traits.length > 0 ? `
         <h2>Traits raciaux</h2>
         ${traits.map((t) => `
@@ -553,7 +573,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                 ${s.portee_choisie ? ` &bull; Portée : ${escapeHtml(s.portee_choisie)}` : ""}
                 ${s.duree_choisie ? ` &bull; Durée : ${escapeHtml(s.duree_choisie)}` : ""}
               </div>
-              ${s.sort_description ? `<div class="desc">${escapeHtml(s.sort_description)}</div>` : ""}
+              ${descDiv(s.sort_description_courte, s.sort_description)}
             </div>
           `).join("")}
         `).join("")}
@@ -575,7 +595,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                 ${p.portee_choisie ? ` &bull; Portée : ${escapeHtml(p.portee_choisie)}` : ""}
                 ${p.duree_choisie ? ` &bull; Durée : ${escapeHtml(p.duree_choisie)}` : ""}
               </div>
-              ${p.priere_description ? `<div class="desc">${escapeHtml(p.priere_description)}</div>` : ""}
+              ${descDiv(p.priere_description_courte, p.priere_description)}
             </div>
           `).join("")}
         `).join("")}
@@ -593,6 +613,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             ${a.runes_requises && a.runes_requises.length > 0 ? `<div class="muted">Runes : ${a.runes_requises.map(escapeHtml).join(", ")}</div>` : ""}
             ${a.description ? `<div class="desc">${escapeHtml(a.description)}</div>` : ""}
             ${a.effet ? `<div class="desc"><strong>Effet :</strong> ${escapeHtml(a.effet)}</div>` : ""}
+            ${mode === 'manuel' && a.texte_manuel ? `<div class="desc">${escapeHtml(a.texte_manuel)}</div>` : ""}
           </div>
         `).join("")}
         ` : ""}
@@ -726,10 +747,16 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           </p>
         </div>
         {mode === 'route' && (
-          <Button onClick={handlePrint} variant="outline" size="sm" className="gap-2">
-            <Printer className="h-4 w-4" />
-            Imprimer
-          </Button>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button onClick={() => handlePrint('fiche')} variant="outline" size="sm" className="gap-2">
+              <Printer className="h-4 w-4" />
+              Fiche
+            </Button>
+            <Button onClick={() => handlePrint('manuel')} variant="outline" size="sm" className="gap-2">
+              <Printer className="h-4 w-4" />
+              Manuel
+            </Button>
+          </div>
         )}
       </div>
 
@@ -921,12 +948,17 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                 <CardTitle className="text-base">Options d'export</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button onClick={handlePrint} className="w-full gap-2">
+                <Button onClick={() => handlePrint('fiche')} className="w-full gap-2">
                   <Printer className="h-4 w-4" />
-                  Imprimer / Exporter en PDF
+                  Imprimer (Fiche)
+                </Button>
+                <Button onClick={() => handlePrint('manuel')} variant="outline" className="w-full gap-2">
+                  <Printer className="h-4 w-4" />
+                  Imprimer (Manuel)
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Cliquez sur le bouton ci-dessus pour imprimer la fiche complète du personnage au format PDF.
+                  <strong>Fiche</strong> : descriptions courtes (résumé de jeu, version compacte).{" "}
+                  <strong>Manuel</strong> : texte verbatim complet du manuel (sorts, prières, race, classe, assemblages).
                 </p>
               </CardContent>
             </Card>
