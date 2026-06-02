@@ -31,6 +31,7 @@ import type {
   PersonnagePiegeRow,
 } from "./sections/types";
 import { InfosCard } from "./sections/InfosCard";
+import { RaceClasseCard } from "./sections/RaceClasseCard";
 import { HistoriqueAmeCard } from "./sections/HistoriqueAmeCard";
 import { TraitsSection } from "./sections/TraitsSection";
 import { SortsSection } from "./sections/SortsSection";
@@ -42,6 +43,7 @@ import { ForgeSection } from "./sections/ForgeSection";
 import { JoaillerieSection } from "./sections/JoaillerieSection";
 import { PiegesSection } from "./sections/PiegesSection";
 import { resoudreChoixAffichage } from "./sections/helpers";
+import { ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
@@ -61,6 +63,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const [historiqueTmp, setHistoriqueTmp] = useState("");
   const [ameTmp, setAmeTmp] = useState("");
   const [saving, setSaving] = useState(false);
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   // DATA-FIRST : vue_fiche_personnage joint personnages + races + classes + religions
   // Remplace 3 requêtes en cascade (personnage → race → classe → religion)
@@ -325,6 +328,19 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const hasAssemblages = (assemblages?.length ?? 0) > 0;
   const hasPieges = (artisanatEtat?.niveau_pieges ?? 0) >= 1;
   const hasArtisanat = hasAlchimie || hasForge || hasJoaillerie || hasPieges;
+
+  // Ids de tous les items porteurs de verbatim (pour le switch global « Tous les onglets »).
+  // race/classe = ids synthétiques (0 NULL en prod : toujours présents).
+  const allManuelIds = useMemo(
+    () => [
+      ...(sorts ?? []).filter((s) => s.sort_description).map((s) => s.id),
+      ...(prieres ?? []).filter((p) => p.priere_description).map((p) => p.id),
+      ...(assemblages ?? []).filter((a) => a.texte_manuel).map((a) => a.id),
+      "race",
+      "classe",
+    ],
+    [sorts, prieres, assemblages],
+  );
 
   // PR4b — Sous-onglets Artisanat dynamiques
   type ArtisanatSubTab = { value: string; icon: typeof FlaskConical; label: string };
@@ -717,6 +733,13 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         )}
       </div>
 
+      <ManuelGlobalSwitch
+        allOpen={isAllOpen(allManuelIds)}
+        onToggle={() => toggleAll(allManuelIds)}
+        title="Tous les onglets"
+        subtitle="Affiche le verbatim du manuel sur tous les onglets"
+      />
+
       <Tabs defaultValue="infos" className="w-full">
         <div className="overflow-x-auto -mx-2 px-2">
           <TabsList className="inline-flex w-max">
@@ -733,6 +756,13 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
         {/* Infos générales */}
         <TabsContent value="infos" className="space-y-4 mt-6">
+          <RaceClasseCard
+            fiche={fiche}
+            isManuelOpen={isManuelOpen}
+            toggleManuel={toggleManuel}
+            isAllOpen={isAllOpen}
+            toggleAll={toggleAll}
+          />
           <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
           {editingHistorique && isOwner && mode === 'route' ? (
             <Card>
@@ -802,17 +832,35 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
         {/* Sorts */}
         <TabsContent value="sorts" className="space-y-4 mt-6">
-          <SortsSection sorts={sorts ?? []} />
+          <SortsSection
+            sorts={sorts ?? []}
+            isManuelOpen={isManuelOpen}
+            toggleManuel={toggleManuel}
+            isAllOpen={isAllOpen}
+            toggleAll={toggleAll}
+          />
         </TabsContent>
 
         {/* Prières */}
         <TabsContent value="prieres" className="space-y-4 mt-6">
-          <PrieresSection prieres={prieres ?? []} />
+          <PrieresSection
+            prieres={prieres ?? []}
+            isManuelOpen={isManuelOpen}
+            toggleManuel={toggleManuel}
+            isAllOpen={isAllOpen}
+            toggleAll={toggleAll}
+          />
         </TabsContent>
 
         {/* Assemblages de runes */}
         <TabsContent value="assemblages" className="space-y-4 mt-6">
-          <AssemblagesSection assemblages={assemblages} />
+          <AssemblagesSection
+            assemblages={assemblages}
+            isManuelOpen={isManuelOpen}
+            toggleManuel={toggleManuel}
+            isAllOpen={isAllOpen}
+            toggleAll={toggleAll}
+          />
         </TabsContent>
 
         {/* Artisanat */}

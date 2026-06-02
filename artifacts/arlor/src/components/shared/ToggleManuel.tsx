@@ -40,20 +40,27 @@ export function useManuelDisclosure() {
 }
 
 // Interrupteur global « Textes du manuel ».
+// title/subtitle sont optionnels (défaut = libellé historique des assemblages),
+// ce qui permet de l'utiliser en tête de fiche (« Tous les onglets ») et par
+// onglet (« Cet onglet ») sans dupliquer le composant.
 export function ManuelGlobalSwitch({
   allOpen,
   onToggle,
+  title = "Textes du manuel",
+  subtitle = "Affiche le verbatim sur toutes les cartes",
 }: {
   allOpen: boolean;
   onToggle: () => void;
+  title?: string;
+  subtitle?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
       <div className="flex min-w-0 items-center gap-2">
         <BookOpen size={16} className="flex-shrink-0 text-gold" />
         <div className="min-w-0">
-          <p className="text-sm text-foreground">Textes du manuel</p>
-          <p className="text-xs text-muted-foreground">Affiche le verbatim sur toutes les cartes</p>
+          <p className="text-sm text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
       </div>
       <button

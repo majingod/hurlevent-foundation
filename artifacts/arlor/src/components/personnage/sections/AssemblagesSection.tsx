@@ -1,22 +1,36 @@
 import { Badge } from "@/components/ui/badge";
-import { ManuelGlobalSwitch, ToggleManuel, useManuelDisclosure } from "@/components/shared/ToggleManuel";
+import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import type { Assemblage } from "./types";
 
 interface AssemblagesSectionProps {
   assemblages: Assemblage[] | undefined;
+  isManuelOpen: (id: string) => boolean;
+  toggleManuel: (id: string) => void;
+  isAllOpen: (ids: string[]) => boolean;
+  toggleAll: (ids: string[]) => void;
 }
 
-export const AssemblagesSection = ({ assemblages }: AssemblagesSectionProps) => {
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
+export const AssemblagesSection = ({
+  assemblages,
+  isManuelOpen,
+  toggleManuel,
+  isAllOpen,
+  toggleAll,
+}: AssemblagesSectionProps) => {
+  if (!assemblages || assemblages.length === 0) {
+    return <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>;
+  }
 
-  return !assemblages || assemblages.length === 0 ? (
-    <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>
-  ) : (
+  const idsVerbatim = assemblages.filter((a) => a.texte_manuel).map((a) => a.id);
+
+  return (
     <div className="space-y-3">
-      {assemblages.some((a) => a.texte_manuel) && (
+      {idsVerbatim.length > 0 && (
         <ManuelGlobalSwitch
-          allOpen={isAllOpen(assemblages.map((a) => a.id))}
-          onToggle={() => toggleAll(assemblages.map((a) => a.id))}
+          allOpen={isAllOpen(idsVerbatim)}
+          onToggle={() => toggleAll(idsVerbatim)}
+          title="Cet onglet"
+          subtitle="Verbatim du manuel pour les assemblages"
         />
       )}
       {assemblages.map((asm) => (
