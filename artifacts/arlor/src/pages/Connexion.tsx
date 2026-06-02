@@ -46,7 +46,7 @@ const Connexion = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: { emailRedirectTo: window.location.origin },
@@ -54,6 +54,9 @@ const Connexion = () => {
     setLoading(false);
     if (error) {
       toast({ title: "Erreur d'inscription", description: error.message, variant: "destructive" });
+    } else if (data.session) {
+      toast({ title: "Inscription réussie", description: "Votre compte est prêt, vous êtes connecté." });
+      navigate("/tableau-de-bord");
     } else {
       toast({ title: "Inscription réussie", description: "Vérifiez votre courriel pour confirmer votre compte." });
     }
