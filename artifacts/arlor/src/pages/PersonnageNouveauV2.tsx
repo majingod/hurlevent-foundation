@@ -235,11 +235,11 @@ const PersonnageNouveauV2 = () => {
   const xpTotalAffiche = xpTotal + xpGainCourant;
   const xpDisponible = xpTotalAffiche - xpDepense - xpDeltaCourant;
 
-  // Auto-skip actif uniquement quand on est sur l'etape la plus haute
-  // jamais atteinte (premiere arrivee forward). Si l'utilisateur revient
-  // en arriere (Precedent ou annulation), etape < etapeMaxAtteinte et
-  // l'auto-skip est desactive sur les etapes concernees.
-  const autoSkipActif = etape >= etapeMaxAtteinte;
+  // Hybride 4 (s99) : l'auto-skip silencieux des étapes vides est désactivé.
+  // Quand une étape (Sorts/Prières/Assemblages/Artisanat) n'a rien à proposer,
+  // le wizard affiche désormais l'empty-state explicite avec son bouton
+  // « Suivant » au lieu de sauter en silence (corrige le saut muet 5→10).
+  const autoSkipActif = false;
 
   const progression = useMemo(
     () => Math.round((etape / TOTAL_STEPS) * 100),
