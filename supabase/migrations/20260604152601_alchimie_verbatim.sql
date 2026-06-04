@@ -6,7 +6,7 @@ ALTER TABLE public.recettes_alchimie
 
 -- 40 recettes : description_verbatim + formule <- Manuel 2026
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Diu De Catalepticus
+  description_verbatim = $v$Formule : Venenum Diu De Catalepticus
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -22,12 +22,12 @@ Manipulations :
 
 Effet : Augmente la durée du coma de la victime de 10 minutes. Condition : La compétence Premiers soins 1 est requise pour faire ingérer une potion ou un poison à un personnage inconscient.
 
-Durée : Effet instantané.',
-  formule = 'Venenum Diu De Catalepticus'
+Durée : Effet instantané.$v$,
+  formule = $v$Venenum Diu De Catalepticus$v$
 WHERE id = '31065e4f-572d-4966-a8ce-ba5d846b400e';  -- Poison catalep tique (N1 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Celeritate Anemia
+  description_verbatim = $v$Formule : Venenum Celeritate Anemia
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -43,12 +43,12 @@ Manipulations :
 
 Effet : La victime ne peut bénéficier d'aucun effet de guérison ou de régénération.
 
-Durée : 5 minutes',
-  formule = 'Venenum Celeritate Anemia'
+Durée : 5 minutes$v$,
+  formule = $v$Venenum Celeritate Anemia$v$
 WHERE id = '6116abf6-98ba-47fa-b543-d6546fed4406';  -- Poison d'anémie (N1 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Brachium Mollis
+  description_verbatim = $v$Formule : Venenum Brachium Mollis
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -64,12 +64,12 @@ Manipulations :
 
 Effet : Les mains de la victime sont affectées, l'empêchant de saisir ou tenir des objets.
 
-Durée : 1 minute',
-  formule = 'Venenum Brachium Mollis'
+Durée : 1 minute$v$,
+  formule = $v$Venenum Brachium Mollis$v$
 WHERE id = 'f0ed157d-fbc1-4306-8f20-aafa6abda0aa';  -- Poison de bras-mou (N1 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Marcescere Dolor
+  description_verbatim = $v$Formule : Venenum Marcescere Dolor
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -85,12 +85,12 @@ Manipulations :
 
 Effet : La victime est prise de violentes convulsions musculaires et elle est incapable d'attaquer ou de ce défendre et il lui est aussi impossible de lancer des sorts.
 
-Durée : 15 secondes',
-  formule = 'Venenum Marcescere Dolor'
+Durée : 15 secondes$v$,
+  formule = $v$Venenum Marcescere Dolor$v$
 WHERE id = 'd672d57c-63ab-4a19-95ed-917fcf242f7f';  -- Poison de douleur (N1 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Altum Somnum
+  description_verbatim = $v$Formule : Venenum Altum Somnum
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -105,12 +105,12 @@ Manipulations :
 
 Effet : La victime tombe immédiatement dans un sommeil profond et s'effondre au sol. Elle n'est plus consciente de son environnement et si elle est secouée ou subit des dégâts, elle se réveille automatiquement.
 
-Durée : 1 minute',
-  formule = 'Venenum Altum Somnum'
+Durée : 1 minute$v$,
+  formule = $v$Venenum Altum Somnum$v$
 WHERE id = '8dc491ff-f08c-4a79-83b5-7e47199953a5';  -- Poison de sommeil (N1 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Diu Nigrum Caecitatis Afferimus
+  description_verbatim = $v$Formule : Venenum Diu Nigrum Caecitatis Afferimus
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -126,12 +126,12 @@ Manipulations :
 
 Effet : La victime doit jouer l'aveuglement pendant 2 minutes. Il est recommandé d'ouvrir les yeux lors des déplacements tout en continuant de jouer l'effet subi.
 
-Durée : 2 minutes',
-  formule = 'Venenum Diu Nigrum Caecitatis Afferimus'
+Durée : 2 minutes$v$,
+  formule = $v$Venenum Diu Nigrum Caecitatis Afferimus$v$
 WHERE id = '773d270a-884c-4102-a291-263fd5e6b9dd';  -- Poison d'aveuglement (N2 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Conscidisti Gravis Sanitatem
+  description_verbatim = $v$Formule : Venenum Conscidisti Gravis Sanitatem
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -147,12 +147,12 @@ Manipulations :
 
 Effet : La victime est considérée comme empoisonnée. L'état empoisonné réduit les points de vie maximum du personnage. Cet état peut être guéri par un antidote. Après guérison, le personnage reste à 2 points de vie, mais peut guérir normalement.
 
-Durée : 12 heures',
-  formule = 'Venenum Conscidisti Gravis Sanitatem'
+Durée : 12 heures$v$,
+  formule = $v$Venenum Conscidisti Gravis Sanitatem$v$
 WHERE id = '68b96918-e00a-46d8-ad80-05e86a6ff618';  -- Poison de gangrène (N2 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Oculorum Caligo Ar Falsa
+  description_verbatim = $v$Formule : Venenum Oculorum Caligo Ar Falsa
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -168,12 +168,12 @@ Manipulations :
 
 Effet : La victime est incapable d'attaquer, de se défendre ou de cibler une personne avec un sort et il tombe sous l'effet de folie.
 
-Durée : 2 minutes',
-  formule = 'Venenum Oculorum Caligo Ar Falsa'
+Durée : 2 minutes$v$,
+  formule = $v$Venenum Oculorum Caligo Ar Falsa$v$
 WHERE id = 'ff9f6986-9b16-43de-9a87-473e8344a508';  -- Poison hallucinogène (intermédiaire) (N2 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Nervorum Resolutiones Venenum Diuturnum
+  description_verbatim = $v$Formule : Nervorum Resolutiones Venenum Diuturnum
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -189,12 +189,12 @@ Manipulations :
 
 Effet : La victime est paralysée instantanément pour une durée de 10 minutes. Elle est incapable de se déplacer, de parler ou de bouger ses membres. Toute blessure reçue met immédiatement fin à l'effet.
 
-Durée : 10 minutes',
-  formule = 'Nervorum Resolutiones Venenum Diuturnum'
+Durée : 10 minutes$v$,
+  formule = $v$Nervorum Resolutiones Venenum Diuturnum$v$
 WHERE id = '93338ffd-1ea3-4a9d-a67f-082d41a45191';  -- Poison paralysant (N2 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Virga Fortis Infirmitas
+  description_verbatim = $v$Formule : Venenum Virga Fortis Infirmitas
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -211,12 +211,12 @@ Manipulations :
 
 Effet : La victime tombe à 1 point de vie, est incapable d'attaquer ou de lancer des sorts.
 
-Durée : 15 minutes et à la fin de l'effet, la victime peut agir normalement, mais ne récupère pas ses points de vie.',
-  formule = 'Venenum Virga Fortis Infirmitas'
+Durée : 15 minutes et à la fin de l'effet, la victime peut agir normalement, mais ne récupère pas ses points de vie.$v$,
+  formule = $v$Venenum Virga Fortis Infirmitas$v$
 WHERE id = '79bdf95e-3a53-4199-a1a7-9025a0c920eb';  -- Poison d'affaiblissement (N3 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Delebit Oblivionis Tempore Venenis
+  description_verbatim = $v$Formule : Venenum Delebit Oblivionis Tempore Venenis
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -233,12 +233,12 @@ Manipulations :
 
 Effet : La victime oublie la dernière heure précédant l'empoisonnement. La compétence Hypnose permet de faire resurgir les souvenirs oubliés.
 
-Durée : Instantanée',
-  formule = 'Venenum Delebit Oblivionis Tempore Venenis'
+Durée : Instantanée$v$,
+  formule = $v$Venenum Delebit Oblivionis Tempore Venenis$v$
 WHERE id = 'cd8d19b5-9280-4fba-ae7a-6b9777880fc0';  -- Poison d'oubli (N3 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Oculorum Caligo Ar Falsa
+  description_verbatim = $v$Formule : Venenum Oculorum Caligo Ar Falsa
 
 Ingrédients :
 • 1 Catalysant à poison
@@ -255,12 +255,12 @@ Manipulations :
 
 Effet : Ce poison rend sa victime incapable d'attaquer, lancer des sorts et de se défendre.
 
-Durée : 2 minutes',
-  formule = 'Venenum Oculorum Caligo Ar Falsa'
+Durée : 2 minutes$v$,
+  formule = $v$Venenum Oculorum Caligo Ar Falsa$v$
 WHERE id = '635b21df-d1c6-4ba8-895a-8e179c4d29a2';  -- Poison hallucinogène (majeur) (N3 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Venenum Mortiferum Effectus Potentia
+  description_verbatim = $v$Formule : Venenum Mortiferum Effectus Potentia
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -277,12 +277,12 @@ Manipulations :
 
 Effet : Dix secondes après l'inoculation, la victime subit de violentes douleurs et est immédiatement tuée, recevant un coup de grâce.
 
-Durée : 10 secondes après l'inoculation',
-  formule = 'Venenum Mortiferum Effectus Potentia'
+Durée : 10 secondes après l'inoculation$v$,
+  formule = $v$Venenum Mortiferum Effectus Potentia$v$
 WHERE id = 'a8831269-d984-40bf-a05a-3e26d72dae2d';  -- Poison mortel (N3 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Mortuus Est Autem Ad Venenum Magi
+  description_verbatim = $v$Formule : Mortuus Est Autem Ad Venenum Magi
 
 Ingrédients :
 • 1 catalyseur à poison
@@ -299,12 +299,12 @@ Manipulations :
 
 Effet : Tous les effets bénéfiques provenant de sorts ou de potions affectant actuellement la cible cessent immédiatement. Aucun nouvel effet bénéfique ne peut l'affecter pendant la durée du poison.
 
-Durée : 5 minutes',
-  formule = 'Mortuus Est Autem Ad Venenum Magi'
+Durée : 5 minutes$v$,
+  formule = $v$Mortuus Est Autem Ad Venenum Magi$v$
 WHERE id = '7d12dcf6-2b0c-4a69-af72-0152c8e25f00';  -- Poison tue-mage (N3 poison)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Atramentum Activatio Runarum
+  description_verbatim = $v$Formule : Atramentum Activatio Runarum
 
 Ingrédients :
 • 1 Catalyseur magique
@@ -320,12 +320,12 @@ Manipulations :
 
 Effet : Cette encre permet d'activer un assemblage de runes qui peut être activer par l'encre dépend de la valeur de la pépite ou de la gemme utilisée : Chaque tranche de 1 écus de valeur équivaut à 1 activation. L'encre peut être utilisée sur plusieurs runes, jusqu'à épuisement des activations.
 
-Durée : Instantanée',
-  formule = 'Atramentum Activatio Runarum'
+Durée : Instantanée$v$,
+  formule = $v$Atramentum Activatio Runarum$v$
 WHERE id = '8d6ca6f5-4128-4aff-87bf-fd50c49aeccf';  -- Encre d'Activation Runique (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : In Temperatus Omnissa Munitione
+  description_verbatim = $v$Formule : In Temperatus Omnissa Munitione
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -338,12 +338,12 @@ Manipulations :
 
 Effet : Lors de la création, l'alchimiste choisit un élément parmi feu, glace, acide ou électricité. Le buveur réduit de 1 point tous les dégâts reçus de cet élément.
 
-Durée : 5 minutes',
-  formule = 'In Temperatus Omnissa Munitione'
+Durée : 5 minutes$v$,
+  formule = $v$In Temperatus Omnissa Munitione$v$
 WHERE id = 'c72dc224-b6df-43af-88c6-d771b12ba5de';  -- Fortifiant anti-éléments (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Patientia Iae Militaris Mineo
+  description_verbatim = $v$Formule : Potio Ionis Patientia Iae Militaris Mineo
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -359,12 +359,12 @@ Manipulations :
 
 Effet : Le personnage bénéficie de 1 point de vie supplémentaire, mais en contrepartie, tout sort lancé coûte 1 point de spiritualité additionnel.
 
-Durée : 15 minutes',
-  formule = 'Potio Ionis Patientia Iae Militaris Mineo'
+Durée : 15 minutes$v$,
+  formule = $v$Potio Ionis Patientia Iae Militaris Mineo$v$
 WHERE id = 'f9ee47a4-2f27-4004-8a00-82791bfd3e0b';  -- Potion d'endurance guerrière (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Cutis Arboris Mineo
+  description_verbatim = $v$Formule : Potio Ionis Cutis Arboris Mineo
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -380,12 +380,12 @@ Manipulations :
 
 Effet : Le personnage résiste à la prochaine attaque non magique reçue. Les attaques de feu ne peuvent pas être résistées par cet effet et infligent 1 dégât supplémentaire. Cette potion protège également contre une attaque sournoise, mais fait disparaître toutes les protections restantes.
 
-Durée : 15 minutes ou jusqu'au déclenchement',
-  formule = 'Potio Ionis Cutis Arboris Mineo'
+Durée : 15 minutes ou jusqu'au déclenchement$v$,
+  formule = $v$Potio Ionis Cutis Arboris Mineo$v$
 WHERE id = 'ce222cb6-3405-4be1-92d4-16fcc3e3eb6e';  -- Potion de peau d'écorce (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Resisto Is Ere Resisti Sortis Mineo
+  description_verbatim = $v$Formule : Potio Ionis Resisto Is Ere Resisti Sortis Mineo
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -401,12 +401,12 @@ Manipulations :
 
 Effet : Le niveau de résistance aux sorts à effet du personnage est augmenté de 2 niveaux et tant que l'effet est actif, le personnage ne peut lancer aucun sort, mais il peut volontairement se concentrer pendant 1 minute pour mettre fin à l'effet.
 
-Durée : 15 minutes',
-  formule = 'Potio Ionis Resisto Is Ere Resisti Sortis Mineo'
+Durée : 15 minutes$v$,
+  formule = $v$Potio Ionis Resisto Is Ere Resisti Sortis Mineo$v$
 WHERE id = '386b0b70-4b68-43ae-b52c-6fd0009f8290';  -- Potion de protection magique (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Spiraea Mineo
+  description_verbatim = $v$Formule : Potio Ionis Spiraea Mineo
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -422,12 +422,12 @@ Manipulations :
 
 Effet : Cette potion restaure l'énergie spirituelle du buveur. Le personnage récupère 5 points de spiritualité.
 
-Durée : Effet instantané',
-  formule = 'Potio Ionis Spiraea Mineo'
+Durée : Effet instantané$v$,
+  formule = $v$Potio Ionis Spiraea Mineo$v$
 WHERE id = 'c596fd50-e388-474a-930d-028bf351ab31';  -- Potion de regain spirituel (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Curas Mineo
+  description_verbatim = $v$Formule : Potio Ionis Curas Mineo
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -443,12 +443,12 @@ Manipulations :
 
 Effet : La potion apaise la douleur et referme les blessures superficielles. Elle ne permet pas de ressouder des membres perdus, mais peut stopper un saignement actif. Le personnage récupère 2 points de vie et est réveillé de l'inconscience si applicable.
 
-Durée : Effet instantané',
-  formule = 'Potio Ionis Curas Mineo'
+Durée : Effet instantané$v$,
+  formule = $v$Potio Ionis Curas Mineo$v$
 WHERE id = 'b56e20b8-dbc5-47e5-8c90-f9e9ba38d5b9';  -- Potion de soins (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Temperatio Ionis Sapientia Mineo
+  description_verbatim = $v$Formule : Potio Ionis Temperatio Ionis Sapientia Mineo
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -464,12 +464,12 @@ Manipulations :
 
 Effet : Cette potion réduit de 1 niveau la saturation alchimique du personnage. Elle ne compte pas dans le calcul de la saturation et fonctionne même lorsque celle-ci est atteinte.
 
-Durée : Effet instantané',
-  formule = 'Potio Ionis Temperatio Ionis Sapientia Mineo'
+Durée : Effet instantané$v$,
+  formule = $v$Potio Ionis Temperatio Ionis Sapientia Mineo$v$
 WHERE id = '5e6e1d81-5d2c-4779-9d1c-3bd9031f99c7';  -- Potion de stabilisation biochimique (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Spiro As Are Avi Atum Aestus Mineo
+  description_verbatim = $v$Formule : Potio Ionis Spiro As Are Avi Atum Aestus Mineo
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -485,12 +485,12 @@ Manipulations :
 
 Effet : Dans les 15 minutes suivant l'ingestion, le personnage peut effectuer une seule attaque infligeant 2 dégâts de feu à une cible située à 10 pieds maximum. Lors de l'attaque, le buveur subit 1 point de dégât.
 
-Durée : Usage unique',
-  formule = 'Potio Ionis Spiro As Are Avi Atum Aestus Mineo'
+Durée : Usage unique$v$,
+  formule = $v$Potio Ionis Spiro As Are Avi Atum Aestus Mineo$v$
 WHERE id = 'cb704c6f-781a-4103-bb84-233d394bc197';  -- Potion du cracheur de feu (N1 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Antidotum Minor Interitio
+  description_verbatim = $v$Formule : Potio Ionis Antidotum Minor Interitio
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -506,12 +506,12 @@ Manipulations :
 
 Effet : Cette concoction stoppe instantanément tous les effets de poison affectant le buveur. En contrepartie, celui-ci est pris de vomissements et de maux de ventre pendant 2 minutes.
 
-Durée : Effet instantané',
-  formule = 'Potio Ionis Antidotum Minor Interitio'
+Durée : Effet instantané$v$,
+  formule = $v$Potio Ionis Antidotum Minor Interitio$v$
 WHERE id = 'baa79734-26c8-481b-9301-4ea5dfa9721c';  -- Antidote universel (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Fundamentum Scriptura Arcanum
+  description_verbatim = $v$Formule : Fundamentum Scriptura Arcanum
 
 Ingrédients :
 • 2 doses du même ingrédient : Ganos, Ortie, Pied de Grumpf, Silice, Calyre ou Ficol
@@ -525,12 +525,12 @@ Effet : Permet de créer un catalyseur magique utilisé dans la fabrication de p
 
 Durée : Jusqu'à utilisation ou fin d'année de jeu.
 
-Note : Une fois le catalyseur complété, il est obligatoire de se présenter au camp de l'organisation pour valider sa création et recevoir la composante associée.',
-  formule = 'Fundamentum Scriptura Arcanum'
+Note : Une fois le catalyseur complété, il est obligatoire de se présenter au camp de l'organisation pour valider sa création et recevoir la composante associée.$v$,
+  formule = $v$Fundamentum Scriptura Arcanum$v$
 WHERE id = '720094c8-94f7-4675-aeea-9809e4924aa2';  -- Catalyseur magique (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Fundamentum Nox Venenum
+  description_verbatim = $v$Formule : Fundamentum Nox Venenum
 
 Ingrédients :
 • 2 doses du même ingrédient : Noligraf, Poulfis, Poudre d'Alsase, Sablon, Ambre, Agline ou Liche
@@ -544,12 +544,12 @@ Effet : Crée un catalyseur à poison pouvant être utilisé dans la fabrication
 
 Durée : Jusqu'à utilisation ou fin d'année de jeu.
 
-Note : Une fois le catalyseur complété, il est obligatoire de se présenter au camp de l'organisation pour valider sa création et recevoir la composante associée.',
-  formule = 'Fundamentum Nox Venenum'
+Note : Une fois le catalyseur complété, il est obligatoire de se présenter au camp de l'organisation pour valider sa création et recevoir la composante associée.$v$,
+  formule = $v$Fundamentum Nox Venenum$v$
 WHERE id = '63ab6b91-2c2f-448c-90fb-6d09efa9ff37';  -- Catalyseur à poison (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Fundamentum Vitae Potio
+  description_verbatim = $v$Formule : Fundamentum Vitae Potio
 
 Ingrédients :
 • 2 doses du même ingrédient : Anys, Batrus, Girof, Nagro, Verda, Alys, Palos ou Huile de Mouf
@@ -563,12 +563,12 @@ Effet : Crée un catalyseur à potion pouvant être utilisé dans la fabrication
 
 Durée : Jusqu''à utilisation ou fin d'année de jeu.
 
-Note : Une fois le catalyseur complété, il est obligatoire de se présenter au camp de l'organisation pour valider sa création et recevoir la composante associée.',
-  formule = 'Fundamentum Vitae Potio'
+Note : Une fois le catalyseur complété, il est obligatoire de se présenter au camp de l'organisation pour valider sa création et recevoir la composante associée.$v$,
+  formule = $v$Fundamentum Vitae Potio$v$
 WHERE id = '34065ea6-e3f8-4ffe-867b-449c833cac0e';  -- Catalyseur à potion (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Communitis Patientia Toxinius
+  description_verbatim = $v$Formule : Communitis Patientia Toxinius
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -584,12 +584,12 @@ Manipulations :
 
 Effet : Lorsqu'un personnage ayant bu cette potion est empoisonné, le poison n'a aucun effet pendant 10 minutes. Une fois ce délai écoulé, le poison reprend son cours normal. Cette potion peut ralentir les effets d'un seul poison.
 
-Durée : 2 heures.',
-  formule = 'Communitis Patientia Toxinius'
+Durée : 2 heures.$v$,
+  formule = $v$Communitis Patientia Toxinius$v$
 WHERE id = '12bf3468-682f-46f0-802b-b16696e4d8d7';  -- Fortifiant d'endurance aux toxines (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Patientia Iae Militaris Impigner Gra Grum Interitio
+  description_verbatim = $v$Formule : Potio Ionis Patientia Iae Militaris Impigner Gra Grum Interitio
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -605,12 +605,12 @@ Manipulations :
 
 Effet : Le personnage voit ses points de vie augmentés de 3 et tous les sorts qu'il lance coûtent 2 points de spiritualité supplémentaires.
 
-Durée : 30 minutes',
-  formule = 'Potio Ionis Patientia Iae Militaris Impigner Gra Grum Interitio'
+Durée : 30 minutes$v$,
+  formule = $v$Potio Ionis Patientia Iae Militaris Impigner Gra Grum Interitio$v$
 WHERE id = '046e79fe-1a66-4864-a6ca-db495b0d6e37';  -- Potion d'endurance guerrière accrue (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Cutis Saxum Interitio
+  description_verbatim = $v$Formule : Potio Ionis Cutis Saxum Interitio
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -626,12 +626,12 @@ Manipulations :
 
 Effet : Le personnage peut résister aux deux prochaines attaques non magiques et tous les dégâts magiques reçus pendant que la potion est active infligent 1 dégât supplémentaire. Les coups assommants comptent comme des coups réguliers et protège contre la prochaine attaque sournoise, mais fait disparaître toutes les protections restantes
 
-Durée : 30 minutes ou jusqu'au déclenchement',
-  formule = 'Potio Ionis Cutis Saxum Interitio'
+Durée : 30 minutes ou jusqu'au déclenchement$v$,
+  formule = $v$Potio Ionis Cutis Saxum Interitio$v$
 WHERE id = 'bc0d357e-24f1-4f08-81e8-612c749a054c';  -- Potion de peau de pierre (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Praesidium Magistratus Causa Interitio
+  description_verbatim = $v$Formule : Potio Ionis Praesidium Magistratus Causa Interitio
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -647,12 +647,12 @@ Manipulations :
 
 Effet : Toutes les durées d'effets magiques affectant le personnage, ou qui vont l'affecter, sont réduites de moitié.
 
-Durée : 30 minutes',
-  formule = 'Potio Ionis Praesidium Magistratus Causa Interitio'
+Durée : 30 minutes$v$,
+  formule = $v$Potio Ionis Praesidium Magistratus Causa Interitio$v$
 WHERE id = 'b9ef51d3-6ac3-464e-9737-5315911634ab';  -- Potion de résilience à la magie (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Cura Impiger Gra Grum Interitio
+  description_verbatim = $v$Formule : Potio Ionis Cura Impiger Gra Grum Interitio
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -668,12 +668,12 @@ Manipulations :
 
 Effet : Cette potion guérit les blessures et calme les douleurs profondes. Elle permet également de ressouder des membres perdus et peut stopper un saignement actif. Le personnage récupère 4 points de vie et est réveillé de l'inconscience si applicable.
 
-Durée : Effet instantané',
-  formule = 'Potio Ionis Cura Impiger Gra Grum Interitio'
+Durée : Effet instantané$v$,
+  formule = $v$Potio Ionis Cura Impiger Gra Grum Interitio$v$
 WHERE id = '788c6b36-ce58-429f-85e3-3ebce9d6b45f';  -- Remède curatif (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Heros Herois Interitio
+  description_verbatim = $v$Formule : Potio Ionis Heros Herois Interitio
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -689,12 +689,12 @@ Manipulations :
 
 Effet : Cette potion exploite l'énergie spirituelle latente du corps pour repousser ses limites. Le personnage n'est plus sujet à l'acte héroïque : il peut continuer de combattre et de lancer des sorts même lorsqu'il est à 1 point de vie.
 
-Durée : 1 cycle complet',
-  formule = 'Potio Ionis Heros Herois Interitio'
+Durée : 1 cycle complet$v$,
+  formule = $v$Potio Ionis Heros Herois Interitio$v$
 WHERE id = 'b7ee0808-03b2-4b10-80d2-4a506f4bb02d';  -- Élixir d'héroïsme (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Spirae Impigner Gra Grum Interitio
+  description_verbatim = $v$Formule : Potio Ionis Spirae Impigner Gra Grum Interitio
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -710,12 +710,12 @@ Manipulations :
 
 Effet : Lorsque cet élixir est bu, il restaure 10 points d'énergie spirituelle.
 
-Durée : Effet instantané.',
-  formule = 'Potio Ionis Spirae Impigner Gra Grum Interitio'
+Durée : Effet instantané.$v$,
+  formule = $v$Potio Ionis Spirae Impigner Gra Grum Interitio$v$
 WHERE id = 'dd65feb7-860a-40c0-b17d-3dd9c426441a';  -- Élixir de plénitude spirituelle (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Jusuiticum Restringens Mendacium
+  description_verbatim = $v$Formule : Jusuiticum Restringens Mendacium
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -731,12 +731,12 @@ Manipulations :
 
 Effet : Pendant 2 minutes, le buveur est incapable de mentir et il est contraint de répondre aux questions qui lui sont posées. Aucune interprétation volontaire ou silence ne peut contourner l'effet.
 
-Durée : 2 minutes',
-  formule = 'Jusuiticum Restringens Mendacium'
+Durée : 2 minutes$v$,
+  formule = $v$Jusuiticum Restringens Mendacium$v$
 WHERE id = '94a8c95c-cdd6-4a25-bf2a-fece84627df2';  -- Élixir de vérité (N2 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Ultro Spiraea Impiger Gra Grum Commodum
+  description_verbatim = $v$Formule : Potio Ionis Ultro Spiraea Impiger Gra Grum Commodum
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -753,12 +753,12 @@ Manipulations :
 
 Effet : Cette potion permet au personnage de récupérer jusqu'à 15 points de spiritualité.
 
-Durée : Effet instantané',
-  formule = 'Potio Ionis Ultro Spiraea Impiger Gra Grum Commodum'
+Durée : Effet instantané$v$,
+  formule = $v$Potio Ionis Ultro Spiraea Impiger Gra Grum Commodum$v$
 WHERE id = '9aa7f493-cd00-4575-8518-a0e9541090e4';  -- Potion de mysticisme (N3 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Cutis Marmor Oris Commodum
+  description_verbatim = $v$Formule : Potio Ionis Cutis Marmor Oris Commodum
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -775,12 +775,12 @@ Manipulations :
 
 Effet : Les quatre prochaines attaques, magiques ou non, ne produisent aucun dégât au personnage. Protège contre la prochaine attaque sournoise, mais fait disparaître toutes les protections restantes. Les coups assommants comptent comme des coups réguliers.
 
-Durée : 1 heure ou jusqu'à déclenchement',
-  formule = 'Potio Ionis Cutis Marmor Oris Commodum'
+Durée : 1 heure ou jusqu'à déclenchement$v$,
+  formule = $v$Potio Ionis Cutis Marmor Oris Commodum$v$
 WHERE id = 'a55fb5a5-ea82-464e-ad48-56e60138f261';  -- Potion de peau de marbre (N3 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Sanus Cruor Oris Sanguis Commodum
+  description_verbatim = $v$Formule : Potio Ionis Sanus Cruor Oris Sanguis Commodum
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -797,12 +797,12 @@ Manipulations :
 
 Effet : Le buveur récupère l'intégralité de ses points de vie et est réveillé de l''inconscient. Cette potion peut également ressouder n'importe quel membre si elle est appliquée à l'endroit d'origine.
 
-Durée : Effet instantané',
-  formule = 'Potio Ionis Sanus Cruor Oris Sanguis Commodum'
+Durée : Effet instantané$v$,
+  formule = $v$Potio Ionis Sanus Cruor Oris Sanguis Commodum$v$
 WHERE id = 'd1e83eaa-96f6-47d4-8dfa-762632cf1b13';  -- Potion de régénération (N3 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Potio Ionis Spiro As Are Avi Atum Draconis Commodum
+  description_verbatim = $v$Formule : Potio Ionis Spiro As Are Avi Atum Draconis Commodum
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -819,12 +819,12 @@ Manipulations :
 
 Effet : Cette puissante mixture est une version hautement plus efficace que celle du cracheur de feu. Une fois la potion ingérée, le personnage peut infliger 4 dégâts de feu à toutes les cibles sur une distance de 10 pieds devant lui, il reçoit 2 points de dégâts dans le processus. L'attaque doit être faite dans une période de 15 minutes suivant l'ingestion de la potion. Cette potion n'offre qu'une seule attaque.
 
-Durée : Effet instantané.',
-  formule = 'Potio Ionis Spiro As Are Avi Atum Draconis Commodum'
+Durée : Effet instantané.$v$,
+  formule = $v$Potio Ionis Spiro As Are Avi Atum Draconis Commodum$v$
 WHERE id = '7d1dccda-01f9-422f-af60-b59e82f6742d';  -- Potion de souffle draconique (N3 potion)
 
 UPDATE public.recettes_alchimie SET
-  description_verbatim = 'Formule : Et Extendit Magicae Diebus Muniendis
+  description_verbatim = $v$Formule : Et Extendit Magicae Diebus Muniendis
 
 Ingrédients :
 • 1 catalyseur à potion
@@ -841,8 +841,8 @@ Manipulations :
 
 Effet : Pendant 1 minute après ingestion, le personnage peut doubler la durée de ses sorts possédant une durée. Cet effet ne peut affecter que les trois prochains sorts lancés.
 
-Durée : Une fois la minute écoulée ou les trois sorts utilisés, la potion cesse de faire effet.',
-  formule = 'Et Extendit Magicae Diebus Muniendis'
+Durée : Une fois la minute écoulée ou les trois sorts utilisés, la potion cesse de faire effet.$v$,
+  formule = $v$Et Extendit Magicae Diebus Muniendis$v$
 WHERE id = '0f4a8d67-580e-40eb-8844-d6b662026d95';  -- Élixir de potence spirituelle (N3 potion)
 
 -- 2 corrections couche courte ciblées
