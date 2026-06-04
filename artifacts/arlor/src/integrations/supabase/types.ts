@@ -3040,6 +3040,7 @@ export type Database = {
         Row: {
           cout_xp: number | null
           description: string | null
+          description_verbatim: string | null
           duree: string | null
           effet: string | null
           est_actif: boolean | null
@@ -3053,6 +3054,7 @@ export type Database = {
         Insert: {
           cout_xp?: number | null
           description?: string | null
+          description_verbatim?: string | null
           duree?: string | null
           effet?: string | null
           est_actif?: boolean | null
@@ -3066,6 +3068,7 @@ export type Database = {
         Update: {
           cout_xp?: number | null
           description?: string | null
+          description_verbatim?: string | null
           duree?: string | null
           effet?: string | null
           est_actif?: boolean | null
