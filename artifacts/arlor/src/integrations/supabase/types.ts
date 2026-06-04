@@ -5461,6 +5461,7 @@ export type Database = {
           nb_joueurs: number | null
           nb_personnages_actifs: number | null
           nb_presences_attente: number | null
+          nb_races_attente: number | null
           prochain_evenement_date: string | null
           prochain_evenement_titre: string | null
         }
