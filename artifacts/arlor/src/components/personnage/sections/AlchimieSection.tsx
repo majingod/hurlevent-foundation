@@ -1,4 +1,9 @@
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
+import {
+  useManuelDisclosure,
+  ManuelGlobalSwitch,
+} from "@/components/shared/ToggleManuel";
+import { AlchimieVerbatim } from "@/components/shared/AlchimieVerbatim";
 import type { ArtisanatEtat, Recette, ManipulationAlchimique } from "./types";
 
 interface AlchimieSectionProps {
@@ -18,6 +23,13 @@ export const AlchimieSection = ({
     (m) => (m.niveau ?? 0) <= niveauAlchimieEcran
   );
 
+  // Divulgation progressive du verbatim manuel (Option A + Option B globale).
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } =
+    useManuelDisclosure();
+  const recetteIds = (recettes ?? [])
+    .filter((r) => r.description_verbatim)
+    .map((r) => r.id);
+
   return niveauAlchimieEcran < 1 ? (
     <p className="text-center py-8 text-muted-foreground">Aucune compétence en alchimie.</p>
   ) : (!recettes || recettes.length === 0) && manipulationsFiltrees.length === 0 ? (
@@ -34,6 +46,13 @@ export const AlchimieSection = ({
               return count > 0 ? ` • ${count} ${label}` : "";
             }).join("")}
           </div>
+          {recetteIds.length > 0 && (
+            <ManuelGlobalSwitch
+              allOpen={isAllOpen(recetteIds)}
+              onToggle={() => toggleAll(recetteIds)}
+              subtitle="Affiche le verbatim sur toutes les recettes"
+            />
+          )}
           {[1, 2, 3].map((n) => {
             const recettesNiveau = recettes.filter((r) => r.niveau_requis === n);
             if (recettesNiveau.length === 0) return null;
@@ -68,6 +87,11 @@ export const AlchimieSection = ({
                         </div>
                       )}
                       {recette.description && <p className="text-xs text-muted-foreground italic">{recette.description}</p>}
+                      <AlchimieVerbatim
+                        verbatim={recette.description_verbatim}
+                        isManuelOpen={isManuelOpen(recette.id)}
+                        onToggleManuel={() => toggleManuel(recette.id)}
+                      />
                     </div>
                     );
                   })}
