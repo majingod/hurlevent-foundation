@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -358,8 +356,17 @@ function BlocClasses({
 // BLOC PRÉREQUIS (C3b)
 // =========================================================================
 
-/** Une pastille de prérequis : statut + libellé. */
-type PastillePrereq = { statut: StatusPastille; label: string };
+/** Une pastille de prérequis : statut + libellé (+ competence_id si cliquable). */
+type PastillePrereq = {
+  statut: StatusPastille;
+  label: string;
+  /**
+   * Présent (non-NULL) pour les prérequis inter-compétences (`type='competence'`) :
+   * permet le badge cliquable (scroll+highlight). NULL pour les `special`
+   * (Premiers Soins, 20 PS, etc.) → pastille non cliquable.
+   */
+  competenceId?: string | null;
+};
 
 /** Une ligne du bloc Prérequis : un niveau + ses pastilles. */
 type LignePrereq = {
@@ -372,40 +379,142 @@ type LignePrereq = {
 /** Données calculées du bloc Prérequis pour une compétence. */
 type BlocPrerequisData = { afficher: boolean; lignes: LignePrereq[] };
 
+// =========================================================================
+// WIDGETS PURS PURE1a (props-in, zéro métier — extraction-ready)
+// =========================================================================
+
 /**
- * Bloc "Prérequis" affiché sous BlocClasses dans la CardHeader (C3b).
- * Composant PUR : reçoit les lignes déjà calculées par buildPrerequisBloc.
- *
- * Mise en page (option D) : préfixe "Niv N :" dans une colonne à gauche,
- * pastilles du même niveau empilées et alignées dans une colonne à droite.
- * Pour une compétence à un seul niveau (niv 1), pas de préfixe : les pastilles
- * sont simplement empilées sous le label.
+ * Statut d'une compétence au niveau de l'en-tête d'accordéon (NOUVEAU Pure1a).
+ * Dérivé côté composant (pas de 5ᵉ état XP) :
+ * - bloque      : classeBloque (classe / verrou mutuel) → gris + 🔒
+ * - prereq      : !classeBloque && prereqBloqueTotal     → orange ●
+ * - maitrisee   : dernier niveau acheté >= max niveaux   → vert ✓ (non répétable)
+ * - disponible  : prochain niveau achetable              → vert ●
  */
-function BlocPrerequis({ data }: { data: BlocPrerequisData }) {
-  if (!data.afficher) return null;
+type StatutCompetence = "bloque" | "prereq" | "maitrisee" | "disponible";
+
+const STATUT_COMP_STYLES: Record<StatutCompetence, string> = {
+  bloque: "border-zinc-600/50 bg-zinc-700/30 text-zinc-300",
+  prereq: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  maitrisee: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+  disponible: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+};
+
+const STATUT_COMP_LABEL: Record<StatutCompetence, string> = {
+  bloque: "Bloquée",
+  prereq: "Prérequis manquant",
+  maitrisee: "Maîtrisée",
+  disponible: "Disponible",
+};
+
+/** Pastille de statut affichée sur l'en-tête de chaque compétence (4 états). */
+function PastilleStatutCompetence({ statut }: { statut: StatutCompetence }) {
+  const marker =
+    statut === "bloque" ? (
+      <Lock className="h-3 w-3" aria-hidden />
+    ) : statut === "maitrisee" ? (
+      <span aria-hidden>✓</span>
+    ) : (
+      <span aria-hidden>●</span>
+    );
   return (
-    <div className="flex flex-col gap-1">
-      <span className="flex items-center gap-1 text-xs text-foreground/70">
-        <span aria-hidden>🔒</span> Prérequis :
-      </span>
-      <div className="flex flex-col gap-1 pl-1">
-        {data.lignes.map((ligne) => (
-          <div key={ligne.niveau} className="flex items-start gap-1.5">
-            {ligne.prefixe && (
-              <span className="shrink-0 pt-0.5 text-xs text-foreground/60">
-                Niv {ligne.niveau} :
-              </span>
-            )}
-            <div className="flex flex-col items-start gap-1">
-              {ligne.pastilles.map((p, i) => (
-                <PastilleStatus key={i} status={p.statut}>
-                  {p.label}
-                </PastilleStatus>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+    <span
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUT_COMP_STYLES[statut]}`}
+    >
+      {marker}
+      {STATUT_COMP_LABEL[statut]}
+    </span>
+  );
+}
+
+/**
+ * Badge prérequis cliquable (l'aspect le plus apprécié des testeurs).
+ * - Rendu en `<button>` (scroll+highlight) si `competenceId` ET `onGo` fournis.
+ * - Sinon pastille statique (cas `special`, competence_id NULL).
+ * `stopPropagation` impératif : le clic ne doit pas toggler l'accordéon parent.
+ */
+function BadgePrereqCliquable({
+  statut,
+  label,
+  competenceId,
+  onGo,
+}: {
+  statut: StatusPastille;
+  label: string;
+  competenceId?: string | null;
+  onGo?: (competenceId: string) => void;
+}) {
+  const cliquable = !!competenceId && !!onGo;
+  const contenu = (
+    <>
+      <span aria-hidden>{PASTILLE_MARKERS[statut]}</span>
+      {label}
+      {cliquable && <span aria-hidden>↗</span>}
+    </>
+  );
+  const cls = `inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${PASTILLE_STYLES[statut]}`;
+  if (cliquable) {
+    return (
+      <button
+        type="button"
+        className={`${cls} cursor-pointer transition hover:brightness-125 focus:outline-none focus:ring-1 focus:ring-amber-400`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onGo!(competenceId!);
+        }}
+      >
+        {contenu}
+      </button>
+    );
+  }
+  return <span className={cls}>{contenu}</span>;
+}
+
+/**
+ * Légende repliable des pastilles de statut, sous la barre de filtres.
+ * Repliée par défaut (état + toggle gérés par le parent).
+ */
+function LegendePastilles({
+  ouvert,
+  onToggle,
+}: {
+  ouvert: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 text-xs">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-1 px-3 py-2 text-muted-foreground"
+      >
+        {ouvert ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
+        Légende des statuts
+      </button>
+      {ouvert && (
+        <div className="flex flex-col gap-1.5 px-3 pb-3">
+          <PastilleStatutCompetence statut="disponible" />
+          <span className="text-muted-foreground">
+            Achetable maintenant (prochain niveau disponible).
+          </span>
+          <PastilleStatutCompetence statut="maitrisee" />
+          <span className="text-muted-foreground">
+            Tous les niveaux acquis.
+          </span>
+          <PastilleStatutCompetence statut="prereq" />
+          <span className="text-muted-foreground">
+            Une autre compétence est requise — touchez le badge ⚠ pour y aller.
+          </span>
+          <PastilleStatutCompetence statut="bloque" />
+          <span className="text-muted-foreground">
+            Réservée à une autre classe (ou verrou mutuel).
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -450,21 +559,52 @@ const Etape5_Competences_V2 = ({
   // Filtre de statut global (C3c) — partagé entre tous les onglets.
   const [filtre, setFiltre] = useState<FiltreCompetence>("toutes");
 
-  // Densité C : compétences dont le détail "N niveaux" est déplié (par id).
-  const [detailsDeplies, setDetailsDeplies] = useState<Set<string>>(
-    new Set(),
+  // -- Pure1a : shell accordéon (pattern manuel Set + Chevrons, pas de Radix) --
+
+  // Catégories dépliées (accordéon de 1er niveau). Init différé : Générales +
+  // classe du perso, une fois classeNom connu (cf. useEffect plus bas).
+  const [categoriesOuvertes, setCategoriesOuvertes] = useState<Set<string>>(
+    new Set(["generale"]),
   );
-  const toggleDetailsDeplies = (compId: string) => {
-    setDetailsDeplies((prev) => {
+  const toggleCategorie = (key: string) => {
+    setCategoriesOuvertes((prev) => {
       const next = new Set(prev);
-      if (next.has(compId)) {
-        next.delete(compId);
-      } else {
-        next.add(compId);
-      }
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
+
+  // Compétences dépliées (item accordéon de 2ᵉ niveau), par id.
+  const [compsDepliees, setCompsDepliees] = useState<Set<string>>(new Set());
+  const toggleComp = (compId: string) => {
+    setCompsDepliees((prev) => {
+      const next = new Set(prev);
+      if (next.has(compId)) next.delete(compId);
+      else next.add(compId);
+      return next;
+    });
+  };
+
+  // Sous-accordéons de niveau (multi-niveau), clé `${compId}-${niveau}`.
+  const [niveauxDeplies, setNiveauxDeplies] = useState<Set<string>>(new Set());
+  const toggleNiveau = (key: string) => {
+    setNiveauxDeplies((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // Légende des pastilles : repliée par défaut.
+  const [legendeOuverte, setLegendeOuverte] = useState(false);
+
+  // Infra scroll + highlight pour le badge prérequis cliquable.
+  const compRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  // Évite de ré-appliquer l'init des catégories par défaut une fois fait.
+  const categoriesInitRef = useRef(false);
 
   // =======================================================================
   // QUERIES
@@ -549,7 +689,11 @@ const Etape5_Competences_V2 = ({
           // C3b : typé manuellement (signature RPC inchangée, pas de regen types.ts)
           prereqs_par_niveau?: Record<
             string,
-            Array<{ label: string; statut: "acquis" | "manquant" }>
+            Array<{
+              label: string;
+              statut: "acquis" | "manquant";
+              competence_id?: string | null;
+            }>
           >;
         }
       >;
@@ -669,6 +813,58 @@ const Etape5_Competences_V2 = ({
     };
   }, [onXpDeltaChange]);
 
+  // Init des catégories ouvertes par défaut : Générales + classe du perso.
+  // Différé jusqu'à ce que classeNom soit connu, puis verrouillé (une fois).
+  useEffect(() => {
+    if (categoriesInitRef.current) return;
+    if (!classeNom) return;
+    const validTab = TAB_CONFIG.some((t) => t.key === classeNom);
+    setCategoriesOuvertes(
+      new Set(validTab ? ["generale", classeNom] : ["generale"]),
+    );
+    categoriesInitRef.current = true;
+  }, [classeNom]);
+
+  // Clear du highlight ~2 s après son déclenchement.
+  useEffect(() => {
+    if (!highlightId) return;
+    const t = window.setTimeout(() => setHighlightId(null), 2000);
+    return () => window.clearTimeout(t);
+  }, [highlightId]);
+
+  /**
+   * Navigue vers une compétence-prérequis : ouvre sa catégorie, déplie la
+   * compétence, scrolle au centre et la met en surbrillance ~2 s.
+   */
+  const goToComp = (compId: string) => {
+    const cible = (competences ?? []).find((c) => c.id === compId);
+    if (cible) {
+      const cat = normalizeCategorie(cible.categorie);
+      const tab = TAB_CONFIG.find((t) => t.categories.includes(cat));
+      const tabKey = tab?.key ?? (cible.est_general ? "generale" : null);
+      if (tabKey) {
+        setCategoriesOuvertes((prev) => {
+          if (prev.has(tabKey)) return prev;
+          const next = new Set(prev);
+          next.add(tabKey);
+          return next;
+        });
+      }
+    }
+    setCompsDepliees((prev) => {
+      if (prev.has(compId)) return prev;
+      const next = new Set(prev);
+      next.add(compId);
+      return next;
+    });
+    // Laisse le DOM se mettre à jour (catégorie/compétence dépliées) avant scroll.
+    window.setTimeout(() => {
+      const el = compRefs.current.get(compId);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(compId);
+    }, 60);
+  };
+
   const competencesParTab = useMemo(() => {
     const grouped: Record<string, CompetenceWithNiveaux[]> = {};
     TAB_CONFIG.forEach((t) => (grouped[t.key] = []));
@@ -756,6 +952,7 @@ const Etape5_Competences_V2 = ({
           pastilles.push({
             statut: p.statut === "acquis" ? "acquis" : "manquant",
             label: p.label,
+            competenceId: p.competence_id ?? null,
           });
           auMoinsUneContrainte = true;
         }
@@ -1359,28 +1556,8 @@ const Etape5_Competences_V2 = ({
   };
 
   /**
-   * Confirme l'achat pour les compétences à choix avec checkbox directe
-   * (unique_avec_choix uniquement). Ferme le panneau et reset le pending.
-   */
-  const handleConfirmChoix = (comp: CompetenceWithNiveaux, niveau: NiveauInfo) => {
-    const key = `${comp.id}_${niveau.niveau}`;
-    const choix = pendingChoix[key];
-    if (!choix) {
-      toast.error("Veuillez sélectionner une option.");
-      return;
-    }
-    handleBuy(comp, niveau, choix);
-    setPendingChoix((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  };
-
-  /**
    * Trouve la ligne d'achat à supprimer pour un (comp, niveau) donné.
    * Pour `simple`, il n'y a qu'une ligne par niveau.
-   * Pour `unique_avec_choix`, idem.
    * Pour `multiple_*`, le décochage passe par la section "Achats existants",
    * jamais par les niveaux globaux (donc cette fonction n'est pas appelée).
    */
@@ -1393,23 +1570,131 @@ const Etape5_Competences_V2 = ({
   };
 
   // =======================================================================
-  // RENDER : compétences par type_achat
+  // RENDER : helpers de statut (Pure1a)
   // =======================================================================
 
   /**
-   * Rangée d'un niveau pour `simple` (case à cocher directe, pas de choix).
+   * Statut de la compétence pour la pastille d'en-tête (4 états).
+   * Priorité : bloque > prereq (total) > maitrisee > disponible.
+   * Les types répétables (sans_choix / multiple_*) ne sont jamais « maîtrisés ».
+   * Le plafond « maîtrisée » combine le max des niveaux et le plafond de classe
+   * (statiques) ; on n'utilise PAS le plafond prérequis (dynamique) pour ne pas
+   * marquer « maîtrisée » une compétence qui se débloquera plus tard.
    */
-  const renderNiveauSimple = (
+  const calcStatutCompetence = (
+    comp: CompetenceWithNiveaux,
+  ): StatutCompetence => {
+    if (classeBloque(comp)) return "bloque";
+    if (prereqBloqueTotal(comp)) return "prereq";
+
+    const repeatable =
+      comp.type_achat === "multiple_sans_choix" ||
+      comp.type_achat === "multiple_choix_distinct" ||
+      comp.type_achat === "multiple_avec_choix_par_niveau";
+
+    if (!repeatable) {
+      const achetes = niveauxAchetes.get(comp.id) ?? new Set<number>();
+      const maxAchete = achetes.size ? Math.max(...achetes) : 0;
+      const niveaux = comp.niveaux_parsed.map((n) => n.niveau);
+      if (niveaux.length > 0) {
+        const plafond = Math.min(
+          Math.max(...niveaux),
+          niveauMaxAccessible(comp),
+        );
+        if (maxAchete > 0 && maxAchete >= plafond) return "maitrisee";
+      }
+    }
+    return "disponible";
+  };
+
+  /**
+   * Badge prérequis cliquable d'en-tête : pointe vers le 1ᵉʳ niveau bloqué et
+   * son 1ᵉʳ prérequis manquant. Affiché uniquement quand statut === "prereq".
+   */
+  const headerPrereqBadge = (
+    comp: CompetenceWithNiveaux,
+    statut: StatutCompetence,
+    blocData: BlocPrerequisData,
+  ): ReactNode => {
+    if (statut !== "prereq") return null;
+    for (const ligne of blocData.lignes) {
+      const avecId = ligne.pastilles.find(
+        (p) => p.statut === "manquant" && p.competenceId,
+      );
+      const choisi = avecId ?? ligne.pastilles.find((p) => p.statut === "manquant");
+      if (choisi) {
+        return (
+          <BadgePrereqCliquable
+            statut="manquant"
+            label={`Pour Niv ${ligne.niveau} : ${choisi.label}`}
+            competenceId={choisi.competenceId}
+            onGo={goToComp}
+          />
+        );
+      }
+    }
+    return null;
+  };
+
+  /**
+   * Badge de coût d'en-tête « Niv X → Y XP », pour les `simple` disponibles.
+   * Les autres types (choix, sans_choix) montrent leur coût dans le corps.
+   */
+  const headerCoutBadge = (
+    comp: CompetenceWithNiveaux,
+    statut: StatutCompetence,
+  ): ReactNode => {
+    if (statut !== "disponible" || comp.type_achat !== "simple") return null;
+    const niveauxDispo = comp.niveaux_parsed.map((n) => n.niveau);
+    if (niveauxDispo.length === 0) return null;
+    const niveauMaxComp = Math.max(...niveauxDispo);
+    const prereqInfo = getPrereqInfo(comp);
+    const niveauMaxEffectif = Math.min(
+      niveauMaxAccessible(comp),
+      prereqInfo?.niveauMaxAchetable ?? Infinity,
+      niveauMaxComp,
+    );
+    const achetes = niveauxAchetes.get(comp.id) ?? new Set<number>();
+    const dernierAchete = achetes.size ? Math.max(...achetes) : 0;
+    const prochain = dernierAchete + 1;
+    if (prochain > niveauMaxEffectif) return null;
+    const niveauInfo = comp.niveaux_parsed.find((n) => n.niveau === prochain);
+    if (!niveauInfo) return null;
+    return (
+      <Badge variant="outline" className="whitespace-nowrap text-xs">
+        Niv {prochain} → {niveauInfo.cout_xp} XP
+      </Badge>
+    );
+  };
+
+  // =======================================================================
+  // RENDER : état d'achat d'un niveau (logique partagée mono/multi)
+  // =======================================================================
+
+  type NiveauAchatState = {
+    dejaAchete: boolean;
+    achat: PersonnageCompetenceRow | undefined;
+    estGratuit: boolean;
+    niveauHorsClasse: boolean;
+    prereqBloque: boolean;
+    compBloqueeClasse: boolean;
+    xpInsuffisants: boolean;
+    niveauPrecedentRequis: boolean;
+    disabled: boolean;
+  };
+
+  const niveauAchatState = (
     comp: CompetenceWithNiveaux,
     niv: NiveauInfo,
     maxAchete: number,
-  ) => {
-    const dejaAchete = (niveauxAchetes.get(comp.id) ?? new Set()).has(niv.niveau);
+  ): NiveauAchatState => {
+    const dejaAchete = (niveauxAchetes.get(comp.id) ?? new Set<number>()).has(
+      niv.niveau,
+    );
     const niveauPrecedentRequis = niv.niveau > 1 && niv.niveau - 1 > maxAchete;
     const achat = findAchatPourNiveau(comp, niv.niveau);
     const estGratuit = achat?.xp_depense === 0;
-    const niveauMax = niveauMaxAccessible(comp);
-    const niveauHorsClasse = niv.niveau > niveauMax;
+    const niveauHorsClasse = niv.niveau > niveauMaxAccessible(comp);
     const prereqInfo = getPrereqInfo(comp);
     const prereqBloque =
       !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
@@ -1424,233 +1709,292 @@ const Etape5_Competences_V2 = ({
       mutationEnCours ||
       (dejaAchete && estGratuit && !comp.desachat_force) ||
       xpInsuffisants;
+    return {
+      dejaAchete,
+      achat,
+      estGratuit,
+      niveauHorsClasse,
+      prereqBloque,
+      compBloqueeClasse,
+      xpInsuffisants,
+      niveauPrecedentRequis,
+      disabled,
+    };
+  };
 
+  /** Case à cocher d'un niveau (achat/désachat direct). stopPropagation pour
+   *  ne pas toggler le sous-accordéon de niveau qui l'enveloppe (cas multi). */
+  const renderCheckboxNiveau = (
+    comp: CompetenceWithNiveaux,
+    niv: NiveauInfo,
+    st: NiveauAchatState,
+  ) => (
+    <Checkbox
+      id={`${comp.id}-${niv.niveau}`}
+      checked={st.dejaAchete}
+      disabled={st.disabled}
+      title={
+        st.xpInsuffisants
+          ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
+          : undefined
+      }
+      onClick={(e) => e.stopPropagation()}
+      onCheckedChange={(checked) => {
+        if (checked) {
+          handleBuy(comp, niv);
+        } else if (st.achat) {
+          handleUncheck(comp, st.achat);
+        }
+      }}
+    />
+  );
+
+  /** Ligne « Prérequis » d'un niveau donné (vert ✓ rempli / orange ⚠ cliquable). */
+  const renderLignePrereqNiveau = (
+    niv: NiveauInfo,
+    blocData: BlocPrerequisData,
+  ): ReactNode => {
+    const ligne = blocData.lignes.find((l) => l.niveau === niv.niveau);
+    if (!ligne || ligne.pastilles.length === 0) return null;
     return (
-      <div
-        key={niv.niveau}
-        className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
-          compBloqueeClasse || niveauHorsClasse || prereqBloque ? "opacity-50" : ""
-        }`}
-      >
-        <Checkbox
-          id={`${comp.id}-${niv.niveau}`}
-          checked={dejaAchete}
-          disabled={disabled}
-          title={
-            xpInsuffisants
-              ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
-              : undefined
-          }
-          onCheckedChange={(checked) => {
-            if (checked) {
-              handleBuy(comp, niv);
-            } else if (achat) {
-              handleUncheck(comp, achat);
-            }
-          }}
-        />
-        <Label
-          htmlFor={`${comp.id}-${niv.niveau}`}
-          className="flex-1 cursor-pointer space-y-1 text-xs"
+      <div className="flex flex-col gap-1">
+        <span className="flex items-center gap-1 text-xs text-foreground/70">
+          <span aria-hidden>🔒</span> Prérequis :
+        </span>
+        <div className="flex flex-col items-start gap-1 pl-1">
+          {ligne.pastilles.map((p, i) => (
+            <BadgePrereqCliquable
+              key={i}
+              statut={p.statut}
+              label={p.label}
+              competenceId={p.statut === "manquant" ? p.competenceId : undefined}
+              onGo={p.statut === "manquant" ? goToComp : undefined}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // =======================================================================
+  // RENDER : corps `simple` — mono (1 niveau) / multi (≥2 niveaux)
+  // =======================================================================
+
+  /** Corps mono-niveau : détail direct (description + case), pas de sous-accordéon. */
+  const renderBodyMono = (
+    comp: CompetenceWithNiveaux,
+    blocData: BlocPrerequisData,
+  ): ReactNode => {
+    const niv = comp.niveaux_parsed[0];
+    if (!niv) {
+      return (
+        <p className="text-xs italic text-muted-foreground">
+          Aucun niveau défini pour cette compétence.
+        </p>
+      );
+    }
+    const achetes = niveauxAchetes.get(comp.id) ?? new Set<number>();
+    const maxAchete = achetes.size ? Math.max(...achetes) : 0;
+    const st = niveauAchatState(comp, niv, maxAchete);
+    return (
+      <div className="space-y-2">
+        <div
+          className={`flex items-center gap-3 rounded border border-border p-2 ${
+            st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque
+              ? "opacity-50"
+              : ""
+          }`}
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <strong>Niveau {niv.niveau}</strong>
+          {renderCheckboxNiveau(comp, niv, st)}
+          <Label
+            htmlFor={`${comp.id}-${niv.niveau}`}
+            className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
+          >
             <Badge variant="secondary" className="text-xs">
               {niv.cout_xp} XP
             </Badge>
-            {estGratuit && (
-              <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
+            {st.estGratuit && (
+              <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                 Acquis gratuitement
               </Badge>
             )}
-          </div>
-          {comp.niveaux_parsed.length < 2 && niv.description && (
-            <p className="text-muted-foreground">{niv.description}</p>
-          )}
-          {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && !compBloqueeClasse && (
-            <p className="flex items-center gap-1 text-muted-foreground">
-              <Lock className="h-3 w-3" />
-              Acheter d'abord le niveau {niv.niveau - 1}
-            </p>
-          )}
-        </Label>
+          </Label>
+        </div>
+        {niv.description && (
+          <p className="text-xs text-muted-foreground">{niv.description}</p>
+        )}
+        {renderLignePrereqNiveau(niv, blocData)}
       </div>
     );
   };
 
-  /**
-   * `unique_avec_choix` (Connaissances des Religions). 1 seule case à
-   * cocher (niveau 1). Cocher → expand un dropdown + bouton Confirmer.
-   */
-  const renderUniqueAvecChoix = (comp: CompetenceWithNiveaux) => {
+  /** Corps multi-niveaux : un sous-accordéon par niveau (case sur l'en-tête). */
+  const renderBodyMulti = (
+    comp: CompetenceWithNiveaux,
+    blocData: BlocPrerequisData,
+  ): ReactNode => {
+    const niveaux = comp.niveaux_parsed;
+    const achetes = niveauxAchetes.get(comp.id) ?? new Set<number>();
+    const maxAchete = achetes.size ? Math.max(...achetes) : 0;
+    return (
+      <div className="space-y-1.5">
+        {niveaux.map((niv) => {
+          const st = niveauAchatState(comp, niv, maxAchete);
+          const key = `${comp.id}-${niv.niveau}`;
+          const open = niveauxDeplies.has(key);
+          return (
+            <div
+              key={niv.niveau}
+              className={`rounded border border-border ${
+                st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque
+                  ? "opacity-50"
+                  : ""
+              }`}
+            >
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleNiveau(key)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleNiveau(key);
+                  }
+                }}
+                className="flex cursor-pointer items-center gap-3 p-2 text-xs"
+              >
+                {open ? (
+                  <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                )}
+                {renderCheckboxNiveau(comp, niv, st)}
+                <div className="flex flex-1 flex-wrap items-center gap-2">
+                  <strong>Niveau {niv.niveau}</strong>
+                  <Badge variant="secondary" className="text-xs">
+                    {niv.cout_xp} XP
+                  </Badge>
+                  {st.estGratuit && (
+                    <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
+                      Acquis gratuitement
+                    </Badge>
+                  )}
+                  {st.dejaAchete && !st.estGratuit && (
+                    <span className="text-xs text-emerald-400" aria-hidden>
+                      ✓
+                    </span>
+                  )}
+                </div>
+              </div>
+              {open && (
+                <div className="space-y-2 border-t border-border/60 px-3 py-2 text-xs">
+                  {niv.description && (
+                    <p className="text-muted-foreground">{niv.description}</p>
+                  )}
+                  {st.niveauPrecedentRequis &&
+                    !st.dejaAchete &&
+                    !st.niveauHorsClasse &&
+                    !st.compBloqueeClasse && (
+                      <p className="flex items-center gap-1 text-muted-foreground">
+                        <Lock className="h-3 w-3" />
+                        Acheter d'abord le niveau {niv.niveau - 1}
+                      </p>
+                    )}
+                  {renderLignePrereqNiveau(niv, blocData)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // =======================================================================
+  // RENDER : corps `multiple_sans_choix` — stepper « Acquis ×N [−][+] »
+  // =======================================================================
+
+  const renderSansChoixStepper = (comp: CompetenceWithNiveaux): ReactNode => {
     const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
-    const dejaAchete = achatsPourComp.length > 0;
-    const achat = achatsPourComp[0];
-    const estGratuit = achat?.xp_depense === 0;
+    const nbAchats = achatsPourComp.length;
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
 
-    const prereqInfo = getPrereqInfo(comp);
-    const prereqBloque = !!prereqInfo && prereqInfo.niveauMaxAchetable < 1;
     const compBloqueeClasse = classeBloque(comp);
     const prereqCompBloquee = prereqBloqueTotal(comp);
 
-    const key = `${comp.id}_1`;
-    const panneauOuvert = key in pendingChoix;
-    const choixSelectionne = pendingChoix[key] ?? "";
-    const options = getOptionsDropdown(comp, 1);
+    // Dév. Spirituel basique vs Supérieur : on ne peut pas redescendre le
+    // basique sous 20 PS si le Supérieur est acquis (la RPC refuserait).
+    const estBasique = comp.nom === "Développement Spirituel";
+    const compSuperieur = (competences ?? []).find(
+      (c) => c.nom === "Développement Spirituel Supérieur",
+    );
+    const aSuperieurAcquis = compSuperieur
+      ? (achatsParCompetence.get(compSuperieur.id) ?? []).length > 0
+      : false;
+
+    const minusDisabled =
+      compBloqueeClasse ||
+      nbAchats === 0 ||
+      mutationEnCours ||
+      (estBasique && aSuperieurAcquis);
+
+    const xpInsuffisants = niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+
+    const handlePlus = () => handleBuy(comp, niv1);
+    const handleMinus = () => {
+      const dernier = achatsPourComp[achatsPourComp.length - 1];
+      if (dernier) handleUncheck(comp, dernier);
+    };
 
     return (
       <div
-        className={`flex flex-col gap-2 rounded border border-border p-2 ${
+        className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
           compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
         }`}
       >
-        <div className="flex flex-wrap items-center gap-3">
-          {(() => {
-            const xpInsuffisants =
-              !dejaAchete && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
-            return (
-          <Checkbox
-            id={`${comp.id}-uac`}
-            checked={dejaAchete || panneauOuvert}
-            disabled={
-              compBloqueeClasse ||
-              mutationEnCours ||
-              prereqBloque ||
-              (dejaAchete && estGratuit) ||
-              xpInsuffisants
-            }
-            title={
-              xpInsuffisants
-                ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
-                : undefined
-            }
-            onCheckedChange={(checked) => {
-              if (checked) {
-                // Pré-sélectionner automatiquement si une seule option est
-                // disponible (cas : Connaissance des Religions pour un perso
-                // déjà croyant — sa religion est la seule option).
-                const defaultValue = options.length === 1 ? options[0].value : "";
-                setPendingChoix((p) => ({ ...p, [key]: defaultValue }));
-              } else if (dejaAchete && achat) {
-                handleUncheck(comp, achat);
-              } else {
-                // Annule l'ouverture du panneau
-                setPendingChoix((p) => {
-                  const next = { ...p };
-                  delete next[key];
-                  return next;
-                });
-              }
-            }}
-          />
-            );
-          })()}
-          <Label
-            htmlFor={`${comp.id}-uac`}
-            className="flex-1 cursor-pointer space-y-1 text-xs"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              {dejaAchete && achat ? (
-                <>
-                  <strong>
-                    {resoudreChoixAffichage(
-                      achat.choix_achat,
-                      comp.type_choix,
-                      religions ?? [],
-                      langues ?? [],
-                    ) ?? "—"}
-                  </strong>
-                  {estGratuit ? (
-                    <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
-                      Acquis gratuitement
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-xs">
-                      {achat.xp_depense} XP
-                    </Badge>
-                  )}
-                </>
-              ) : (
-                <>
-                  <strong>Niveau 1</strong>
-                  <Badge variant="secondary" className="text-xs">
-                    {niv1.cout_xp} XP
-                  </Badge>
-                </>
-              )}
-            </div>
-            {niv1.description && (
-              <p className="text-muted-foreground">{niv1.description}</p>
-            )}
-          </Label>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleMinus}
+          disabled={minusDisabled}
+          title={
+            estBasique && aSuperieurAcquis
+              ? "Désachetez d'abord Développement Spirituel Supérieur"
+              : undefined
+          }
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        <div className="flex-1 text-xs">
+          <strong>Acquis ×{nbAchats}</strong>
+          <span className="ml-2 text-muted-foreground">
+            ({niv1.cout_xp} XP / achat)
+          </span>
         </div>
-        {!dejaAchete && panneauOuvert && !compBloqueeClasse && !prereqCompBloquee && (
-          <div className="flex flex-wrap items-center gap-2 pl-7">
-            <Select
-              value={choixSelectionne}
-              onValueChange={(v) => setPendingChoix((p) => ({ ...p, [key]: v }))}
-            >
-              <SelectTrigger className="h-8 max-w-xs text-xs">
-                <SelectValue placeholder="Choisir..." />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((o) => (
-                  <SelectItem key={o.value} value={o.value} className="text-xs">
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {(() => {
-              const xpInsuffisants =
-                !dejaAchete && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
-              return (
-            <Button
-              size="sm"
-              disabled={
-                !choixSelectionne ||
-                mutationEnCours ||
-                compBloqueeClasse ||
-                xpInsuffisants
-              }
-              title={
-                xpInsuffisants
-                  ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
-                  : undefined
-              }
-              className={xpInsuffisants ? "opacity-50" : ""}
-              onClick={() => handleConfirmChoix(comp, niv1)}
-            >
-              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              Confirmer
-            </Button>
-              );
-            })()}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setPendingChoix((p) => {
-                  const next = { ...p };
-                  delete next[key];
-                  return next;
-                });
-              }}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
+        <Button
+          size="sm"
+          onClick={handlePlus}
+          disabled={
+            compBloqueeClasse ||
+            prereqCompBloquee ||
+            mutationEnCours ||
+            xpInsuffisants
+          }
+          title={
+            xpInsuffisants
+              ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+              : undefined
+          }
+          className={xpInsuffisants ? "opacity-50" : ""}
+        >
+          {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+          <Plus className="h-3 w-3" />
+        </Button>
       </div>
     );
   };
 
-  /**
-   * `multiple_choix_distinct` (Décryptage, Langue supplémentaire). Liste des achats
-   * existants + bouton "+ Ajouter une autre" qui révèle un dropdown.
-   */
   const renderMultipleChoixDistinct = (comp: CompetenceWithNiveaux) => {
     const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
@@ -2068,287 +2412,102 @@ const Etape5_Competences_V2 = ({
     );
   };
 
-  /**
-   * `multiple_sans_choix` (Dév. Spirituel + Supérieur). Compteur `[-] X [+]`.
-   * Chaque clic = 1 RPC.
-   */
-  const renderMultipleSansChoix = (comp: CompetenceWithNiveaux) => {
-    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
-    const nbAchats = achatsPourComp.length;
-    const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
-    if (!niv1) return null;
+  // =======================================================================
+  // RENDER : dispatch du corps par type_achat
+  // =======================================================================
 
-    const compBloqueeClasse = classeBloque(comp);
-    const prereqCompBloquee = prereqBloqueTotal(comp);
+  const renderBody = (
+    comp: CompetenceWithNiveaux,
+    blocData: BlocPrerequisData,
+  ): ReactNode => {
+    switch (comp.type_achat) {
+      case "multiple_choix_distinct":
+        return renderMultipleChoixDistinct(comp);
+      case "multiple_avec_choix_par_niveau":
+        return renderMultipleAvecChoixParNiveau(comp);
+      case "multiple_sans_choix":
+        return renderSansChoixStepper(comp);
+      case "simple":
+      default:
+        return comp.niveaux_parsed.length <= 1
+          ? renderBodyMono(comp, blocData)
+          : renderBodyMulti(comp, blocData);
+    }
+  };
 
-    // Détection Dév. Spirituel basique vs Supérieur
-    const estBasique = comp.nom === "Développement Spirituel";
-    const compSuperieur = (competences ?? []).find(
-      (c) => c.nom === "Développement Spirituel Supérieur",
-    );
-    const aSuperieurAcquis = compSuperieur
-      ? (achatsParCompetence.get(compSuperieur.id) ?? []).length > 0
-      : false;
+  // =======================================================================
+  // RENDER : item accordéon d'une compétence
+  // =======================================================================
 
-    // [-] désactivé si pas d'achat OU si on est sur le basique et que
-    // le supérieur a déjà été acheté (la RPC refuserait de baisser sous 20 PS).
-    const minusDisabled =
-      compBloqueeClasse ||
-      nbAchats === 0 ||
-      mutationEnCours ||
-      (estBasique && aSuperieurAcquis);
+  const renderCompetenceItem = (comp: CompetenceWithNiveaux): ReactNode => {
+    const statut = calcStatutCompetence(comp);
+    const blocData = buildPrerequisBloc(comp);
+    const ouvert = compsDepliees.has(comp.id);
+    const estAcquise = (achatsParCompetence.get(comp.id) ?? []).length > 0;
+    const badgePrereq = headerPrereqBadge(comp, statut, blocData);
+    const coutBadge = headerCoutBadge(comp, statut);
+    const surbrillance = highlightId === comp.id;
 
-    const handlePlus = () => {
-      handleBuy(comp, niv1);
-    };
-
-    const handleMinus = () => {
-      // Décocher le dernier achat (le plus récent). La RPC supprime cette
-      // ligne unique (type multiple_sans_choix → pas de cascade).
-      const dernier = achatsPourComp[achatsPourComp.length - 1];
-      if (dernier) handleUncheck(comp, dernier);
-    };
+    // Verrou mutuel « Déjà acquise via » : conservé via MessageBlocage.
+    // Les « Réservé aux classes » sont déjà couverts par BlocClasses.
+    const detailBlocage = classeBloque(comp) ? blocageDetail(comp) : null;
+    const messageBlocage =
+      detailBlocage && !detailBlocage.label.startsWith("Réservé")
+        ? detailBlocage
+        : null;
 
     return (
       <div
-        className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
-          compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
+        key={comp.id}
+        ref={(el) => {
+          compRefs.current.set(comp.id, el);
+        }}
+        className={`scroll-mt-20 rounded-lg border transition-shadow ${
+          surbrillance
+            ? "border-amber-400 ring-2 ring-amber-400/70"
+            : estAcquise
+              ? "border-emerald-500/40"
+              : "border-border"
         }`}
       >
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleMinus}
-          disabled={minusDisabled}
-          title={
-            estBasique && aSuperieurAcquis
-              ? "Désachetez d'abord Développement Spirituel Supérieur"
-              : undefined
-          }
+        {/* En-tête repliable (div, pas <button> : enfants interactifs autorisés) */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => toggleComp(comp.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleComp(comp.id);
+            }
+          }}
+          className="flex cursor-pointer flex-col gap-2 p-3"
         >
-          <Minus className="h-3 w-3" />
-        </Button>
-        <div className="flex-1 text-xs">
-          <strong>Acheté {nbAchats} fois</strong>
-          <span className="ml-2 text-muted-foreground">
-            ({niv1.cout_xp} XP / achat)
-          </span>
-        </div>
-        {(() => {
-          const xpInsuffisants = niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
-          return (
-        <Button
-          size="sm"
-          onClick={handlePlus}
-          disabled={
-            compBloqueeClasse ||
-            prereqCompBloquee ||
-            mutationEnCours ||
-            xpInsuffisants
-          }
-          title={
-            xpInsuffisants
-              ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
-              : undefined
-          }
-          className={xpInsuffisants ? "opacity-50" : ""}
-        >
-          {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-          <Plus className="h-3 w-3" />
-        </Button>
-          );
-        })()}
-      </div>
-    );
-  };
-
-  /**
-   * `simple` : checkbox par niveau (refactor du flow existant).
-   */
-  const renderSimple = (comp: CompetenceWithNiveaux) => {
-    const niveauxAchetesPourComp = niveauxAchetes.get(comp.id) ?? new Set<number>();
-    const maxAchete = niveauxAchetesPourComp.size
-      ? Math.max(...niveauxAchetesPourComp)
-      : 0;
-    const niveaux = comp.niveaux_parsed;
-    const aPlusieursNiveaux = niveaux.length >= 2;
-    const deplie = detailsDeplies.has(comp.id);
-    // Compact (densité C) : détail verbatim du plus haut niveau acquis.
-    const niveauHaut =
-      maxAchete > 0 ? niveaux.find((n) => n.niveau === maxAchete) : null;
-    return (
-      <div className="space-y-2">
-        {niveaux.length === 0 && (
-          <p className="text-xs italic text-muted-foreground">
-            Aucun niveau défini pour cette compétence.
-          </p>
-        )}
-        {niveaux.map((niv) => renderNiveauSimple(comp, niv, maxAchete))}
-
-        {/* Compact : détail du plus haut niveau acquis (densité C, multi-niveaux) */}
-        {aPlusieursNiveaux && niveauHaut?.description && (
-          <div className="rounded border border-border/60 bg-background/40 p-2 text-xs text-muted-foreground">
-            <strong className="text-foreground">
-              Niveau {niveauHaut.niveau} :
-            </strong>{" "}
-            {niveauHaut.description}
-          </div>
-        )}
-
-        {/* Toggle « Voir le détail des N niveaux » (densité C) */}
-        {aPlusieursNiveaux && (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-auto px-1 py-1 text-xs text-muted-foreground"
-              onClick={() => toggleDetailsDeplies(comp.id)}
-            >
-              {deplie ? (
-                <ChevronDown className="mr-1 h-3 w-3" />
-              ) : (
-                <ChevronRight className="mr-1 h-3 w-3" />
-              )}
-              {deplie
-                ? `Masquer le détail des ${niveaux.length} niveaux`
-                : `Voir le détail des ${niveaux.length} niveaux`}
-            </Button>
-
-            {deplie && (
-              <div className="space-y-2 border-l-2 border-border pl-3">
-                {niveaux.map((niv) => (
-                  <div key={`detail-${niv.niveau}`} className="space-y-1 text-xs">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <strong>Niveau {niv.niveau}</strong>
-                      <Badge variant="secondary" className="text-xs">
-                        {niv.cout_xp} XP
-                      </Badge>
-                    </div>
-                    {niv.description && (
-                      <p className="text-muted-foreground">{niv.description}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+          <div className="flex items-start gap-2">
+            {ouvert ? (
+              <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
             )}
-          </>
-        )}
-      </div>
-    );
-  };
-
-  // =======================================================================
-  // RENDER : Carte compétence (dispatch par type_achat)
-  // =======================================================================
-
-  const renderCompetence = (comp: CompetenceWithNiveaux) => {
-    let body: ReactNode = null;
-    switch (comp.type_achat) {
-      case "unique_avec_choix":
-        body = renderUniqueAvecChoix(comp);
-        break;
-      case "multiple_choix_distinct":
-        body = renderMultipleChoixDistinct(comp);
-        break;
-      case "multiple_avec_choix_par_niveau":
-        body = renderMultipleAvecChoixParNiveau(comp);
-        break;
-      case "multiple_sans_choix":
-        body = renderMultipleSansChoix(comp);
-        break;
-      case "simple":
-      default:
-        body = renderSimple(comp);
-    }
-
-    const compBloqueeClasse = classeBloque(comp);
-    const prereqCompBloquee = prereqBloqueTotal(comp);
-
-    // Calcul du badge coût XP en haut à droite (PR C2 session 48).
-    // Affiché uniquement pour les compétences "simple_par_defaut" (type_choix === null,
-    // soit 89% du catalogue). Les compétences à choix multiples gardent leur UI body.
-    const coutBadge = (() => {
-      if (comp.type_choix) return null; // Skip pour multiple_choix_distinct, etc.
-      if (compBloqueeClasse) return null; // Bloc Classes rouge dit déjà tout
-      if (prereqCompBloquee) return null; // MessageBlocage rouge dit déjà tout
-
-      const niveauMaxClasse = niveauMaxAccessible(comp);
-      const prereqInfo = getPrereqInfo(comp);
-      const niveauMaxPrereq = prereqInfo?.niveauMaxAchetable ?? Infinity;
-      const niveauxDispo = comp.niveaux_parsed.map((n) => n.niveau);
-      if (niveauxDispo.length === 0) return null;
-      const niveauMaxComp = Math.max(...niveauxDispo);
-      const niveauMaxEffectif = Math.min(
-        niveauMaxClasse,
-        niveauMaxPrereq,
-        niveauMaxComp,
-      );
-
-      const achatsComp = achatsParCompetence.get(comp.id) ?? [];
-      const niveauxAchetes = achatsComp.map((a) => a.niveau_acquis);
-      const dernierAchete = niveauxAchetes.length
-        ? Math.max(...niveauxAchetes)
-        : 0;
-
-      // Cas "tout maîtrisé" : dernier acheté >= niveau max de la compétence
-      if (dernierAchete >= niveauMaxComp) {
-        return (
-          <Badge
-            variant="outline"
-            className="text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-          >
-            Maîtrisée ✓
-          </Badge>
-        );
-      }
-
-      // Prochain niveau à acheter
-      const prochain = dernierAchete + 1;
-      if (prochain > niveauMaxEffectif) return null; // Bloqué partiel
-
-      const niveauInfo = comp.niveaux_parsed.find((n) => n.niveau === prochain);
-      if (!niveauInfo) return null;
-
-      return (
-        <Badge variant="outline" className="text-xs whitespace-nowrap">
-          Niv {prochain} → {niveauInfo.cout_xp} XP
-        </Badge>
-      );
-    })();
-
-    const estAcquise = (achatsParCompetence.get(comp.id) ?? []).length > 0;
-
-    return (
-      <Card
-        key={comp.id}
-        className={estAcquise ? "border-emerald-500/40" : undefined}
-      >
-        <CardHeader className="pb-2">
-          {/* Ligne 1 : nom + coût XP en haut à droite */}
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-base font-heading font-bold leading-tight">
-                {comp.nom}
-              </CardTitle>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-heading text-base font-bold leading-tight">
+                  {comp.nom}
+                </span>
+                <PastilleStatutCompetence statut={statut} />
+                {coutBadge}
+              </div>
               {comp.description && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {comp.description}
                 </p>
               )}
             </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              {coutBadge}
-              {comp.est_general && (
-                <Badge variant="outline" className="text-xs">
-                  Générale
-                </Badge>
-              )}
-            </div>
           </div>
 
-          {/* Bloc Classes : TOUJOURS affiché si applicable (PR C2) */}
-          <div className="mt-3">
+          {badgePrereq && <div className="pl-6">{badgePrereq}</div>}
+
+          <div className="pl-6">
             <BlocClasses
               comp={comp}
               classeJoueur={classeNom}
@@ -2356,35 +2515,25 @@ const Etape5_Competences_V2 = ({
             />
           </div>
 
-          {/* Bloc Prérequis : affiché si au moins un niveau a une contrainte (C3b) */}
-          {(() => {
-            const blocPrereq = buildPrerequisBloc(comp);
-            if (!blocPrereq.afficher) return null;
-            return (
-              <div className="mt-2">
-                <BlocPrerequis data={blocPrereq} />
-              </div>
-            );
-          })()}
+          {messageBlocage && (
+            <div className="pl-6">
+              <MessageBlocage {...messageBlocage} />
+            </div>
+          )}
+        </div>
 
-          {/* Verrou mutuel "Déjà acquise via" : reste géré par MessageBlocage.
-              On exclut "Réservé aux classes" qui est maintenant géré par BlocClasses
-              pour éviter la duplication d'info. */}
-          {compBloqueeClasse &&
-            (() => {
-              const detail = blocageDetail(comp);
-              if (!detail) return null;
-              if (detail.label.startsWith("Réservé")) return null; // Géré par BlocClasses
-              return <MessageBlocage {...detail} />;
-            })()}
-        </CardHeader>
-        <CardContent className="space-y-2">{body}</CardContent>
-      </Card>
+        {/* Corps déplié */}
+        {ouvert && (
+          <div className="space-y-2 border-t border-border/60 px-3 pb-3 pt-2">
+            {renderBody(comp, blocData)}
+          </div>
+        )}
+      </div>
     );
   };
 
   // =======================================================================
-  // RENDER : Page complète
+  // RENDER : Page complète (accordéons par catégorie)
   // =======================================================================
 
   if (loadingCompetences || loadingAchats || loadingClasse) {
@@ -2396,12 +2545,22 @@ const Etape5_Competences_V2 = ({
     );
   }
 
+  const messageVideFiltre =
+    filtre === "acquises"
+      ? "Aucune compétence acquise dans cette catégorie."
+      : filtre === "disponibles"
+        ? "Aucune compétence disponible dans cette catégorie."
+        : filtre === "bloquees"
+          ? "Aucune compétence bloquée dans cette catégorie."
+          : "Aucune compétence dans cette catégorie.";
+
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-xl font-semibold text-foreground">
         Étape 5 — Achat de compétences
       </h2>
-      {/* Filtres de statut (C3c) — barre globale au-dessus des onglets. */}
+
+      {/* Filtres de statut (C3c) — barre globale. */}
       <div className="flex flex-wrap gap-1.5">
         {FILTRE_OPTIONS.map((f) => (
           <Button
@@ -2416,53 +2575,68 @@ const Etape5_Competences_V2 = ({
           </Button>
         ))}
       </div>
-      <Tabs defaultValue="generale" className="w-full">
-        {/* Sprint 5.5 Section 2.3 : sous-menu scrollable horizontalement
-            sur mobile. Pattern aligné sur Encyclopedie.tsx (cercles de
-            magie, domaines de prière). Conserve Radix Tabs (state +
-            accessibilité), ne change que le style. */}
-        <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto pb-1 scrollbar-hide">
-          {TAB_CONFIG.map((t) => (
-            <TabsTrigger
-              key={t.key}
-              value={t.key}
-              className="flex-shrink-0 whitespace-nowrap"
-            >
-              {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+
+      {/* Légende des pastilles : repliable, repliée par défaut. */}
+      <LegendePastilles
+        ouvert={legendeOuverte}
+        onToggle={() => setLegendeOuverte((v) => !v)}
+      />
+
+      {/* Accordéons par catégorie (remplacent les Radix Tabs). */}
+      <div className="space-y-2">
         {TAB_CONFIG.map((t) => {
-          const compsFiltrees = (competencesParTab[t.key] ?? []).filter(
-            matchFiltre,
-          );
-          const messageVide =
-            filtre === "acquises"
-              ? "Aucune compétence acquise dans cette catégorie."
-              : filtre === "disponibles"
-                ? "Aucune compétence disponible dans cette catégorie."
-                : filtre === "bloquees"
-                  ? "Aucune compétence bloquée dans cette catégorie."
-                  : "Aucune compétence dans cette catégorie.";
+          const comps = (competencesParTab[t.key] ?? []).filter(matchFiltre);
+          const open = categoriesOuvertes.has(t.key);
           return (
-            <TabsContent key={t.key} value={t.key} className="space-y-3">
-              {(t.key === "mage" || t.key === "pretre") && (
-                <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                  💡{" "}
-                  {t.key === "mage"
-                    ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
-                    : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."}
-                </p>
+            <div key={t.key} className="rounded-lg border border-border">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleCategorie(t.key)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleCategorie(t.key);
+                  }
+                }}
+                className="flex cursor-pointer items-center justify-between gap-2 px-3 py-3"
+              >
+                <span className="flex items-center gap-2 font-heading font-semibold text-foreground">
+                  {open ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  {t.label}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {comps.length}
+                </Badge>
+              </div>
+
+              {open && (
+                <div className="space-y-2 border-t border-border/60 px-3 pb-3 pt-3">
+                  {(t.key === "mage" || t.key === "pretre") && (
+                    <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                      💡{" "}
+                      {t.key === "mage"
+                        ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
+                        : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."}
+                    </p>
+                  )}
+                  {comps.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {messageVideFiltre}
+                    </p>
+                  ) : (
+                    comps.map((c) => renderCompetenceItem(c))
+                  )}
+                </div>
               )}
-              {compsFiltrees.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{messageVide}</p>
-              ) : (
-                compsFiltrees.map((c) => renderCompetence(c))
-              )}
-            </TabsContent>
+            </div>
           );
         })}
-      </Tabs>
+      </div>
 
       {/* Dialog maître requis */}
       <Dialog
