@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,13 +58,6 @@ interface Etape7Props {
    */
   etapeCreation?: number;
   /**
-   * Drapeau parent : true seulement si on est sur l'etape la plus haute
-   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
-   * en arriere), l'auto-skip est desactive meme si etapeCreation === 7.
-   * Defaut true pour compatibilite.
-   */
-  autoSkipActif?: boolean;
-  /**
    * XP encore disponibles pour le personnage (xp_total - xp_depense).
    * Sert au grisage UI du bouton d'achat quand le budget est insuffisant.
    * Le serveur reste l'arbitre final de la validation.
@@ -88,7 +81,6 @@ interface AcheterPriereParams {
 const Etape7_Prieres_V2 = ({
   personnageId,
   etapeCreation,
-  autoSkipActif = true,
   xpDisponible = 0,
   onSuccess,
   onError,
@@ -414,17 +406,6 @@ const Etape7_Prieres_V2 = ({
       (!loadingDomaines &&
         proscritsResolus &&
         domainesAffiches.length === 0));
-
-  const skipDeclencheRef = useRef(false);
-  useEffect(() => {
-    if (!autoSkipActif) return;
-    if (skipDeclencheRef.current) return;
-    if (etapeCreation == null || etapeCreation > 7) return;
-    if (!aucunePriereAchetable) return;
-    if (avancerMutation.isPending) return;
-    skipDeclencheRef.current = true;
-    avancerMutation.mutate();
-  }, [autoSkipActif, etapeCreation, aucunePriereAchetable, avancerMutation]);
 
   const peutAcheter =
     !!priereSelectionnee &&

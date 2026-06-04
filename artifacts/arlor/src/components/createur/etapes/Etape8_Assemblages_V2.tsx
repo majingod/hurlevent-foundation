@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,13 +35,6 @@ interface Etape8Props {
    * defaut si la prop manque.
    */
   xpDisponible?: number;
-  /**
-   * Drapeau parent : true seulement si on est sur l'etape la plus haute
-   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
-   * en arriere), l'auto-skip est desactive meme si etapeCreation === 8.
-   * Defaut true pour compatibilite.
-   */
-  autoSkipActif?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -51,7 +44,6 @@ const Etape8_Assemblages_V2 = ({
   personnageId,
   etapeCreation,
   xpDisponible = 0,
-  autoSkipActif = true,
   onSuccess,
   onError,
   onPrevious,
@@ -198,24 +190,6 @@ const Etape8_Assemblages_V2 = ({
       onError?.(error);
     },
   });
-
-  // Auto-skip : si l'utilisateur arrive sur l'etape 8 en avancement
-  // (etapeCreation === 8) et qu'il ne possede pas la competence
-  // « Assemblage de Runes » (niveauRunes < 1, donc hasAssemblage = false),
-  // on fait avancer etape_creation cote serveur immediatement. La garde
-  // useRef + etapeCreation === N protege contre le re-trigger et permet
-  // la navigation backward.
-  const skipDeclencheRef = useRef(false);
-  useEffect(() => {
-    if (!autoSkipActif) return;
-    if (skipDeclencheRef.current) return;
-    if (etapeCreation == null || etapeCreation > 8) return;
-    if (loadingQuotas) return;
-    if (hasAssemblage) return;
-    if (avancerMutation.isPending) return;
-    skipDeclencheRef.current = true;
-    avancerMutation.mutate();
-  }, [autoSkipActif, etapeCreation, loadingQuotas, hasAssemblage, avancerMutation]);
 
   const handleToggle = (assemblage: AssemblageRow, acquis: PersonnageAssemblageRow | undefined) => {
     if (acquis) {

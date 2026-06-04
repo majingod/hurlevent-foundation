@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,13 +56,6 @@ interface Etape6Props {
    */
   etapeCreation?: number;
   /**
-   * Drapeau parent : true seulement si on est sur l'etape la plus haute
-   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
-   * en arriere), l'auto-skip est desactive meme si etapeCreation === 6.
-   * Defaut true pour compatibilite.
-   */
-  autoSkipActif?: boolean;
-  /**
    * XP encore disponibles pour le personnage (xp_total - xp_depense).
    * Sert au grisage UI du bouton d'achat quand le budget est insuffisant.
    * Le serveur reste l'arbitre final de la validation.
@@ -86,7 +79,6 @@ interface AcheterSortParams {
 const Etape6_Sorts_V2 = ({
   personnageId,
   etapeCreation,
-  autoSkipActif = true,
   xpDisponible = 0,
   onSuccess,
   onError,
@@ -342,25 +334,6 @@ const Etape6_Sorts_V2 = ({
       onError?.(error);
     },
   });
-
-  // Auto-skip : si l'utilisateur arrive sur l'etape 6 en avancement
-  // (etapeCreation === 6) et qu'aucun cercle n'est disponible (l'etape
-  // d'acquisition de cercles n'a rien produit), on fait avancer
-  // etape_creation cote serveur immediatement, sans clic. Le useRef
-  // empeche le re-trigger dans un meme mount. En backward
-  // (etapeCreation > 6), l'effet ne se declenche pas et l'utilisateur
-  // voit l'ecran statique avec le bouton « Suivant ».
-  const skipDeclencheRef = useRef(false);
-  useEffect(() => {
-    if (!autoSkipActif) return;
-    if (skipDeclencheRef.current) return;
-    if (etapeCreation == null || etapeCreation > 6) return;
-    if (loadingAcquisition) return;
-    if (conditionsRemplies) return;
-    if (avancerMutation.isPending) return;
-    skipDeclencheRef.current = true;
-    avancerMutation.mutate();
-  }, [autoSkipActif, etapeCreation, loadingAcquisition, conditionsRemplies, avancerMutation]);
 
   const peutAcheter =
     !!sortSelectionne &&
