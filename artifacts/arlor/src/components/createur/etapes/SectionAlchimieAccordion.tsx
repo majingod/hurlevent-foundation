@@ -128,21 +128,13 @@ export const SectionAlchimieAccordion = ({
   mutationsPending,
   onToggle,
 }: SectionAlchimieAccordionProps) => {
-  // Par défaut : niveaux et types dépliés (le joueur voit ses options),
-  // fiches repliées (détails à la demande via « ❯ Détails »).
+  // Par défaut : tout replié à l'arrivée sur l'étape (niveaux, types et
+  // fiches). Le joueur déplie à la demande.
   const [niveauxOuverts, setNiveauxOuverts] = useState<Set<number>>(
-    () => new Set([1, 2, 3]),
+    () => new Set(),
   );
   const [groupesOuverts, setGroupesOuverts] = useState<Set<string>>(
-    () =>
-      new Set([
-        "1-potion",
-        "1-poison",
-        "2-potion",
-        "2-poison",
-        "3-potion",
-        "3-poison",
-      ]),
+    () => new Set(),
   );
   const [fichesOuvertes, setFichesOuvertes] = useState<Set<string>>(
     () => new Set(),
