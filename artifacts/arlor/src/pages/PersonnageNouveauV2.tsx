@@ -83,12 +83,6 @@ const PersonnageNouveauV2 = () => {
 
   const [personnageId, setPersonnageId] = useState<string | null>(null);
   const [etape, setEtape] = useState<number>(1);
-  // Etape la plus haute jamais atteinte dans cette session. Ne diminue jamais.
-  // Sert a desactiver l'auto-skip si l'utilisateur revient en arriere : on
-  // ne veut pas qu'une etape sans prerequis (ex. etape 7 sans prêtre)
-  // re-skipe automatiquement vers l'avant alors que le joueur essaie de
-  // remonter le wizard.
-  const [etapeMaxAtteinte, setEtapeMaxAtteinte] = useState<number>(1);
   const [xpDeltaCourant, setXpDeltaCourant] = useState<number>(0);
   const [xpGainCourant, setXpGainCourant] = useState<number>(0);
   const [demarrage, setDemarrage] = useState(true);
@@ -217,12 +211,6 @@ const PersonnageNouveauV2 = () => {
     setXpGainCourant(0);
   }, [etape]);
 
-  // Maintient etapeMaxAtteinte = max(etapeMaxAtteinte, etape). Augmente
-  // jamais autrement. Ne diminue jamais (pas de reset).
-  useEffect(() => {
-    setEtapeMaxAtteinte((m) => Math.max(m, etape));
-  }, [etape]);
-
   // SCROLL-TO-TOP : remonter en haut du wizard à chaque changement d'étape.
   // Les étapes sont du state (setEtape), pas une route → le ScrollToTop global
   // (basé sur pathname) ne se déclenche pas ici.
@@ -234,12 +222,6 @@ const PersonnageNouveauV2 = () => {
   const xpDepense = personnage?.xp_depense ?? 0;
   const xpTotalAffiche = xpTotal + xpGainCourant;
   const xpDisponible = xpTotalAffiche - xpDepense - xpDeltaCourant;
-
-  // Hybride 4 (s99) : l'auto-skip silencieux des étapes vides est désactivé.
-  // Quand une étape (Sorts/Prières/Assemblages/Artisanat) n'a rien à proposer,
-  // le wizard affiche désormais l'empty-state explicite avec son bouton
-  // « Suivant » au lieu de sauter en silence (corrige le saut muet 5→10).
-  const autoSkipActif = false;
 
   const progression = useMemo(
     () => Math.round((etape / TOTAL_STEPS) * 100),
@@ -446,7 +428,6 @@ const PersonnageNouveauV2 = () => {
           <Etape6_Sorts_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
-            autoSkipActif={autoSkipActif}
             xpDisponible={xpDisponible}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
@@ -456,7 +437,6 @@ const PersonnageNouveauV2 = () => {
           <Etape7_Prieres_V2
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
-            autoSkipActif={autoSkipActif}
             xpDisponible={xpDisponible}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
@@ -467,7 +447,6 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             xpDisponible={xpDisponible}
-            autoSkipActif={autoSkipActif}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />
@@ -477,7 +456,6 @@ const PersonnageNouveauV2 = () => {
             personnageId={personnageId}
             etapeCreation={personnage?.etape_creation ?? 0}
             xpDisponible={xpDisponible}
-            autoSkipActif={autoSkipActif}
             onSuccess={handleEtapeSuccess}
             onPrevious={handlePrevious}
           />

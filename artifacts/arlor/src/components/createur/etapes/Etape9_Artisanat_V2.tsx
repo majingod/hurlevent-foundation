@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,13 +78,6 @@ interface Etape9Props {
    * defaut si la prop manque.
    */
   xpDisponible?: number;
-  /**
-   * Drapeau parent : true seulement si on est sur l'etape la plus haute
-   * jamais atteinte dans cette session. Si false (l'utilisateur est revenu
-   * en arriere), l'auto-skip est desactive meme si etapeCreation === 9.
-   * Defaut true pour compatibilite.
-   */
-  autoSkipActif?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -94,7 +87,6 @@ const Etape9_Artisanat_V2 = ({
   personnageId,
   etapeCreation,
   xpDisponible = 0,
-  autoSkipActif = true,
   onSuccess,
   onError,
   onPrevious,
@@ -560,32 +552,6 @@ const Etape9_Artisanat_V2 = ({
       onError?.(error);
     },
   });
-
-  // Auto-skip : si l'utilisateur arrive sur l'etape 9 en avancement
-  // (etapeCreation === 9) et qu'aucune competence d'artisanat n'est
-  // acquise, on fait avancer etape_creation cote serveur immediatement.
-  // La garde useRef + etapeCreation === N protege contre le re-trigger
-  // et permet la navigation backward.
-  const skipDeclencheRef = useRef(false);
-  useEffect(() => {
-    if (!autoSkipActif) return;
-    if (skipDeclencheRef.current) return;
-    if (etapeCreation == null || etapeCreation > 9) return;
-    if (loadingQuotas) return;
-    if (hasAlchimie || hasForge || hasJoaillerie || hasPieges) return;
-    if (avancerMutation.isPending) return;
-    skipDeclencheRef.current = true;
-    avancerMutation.mutate();
-  }, [
-    autoSkipActif,
-    etapeCreation,
-    loadingQuotas,
-    hasAlchimie,
-    hasForge,
-    hasJoaillerie,
-    hasPieges,
-    avancerMutation,
-  ]);
 
   if (loadingQuotas) {
     return (
