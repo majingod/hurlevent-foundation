@@ -16,6 +16,7 @@ interface Recette {
   ingredients: Json | null;
   niveau_requis: number | null;
   type: string | null;
+  duree: string | null;
 }
 
 interface Ingredient {
@@ -37,7 +38,6 @@ const FILTRES_TYPE = [
   { key: null, label: "Tous Types" },
   { key: "potion", label: "Potions" },
   { key: "poison", label: "Poisons" },
-  { key: "autre", label: "Catalyseurs" },
   { key: "ingredients", label: "Ingrédients Alchimiques" },
 ];
 
@@ -107,7 +107,7 @@ const AlchimieSection = ({
     : [];
 
   const groupedByType = groupBy(recettesFiltrees, (r) => r.type ?? "autre");
-  const typeOrder = ["potion", "poison", "autre"];
+  const typeOrder = ["potion", "poison"];
   const typeKeys = [
     ...typeOrder.filter((k) => k in groupedByType),
     ...Object.keys(groupedByType).filter((k) => !typeOrder.includes(k)),
@@ -185,6 +185,7 @@ const AlchimieSection = ({
                         </AccordionTrigger>
                         <AccordionContent className="text-sm text-muted-foreground space-y-2">
                           {r.effet && <p><span className="font-medium text-foreground">Effet :</span> {r.effet}</p>}
+                          {r.duree && <p><span className="font-medium text-foreground">Durée :</span> {r.duree}</p>}
                           {r.formule && <p><span className="font-medium text-foreground">Formule :</span> {r.formule}</p>}
                           {composants.length > 0 && (
                             <div>
