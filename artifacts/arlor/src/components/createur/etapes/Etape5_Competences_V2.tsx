@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import ReligionDetails from "@/components/shared/ReligionDetails";
 import {
   Dialog,
   DialogContent,
@@ -688,10 +689,26 @@ const Etape5_Competences_V2 = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("religions")
-        .select("id, nom")
+        .select(
+          "id, nom, dirigeant, fondateur, symbole_sacre, pouvoir_symbole, domaines_principaux, domaines_proscrits, lore_fiche, rituels_fiche, lore_manuel, rituels_manuel",
+        )
         .eq("est_actif", true);
       if (error) throw error;
-      return (data ?? []) as Pick<ReligionRow, "id" | "nom">[];
+      return (data ?? []) as Pick<
+        ReligionRow,
+        | "id"
+        | "nom"
+        | "dirigeant"
+        | "fondateur"
+        | "symbole_sacre"
+        | "pouvoir_symbole"
+        | "domaines_principaux"
+        | "domaines_proscrits"
+        | "lore_fiche"
+        | "rituels_fiche"
+        | "lore_manuel"
+        | "rituels_manuel"
+      >[];
     },
   });
 
@@ -2038,6 +2055,7 @@ const Etape5_Competences_V2 = ({
     const prereqCompBloquee = prereqBloqueTotal(comp);
     const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
     const options = getToutesOptions(comp);
+    const estReligion = comp.type_choix === "religion";
 
     return (
       <div
@@ -2058,43 +2076,74 @@ const Etape5_Competences_V2 = ({
             mutationEnCours ||
             (dejaAchete && estGratuit) ||
             xpInsuffisants;
+          const religionObj = estReligion
+            ? (religions ?? []).find((r) => r.id === opt.value)
+            : undefined;
+          const detKey = `reldet-${comp.id}-${opt.value}`;
+          const manKey = `relman-${comp.id}-${opt.value}`;
+          const detOuvert = !!optionsOuvertes[detKey];
           return (
-            <div
-              key={opt.value}
-              className="flex flex-wrap items-center gap-3 rounded border border-border p-2"
-            >
-              <Checkbox
-                id={`${comp.id}-${opt.value}`}
-                checked={dejaAchete}
-                disabled={disabled}
-                title={
-                  xpInsuffisants
-                    ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
-                    : undefined
-                }
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    handleBuy(comp, niv1, opt.value);
-                  } else if (achat) {
-                    handleUncheck(comp, achat);
+            <div key={opt.value} className="rounded border border-border">
+              <div className="flex flex-wrap items-center gap-3 p-2">
+                <Checkbox
+                  id={`${comp.id}-${opt.value}`}
+                  checked={dejaAchete}
+                  disabled={disabled}
+                  title={
+                    xpInsuffisants
+                      ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+                      : undefined
                   }
-                }}
-              />
-              <Label
-                htmlFor={`${comp.id}-${opt.value}`}
-                className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
-              >
-                <strong>{opt.label}</strong>
-                {estGratuit ? (
-                  <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
-                    Acquis gratuitement
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    {niv1.cout_xp} XP
-                  </Badge>
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      handleBuy(comp, niv1, opt.value);
+                    } else if (achat) {
+                      handleUncheck(comp, achat);
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor={`${comp.id}-${opt.value}`}
+                  className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
+                >
+                  <strong>{opt.label}</strong>
+                  {estGratuit ? (
+                    <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
+                      Acquis gratuitement
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      {niv1.cout_xp} XP
+                    </Badge>
+                  )}
+                </Label>
+                {estReligion && religionObj && (
+                  <button
+                    type="button"
+                    onClick={() => toggleOption(detKey, detOuvert)}
+                    aria-expanded={detOuvert}
+                    className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {detOuvert ? (
+                      <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3" />
+                    )}
+                    Détails
+                  </button>
                 )}
-              </Label>
+              </div>
+              {estReligion && religionObj && detOuvert && (
+                <div className="border-t border-border/60 p-3">
+                  <ReligionDetails
+                    religion={religionObj}
+                    isManuelOpen={!!optionsOuvertes[manKey]}
+                    onToggleManuel={() =>
+                      toggleOption(manKey, !!optionsOuvertes[manKey])
+                    }
+                  />
+                </div>
+              )}
             </div>
           );
         })}
