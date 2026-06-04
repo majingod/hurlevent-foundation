@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, Info, Loader2 } from "lucide-react";
+import { AlertTriangle, BookOpen, Info, Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,12 +22,10 @@ import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
 const NON_RACES_ID = "4d7e2226-76cb-4b94-9df4-b8f12ff486e1";
-const JUSTIFICATION_MIN = 100;
 
 interface Etape2Form {
   race_id: string;
   sous_type_chimeride: "carnivore" | "herbivore" | "";
-  justification: string;
 }
 
 interface Race {
@@ -48,24 +45,20 @@ interface Race {
 const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, reset, register } =
+  const { control, handleSubmit, watch, reset } =
     useForm<Etape2Form>({
       defaultValues: {
         race_id: "",
         sous_type_chimeride: "",
-        justification: "",
       },
     });
 
   const raceId = watch("race_id");
-  const justification = watch("justification");
 
   const estChimeride = raceId === CHIMERIDE_ID;
   const estNonRace = raceId === NON_RACES_ID;
   const necessiteJustification = estChimeride || estNonRace;
 
-  const justificationLength = (justification ?? "").trim().length;
-  const justificationValide = justificationLength >= JUSTIFICATION_MIN;
 
   const sousTypeChimeride = watch("sous_type_chimeride");
 
@@ -75,9 +68,8 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const isValid = useMemo(() => {
     if (!raceId) return false;
     if (estChimeride && !sousTypeChimeride) return false;
-    if (necessiteJustification && !justificationValide) return false;
     return true;
-  }, [raceId, estChimeride, sousTypeChimeride, necessiteJustification, justificationValide]);
+  }, [raceId, estChimeride, sousTypeChimeride]);
 
   const { data: races = [], isLoading } = useQuery({
     queryKey: ["v2-races"],
@@ -112,28 +104,17 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
   useEffect(() => {
     const charger = async () => {
-      const [{ data: perso }, { data: demande }] = await Promise.all([
-        supabase
-          .from("personnages")
-          .select("race_id, sous_type_chimeride")
-          .eq("id", personnageId)
-          .single(),
-        supabase
-          .from("personnage_races_demandes")
-          .select("background")
-          .eq("personnage_id", personnageId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      const { data: perso } = await supabase
+        .from("personnages")
+        .select("race_id, sous_type_chimeride")
+        .eq("id", personnageId)
+        .single();
       if (!perso) return;
-      const just = (demande?.background as string | undefined) ?? "";
       reset({
         race_id: perso.race_id ?? "",
         sous_type_chimeride:
           (perso.sous_type_chimeride as "carnivore" | "herbivore" | null) ??
           "",
-        justification: just,
       });
     };
     charger();
@@ -148,24 +129,13 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       toast.error("Choisis le sous-type Chiméride (carnivore ou herbivore).");
       return;
     }
-    if (
-      necessiteJustification &&
-      values.justification.trim().length < JUSTIFICATION_MIN
-    ) {
-      toast.error(
-        `La justification doit faire au moins ${JUSTIFICATION_MIN} caractères.`
-      );
-      return;
-    }
 
     setSubmitting(true);
     const sousType = estChimeride ? values.sous_type_chimeride : null;
-    const justif = necessiteJustification ? values.justification.trim() : null;
     const { data, error } = await supabase.rpc("sauvegarder_etape_2", {
       p_personnage_id: personnageId,
       p_race_id: values.race_id,
       p_sous_type_chimeride: sousType as unknown as string,
-      p_justification: justif as unknown as string,
     });
     setSubmitting(false);
 
@@ -358,29 +328,12 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       {/* Bloc d'approbation unifié pour Chiméride ET Non-Races */}
       {necessiteJustification && (
         <div className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="justif" className="text-base text-gold">
-              Justification & background
-            </Label>
-            <p className="text-xs text-white/50">
-              Cette race nécessite l'accord de l'équipe d'animation. Décris ton
-              concept, ton background, ce qui motive ce choix.
+          <div className="flex items-start gap-2 rounded-md border border-gold/25 bg-gold/5 p-3 text-sm text-white/80">
+            <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+            <p>
+              Ton <span className="text-gold">historique</span> (étape 1) servira
+              de background pour la demande d'approbation. Aucune longueur minimale.
             </p>
-            <Textarea
-              id="justif"
-              rows={6}
-              {...register("justification")}
-              placeholder="Décris pourquoi tu choisis cette race et le background associé…"
-              className="bg-white/5 border-white/10"
-            />
-            <div
-              className={`text-xs ${
-                justificationValide ? "text-emerald-400" : "text-white/50"
-              }`}
-            >
-              {justificationLength} / {JUSTIFICATION_MIN} caractères minimum
-              {justificationValide && " ✓"}
-            </div>
           </div>
 
           <div className="flex items-start gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 p-3 text-sm text-sky-100">
