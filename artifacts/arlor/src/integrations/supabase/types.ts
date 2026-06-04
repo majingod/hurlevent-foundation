@@ -3040,6 +3040,7 @@ export type Database = {
         Row: {
           cout_xp: number | null
           description: string | null
+          duree: string | null
           effet: string | null
           est_actif: boolean | null
           formule: string | null
@@ -3052,6 +3053,7 @@ export type Database = {
         Insert: {
           cout_xp?: number | null
           description?: string | null
+          duree?: string | null
           effet?: string | null
           est_actif?: boolean | null
           formule?: string | null
@@ -3064,6 +3066,7 @@ export type Database = {
         Update: {
           cout_xp?: number | null
           description?: string | null
+          duree?: string | null
           effet?: string | null
           est_actif?: boolean | null
           formule?: string | null
@@ -5742,6 +5745,15 @@ export type Database = {
         }
         Returns: number
       }
+      calculer_duree_incantation_priere: {
+        Args: {
+          p_duree_choisie: string
+          p_niveau: number
+          p_portee_choisie: string
+          p_zone_choisie: string
+        }
+        Returns: number
+      }
       changer_role_utilisateur: {
         Args: { p_nouveau_role: string; p_user_id: string }
         Returns: Json
@@ -5816,6 +5828,7 @@ export type Database = {
         }[]
       }
       get_stats_admin: { Args: never; Returns: Json }
+      immutable_array_to_string: { Args: { arr: string[] }; Returns: string }
       marquer_absent: { Args: { p_inscription_id: string }; Returns: Json }
       marquer_present: { Args: { p_inscription_id: string }; Returns: Json }
       personnage_a_des_prieres: {
