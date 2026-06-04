@@ -2,6 +2,11 @@ import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Database } from "@/integrations/supabase/types";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
+import {
+  useManuelDisclosure,
+  ManuelGlobalSwitch,
+} from "@/components/shared/ToggleManuel";
+import { AlchimieVerbatim } from "@/components/shared/AlchimieVerbatim";
 
 type RecetteRow = Database["public"]["Tables"]["recettes_alchimie"]["Row"];
 type PersonnageRecetteRow =
@@ -140,10 +145,27 @@ export const SectionAlchimieAccordion = ({
     () => new Set(),
   );
 
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } =
+    useManuelDisclosure();
+
   const niveauxDisponibles = [1, 2, 3].filter((n) => n <= niveauAlchimie);
+  const recetteIdsAvecVerbatim = recettes
+    .filter(
+      (r) =>
+        niveauxDisponibles.includes(r.niveau_requis ?? 0) &&
+        r.description_verbatim,
+    )
+    .map((r) => r.id);
 
   return (
     <div className="flex flex-col gap-3">
+      {recetteIdsAvecVerbatim.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(recetteIdsAvecVerbatim)}
+          onToggle={() => toggleAll(recetteIdsAvecVerbatim)}
+          subtitle="Affiche le verbatim sur toutes les recettes"
+        />
+      )}
       {niveauxDisponibles.map((niveau) => {
         const recettesNiveau = recettes.filter(
           (r) => r.niveau_requis === niveau,
@@ -301,7 +323,20 @@ export const SectionAlchimieAccordion = ({
                                   </button>
                                 </div>
 
-                                {ficheOuverte && <FicheRecette recette={recette} />}
+                                {ficheOuverte && (
+                                  <>
+                                    <FicheRecette recette={recette} />
+                                    <div className="px-3.5 pb-2.5">
+                                      <AlchimieVerbatim
+                                        verbatim={recette.description_verbatim}
+                                        isManuelOpen={isManuelOpen(recette.id)}
+                                        onToggleManuel={() =>
+                                          toggleManuel(recette.id)
+                                        }
+                                      />
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             );
                           })}

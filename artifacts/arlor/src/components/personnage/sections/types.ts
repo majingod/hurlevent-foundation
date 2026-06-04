@@ -132,6 +132,7 @@ export interface Recette {
   effet: string | null;
   formule: string | null;
   ingredients: Json | null;
+  description_verbatim: string | null;
 }
 
 export interface ArtisanatEtat {

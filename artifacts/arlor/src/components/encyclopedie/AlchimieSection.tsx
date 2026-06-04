@@ -6,6 +6,11 @@ import {
 import type { Json } from "@/integrations/supabase/types";
 import { NIVEAU_ALCHIMIE_LABELS, TYPE_RECETTE_LABELS } from "@/constants/labels";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
+import {
+  useManuelDisclosure,
+  ManuelGlobalSwitch,
+} from "@/components/shared/ToggleManuel";
+import { AlchimieVerbatim } from "@/components/shared/AlchimieVerbatim";
 
 interface Recette {
   id: string;
@@ -17,6 +22,7 @@ interface Recette {
   niveau_requis: number | null;
   type: string | null;
   duree: string | null;
+  description_verbatim: string | null;
 }
 
 interface Ingredient {
@@ -60,6 +66,11 @@ const AlchimieSection = ({
   const [typeFiltre, setTypeFiltre] = useState<string | null>(null);
   const [niveauIngFiltre, setNiveauIngFiltre] = useState<number | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } =
+    useManuelDisclosure();
+  const recetteIdsAvecVerbatim = recettes
+    .filter((r) => r.description_verbatim)
+    .map((r) => r.id);
 
   useEffect(() => {
     if (!searchQuery) return;
@@ -162,6 +173,13 @@ const AlchimieSection = ({
       )}
 
       {/* Recettes */}
+      {!showIngredients && recetteIdsAvecVerbatim.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(recetteIdsAvecVerbatim)}
+          onToggle={() => toggleAll(recetteIdsAvecVerbatim)}
+          subtitle="Affiche le verbatim sur toutes les recettes"
+        />
+      )}
       {!showIngredients && typeKeys.map((type) => {
         const byNiveau = groupBy(groupedByType[type], (r) => String(r.niveau_requis ?? 1));
         const niveaux = Object.keys(byNiveau).sort();
@@ -210,6 +228,11 @@ const AlchimieSection = ({
                             </div>
                           )}
                           {r.description && <p className="mt-2">{r.description}</p>}
+                          <AlchimieVerbatim
+                            verbatim={r.description_verbatim}
+                            isManuelOpen={isManuelOpen(r.id)}
+                            onToggleManuel={() => toggleManuel(r.id)}
+                          />
                         </AccordionContent>
                       </AccordionItem>
                     );

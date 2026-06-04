@@ -5240,6 +5240,7 @@ export type Database = {
       vue_recettes_personnage: {
         Row: {
           description: string | null
+          description_verbatim: string | null
           effet: string | null
           formule: string | null
           id: string | null
