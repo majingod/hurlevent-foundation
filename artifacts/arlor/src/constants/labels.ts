@@ -31,7 +31,6 @@ export const NIVEAU_ALCHIMIE_LABELS: Record<number, string> = {
 export const TYPE_RECETTE_LABELS: Record<string, string> = {
   potion: "Potion",
   poison: "Poison",
-  autre:  "Autre",
 };
 
 // --- Compétences (statut maître) ---
