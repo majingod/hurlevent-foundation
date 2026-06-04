@@ -27,7 +27,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminJoueurs from "@/pages/admin/AdminJoueurs";
 import AdminPersonnages from "@/pages/admin/AdminPersonnages";
 import AdminEvenements from "@/pages/admin/AdminEvenements";
-import AdminCompetencesMaitre from "@/pages/admin/AdminCompetencesMaitre";
+import AdminApprobations from "@/pages/admin/AdminApprobations";
 import AdminDonnees from "@/pages/admin/AdminDonnees";
 
 const queryClient = new QueryClient({
@@ -117,12 +117,16 @@ const AppRoutes = () => (
       }
     />
     <Route
-      path="/administration/competences-maitre"
+      path="/administration/approbations"
       element={
         <ProtectedRoute requiredRole="animateur">
-          <AdminCompetencesMaitre />
+          <AdminApprobations />
         </ProtectedRoute>
       }
+    />
+    <Route
+      path="/administration/competences-maitre"
+      element={<Navigate to="/administration/approbations" replace />}
     />
     <Route
       path="/administration/donnees"
