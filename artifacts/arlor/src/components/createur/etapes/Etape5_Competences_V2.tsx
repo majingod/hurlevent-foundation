@@ -9,13 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronDown, ChevronRight, Loader2, Lock, Minus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Lock, Minus, Plus } from "lucide-react";
 
 // =========================================================================
 // TYPES
@@ -61,11 +54,6 @@ interface AcheterCompetenceParams {
   p_appris_via_maitre?: boolean;
   p_nom_maitre?: string;
   p_choix_achat?: string;
-}
-
-interface DropdownOption {
-  value: string;
-  label: string;
 }
 
 interface CascadeItem {
@@ -179,23 +167,6 @@ function normalizeCategorie(value: string | null | undefined): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
-function resoudreChoixAffichage(
-  choixAchat: string | null,
-  typeChoix: string | null,
-  religions: Pick<ReligionRow, "id" | "nom">[],
-  langues: Pick<LangueRow, "id" | "nom" | "est_ancienne">[],
-): string | null {
-  if (!choixAchat || !typeChoix) return null;
-  if (typeChoix === "religion") {
-    return religions.find((r) => r.id === choixAchat)?.nom ?? choixAchat;
-  }
-  if (typeChoix === "langue" || typeChoix === "langue_ancienne") {
-    return langues.find((l) => l.id === choixAchat)?.nom ?? choixAchat;
-  }
-  // categorie_creature, cercle, domaine, famille_criminelle, categorie_depecage :
-  // valeur stockée directement affichable (nom littéral).
-  return choixAchat;
-}
 
 /**
  * Statut d'une pastille pour afficher le contexte d'un prérequis ou d'une classe.
@@ -545,14 +516,12 @@ const Etape5_Competences_V2 = ({
   } | null>(null);
   const [masterName, setMasterName] = useState("");
 
-  // Pré-sélection de choix dans les dropdowns avant validation
-  // Clé : `${comp.id}_${niveau}` pour validation directe au cochage
-  //   ou : `${comp.id}_add` pour le panneau "+ Ajouter une autre"
-  const [pendingChoix, setPendingChoix] = useState<Record<string, string>>({});
-
-  // Compétence dont le panneau "+ Ajouter une autre" est ouvert
-  const [pendingAddCompId, setPendingAddCompId] = useState<string | null>(null);
-
+  // Sous-accordéons des options à choix (Pure1b). Clé absente => repli par
+  // défaut sauf si l'option a un achat (D2 : auto-ouverture). Valeur explicite
+  // présente => respecte le pliage manuel choisi par l'utilisateur.
+  const [optionsOuvertes, setOptionsOuvertes] = useState<Record<string, boolean>>({});
+  const toggleOption = (key: string, ouvertActuel: boolean) =>
+    setOptionsOuvertes((s) => ({ ...s, [key]: !ouvertActuel }));
   // Confirmation cascade de décochage
   const [cascadeDialog, setCascadeDialog] = useState<CascadeContext | null>(null);
 
@@ -1138,170 +1107,131 @@ const Etape5_Competences_V2 = ({
   };
 
   // =======================================================================
-  // OPTIONS DE DROPDOWN PAR type_choix
+  // OPTIONS À CHOIX (Pure1b) — univers complet + état par couple choix/niveau
   // =======================================================================
 
+  type OptionChecklist = { value: string; label: string; accessible: boolean };
+
   /**
-   * Retourne les options disponibles pour le dropdown selon `type_choix`.
-   * Filtre les options déjà choisies (pour multiple_choix_distinct et
-   * multiple_avec_choix_par_niveau au niveau 1, où un choix doit être unique).
-   * `categorie_depecage` est filtrée aux catégories où le perso a déjà acheté
-   * Connaissances des Créatures.
+   * Univers COMPLET d'options pour un `type_choix`, SANS filtrer le déjà-pris
+   * (la checklist affiche tout, coché = acheté). `accessible=false` => option
+   * verrouillée (ex. Dépeçage d'une catégorie dont le perso n'a pas
+   * Connaissances des Créatures) : affichée mais non dépliable.
    */
-  const getOptionsDropdown = (
-    comp: CompetenceWithNiveaux,
-    niveau: number,
-  ): DropdownOption[] => {
-    const typeChoix = comp.type_choix;
-    if (!typeChoix) return [];
-
-    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
-    const dejaPris = new Set(
-      achatsPourComp.map((a) => a.choix_achat).filter(Boolean) as string[],
-    );
-
-    if (typeChoix === "religion") {
-      // Manuel des règles 2026 (édition 6 mai 2026) : plusieurs achats
-      // autorisés, un par religion différente. La consécration unique
-      // reste gérée via personnages.religion_id + est_croyant,
-      // indépendamment de cette compétence.
+  const getToutesOptions = (comp: CompetenceWithNiveaux): OptionChecklist[] => {
+    const t = comp.type_choix;
+    if (!t) return [];
+    if (t === "religion") {
       return (religions ?? [])
         .filter((r): r is typeof r & { nom: string } => r.nom !== null)
-        .filter((r) => !dejaPris.has(r.id))
-        .map((r) => ({ value: r.id, label: r.nom }));
+        .map((r) => ({ value: r.id, label: r.nom, accessible: true }));
     }
-
-    if (typeChoix === "langue") {
-      // Langue supplémentaire (manuel 2026) : uniquement les langues vivantes.
-      // Les langues anciennes (L'Ancien Commun, L'Ancien Démoniaque, etc.) sont
-      // réservées à la compétence "Décryptage" (type_choix === "langue_ancienne").
+    if (t === "langue") {
       return (langues ?? [])
         .filter((l) => !l.est_ancienne)
-        .filter((l) => !dejaPris.has(l.id))
-        .map((l) => ({ value: l.id, label: l.nom }));
+        .map((l) => ({ value: l.id, label: l.nom, accessible: true }));
     }
-
-    if (typeChoix === "langue_ancienne") {
+    if (t === "langue_ancienne") {
       return (langues ?? [])
         .filter((l) => l.est_ancienne)
-        .filter((l) => !dejaPris.has(l.id))
-        .map((l) => ({ value: l.id, label: l.nom }));
+        .map((l) => ({ value: l.id, label: l.nom, accessible: true }));
     }
-
-    if (typeChoix === "categorie_creature") {
-      // Au niveau 1 d'un multiple_avec_choix_par_niveau, le choix doit être nouveau.
-      // Au niveau N>1, le choix doit être parmi ceux déjà pris au niveau N-1
-      // (logique gérée par la RPC, mais on aide l'utilisateur côté UI).
-      if (comp.type_achat === "multiple_avec_choix_par_niveau" && niveau > 1) {
-        const choixDejaAuNiveauPrecedent = new Set(
-          achatsPourComp
-            .filter((a) => a.niveau_acquis === niveau - 1)
-            .map((a) => a.choix_achat)
-            .filter(Boolean) as string[],
-        );
-        const dejaPrisAuNiveau = new Set(
-          achatsPourComp
-            .filter((a) => a.niveau_acquis === niveau)
-            .map((a) => a.choix_achat)
-            .filter(Boolean) as string[],
-        );
-        return (categoriesCreatures ?? [])
-          .filter((c) => choixDejaAuNiveauPrecedent.has(c.nom))
-          .filter((c) => !dejaPrisAuNiveau.has(c.nom))
-          .map((c) => ({ value: c.nom, label: c.nom }));
-      }
-      // Niveau 1 : filtrer ce qui est déjà pris au niveau 1
-      const dejaPrisAuNiv1 = new Set(
-        achatsPourComp
-          .filter((a) => a.niveau_acquis === 1)
-          .map((a) => a.choix_achat)
-          .filter(Boolean) as string[],
-      );
-      return (categoriesCreatures ?? [])
-        .filter((c) => !dejaPrisAuNiv1.has(c.nom))
-        .map((c) => ({ value: c.nom, label: c.nom }));
+    if (t === "categorie_creature") {
+      return (categoriesCreatures ?? []).map((c) => ({
+        value: c.nom,
+        label: c.nom,
+        accessible: true,
+      }));
     }
-
-    if (typeChoix === "categorie_depecage") {
-      // Liste filtrée aux catégories où le perso a Connaissances des Créatures.
-      const connaissanceCreatures = (achats ?? []).filter((a) => {
-        const c = (competences ?? []).find((cc) => cc.id === a.competence_id);
-        return c?.nom === "Connaissances des Créatures";
-      });
-      const categoriesAccessibles = new Set(
-        connaissanceCreatures.map((a) => a.choix_achat).filter(Boolean) as string[],
+    if (t === "categorie_depecage") {
+      // Accessible uniquement pour les catégories où le perso possède
+      // Connaissances des Créatures (D1 : on affiche tout, le reste verrouillé).
+      const connais = (achats ?? []).filter(
+        (a) =>
+          (competences ?? []).find((cc) => cc.id === a.competence_id)?.nom ===
+          "Connaissances des Créatures",
       );
-      const dejaPrisAuNiveau = new Set(
-        achatsPourComp
-          .filter((a) => a.niveau_acquis === niveau)
-          .map((a) => a.choix_achat)
-          .filter(Boolean) as string[],
+      const acc = new Set(
+        connais.map((a) => a.choix_achat).filter(Boolean) as string[],
       );
-      return (categoriesCreatures ?? [])
-        .filter((c) => categoriesAccessibles.has(c.nom))
-        .filter((c) => !dejaPrisAuNiveau.has(c.nom))
-        .map((c) => ({ value: c.nom, label: c.nom }));
+      return (categoriesCreatures ?? []).map((c) => ({
+        value: c.nom,
+        label: c.nom,
+        accessible: acc.has(c.nom),
+      }));
     }
-
-    if (typeChoix === "cercle") {
-      const dejaPrisAuNiveau = new Set(
-        achatsPourComp
-          .filter((a) => a.niveau_acquis === niveau)
-          .map((a) => a.choix_achat)
-          .filter(Boolean) as string[],
-      );
-      return (cercles ?? [])
-        .filter((c) => !dejaPrisAuNiveau.has(c))
-        .map((c) => ({ value: c, label: c }));
+    if (t === "cercle") {
+      return (cercles ?? []).map((c) => ({ value: c, label: c, accessible: true }));
     }
-
-    if (typeChoix === "domaine") {
-      const dejaPrisAuNiveau = new Set(
-        achatsPourComp
-          .filter((a) => a.niveau_acquis === niveau)
-          .map((a) => a.choix_achat)
-          .filter(Boolean) as string[],
-      );
-      return (domaines ?? [])
-        .filter((d) => !dejaPrisAuNiveau.has(d))
-        .map((d) => ({ value: d, label: d }));
+    if (t === "domaine") {
+      return (domaines ?? []).map((d) => ({ value: d, label: d, accessible: true }));
     }
-
-    if (typeChoix === "famille_criminelle") {
-      const dejaPrisAuNiveau = new Set(
-        achatsPourComp
-          .filter((a) => a.niveau_acquis === niveau)
-          .map((a) => a.choix_achat)
-          .filter(Boolean) as string[],
-      );
-      // Sprint 5.5d Bug 2b : cascade au niveau N>1.
-      // Pour multiple_avec_choix_par_niveau, restreindre aux familles déjà
-      // acquises au niveau précédent (miroir de la logique categorie_creature).
-      // Si le niveau précédent n'a aucun achat avec choix (cas Connaissances
-      // Criminelles niveau 1 = savoir général sans choix), pas de cascade :
-      // toutes les options restent disponibles.
-      if (comp.type_achat === "multiple_avec_choix_par_niveau" && niveau > 1) {
-        const choixDejaAuNiveauPrecedent = new Set(
-          achatsPourComp
-            .filter((a) => a.niveau_acquis === niveau - 1)
-            .map((a) => a.choix_achat)
-            .filter(Boolean) as string[],
-        );
-        if (choixDejaAuNiveauPrecedent.size > 0) {
-          return (famillesCriminelles ?? [])
-            .filter((f): f is typeof f & { nom: string } => f.nom !== null)
-            .filter((f) => choixDejaAuNiveauPrecedent.has(f.nom))
-            .filter((f) => !dejaPrisAuNiveau.has(f.nom))
-            .map((f) => ({ value: f.nom, label: f.nom }));
-        }
-      }
+    if (t === "famille_criminelle") {
       return (famillesCriminelles ?? [])
         .filter((f): f is typeof f & { nom: string } => f.nom !== null)
-        .filter((f) => !dejaPrisAuNiveau.has(f.nom))
-        .map((f) => ({ value: f.nom, label: f.nom }));
+        .map((f) => ({ value: f.nom, label: f.nom, accessible: true }));
     }
-
     return [];
+  };
+
+  type NiveauChoixState = {
+    achat: PersonnageCompetenceRow | undefined;
+    dejaAchete: boolean;
+    estGratuit: boolean;
+    disabled: boolean;
+    niveauPrecedentRequis: boolean;
+    bloque: boolean;
+    xpInsuffisants: boolean;
+  };
+
+  /**
+   * État d'achat d'un niveau POUR UN CHOIX donné (cercle/famille/catégorie...).
+   * Miroir de `niveauAchatState` mais cadencé sur le `choix_achat` (le max
+   * acheté est calculé par choix, pas globalement). Connaissances Criminelles :
+   * le 1er niveau avec choix est le niveau 2 (le niveau 1 est un savoir général
+   * sans choix géré à part) => la cascade « niveau précédent requis » démarre à 3.
+   */
+  const niveauChoixState = (
+    comp: CompetenceWithNiveaux,
+    niv: NiveauInfo,
+    choixValue: string,
+  ): NiveauChoixState => {
+    const achatsDuChoix = (achatsParCompetence.get(comp.id) ?? []).filter(
+      (a) => a.choix_achat === choixValue,
+    );
+    const maxAcheteChoix = achatsDuChoix.length
+      ? Math.max(...achatsDuChoix.map((a) => a.niveau_acquis))
+      : 0;
+    const niveauPrecedentMin = comp.nom === "Connaissances Criminelles" ? 2 : 1;
+    const achat = achatsDuChoix.find((a) => a.niveau_acquis === niv.niveau);
+    const dejaAchete = !!achat;
+    const estGratuit = achat?.xp_depense === 0;
+    const niveauPrecedentRequis =
+      niv.niveau > niveauPrecedentMin && niv.niveau - 1 > maxAcheteChoix;
+    const niveauHorsClasse = niv.niveau > niveauMaxAccessible(comp);
+    const prereqInfo = getPrereqInfo(comp);
+    const prereqBloque =
+      !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
+    const compBloqueeClasse = classeBloque(comp);
+    const xpInsuffisants =
+      !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
+    const disabled =
+      compBloqueeClasse ||
+      niveauHorsClasse ||
+      prereqBloque ||
+      (!dejaAchete && niveauPrecedentRequis) ||
+      mutationEnCours ||
+      (dejaAchete && estGratuit) ||
+      xpInsuffisants;
+    return {
+      achat,
+      dejaAchete,
+      estGratuit,
+      disabled,
+      niveauPrecedentRequis,
+      bloque: compBloqueeClasse || niveauHorsClasse || prereqBloque,
+      xpInsuffisants,
+    };
   };
 
   // =======================================================================
@@ -1522,39 +1452,6 @@ const Etape5_Competences_V2 = ({
    * Le niveau visé est : pour multiple_choix_distinct = 1 ; pour
    * multiple_avec_choix_par_niveau = max+1 (achat séquentiel par choix global).
    */
-  const handleConfirmAdd = (comp: CompetenceWithNiveaux) => {
-    const key = `${comp.id}_add`;
-    const choix = pendingChoix[key];
-    if (!choix) {
-      toast.error("Veuillez sélectionner une option.");
-      return;
-    }
-    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
-
-    let niveauCible = 1;
-    if (comp.type_achat === "multiple_avec_choix_par_niveau") {
-      // Au niveau 1 toujours pour un nouveau choix. Pour reprendre un choix
-      // existant à un niveau supérieur, l'utilisateur cochera le niveau dans
-      // la section principale (pas via "+ Ajouter").
-      // Sprint 5.5d : exception Connaissances Criminelles — son niveau 1 est
-      // un savoir général sans choix, donc le bouton "+ Ajouter une famille"
-      // cible le niveau 2 (premier niveau avec choix de famille).
-      niveauCible = comp.nom === "Connaissances Criminelles" ? 2 : 1;
-    }
-    const niveauInfo = comp.niveaux_parsed.find((n) => n.niveau === niveauCible);
-    if (!niveauInfo) {
-      toast.error("Niveau introuvable pour cette compétence.");
-      return;
-    }
-    handleBuy(comp, niveauInfo, choix);
-    setPendingChoix((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    setPendingAddCompId(null);
-  };
-
   /**
    * Trouve la ligne d'achat à supprimer pour un (comp, niveau) donné.
    * Pour `simple`, il n'y a qu'une ligne par niveau.
@@ -1995,128 +1892,215 @@ const Etape5_Competences_V2 = ({
     );
   };
 
-  const renderMultipleChoixDistinct = (comp: CompetenceWithNiveaux) => {
-    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+  // =======================================================================
+  // RENDER : types à choix (Pure1b) — checklists + sous-accordéons
+  // =======================================================================
+
+  /**
+   * Sous-accordéon d'UNE option (cercle, domaine, catégorie, famille...) pour
+   * `multiple_avec_choix_par_niveau`. En-tête = nom de l'option (repliable, D2 :
+   * auto-ouvert si un niveau est déjà acquis). Corps = checklist des niveaux
+   * passés en `niveauxAMontrer`. `accessible=false` => verrouillé (D1 Dépeçage).
+   */
+  const renderOptionAccordion = (
+    comp: CompetenceWithNiveaux,
+    opt: OptionChecklist,
+    niveauxAMontrer: NiveauInfo[],
+  ): ReactNode => {
+    const achatsDuChoix = (achatsParCompetence.get(comp.id) ?? []).filter(
+      (a) => a.choix_achat === opt.value,
+    );
+    const aAchat = achatsDuChoix.length > 0;
+    const maxAcheteChoix = aAchat
+      ? Math.max(...achatsDuChoix.map((a) => a.niveau_acquis))
+      : 0;
+    const key = `opt-${comp.id}-${opt.value}`;
+    // D2 : repli par défaut, mais auto-ouverture si un niveau est acquis.
+    const open = opt.accessible ? optionsOuvertes[key] ?? aAchat : false;
+
+    return (
+      <div
+        key={opt.value}
+        className={`rounded border border-border ${opt.accessible ? "" : "opacity-50"}`}
+      >
+        <div
+          role={opt.accessible ? "button" : undefined}
+          tabIndex={opt.accessible ? 0 : undefined}
+          onClick={opt.accessible ? () => toggleOption(key, open) : undefined}
+          onKeyDown={
+            opt.accessible
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleOption(key, open);
+                  }
+                }
+              : undefined
+          }
+          className={`flex items-center gap-2 p-2 text-xs ${
+            opt.accessible ? "cursor-pointer" : ""
+          }`}
+        >
+          {!opt.accessible ? (
+            <Lock className="h-3 w-3 shrink-0 text-muted-foreground" />
+          ) : open ? (
+            <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+          )}
+          <strong className="flex-1">{opt.label}</strong>
+          {aAchat && (
+            <Badge variant="secondary" className="text-xs">
+              Niv. {maxAcheteChoix} acquis
+            </Badge>
+          )}
+          {!opt.accessible && (
+            <Badge variant="outline" className="text-xs">
+              Verrouillé
+            </Badge>
+          )}
+        </div>
+
+        {!opt.accessible && (
+          <p className="px-3 pb-2 pl-8 text-xs text-muted-foreground">
+            Achetez d'abord Connaissances des Créatures « {opt.label} ».
+          </p>
+        )}
+
+        {open && opt.accessible && (
+          <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
+            {niveauxAMontrer.map((niv) => {
+              const st = niveauChoixState(comp, niv, opt.value);
+              return (
+                <div
+                  key={niv.niveau}
+                  className={`flex flex-wrap items-center gap-3 pl-1 ${
+                    st.bloque ? "opacity-50" : ""
+                  }`}
+                >
+                  <Checkbox
+                    id={`${comp.id}-${opt.value}-${niv.niveau}`}
+                    checked={st.dejaAchete}
+                    disabled={st.disabled}
+                    title={
+                      st.xpInsuffisants
+                        ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
+                        : undefined
+                    }
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        handleBuy(comp, niv, opt.value);
+                      } else if (st.achat) {
+                        handleUncheck(comp, st.achat);
+                      }
+                    }}
+                  />
+                  <Label
+                    htmlFor={`${comp.id}-${opt.value}-${niv.niveau}`}
+                    className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
+                  >
+                    <span>Niveau {niv.niveau}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {niv.cout_xp} XP
+                    </Badge>
+                    {st.estGratuit && (
+                      <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
+                        Gratuit
+                      </Badge>
+                    )}
+                    {st.niveauPrecedentRequis && !st.dejaAchete && !st.bloque && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Lock className="h-3 w-3" /> Niv. {niv.niveau - 1} requis
+                      </span>
+                    )}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /**
+   * `multiple_choix_distinct` (Langue supplémentaire, Décryptage, Connaissances
+   * des Religions). Mono-niveau, répétable : checklist directe de TOUTES les
+   * options, une case par option (cochée = achetée, décocher = désachat).
+   */
+  const renderMultipleChoixDistinct = (
+    comp: CompetenceWithNiveaux,
+    blocData: BlocPrerequisData,
+  ): ReactNode => {
     const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
     if (!niv1) return null;
     const compBloqueeClasse = classeBloque(comp);
     const prereqCompBloquee = prereqBloqueTotal(comp);
-    const addOpen = pendingAddCompId === comp.id;
-    const keyAdd = `${comp.id}_add`;
-    const choixAdd = pendingChoix[keyAdd] ?? "";
-    const options = getOptionsDropdown(comp, 1);
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    const options = getToutesOptions(comp);
 
     return (
-      <div className={`space-y-2 ${compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""}`}>
-        {/* Liste des achats existants : chacun avec checkbox cochée et décrochable */}
-        {achatsPourComp.map((achat) => {
-          const choixAffiche = resoudreChoixAffichage(
-            achat.choix_achat,
-            comp.type_choix,
-            religions ?? [],
-            langues ?? [],
-          );
-          const estGratuit = achat.xp_depense === 0;
+      <div
+        className={`space-y-2 ${
+          compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
+        }`}
+      >
+        {renderLignePrereqNiveau(niv1, blocData)}
+        {options.map((opt) => {
+          const achat = achatsPourComp.find((a) => a.choix_achat === opt.value);
+          const dejaAchete = !!achat;
+          const estGratuit = achat?.xp_depense === 0;
+          const xpInsuffisants =
+            !dejaAchete && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+          const disabled =
+            compBloqueeClasse ||
+            prereqCompBloquee ||
+            mutationEnCours ||
+            (dejaAchete && estGratuit) ||
+            xpInsuffisants;
           return (
             <div
-              key={achat.id}
+              key={opt.value}
               className="flex flex-wrap items-center gap-3 rounded border border-border p-2"
             >
               <Checkbox
-                checked
-                disabled={compBloqueeClasse || mutationEnCours || estGratuit}
+                id={`${comp.id}-${opt.value}`}
+                checked={dejaAchete}
+                disabled={disabled}
+                title={
+                  xpInsuffisants
+                    ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+                    : undefined
+                }
                 onCheckedChange={(checked) => {
-                  if (!checked) handleUncheck(comp, achat);
+                  if (checked) {
+                    handleBuy(comp, niv1, opt.value);
+                  } else if (achat) {
+                    handleUncheck(comp, achat);
+                  }
                 }}
               />
-              <div className="flex-1 space-y-1 text-xs">
-                <div className="flex flex-wrap items-center gap-2">
-                  <strong>{choixAffiche ?? "—"}</strong>
-                  {estGratuit ? (
-                    <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
-                      Acquis gratuitement
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-xs">
-                      {achat.xp_depense} XP
-                    </Badge>
-                  )}
-                </div>
-              </div>
+              <Label
+                htmlFor={`${comp.id}-${opt.value}`}
+                className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
+              >
+                <strong>{opt.label}</strong>
+                {estGratuit ? (
+                  <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
+                    Acquis gratuitement
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">
+                    {niv1.cout_xp} XP
+                  </Badge>
+                )}
+              </Label>
             </div>
           );
         })}
-
-        {/* Panneau "+ Ajouter une autre" */}
-        {!addOpen && !prereqCompBloquee && !compBloqueeClasse && options.length > 0 && (() => {
-          const xpInsuffisants = niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
-          return (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setPendingAddCompId(comp.id)}
-            disabled={
-              compBloqueeClasse ||
-              prereqCompBloquee ||
-              mutationEnCours ||
-              xpInsuffisants
-            }
-            title={
-              xpInsuffisants
-                ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
-                : undefined
-            }
-            className={`text-xs ${xpInsuffisants ? "opacity-50" : ""}`}
-          >
-            <Plus className="mr-1 h-3 w-3" />
-            Ajouter une autre ({niv1.cout_xp} XP)
-          </Button>
-          );
-        })()}
-        {addOpen && !compBloqueeClasse && !prereqCompBloquee && (
-          <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
-            <Select
-              value={choixAdd}
-              onValueChange={(v) => setPendingChoix((p) => ({ ...p, [keyAdd]: v }))}
-            >
-              <SelectTrigger className="h-8 max-w-xs text-xs">
-                <SelectValue placeholder="Choisir..." />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((o) => (
-                  <SelectItem key={o.value} value={o.value} className="text-xs">
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              disabled={!choixAdd || mutationEnCours || compBloqueeClasse}
-              onClick={() => handleConfirmAdd(comp)}
-            >
-              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              Confirmer ({niv1.cout_xp} XP)
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setPendingAddCompId(null);
-                setPendingChoix((p) => {
-                  const next = { ...p };
-                  delete next[keyAdd];
-                  return next;
-                });
-              }}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-        {options.length === 0 && achatsPourComp.length > 0 && !addOpen && (
+        {options.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
-            Toutes les options disponibles ont été choisies.
+            Aucune option disponible pour le moment.
           </p>
         )}
       </div>
@@ -2124,290 +2108,155 @@ const Etape5_Competences_V2 = ({
   };
 
   /**
-   * `multiple_avec_choix_par_niveau`. Pour chaque "choix" (catégorie, cercle...),
-   * affiche les niveaux 1, 2, 3 en checkboxes. Bouton "+ Ajouter une autre"
-   * en bas pour démarrer un nouveau choix au niveau 1.
+   * `multiple_avec_choix_par_niveau`. Checklist d'options ; chaque option =
+   * sous-accordéon dépliable en niveaux (D2). Cas spécial Connaissances
+   * Criminelles : niveau 1 = case isolée (savoir général sans choix) ; niveaux
+   * 2-3 = un accordéon « Familles criminelles » verrouillé tant que le niveau 1
+   * n'est pas pris, contenant la checklist des familles.
    */
-  const renderMultipleAvecChoixParNiveau = (comp: CompetenceWithNiveaux) => {
-    // Sprint 5.5d Bug 2a : Connaissances Criminelles = cas spécial.
-    // Niveau 1 = savoir général sur TOUTES les familles (sans choix).
-    // Niveau 2 = ajoute un contact dans une famille (multi : 1 par famille).
-    // Niveau 3 = devient membre, cascade sur les choix du niveau 2.
-    const isCriminelles = comp.nom === "Connaissances Criminelles";
-    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
-
-    // Sépare le niveau 1 sans choix (Criminelles) des achats avec choix.
-    const achatNiveau1SansChoix = isCriminelles
-      ? achatsPourComp.find((a) => a.niveau_acquis === 1 && !a.choix_achat)
-      : null;
-    const achatsAvecChoix = isCriminelles
-      ? achatsPourComp.filter((a) => a.choix_achat != null)
-      : achatsPourComp;
-    const niveau1AcquisCriminelles = isCriminelles && !!achatNiveau1SansChoix;
-
-    // Grouper par choix_achat (uniquement les achats avec choix)
-    const parChoix = new Map<string, PersonnageCompetenceRow[]>();
-    achatsAvecChoix.forEach((a) => {
-      const k = a.choix_achat ?? "(sans choix)";
-      if (!parChoix.has(k)) parChoix.set(k, []);
-      parChoix.get(k)!.push(a);
-    });
-
-    const addOpen = pendingAddCompId === comp.id;
-    const keyAdd = `${comp.id}_add`;
-    const choixAdd = pendingChoix[keyAdd] ?? "";
-    // Pour Criminelles, le bouton "+ Ajouter une famille" cible le niveau 2
-    // (le niveau 1 est traité séparément en checkbox sans choix).
-    const niveauAjouter = isCriminelles ? 2 : 1;
-    const optionsAdd = getOptionsDropdown(comp, niveauAjouter);
-    const niv1 = comp.niveaux_parsed.find((n) => n.niveau === 1);
-    const nivAjouter = comp.niveaux_parsed.find((n) => n.niveau === niveauAjouter);
+  const renderMultipleAvecChoixParNiveau = (
+    comp: CompetenceWithNiveaux,
+  ): ReactNode => {
     const compBloqueeClasse = classeBloque(comp);
     const prereqCompBloquee = prereqBloqueTotal(comp);
+    const achatsPourComp = achatsParCompetence.get(comp.id) ?? [];
+    const options = getToutesOptions(comp);
+    const niveaux = comp.niveaux_parsed;
 
-    return (
-      <div className={`space-y-3 ${compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""}`}>
-        {/* Sprint 5.5d Bug 2a : Connaissances Criminelles niveau 1 = checkbox
-            simple sans choix (savoir général sur toutes les familles). */}
-        {isCriminelles && niv1 && (
-          <div className="flex flex-wrap items-center gap-3 rounded border border-border p-2">
-            {(() => {
-              const dejaAcheteCrim = !!achatNiveau1SansChoix;
-              const xpInsuffisants =
-                !dejaAcheteCrim && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
-              return (
-            <Checkbox
-              id={`${comp.id}-crim-niv1`}
-              checked={!!achatNiveau1SansChoix}
-              disabled={
-                compBloqueeClasse ||
-                prereqCompBloquee ||
-                mutationEnCours ||
-                (!!achatNiveau1SansChoix && achatNiveau1SansChoix.xp_depense === 0) ||
-                xpInsuffisants
-              }
-              title={
-                xpInsuffisants
-                  ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+    // ---- Cas spécial : Connaissances Criminelles ----
+    if (comp.nom === "Connaissances Criminelles") {
+      const niv1 = niveaux.find((n) => n.niveau === 1);
+      const niveaux23 = niveaux.filter((n) => n.niveau >= 2);
+      const achatNiv1 = achatsPourComp.find(
+        (a) => a.niveau_acquis === 1 && !a.choix_achat,
+      );
+      const niv1Acquis = !!achatNiv1;
+      const estGratuit1 = achatNiv1?.xp_depense === 0;
+      const xpInsuff1 =
+        !niv1Acquis && !!niv1 && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+      const accKey = `crimfam-${comp.id}`;
+      const famOpen = optionsOuvertes[accKey] ?? niv1Acquis;
+
+      return (
+        <div
+          className={`space-y-3 ${
+            compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
+          }`}
+        >
+          {niv1 && (
+            <div className="flex flex-wrap items-center gap-3 rounded border border-border p-2">
+              <Checkbox
+                id={`${comp.id}-crim-niv1`}
+                checked={niv1Acquis}
+                disabled={
+                  compBloqueeClasse ||
+                  prereqCompBloquee ||
+                  mutationEnCours ||
+                  (niv1Acquis && estGratuit1) ||
+                  xpInsuff1
+                }
+                title={
+                  xpInsuff1
+                    ? `XP insuffisants (manque ${niv1.cout_xp - xpDisponible} XP)`
+                    : undefined
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    handleBuy(comp, niv1);
+                  } else if (achatNiv1) {
+                    handleUncheck(comp, achatNiv1);
+                  }
+                }}
+              />
+              <Label
+                htmlFor={`${comp.id}-crim-niv1`}
+                className="flex flex-1 cursor-pointer flex-col gap-1 text-xs"
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  <strong>Niveau 1</strong>
+                  <Badge variant="secondary" className="text-xs">
+                    {niv1.cout_xp} XP
+                  </Badge>
+                  {estGratuit1 && (
+                    <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
+                      Acquis gratuitement
+                    </Badge>
+                  )}
+                </span>
+                {niv1.description && (
+                  <span className="text-muted-foreground">{niv1.description}</span>
+                )}
+              </Label>
+            </div>
+          )}
+
+          <div
+            className={`rounded border border-border ${
+              niv1Acquis ? "" : "opacity-50"
+            }`}
+          >
+            <div
+              role={niv1Acquis ? "button" : undefined}
+              tabIndex={niv1Acquis ? 0 : undefined}
+              onClick={niv1Acquis ? () => toggleOption(accKey, famOpen) : undefined}
+              onKeyDown={
+                niv1Acquis
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleOption(accKey, famOpen);
+                      }
+                    }
                   : undefined
               }
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  handleBuy(comp, niv1);
-                } else if (achatNiveau1SansChoix) {
-                  handleUncheck(comp, achatNiveau1SansChoix);
-                }
-              }}
-            />
-              );
-            })()}
-            <Label
-              htmlFor={`${comp.id}-crim-niv1`}
-              className="flex-1 cursor-pointer space-y-1 text-xs"
+              className={`flex items-center gap-2 p-2 text-xs ${
+                niv1Acquis ? "cursor-pointer" : ""
+              }`}
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <strong>Niveau 1</strong>
-                <Badge variant="secondary" className="text-xs">
-                  {niv1.cout_xp} XP
+              {!niv1Acquis ? (
+                <Lock className="h-3 w-3 shrink-0 text-muted-foreground" />
+              ) : famOpen ? (
+                <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+              )}
+              <strong className="flex-1">Familles criminelles (Niv. 2-3)</strong>
+              {!niv1Acquis && (
+                <Badge variant="outline" className="text-xs">
+                  Niv. 1 requis
                 </Badge>
-                {achatNiveau1SansChoix?.xp_depense === 0 && (
-                  <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
-                    Acquis gratuitement
-                  </Badge>
+              )}
+            </div>
+            {niv1Acquis && famOpen && (
+              <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
+                {options.map((opt) => renderOptionAccordion(comp, opt, niveaux23))}
+                {options.length === 0 && (
+                  <p className="text-xs italic text-muted-foreground">
+                    Aucune famille disponible pour le moment.
+                  </p>
                 )}
               </div>
-              {niv1.description && (
-                <p className="text-muted-foreground">{niv1.description}</p>
-              )}
-            </Label>
+            )}
           </div>
-        )}
+        </div>
+      );
+    }
 
-        {/* Pour chaque choix existant, afficher les niveaux possibles */}
-        {Array.from(parChoix.entries()).map(([choixKey, achatsDuChoix]) => {
-          const niveauxDuChoix = new Set(achatsDuChoix.map((a) => a.niveau_acquis));
-          const maxAchete = Math.max(...niveauxDuChoix);
-          const choixAffiche = resoudreChoixAffichage(
-            choixKey,
-            comp.type_choix,
-            religions ?? [],
-            langues ?? [],
-          );
-
-          return (
-            <div key={choixKey} className="rounded border border-border p-2">
-              <p className="mb-2 text-xs font-semibold text-foreground">
-                {choixAffiche}
-              </p>
-              <div className="space-y-1.5">
-                {comp.niveaux_parsed
-                  .filter((niv) => !(isCriminelles && niv.niveau === 1))
-                  .map((niv) => {
-                  const dejaAchete = niveauxDuChoix.has(niv.niveau);
-                  // Sprint 5.5d : pour Criminelles, le premier niveau visible
-                  // dans la cascade par famille est le niveau 2. La cascade
-                  // niveauPrecedentRequis ne s'applique donc qu'à partir du
-                  // niveau 3 pour Criminelles.
-                  const niveauPrecedentMin = isCriminelles ? 2 : 1;
-                  const niveauPrecedentRequis =
-                    niv.niveau > niveauPrecedentMin && niv.niveau - 1 > maxAchete;
-                  const achatCible = achatsDuChoix.find(
-                    (a) => a.niveau_acquis === niv.niveau,
-                  );
-                  const estGratuit = achatCible?.xp_depense === 0;
-                  const niveauMax = niveauMaxAccessible(comp);
-                  const niveauHorsClasse = niv.niveau > niveauMax;
-                  const prereqInfo = getPrereqInfo(comp);
-                  const prereqBloque =
-                    !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
-                  const xpInsuffisants =
-                    !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
-                  const disabled =
-                    compBloqueeClasse ||
-                    niveauHorsClasse ||
-                    prereqBloque ||
-                    (!dejaAchete && niveauPrecedentRequis) ||
-                    mutationEnCours ||
-                    (dejaAchete && estGratuit) ||
-                    xpInsuffisants;
-
-                  return (
-                    <div
-                      key={niv.niveau}
-                      className={`flex flex-wrap items-center gap-3 pl-2 ${
-                        compBloqueeClasse || niveauHorsClasse || prereqBloque ? "opacity-50" : ""
-                      }`}
-                    >
-                      <Checkbox
-                        id={`${comp.id}-${choixKey}-${niv.niveau}`}
-                        checked={dejaAchete}
-                        disabled={disabled}
-                        title={
-                          xpInsuffisants
-                            ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
-                            : undefined
-                        }
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            handleBuy(comp, niv, choixKey);
-                          } else if (achatCible) {
-                            handleUncheck(comp, achatCible);
-                          }
-                        }}
-                      />
-                      <Label
-                        htmlFor={`${comp.id}-${choixKey}-${niv.niveau}`}
-                        className="flex-1 cursor-pointer space-y-1 text-xs"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span>Niveau {niv.niveau}</span>
-                          <Badge variant="secondary" className="text-xs">
-                            {niv.cout_xp} XP
-                          </Badge>
-                          {estGratuit && (
-                            <Badge className="bg-green-600/20 text-green-400 border border-green-600/30 text-xs">
-                              Gratuit
-                            </Badge>
-                          )}
-                          {niveauPrecedentRequis && !dejaAchete && !niveauHorsClasse && !compBloqueeClasse && (
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <Lock className="h-3 w-3" /> Niveau {niv.niveau - 1} requis
-                            </span>
-                          )}
-                        </div>
-                      </Label>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* "+ Ajouter une autre" / "+ Ajouter une famille" pour Criminelles.
-            Sprint 5.5d : pour Criminelles, le bouton n'est visible que si le
-            niveau 1 (savoir général) a été acquis. */}
-        {(!isCriminelles || niveau1AcquisCriminelles) &&
-          !addOpen && !compBloqueeClasse && !prereqCompBloquee && optionsAdd.length > 0 && nivAjouter && (() => {
-          const xpInsuffisants =
-            nivAjouter.cout_xp > 0 && nivAjouter.cout_xp > xpDisponible;
-          return (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setPendingAddCompId(comp.id)}
-            disabled={
-              compBloqueeClasse ||
-              prereqCompBloquee ||
-              mutationEnCours ||
-              xpInsuffisants
-            }
-            title={
-              xpInsuffisants
-                ? `XP insuffisants (manque ${nivAjouter.cout_xp - xpDisponible} XP)`
-                : undefined
-            }
-            className={`text-xs ${xpInsuffisants ? "opacity-50" : ""}`}
-          >
-            <Plus className="mr-1 h-3 w-3" />
-            {isCriminelles ? "Ajouter une famille" : "Ajouter une autre"} ({nivAjouter.cout_xp} XP)
-          </Button>
-          );
-        })()}
-        {addOpen && !compBloqueeClasse && !prereqCompBloquee && nivAjouter && (
-          <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border p-2">
-            <Select
-              value={choixAdd}
-              onValueChange={(v) => setPendingChoix((p) => ({ ...p, [keyAdd]: v }))}
-            >
-              <SelectTrigger className="h-8 max-w-xs text-xs">
-                <SelectValue placeholder="Choisir..." />
-              </SelectTrigger>
-              <SelectContent>
-                {optionsAdd.map((o) => (
-                  <SelectItem key={o.value} value={o.value} className="text-xs">
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              disabled={!choixAdd || mutationEnCours || compBloqueeClasse}
-              onClick={() => handleConfirmAdd(comp)}
-            >
-              {mutationEnCours && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              Confirmer ({nivAjouter.cout_xp} XP)
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setPendingAddCompId(null);
-                setPendingChoix((p) => {
-                  const next = { ...p };
-                  delete next[keyAdd];
-                  return next;
-                });
-              }}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-        {optionsAdd.length === 0 && achatsAvecChoix.length > 0 && !addOpen && (
+    // ---- Cas normal : Créatures, Dépeçage, Cercle, Domaine ----
+    return (
+      <div
+        className={`space-y-2 ${
+          compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
+        }`}
+      >
+        {options.map((opt) => renderOptionAccordion(comp, opt, niveaux))}
+        {options.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
-            Toutes les options disponibles ont été choisies.
+            {comp.type_choix === "categorie_depecage"
+              ? "Achetez d'abord Connaissances des Créatures pour au moins une catégorie."
+              : "Aucune option disponible pour le moment."}
           </p>
         )}
-        {comp.type_choix === "categorie_depecage" &&
-          optionsAdd.length === 0 &&
-          achatsPourComp.length === 0 && (
-            <p className="text-xs italic text-muted-foreground">
-              Achetez d'abord Connaissances des Créatures pour au moins une
-              catégorie.
-            </p>
-          )}
       </div>
     );
   };
@@ -2422,7 +2271,7 @@ const Etape5_Competences_V2 = ({
   ): ReactNode => {
     switch (comp.type_achat) {
       case "multiple_choix_distinct":
-        return renderMultipleChoixDistinct(comp);
+        return renderMultipleChoixDistinct(comp, blocData);
       case "multiple_avec_choix_par_niveau":
         return renderMultipleAvecChoixParNiveau(comp);
       case "multiple_sans_choix":
