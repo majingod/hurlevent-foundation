@@ -531,10 +531,10 @@ const Etape5_Competences_V2 = ({
 
   // -- Pure1a : shell accordéon (pattern manuel Set + Chevrons, pas de Radix) --
 
-  // Catégories dépliées (accordéon de 1er niveau). Init différé : Générales +
-  // classe du perso, une fois classeNom connu (cf. useEffect plus bas).
+  // Catégories dépliées (accordéon de 1er niveau). Toutes FERMÉES au départ :
+  // le joueur ouvre lui-même la catégorie qu'il souhaite consulter en premier.
   const [categoriesOuvertes, setCategoriesOuvertes] = useState<Set<string>>(
-    new Set(["generale"]),
+    new Set<string>(),
   );
   const toggleCategorie = (key: string) => {
     setCategoriesOuvertes((prev) => {
@@ -574,7 +574,6 @@ const Etape5_Competences_V2 = ({
   const compRefs = useRef<Map<string, HTMLElement | null>>(new Map());
   const [highlightId, setHighlightId] = useState<string | null>(null);
   // Évite de ré-appliquer l'init des catégories par défaut une fois fait.
-  const categoriesInitRef = useRef(false);
 
   // =======================================================================
   // QUERIES
@@ -798,18 +797,6 @@ const Etape5_Competences_V2 = ({
       onXpDeltaChange?.(0);
     };
   }, [onXpDeltaChange]);
-
-  // Init des catégories ouvertes par défaut : Générales + classe du perso.
-  // Différé jusqu'à ce que classeNom soit connu, puis verrouillé (une fois).
-  useEffect(() => {
-    if (categoriesInitRef.current) return;
-    if (!classeNom) return;
-    const validTab = TAB_CONFIG.some((t) => t.key === classeNom);
-    setCategoriesOuvertes(
-      new Set(validTab ? ["generale", classeNom] : ["generale"]),
-    );
-    categoriesInitRef.current = true;
-  }, [classeNom]);
 
   // Clear du highlight ~2 s après son déclenchement.
   useEffect(() => {
