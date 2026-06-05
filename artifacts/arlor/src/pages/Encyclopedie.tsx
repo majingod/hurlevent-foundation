@@ -64,6 +64,7 @@ interface Sort {
   nom: string;
   niveau: number;
   description: string | null;
+  description_courte: string | null;
   type_sort: string | null;
   zone_effet: string | null;
   portee: string | null;
@@ -76,6 +77,7 @@ interface Priere {
   nom: string;
   niveau: number;
   description: string | null;
+  description_courte: string | null;
   type_priere: string | null;
   zone_effet: string | null;
   portee: string | null;
@@ -835,12 +837,14 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
   const [cercleActif, setCercleActif] = useState<string | null>(null);
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   useEffect(() => {
     if (!searchQuery) return;
     const q = searchQuery.toLowerCase();
     const matches = sorts.filter(s =>
       s.nom.toLowerCase().includes(q) ||
+      (s.description_courte ?? "").toLowerCase().includes(q) ||
       (s.description ?? "").toLowerCase().includes(q) ||
       (s.cercle ?? "").toLowerCase().includes(q)
     );
@@ -851,6 +855,7 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
     const query = searchQuery.toLowerCase();
     const matchTexte = !searchQuery ||
       sort.nom.toLowerCase().includes(query) ||
+      sort.description_courte?.toLowerCase().includes(query) ||
       sort.description?.toLowerCase().includes(query) ||
       sort.cercle?.toLowerCase().includes(query);
     const matchCercle = !cercleActif || sort.cercle === cercleActif;
@@ -860,6 +865,7 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
 
   const grouped = groupBy(filtered, (s) => s.cercle);
   const keys = Object.keys(grouped).sort();
+  const idsVerbatim = filtered.filter((s) => s.description).map((s) => s.id);
 
   return (
     <div className="space-y-8">
@@ -894,6 +900,14 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
           </button>
         ))}
       </div>
+      {idsVerbatim.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(idsVerbatim)}
+          onToggle={() => toggleAll(idsVerbatim)}
+          title="Cet onglet"
+          subtitle="Verbatim du manuel pour les sorts"
+        />
+      )}
       {filtered.length === 0 ? <NoResults /> : keys.map((cercle) => {
         const sortsInCercle = grouped[cercle];
         const byNiveauMin = groupBy(sortsInCercle, (s) => String(getNiveauMin(s.niveau)));
@@ -922,7 +936,12 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
                           {s.zone_effet && <span>Zone : {s.zone_effet}</span>}
                           {s.duree && <span>Durée : {s.duree}</span>}
                         </div>
-                        {s.description && <p>{s.description}</p>}
+                        {(s.description_courte ?? s.description) && <p>{s.description_courte ?? s.description}</p>}
+                        <ToggleManuel
+                          texte={s.description}
+                          isOpen={isManuelOpen(s.id)}
+                          onToggle={() => toggleManuel(s.id)}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   ))}
@@ -948,12 +967,14 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
   const [domaineActif, setDomaineActif] = useState<string | null>(null);
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   useEffect(() => {
     if (!searchQuery) return;
     const q = searchQuery.toLowerCase();
     const matches = prieres.filter(p =>
       p.nom.toLowerCase().includes(q) ||
+      (p.description_courte ?? "").toLowerCase().includes(q) ||
       (p.description ?? "").toLowerCase().includes(q) ||
       (p.domaine ?? "").toLowerCase().includes(q)
     );
@@ -964,6 +985,7 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
     const query = searchQuery.toLowerCase();
     const matchTexte = !searchQuery ||
       priere.nom.toLowerCase().includes(query) ||
+      priere.description_courte?.toLowerCase().includes(query) ||
       priere.description?.toLowerCase().includes(query) ||
       priere.domaine?.toLowerCase().includes(query);
     const matchDomaine = !domaineActif || priere.domaine === domaineActif;
@@ -973,6 +995,7 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
 
   const grouped = groupBy(filtered, (p) => p.domaine);
   const keys = Object.keys(grouped).sort();
+  const idsVerbatim = filtered.filter((p) => p.description).map((p) => p.id);
 
   return (
     <div className="space-y-8">
@@ -1007,6 +1030,14 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
           </button>
         ))}
       </div>
+      {idsVerbatim.length > 0 && (
+        <ManuelGlobalSwitch
+          allOpen={isAllOpen(idsVerbatim)}
+          onToggle={() => toggleAll(idsVerbatim)}
+          title="Cet onglet"
+          subtitle="Verbatim du manuel pour les prières"
+        />
+      )}
       {filtered.length === 0 ? <NoResults /> : keys.map((domaine) => (
         <section key={domaine}>
           <h3 className="font-heading text-lg font-semibold text-primary mb-3">{domaine}</h3>
@@ -1027,7 +1058,12 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
                     {p.duree && <span>Durée : {p.duree}</span>}
                     {p.duree_incantation && <span>Incantation : {p.duree_incantation}</span>}
                   </div>
-                  {p.description && <p>{p.description}</p>}
+                  {(p.description_courte ?? p.description) && <p>{p.description_courte ?? p.description}</p>}
+                  <ToggleManuel
+                    texte={p.description}
+                    isOpen={isManuelOpen(p.id)}
+                    onToggle={() => toggleManuel(p.id)}
+                  />
                 </AccordionContent>
               </AccordionItem>
             ))}
