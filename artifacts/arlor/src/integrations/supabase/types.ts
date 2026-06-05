@@ -5006,6 +5006,36 @@ export type Database = {
         }
         Relationships: []
       }
+      vue_personnages_admin_complet: {
+        Row: {
+          assemblages: Json | null
+          classe_nom: string | null
+          classe_secondaire_nom: string | null
+          competences: Json | null
+          created_at: string | null
+          est_actif: boolean | null
+          est_finalise: boolean | null
+          est_mort: boolean | null
+          est_verrouille: boolean | null
+          etape_creation: number | null
+          famille_nom: string | null
+          id: string | null
+          joueur_id: string | null
+          joueur_nom: string | null
+          niveau: number | null
+          nom: string | null
+          pieges: Json | null
+          prieres: Json | null
+          race_nom: string | null
+          recettes: Json | null
+          religion_nom: string | null
+          sorts: Json | null
+          traits_raciaux: Json | null
+          xp_depense: number | null
+          xp_total: number | null
+        }
+        Relationships: []
+      }
       vue_personnages_joueur: {
         Row: {
           classe_nom: string | null
