@@ -62,6 +62,267 @@ export type Database = {
         }
         Relationships: []
       }
+      banque_xp_mouvements: {
+        Row: {
+          acteur_id: string | null
+          created_at: string
+          description: string
+          evenement_id: string | null
+          id: string
+          joueur_id: string
+          montant: number
+          personnage_cible_id: string | null
+          type_mouvement: string
+        }
+        Insert: {
+          acteur_id?: string | null
+          created_at?: string
+          description: string
+          evenement_id?: string | null
+          id?: string
+          joueur_id: string
+          montant: number
+          personnage_cible_id?: string | null
+          type_mouvement: string
+        }
+        Update: {
+          acteur_id?: string | null
+          created_at?: string
+          description?: string
+          evenement_id?: string | null
+          id?: string
+          joueur_id?: string
+          montant?: number
+          personnage_cible_id?: string | null
+          type_mouvement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_publies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_prochain_evenement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bestiaire: {
         Row: {
           capacites_speciales: string | null
@@ -382,6 +643,13 @@ export type Database = {
             foreignKeyName: "evenements_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "vue_competences_maitre_attente"
             referencedColumns: ["joueur_id"]
           },
@@ -651,6 +919,13 @@ export type Database = {
             foreignKeyName: "historique_xp_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -736,6 +1011,13 @@ export type Database = {
             columns: ["personnage_source_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historique_xp_personnage_source_id_fkey"
+            columns: ["personnage_source_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -908,6 +1190,13 @@ export type Database = {
             foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
             columns: ["joueur_id"]
             isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
             referencedRelation: "vue_competences_maitre_attente"
             referencedColumns: ["joueur_id"]
           },
@@ -993,6 +1282,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -1183,6 +1479,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -1435,6 +1738,13 @@ export type Database = {
             foreignKeyName: "personnage_assemblages_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -1580,6 +1890,13 @@ export type Database = {
             foreignKeyName: "personnage_competences_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -1703,6 +2020,13 @@ export type Database = {
             foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_forge_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -1820,6 +2144,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_objets_joaillerie_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -1951,6 +2282,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_pieges_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -2098,6 +2436,13 @@ export type Database = {
             foreignKeyName: "personnage_prieres_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -2134,7 +2479,7 @@ export type Database = {
       personnage_races_demandes: {
         Row: {
           approuve_par: string | null
-          background: string
+          background: string | null
           created_at: string
           date_approbation: string | null
           id: string
@@ -2146,7 +2491,7 @@ export type Database = {
         }
         Insert: {
           approuve_par?: string | null
-          background: string
+          background?: string | null
           created_at?: string
           date_approbation?: string | null
           id?: string
@@ -2158,7 +2503,7 @@ export type Database = {
         }
         Update: {
           approuve_par?: string | null
-          background?: string
+          background?: string | null
           created_at?: string
           date_approbation?: string | null
           id?: string
@@ -2181,6 +2526,13 @@ export type Database = {
             columns: ["approuve_par"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -2272,6 +2624,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: true
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -2418,6 +2777,13 @@ export type Database = {
             foreignKeyName: "personnage_recettes_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -2553,6 +2919,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -2729,6 +3102,13 @@ export type Database = {
             columns: ["joueur_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -3471,6 +3851,13 @@ export type Database = {
             foreignKeyName: "personnage_assemblages_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_assemblages_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -3496,6 +3883,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vue_banque_joueur: {
+        Row: {
+          joueur_id: string | null
+          solde: number | null
+          total_gagne: number | null
+          total_transfere: number | null
+        }
+        Relationships: []
       }
       vue_cercles_disponibles: {
         Row: {
@@ -3565,6 +3961,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -3747,6 +4150,13 @@ export type Database = {
             foreignKeyName: "personnage_competences_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -3873,6 +4283,13 @@ export type Database = {
             foreignKeyName: "personnage_competences_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -3982,6 +4399,13 @@ export type Database = {
             foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: true
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -4018,6 +4442,13 @@ export type Database = {
             columns: ["joueur_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -4083,6 +4514,13 @@ export type Database = {
             columns: ["approuve_par"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -4180,6 +4618,13 @@ export type Database = {
             foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: true
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: true
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -4216,6 +4661,13 @@ export type Database = {
             columns: ["joueur_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -4316,6 +4768,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_competences_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -4456,6 +4915,13 @@ export type Database = {
             columns: ["joueur_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -4640,6 +5106,13 @@ export type Database = {
             foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
             columns: ["joueur_id"]
             isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
             referencedRelation: "vue_competences_maitre_attente"
             referencedColumns: ["joueur_id"]
           },
@@ -4725,6 +5198,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inscriptions_evenements_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -4875,6 +5355,13 @@ export type Database = {
             foreignKeyName: "personnages_joueur_id_fkey"
             columns: ["joueur_id"]
             isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
             referencedRelation: "vue_competences_maitre_attente"
             referencedColumns: ["joueur_id"]
           },
@@ -4966,6 +5453,13 @@ export type Database = {
             foreignKeyName: "personnages_joueur_id_fkey"
             columns: ["joueur_id"]
             isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
             referencedRelation: "vue_competences_maitre_attente"
             referencedColumns: ["joueur_id"]
           },
@@ -5034,7 +5528,57 @@ export type Database = {
           xp_depense: number | null
           xp_total: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_competences_maitre_attente"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
       }
       vue_personnages_joueur: {
         Row: {
@@ -5064,6 +5608,13 @@ export type Database = {
             columns: ["joueur_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -5180,6 +5731,13 @@ export type Database = {
             foreignKeyName: "personnage_prieres_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_prieres_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -5235,6 +5793,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "evenements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -5343,6 +5908,13 @@ export type Database = {
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_recettes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
             referencedColumns: ["id"]
           },
           {
@@ -5459,6 +6031,13 @@ export type Database = {
             foreignKeyName: "personnage_sorts_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_sorts_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
             referencedRelation: "vue_personnages_joueur"
             referencedColumns: ["id"]
           },
@@ -5526,6 +6105,13 @@ export type Database = {
             columns: ["joueur_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -5651,6 +6237,13 @@ export type Database = {
             columns: ["joueur_id"]
             isOneToOne: false
             referencedRelation: "vue_admin_joueurs"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
             referencedColumns: ["joueur_id"]
           },
           {
@@ -5833,6 +6426,10 @@ export type Database = {
         Returns: Json
       }
       est_animateur_ou_admin: { Args: never; Returns: boolean }
+      etat_edition_personnage: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
       formater_classes_requises_label: {
         Args: { p_classes: string[] }
         Returns: string
