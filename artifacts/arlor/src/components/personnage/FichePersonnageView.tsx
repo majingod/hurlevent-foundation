@@ -28,6 +28,7 @@ import type {
   PersonnagePiegeRow,
 } from "./sections/types";
 import { InfosCard } from "./sections/InfosCard";
+import { BanqueXpCard } from "./sections/BanqueXpCard";
 import { RaceClasseCard } from "./sections/RaceClasseCard";
 import { HistoriqueAmeCard } from "./sections/HistoriqueAmeCard";
 import { TraitsSection } from "./sections/TraitsSection";
@@ -466,6 +467,12 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             toggleAll={toggleAll}
           />
           <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
+          <BanqueXpCard
+            joueurId={fiche.joueur_id}
+            personnageId={fiche.id}
+            personnageNom={fiche.nom}
+            isOwner={isOwner}
+          />
           {(() => {
             const maReligion = fiche.religion_id
               ? religions?.find((r) => r.id === fiche.religion_id)

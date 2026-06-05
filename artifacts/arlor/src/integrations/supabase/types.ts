@@ -707,6 +707,7 @@ export type Database = {
         Row: {
           acteur_id: string | null
           assemblage_id: string | null
+          banque_mouvement_id: string | null
           competence_id: string | null
           created_at: string
           description: string
@@ -728,6 +729,7 @@ export type Database = {
         Insert: {
           acteur_id?: string | null
           assemblage_id?: string | null
+          banque_mouvement_id?: string | null
           competence_id?: string | null
           created_at?: string
           description: string
@@ -749,6 +751,7 @@ export type Database = {
         Update: {
           acteur_id?: string | null
           assemblage_id?: string | null
+          banque_mouvement_id?: string | null
           competence_id?: string | null
           created_at?: string
           description?: string
@@ -6391,6 +6394,19 @@ export type Database = {
         Returns: Json
       }
       cloturer_evenement: { Args: { p_evenement_id: string }; Returns: Json }
+      crediter_banque_xp: {
+        Args: {
+          p_description?: string
+          p_evenement_id: string
+          p_joueur_id: string
+          p_montant: number
+        }
+        Returns: Json
+      }
+      transferer_banque_vers_personnage: {
+        Args: { p_montant: number; p_personnage_cible_id: string }
+        Returns: Json
+      }
       creer_demande_race: {
         Args: { p_background: string; p_personnage_id: string }
         Returns: Json
