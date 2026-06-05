@@ -63,12 +63,29 @@ const TableauDeBord = () => {
 
     try {
       setSuppressionEnCours(true);
-      const { error: deleteError } = await supabase
+      const { data: deleted, error: deleteError } = await supabase
         .from("personnages")
         .delete()
-        .eq("id", personnageASupprimer.id);
+        .eq("id", personnageASupprimer.id)
+        .select("id");
 
-      if (deleteError) throw deleteError;
+      // FK inscriptions_evenements (NO ACTION) : un perso inscrit a un evenement
+      // ne peut pas etre supprime tant qu'il est inscrit.
+      if (deleteError) {
+        if (deleteError.code === "23503") {
+          throw new Error(
+            "Ce personnage est inscrit à un événement. Désinscris-toi d'abord, puis réessaie."
+          );
+        }
+        throw deleteError;
+      }
+
+      // Garde-fou : si 0 ligne supprimee, ne jamais afficher un faux succes.
+      if (!deleted || deleted.length === 0) {
+        throw new Error(
+          "La suppression n'a pas pu être effectuée. Réessaie, ou contacte un animateur si le problème persiste."
+        );
+      }
 
       queryClient.setQueryData<PersonnageResume[]>(
         ["mes-personnages", user?.id],
