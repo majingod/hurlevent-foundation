@@ -26,6 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ReligionDetails from "@/components/shared/ReligionDetails";
+import ModaleChangementClasse, {
+  type DChangementClasse,
+} from "@/components/createur/ModaleChangementClasse";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 interface Etape4Form {
@@ -51,6 +54,21 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   >({});
   const [devenirCroyant, setDevenirCroyant] = useState(true);
 
+  // --- Changement de classe (perso ayant déjà une classe) ---
+  const [modaleOpen, setModaleOpen] = useState(false);
+  const [previewDonnees, setPreviewDonnees] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [pendingCtx, setPendingCtx] = useState<{
+    classeId: string;
+    choixFinaux: Record<string, string>;
+    religionChoisie: string | null;
+    religionInitiale: string | null;
+  } | null>(null);
+
   const { control, handleSubmit, reset, watch } = useForm<Etape4Form>({
     defaultValues: { classe_id: "" },
   });
@@ -62,11 +80,27 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnages")
-        .select("classe_id, race_id, religion_id, est_croyant")
+        .select("classe_id, race_id, religion_id, est_croyant, nom")
         .eq("id", personnageId)
         .single();
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: compNamesActuelles = [] } = useQuery({
+    queryKey: ["v2-comp-names-actuelles", personnageId],
+    enabled: !!perso?.classe_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personnage_competences")
+        .select("competences(nom)")
+        .eq("personnage_id", personnageId);
+      if (error) throw error;
+      const noms = (data ?? [])
+        .map((r: any) => r.competences?.nom)
+        .filter(Boolean) as string[];
+      return Array.from(new Set(noms));
     },
   });
 
@@ -263,6 +297,221 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     devenirCroyant,
   ]);
 
+  // Appel dry_run -> donnees (ou null si erreur, toast affiché)
+  const callDryRun = async (
+    classeId: string,
+    choix: Record<string, string>
+  ): Promise<Record<string, unknown> | null> => {
+    const { data, error } = await supabase.rpc("changer_classe_personnage", {
+      p_personnage_id: personnageId,
+      p_classe_id: classeId,
+      p_choix_par_competence: choix,
+      p_dry_run: true,
+    });
+    if (error) {
+      toast.error(`Erreur aperçu : ${error.message}`);
+      return null;
+    }
+    const payload = (data ?? {}) as Record<string, unknown>;
+    if (payload.succes === false) {
+      const erreurs = (payload.erreurs as Array<any>) ?? [];
+      toast.error(erreurs[0]?.message ?? "Aperçu refusé.");
+      return null;
+    }
+    return (payload.donnees as Record<string, unknown>) ?? null;
+  };
+
+  // Sauvegarde réelle (étape 4). Retourne true si succès.
+  const executerSauvegarde = async (
+    classeId: string,
+    choixComplets: Record<string, string>,
+    religionChoisie: string | null,
+    religionInitiale: string | null
+  ): Promise<boolean> => {
+    const { data, error } = await supabase.rpc("sauvegarder_etape_4", {
+      p_personnage_id: personnageId,
+      p_classe_id: classeId,
+      p_choix_par_competence: choixComplets,
+    });
+    if (error) {
+      console.error("[V2 Etape4] RPC error:", error);
+      toast.error(`Erreur : ${error.message}`);
+      return false;
+    }
+    const payload = (data ?? {}) as Record<string, unknown>;
+    if (payload.succes === false) {
+      const erreurs = (payload.erreurs as Array<any>) ?? [];
+      const code = erreurs[0]?.code ?? "erreur";
+      const message = erreurs[0]?.message ?? "Sauvegarde refusée.";
+      toast.error(`[${code}] ${message}`);
+      return false;
+    }
+    toast.success("Classe enregistrée.");
+    if (dejaCroyant && religionChoisie && religionChoisie !== religionInitiale) {
+      const nomReligion = (religions as Array<{ id: string; nom: string }>).find(
+        (r) => r.id === religionChoisie
+      )?.nom;
+      if (nomReligion) {
+        toast.info(
+          `Religion mise à jour : tu es maintenant croyant de ${nomReligion}`
+        );
+      }
+    }
+    return true;
+  };
+
+  // Changement de sélection multi-choix -> re-appel dry_run (total XP live)
+  const onSelectInstance = async (competenceId: string, choixAchat: string) => {
+    const next = { ...selections, [competenceId]: choixAchat };
+    setSelections(next);
+    if (!pendingCtx) return;
+    setPreviewBusy(true);
+    const donnees = await callDryRun(pendingCtx.classeId, {
+      ...pendingCtx.choixFinaux,
+      ...next,
+    });
+    setPreviewBusy(false);
+    if (donnees) setPreviewDonnees(donnees);
+  };
+
+  const onConfirmChangement = async () => {
+    if (!pendingCtx) return;
+    setPreviewBusy(true);
+    const ok = await executerSauvegarde(
+      pendingCtx.classeId,
+      { ...pendingCtx.choixFinaux, ...selections },
+      pendingCtx.religionChoisie,
+      pendingCtx.religionInitiale
+    );
+    setPreviewBusy(false);
+    if (ok) {
+      setModaleOpen(false);
+      onSuccess();
+    }
+  };
+
+  // Mapping donnees (dry_run) -> forme `d` de la modale
+  const previewD = useMemo<DChangementClasse | null>(() => {
+    if (!previewDonnees) return null;
+    const dn = previewDonnees as any;
+    const toNom = dn.classe_apres as string;
+    const fromNom = dn.classe_avant as string;
+    const emoji = (nom: string) =>
+      (classes.find((c: any) => c.nom === nom)?.emoji as string) ?? "•";
+    const whyPerdue = (raison: string) =>
+      raison === "class_locked"
+        ? "Réservée à une autre classe — retrait entier"
+        : raison === "gratuite_obsolete"
+        ? `Gratuite de l'ancienne classe — non offerte par ${toNom}`
+        : "Retirée en cascade (un prérequis a été perdu)";
+
+    const perdues: DChangementClasse["perdues"] = [];
+    const reduites: DChangementClasse["reduites"] = [];
+    ((dn.perdues as Array<any>) ?? []).forEach((p) => {
+      const niveaux = (p.niveaux as Array<any>) ?? [];
+      if (p.raison === "over_cap") {
+        const maxNiv = niveaux.reduce((m, l) => Math.max(m, l.niv), 0);
+        reduites.push({
+          nom: p.nom,
+          from: maxNiv,
+          to: 2,
+          why: "Hors-classe : plafond niveau 2 — le(s) niveau(x) au-dessus sont retirés",
+          xp: p.xp,
+        });
+      } else if (niveaux.length > 1) {
+        perdues.push({
+          nom: p.nom,
+          cascade: true,
+          why: whyPerdue(p.raison),
+          levels: niveaux.map((l) => ({
+            niv: l.niv,
+            gratuit: !!l.gratuit,
+            xp: l.xp,
+          })),
+        });
+      } else {
+        const l = niveaux[0] ?? { niv: 1, xp: p.xp, gratuit: p.xp === 0 };
+        perdues.push({
+          nom: p.nom,
+          niv: l.niv,
+          xp: p.xp,
+          gratuit: !!l.gratuit,
+          why: whyPerdue(p.raison),
+        });
+      }
+    });
+
+    const multiNames = new Set(
+      ((dn.multi_choix as Array<any>) ?? []).map((m) => m.nom)
+    );
+    const offertes = (dn.offertes as Array<any>) ?? [];
+    const offertesRefund = offertes
+      .filter((o) => o.type === "d6_refund" && !multiNames.has(o.nom))
+      .map((o) => ({
+        nom: o.nom,
+        niv: 1,
+        why: `Déjà payée — offerte par ${toNom} → remboursée et rendue gratuite`,
+        xp: o.xp,
+      }));
+    const nouvelles = offertes
+      .filter((o) => o.type === "ajout")
+      .map((o) => ({ nom: o.nom, niv: 1 }));
+    const multiChoix = ((dn.multi_choix as Array<any>) ?? []).map((m) => ({
+      competence_id: m.competence_id,
+      nom: m.nom,
+      why: `Offerte par ${toNom} (1 instance gratuite). Tu en as ${
+        (m.options as Array<any>).length
+      } payées — choisis laquelle devient gratuite ; les autres restent payées.`,
+      options: ((m.options as Array<any>) ?? []).map((o) => ({
+        id: o.choix_achat,
+        label: o.label,
+        xp: o.xp,
+      })),
+    }));
+
+    const dormItems = ((dn.dormants as Array<any>) ?? []).map((sd) => ({
+      nom: sd.nom,
+      niv: sd.niveau ?? 0,
+    }));
+    const dormXp = ((dn.dormants as Array<any>) ?? []).reduce(
+      (a, sd) => a + (sd.xp ?? 0),
+      0
+    );
+    const maitre = ((dn.maitre_en_attente as Array<any>) ?? []).map((m) => ({
+      nom: m.nom,
+      niv: m.niveau,
+      why: "Niveau hors-classe → l'approbation d'un maître devient requise",
+    }));
+
+    const touched = new Set<string>();
+    ((dn.perdues as Array<any>) ?? []).forEach((p) => touched.add(p.nom));
+    ((dn.maitre_en_attente as Array<any>) ?? []).forEach((m) =>
+      touched.add(m.nom)
+    );
+    offertes.forEach((o) => touched.add(o.nom));
+    ((dn.multi_choix as Array<any>) ?? []).forEach((m) => touched.add(m.nom));
+    const inchangees = compNamesActuelles.filter((n) => !touched.has(n));
+
+    return {
+      from: { n: fromNom, e: emoji(fromNom) },
+      to: { n: toNom, e: emoji(toNom) },
+      perso: (perso as any)?.nom ?? "Personnage",
+      perdues,
+      reduites,
+      offertesRefund,
+      multiChoix,
+      dormants: {
+        items: dormItems,
+        xp: dormXp,
+        why: "Leur niveau dépasse l'accès restant.",
+      },
+      maitre,
+      nouvelles,
+      inchangees,
+      xpRembourse: dn.xp_rembourse ?? 0,
+    };
+  }, [previewDonnees, classes, compNamesActuelles, perso]);
+
   const onSubmit = async (values: Etape4Form) => {
     if (!values.classe_id) {
       toast.error("Choisis une classe.");
@@ -303,8 +552,6 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       return;
     }
 
-    setSubmitting(true);
-
     // Construire un objet de choix propre (utilise le fallback religion ci-dessus)
     const choixFinaux: Record<string, string> = {};
     for (const c of competencesAvecChoix) {
@@ -316,47 +563,46 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     const religionChoisie = compReligion ? choixFinaux[compReligion.id] : null;
     const religionInitiale = perso?.religion_id ?? null;
 
-    const { data, error } = await supabase.rpc("sauvegarder_etape_4", {
-      p_personnage_id: personnageId,
-      p_classe_id: values.classe_id,
-      p_choix_par_competence: choixFinaux,
-    });
+    // Changement de classe (le perso a déjà une classe différente)
+    // -> aperçu des conséquences (dry_run) + modale avant la sauvegarde.
+    const estChangementClasse =
+      !!perso?.classe_id && values.classe_id !== perso.classe_id;
+
+    if (estChangementClasse) {
+      setSubmitting(true);
+      const donnees = await callDryRun(values.classe_id, choixFinaux);
+      setSubmitting(false);
+      if (!donnees) return;
+      const sel: Record<string, string> = {};
+      ((donnees.multi_choix as Array<any>) ?? []).forEach((m) => {
+        if (m?.competence_id && m?.defaut) sel[m.competence_id] = m.defaut;
+      });
+      setSelections(sel);
+      setPendingCtx({
+        classeId: values.classe_id,
+        choixFinaux,
+        religionChoisie,
+        religionInitiale,
+      });
+      setPreviewDonnees(donnees);
+      setModaleOpen(true);
+      return;
+    }
+
+    // Première sélection (ou classe identique) -> sauvegarde directe.
+    setSubmitting(true);
+    const ok = await executerSauvegarde(
+      values.classe_id,
+      choixFinaux,
+      religionChoisie,
+      religionInitiale
+    );
     setSubmitting(false);
-
-    if (error) {
-      console.error("[V2 Etape4] RPC error:", error);
-      toast.error(`Erreur : ${error.message}`);
-      return;
-    }
-    const payload = (data ?? {}) as Record<string, unknown>;
-    if (payload.succes === false) {
-      const erreurs = (payload.erreurs as Array<any>) ?? [];
-      const code = erreurs[0]?.code ?? "erreur";
-      const message = erreurs[0]?.message ?? "Sauvegarde refusée.";
-      toast.error(`[${code}] ${message}`);
-      return;
-    }
-
-    toast.success("Classe enregistrée.");
-
-    if (
-      dejaCroyant &&
-      religionChoisie &&
-      religionChoisie !== religionInitiale
-    ) {
-      const nomReligion = (religions as Array<{ id: string; nom: string }>)
-        .find((r) => r.id === religionChoisie)?.nom;
-      if (nomReligion) {
-        toast.info(
-          `Religion mise à jour : tu es maintenant croyant de ${nomReligion}`
-        );
-      }
-    }
-
-    onSuccess();
+    if (ok) onSuccess();
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="space-y-2">
         <h2 className="font-heading text-2xl text-gold">Choix de la classe</h2>
@@ -577,6 +823,22 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         </Button>
       </div>
     </form>
+    {modaleOpen && previewD && (
+      <ModaleChangementClasse
+        d={previewD}
+        selections={selections}
+        busy={previewBusy}
+        onSelect={onSelectInstance}
+        onConfirm={onConfirmChangement}
+        onCancel={() => {
+          if (!previewBusy) {
+            setModaleOpen(false);
+            setPreviewDonnees(null);
+          }
+        }}
+      />
+    )}
+    </>
   );
 };
 
