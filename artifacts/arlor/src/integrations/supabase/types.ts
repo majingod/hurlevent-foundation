@@ -779,6 +779,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "historique_xp_banque_mouvement_id_fkey"
+            columns: ["banque_mouvement_id"]
+            isOneToOne: false
+            referencedRelation: "banque_xp_mouvements"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "historique_xp_competence_id_fkey"
             columns: ["competence_id"]
             isOneToOne: false
@@ -2342,6 +2349,7 @@ export type Database = {
           personnage_id: string
           portee_choisie: string | null
           priere_id: string
+          statut: string
           xp_depense: number
           zone_choisie: string | null
         }
@@ -2355,6 +2363,7 @@ export type Database = {
           personnage_id: string
           portee_choisie?: string | null
           priere_id: string
+          statut?: string
           xp_depense?: number
           zone_choisie?: string | null
         }
@@ -2368,6 +2377,7 @@ export type Database = {
           personnage_id?: string
           portee_choisie?: string | null
           priere_id?: string
+          statut?: string
           xp_depense?: number
           zone_choisie?: string | null
         }
@@ -2831,6 +2841,7 @@ export type Database = {
           personnage_id: string
           portee_choisie: string | null
           sort_id: string
+          statut: string
           xp_depense: number
           zone_choisie: string | null
         }
@@ -2844,6 +2855,7 @@ export type Database = {
           personnage_id: string
           portee_choisie?: string | null
           sort_id: string
+          statut?: string
           xp_depense?: number
           zone_choisie?: string | null
         }
@@ -2857,6 +2869,7 @@ export type Database = {
           personnage_id?: string
           portee_choisie?: string | null
           sort_id?: string
+          statut?: string
           xp_depense?: number
           zone_choisie?: string | null
         }
@@ -6385,6 +6398,15 @@ export type Database = {
         }
         Returns: number
       }
+      changer_classe_personnage: {
+        Args: {
+          p_choix_par_competence?: Json
+          p_classe_id: string
+          p_dry_run?: boolean
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
       changer_role_utilisateur: {
         Args: { p_nouveau_role: string; p_user_id: string }
         Returns: Json
@@ -6401,10 +6423,6 @@ export type Database = {
           p_joueur_id: string
           p_montant: number
         }
-        Returns: Json
-      }
-      transferer_banque_vers_personnage: {
-        Args: { p_montant: number; p_personnage_cible_id: string }
         Returns: Json
       }
       creer_demande_race: {
@@ -6453,6 +6471,10 @@ export type Database = {
       formater_prereq_label: {
         Args: { p_niveau_min: number; p_nom: string }
         Returns: string
+      }
+      gate_edition_personnage: {
+        Args: { p_mode: string; p_personnage_id: string }
+        Returns: Json
       }
       generer_formule_magique: {
         Args: {
@@ -6549,6 +6571,7 @@ export type Database = {
         Args: { p_demande_id: string; p_raison: string }
         Returns: Json
       }
+      reouvrir_personnage: { Args: { p_personnage_id: string }; Returns: Json }
       role_du_profil: { Args: { _user_id: string }; Returns: string }
       sauvegarder_etape_1: {
         Args: {
@@ -6583,6 +6606,10 @@ export type Database = {
           p_classe_id: string
           p_personnage_id: string
         }
+        Returns: Json
+      }
+      transferer_banque_vers_personnage: {
+        Args: { p_montant: number; p_personnage_cible_id: string }
         Returns: Json
       }
       update_user_role: {
@@ -6751,3 +6778,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
