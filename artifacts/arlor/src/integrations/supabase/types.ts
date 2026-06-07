@@ -5947,6 +5947,7 @@ export type Database = {
         Returns: Json
       }
       cloturer_evenement: { Args: { p_evenement_id: string }; Returns: Json }
+      compte_voit_joueur: { Args: { p_joueur_id: string }; Returns: boolean }
       crediter_banque_xp: {
         Args: {
           p_description?: string
@@ -6066,6 +6067,7 @@ export type Database = {
         }
         Returns: Json
       }
+      profils_du_compte: { Args: { c: string }; Returns: string[] }
       recalculer_ps_max: {
         Args: { p_personnage_id: string }
         Returns: undefined
