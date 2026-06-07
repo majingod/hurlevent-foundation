@@ -126,7 +126,7 @@ export default function ModaleChangementClasse({ d, selections, onSelect, onConf
         style={{ width: "100%", maxWidth: 440, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 18, boxShadow: "0 24px 60px -12px rgba(0,0,0,.85)", display: "flex", flexDirection: "column", maxHeight: "88vh", position: "relative" }}
       >
         {/* header */}
-        <div style={{ padding: "18px 20px 15px", borderBottom: `1px solid ${C.border}`, background: `linear-gradient(180deg, ${C.bgElev}, ${C.bg})`, borderRadius: "18px 18px 0 0" }}>
+        <div style={{ padding: "18px 20px 15px", borderBottom: `1px solid ${C.border}`, background: `linear-gradient(180deg, ${C.bgElev}, ${C.bg})`, borderRadius: "18px 18px 0 0", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ ...BODY, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: C.gold }}>Modifier la classe</span>
             <button onClick={() => !busy && onCancel()} aria-label="Fermer" style={{ background: "transparent", border: "none", cursor: busy ? "default" : "pointer", padding: 0, display: "flex" }}>
@@ -140,7 +140,7 @@ export default function ModaleChangementClasse({ d, selections, onSelect, onConf
         </div>
 
         {/* body */}
-        <div style={{ padding: "15px 16px", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
+        <div style={{ padding: "15px 16px", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", flex: 1, minHeight: 0 }}>
           <p style={{ ...BODY, fontSize: 12.5, color: C.fg, margin: 0, lineHeight: 1.45 }}>Ce changement de classe a des conséquences. Vérifie-les avant de confirmer.</p>
 
           {/* perdues + cascade */}
@@ -294,7 +294,7 @@ export default function ModaleChangementClasse({ d, selections, onSelect, onConf
         </div>
 
         {/* footer */}
-        <div style={{ padding: "15px 20px", borderTop: `1px solid ${C.border}`, background: C.bgElev, borderRadius: "0 0 18px 18px" }}>
+        <div style={{ padding: "15px 20px", borderTop: `1px solid ${C.border}`, background: C.bgElev, borderRadius: "0 0 18px 18px", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ ...BODY, fontSize: 12, color: C.fgMut }}>XP remboursé au total</span>
             <span style={{ ...HEAD, fontSize: 18, fontWeight: 700, color: C.gold, display: "inline-flex", alignItems: "center", gap: 6 }}>
