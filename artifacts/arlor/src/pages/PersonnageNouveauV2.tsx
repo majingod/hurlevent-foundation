@@ -2,12 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2, User, Fingerprint, Sparkles, Swords, Star, Wand2, Sun, Shapes,
+  Hammer, ClipboardCheck,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import StepperEtapes, { type EtapeDef } from "@/components/createur/StepperEtapes";
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
@@ -21,6 +25,19 @@ import Etape9_Artisanat_V2 from "@/components/createur/etapes/Etape9_Artisanat_V
 import Etape10_Recapitulatif_V2 from "@/components/createur/etapes/Etape10_Recapitulatif_V2";
 
 const TOTAL_STEPS = 10;
+
+const ETAPES_DEF: EtapeDef[] = [
+  { n: 1, t: "Identité", Icon: User },
+  { n: 2, t: "Race", Icon: Fingerprint },
+  { n: 3, t: "Traits", Icon: Sparkles },
+  { n: 4, t: "Classe", Icon: Swords },
+  { n: 5, t: "Compétences", Icon: Star },
+  { n: 6, t: "Sorts", Icon: Wand2 },
+  { n: 7, t: "Prières", Icon: Sun },
+  { n: 8, t: "Assemblages", Icon: Shapes },
+  { n: 9, t: "Artisanat", Icon: Hammer },
+  { n: 10, t: "Récap", Icon: ClipboardCheck },
+];
 
 interface PersonnageRow {
   id: string;
@@ -189,6 +206,15 @@ const PersonnageNouveauV2 = () => {
     [etape]
   );
 
+  // Étape la plus avancée atteinte : étapes <= etapeMax cliquables dans le stepper.
+  const etapeMax = Math.max(
+    etape,
+    Math.min(personnage?.etape_creation ?? 1, TOTAL_STEPS)
+  );
+  const sauterEtape = (n: number) => {
+    if (n >= 1 && n <= etapeMax) setEtape(n);
+  };
+
   const handleEtapeSuccess = async () => {
     // Recharger l'état serveur et faire confiance à etape_creation
     const result = await queryClient.fetchQuery<PersonnageRow>({
@@ -289,6 +315,13 @@ const PersonnageNouveauV2 = () => {
         </div>
 
         <Progress value={progression} className="h-2" />
+
+        <StepperEtapes
+          etapes={ETAPES_DEF}
+          courant={etape}
+          max={etapeMax}
+          onJump={sauterEtape}
+        />
       </header>
 
       {/* Contenu de l'étape */}
