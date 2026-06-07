@@ -15,6 +15,7 @@ import {
 import { Loader2, Plus, Trash2, User, Edit2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
 import { toast } from "@/hooks/use-toast";
 
 interface PersonnageResume {
@@ -190,6 +191,10 @@ const TableauDeBord = () => {
                         Voir la fiche
                       </Button>
                     </Link>
+                  )}
+
+                  {p.est_finalise && (
+                    <BoutonRemodeler personnageId={p.id} compact />
                   )}
 
                   {!p.est_finalise && (

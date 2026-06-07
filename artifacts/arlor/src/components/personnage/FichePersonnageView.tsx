@@ -42,6 +42,7 @@ import { JoaillerieSection } from "./sections/JoaillerieSection";
 import { PiegesSection } from "./sections/PiegesSection";
 import { ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 import { FicheImprimable } from "./FicheImprimable";
+import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
@@ -435,6 +436,12 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           </div>
         )}
       </div>
+
+      {mode === 'route' && (
+        <div className="max-w-sm">
+          <BoutonRemodeler personnageId={personnageId} />
+        </div>
+      )}
 
       <ManuelGlobalSwitch
         allOpen={isAllOpen(allManuelIds)}
