@@ -5961,7 +5961,10 @@ export type Database = {
         Args: { p_background: string; p_personnage_id: string }
         Returns: Json
       }
-      demarrer_creation_personnage: { Args: never; Returns: Json }
+      demarrer_creation_personnage: {
+        Args: { p_profil_id?: string }
+        Returns: Json
+      }
       desacheter_assemblage: {
         Args: { p_personnage_assemblage_id: string }
         Returns: Json
@@ -6031,6 +6034,7 @@ export type Database = {
       }
       get_stats_admin: { Args: never; Returns: Json }
       immutable_array_to_string: { Args: { arr: string[] }; Returns: string }
+      joueur_actif: { Args: { p_profil_id?: string }; Returns: string }
       marquer_absent: { Args: { p_inscription_id: string }; Returns: Json }
       marquer_present: { Args: { p_inscription_id: string }; Returns: Json }
       personnage_a_des_prieres: {
