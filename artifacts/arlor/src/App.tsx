@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@ta
 import { toast } from "sonner";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
+import QuiJoue from "@/components/profil/QuiJoue";
 import Navbar from "@/components/Navbar";
 import ScrollToTop from "@/components/ScrollToTop";
 import Footer from "@/components/Footer";
@@ -142,15 +144,19 @@ const AppRoutes = () => (
 );
 
 const App = () => {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
+  const { loadingProfils, profilActif } = useProfil();
 
-  if (loading) {
+  if (loading || (user && loadingProfils)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
       </div>
     );
   }
+
+  // « Sans skip » : connecté + aucun profil choisi cette session -> écran « Qui joue ? ».
+  const doitChoisirProfil = !!user && !profilActif;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -159,13 +165,17 @@ const App = () => {
         <Sonner />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <ScrollToTop />
-          <div className="min-h-screen flex flex-col bg-black text-white">
-            <Navbar />
-            <main className="flex-1">
-              <AppRoutes />
-            </main>
-            <Footer />
-          </div>
+          {doitChoisirProfil ? (
+            <QuiJoue />
+          ) : (
+            <div className="min-h-screen flex flex-col bg-black text-white">
+              <Navbar />
+              <main className="flex-1">
+                <AppRoutes />
+              </main>
+              <Footer />
+            </div>
+          )}
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

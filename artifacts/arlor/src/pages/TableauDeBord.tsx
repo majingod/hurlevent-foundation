@@ -15,6 +15,7 @@ import {
 import { Loader2, Plus, Trash2, User, Edit2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
 import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
 import { toast } from "@/hooks/use-toast";
 
@@ -35,6 +36,7 @@ interface PersonnageResume {
 
 const TableauDeBord = () => {
   const { user } = useAuth();
+  const { joueurId } = useProfil();
   const queryClient = useQueryClient();
   const [personnageASupprimer, setPersonnageASupprimer] = useState<PersonnageResume | null>(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
@@ -46,17 +48,17 @@ const TableauDeBord = () => {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["mes-personnages", user?.id],
+    queryKey: ["mes-personnages", joueurId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vue_personnages_joueur")
         .select("*")
-        .eq("joueur_id", user!.id)
+        .eq("joueur_id", joueurId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as PersonnageResume[];
     },
-    enabled: !!user,
+    enabled: !!joueurId,
   });
 
   const supprimerPersonnage = async () => {
