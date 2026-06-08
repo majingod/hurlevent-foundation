@@ -6149,6 +6149,10 @@ export type Database = {
         Args: { p_montant: number; p_personnage_cible_id: string }
         Returns: Json
       }
+      transferer_personnage: {
+        Args: { p_personnage_id: string; p_profil_cible_id: string }
+        Returns: Json
+      }
       update_user_role: {
         Args: { new_role: string; user_id: string }
         Returns: undefined
