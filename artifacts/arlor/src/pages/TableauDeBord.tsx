@@ -12,11 +12,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, User, Edit2 } from "lucide-react";
+import { Loader2, Plus, Trash2, User, Edit2, MoreVertical, ArrowRightLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
+import ModaleTransfertPersonnage from "@/components/personnage/ModaleTransfertPersonnage";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 
 interface PersonnageResume {
@@ -40,6 +48,7 @@ const TableauDeBord = () => {
   const queryClient = useQueryClient();
   const [personnageASupprimer, setPersonnageASupprimer] = useState<PersonnageResume | null>(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+  const [personnageATransferer, setPersonnageATransferer] = useState<PersonnageResume | null>(null);
 
   // DATA-FIRST : vue_personnages_joueur retourne directement race_nom / classe_nom
   // Remplace la requête sur la table brute personnages qui affichait des UUIDs
@@ -90,10 +99,10 @@ const TableauDeBord = () => {
         );
       }
 
-      queryClient.setQueryData<PersonnageResume[]>(
-        ["mes-personnages", user?.id],
-        (prev) => (prev ?? []).filter((p) => p.id !== personnageASupprimer.id)
-      );
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey[0] === "mes-personnages",
+      });
       toast({
         title: "Personnage supprimé",
         description: `Le personnage «${personnageASupprimer.nom}» a été supprimé.`,
@@ -172,9 +181,35 @@ const TableauDeBord = () => {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold group-hover:scale-110 transition-transform">
-                    <User size={20} />
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 text-white/60 hover:bg-white/10 hover:text-white"
+                        aria-label="Actions du personnage"
+                      >
+                        <MoreVertical className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="border-white/10 bg-slate-900 text-white">
+                      <DropdownMenuItem
+                        onClick={() => setPersonnageATransferer(p)}
+                        className="cursor-pointer focus:bg-white/10"
+                      >
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        Transférer…
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-white/10" />
+                      <DropdownMenuItem
+                        onClick={() => setPersonnageASupprimer(p)}
+                        className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Supprimer
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardHeader>
               <CardContent>
@@ -210,16 +245,6 @@ const TableauDeBord = () => {
                       </Button>
                     </Link>
                   )}
-
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="w-full opacity-40 hover:opacity-100 transition-opacity mt-2"
-                    onClick={() => setPersonnageASupprimer(p)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Supprimer
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -247,6 +272,18 @@ const TableauDeBord = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ModaleTransfertPersonnage
+        personnage={personnageATransferer}
+        open={!!personnageATransferer}
+        onOpenChange={(o) => { if (!o) setPersonnageATransferer(null); }}
+        onTransfered={() =>
+          queryClient.invalidateQueries({
+            predicate: (q) =>
+              Array.isArray(q.queryKey) && q.queryKey[0] === "mes-personnages",
+          })
+        }
+      />
     </div>
   );
 };
