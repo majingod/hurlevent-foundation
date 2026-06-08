@@ -58,7 +58,7 @@ export interface EtapeProps {
 
 const PersonnageNouveauV2 = () => {
   const { user, loading: authLoading } = useAuth();
-  const { joueurId } = useProfil();
+  const { joueurId, rechargerProfils } = useProfil();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -235,6 +235,8 @@ const PersonnageNouveauV2 = () => {
     // Personnage finalisé (étape 10 → 11) : sortir du wizard.
     // Le toast de succès est déjà affiché par Etape10_Recapitulatif_V2.
     if ((result.etape_creation ?? 0) > TOTAL_STEPS) {
+      // Nouveau perso finalisé : rafraîchir les compteurs de profils (écran « Qui joue ? »).
+      void rechargerProfils();
       navigate("/tableau-de-bord");
       return;
     }

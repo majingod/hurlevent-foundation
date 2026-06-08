@@ -35,7 +35,7 @@ export default function ModaleTransfertPersonnage({
   onOpenChange,
   onTransfered,
 }: Props) {
-  const { profils, joueurId, profilActif } = useProfil();
+  const { profils, joueurId, profilActif, rechargerProfils } = useProfil();
   const [cibleId, setCibleId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -69,6 +69,8 @@ export default function ModaleTransfertPersonnage({
     toast.success(`« ${personnage.nom} » transféré vers ${cibleNom}.`);
     // Avertissements éventuels (ex. historique de présence conservé sur l'ancien profil).
     res.avertissements?.forEach((a) => toast(a.message));
+    // Rafraîchit les compteurs de personnages par profil (écran « Qui joue ? »).
+    await rechargerProfils();
     onTransfered();
     fermer();
   };

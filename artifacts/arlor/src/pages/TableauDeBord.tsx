@@ -44,7 +44,7 @@ interface PersonnageResume {
 
 const TableauDeBord = () => {
   const { user } = useAuth();
-  const { joueurId } = useProfil();
+  const { joueurId, rechargerProfils } = useProfil();
   const queryClient = useQueryClient();
   const [personnageASupprimer, setPersonnageASupprimer] = useState<PersonnageResume | null>(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
@@ -103,6 +103,7 @@ const TableauDeBord = () => {
         predicate: (q) =>
           Array.isArray(q.queryKey) && q.queryKey[0] === "mes-personnages",
       });
+      void rechargerProfils();
       toast({
         title: "Personnage supprimé",
         description: `Le personnage «${personnageASupprimer.nom}» a été supprimé.`,
