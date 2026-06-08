@@ -694,7 +694,7 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
   const { data, isLoading } = useQuery({
     queryKey: ["inscriptions", eventId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("inscriptions_evenements")
+      const { data, error } = await (supabase as any).from("inscriptions_evenements")
         .select(
           `id, statut, evenement_id, personnage_id, joueur_id,
            personnages(nom),
@@ -827,7 +827,7 @@ const PresenceTardiveDialog = ({ open, eventId, onClose }: PresenceTardiveDialog
   const { data: personnages, isLoading } = useQuery({
     queryKey: ["personnages-actifs-pour-presence"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("personnages")
+      const { data, error } = await (supabase as any).from("personnages")
         .select("id, nom, profiles(nom_affichage)")
         .eq("est_actif", true)
         .order("nom");
