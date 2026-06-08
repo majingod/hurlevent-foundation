@@ -30,6 +30,8 @@ interface ProfilContextType {
   ajouterProfil: (nom: string) => Promise<{ ok: boolean; message?: string }>;
   renommerProfil: (id: string, nom: string) => Promise<{ ok: boolean; message?: string }>;
   supprimerProfil: (id: string) => Promise<{ ok: boolean; message?: string }>;
+  reinitialiserProfil: (gestion?: boolean) => void;
+  intentGestion: boolean;
 }
 
 const ProfilContext = createContext<ProfilContextType>({
@@ -42,6 +44,8 @@ const ProfilContext = createContext<ProfilContextType>({
   ajouterProfil: async () => ({ ok: false }),
   renommerProfil: async () => ({ ok: false }),
   supprimerProfil: async () => ({ ok: false }),
+  reinitialiserProfil: () => {},
+  intentGestion: false,
 });
 
 export const useProfil = () => useContext(ProfilContext);
@@ -131,6 +135,19 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
     [user],
   );
 
+  const [intentGestion, setIntentGestion] = useState(false);
+
+  // « Changer / Gérer les profils » : vide le profil actif -> l'écran « Qui joue ? » réapparaît.
+  // gestion=true => QuiJoue s'ouvre directement en mode gestion.
+  const reinitialiserProfil = useCallback(
+    (gestion: boolean = false) => {
+      if (user) sessionStorage.removeItem(cleStorage(user.id));
+      setIntentGestion(gestion);
+      setProfilActifId(null);
+    },
+    [user],
+  );
+
   const rechargerProfils = useCallback(async () => {
     await chargerProfils();
   }, [chargerProfils]);
@@ -208,6 +225,8 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
         ajouterProfil,
         renommerProfil,
         supprimerProfil,
+        reinitialiserProfil,
+        intentGestion,
       }}
     >
       {children}

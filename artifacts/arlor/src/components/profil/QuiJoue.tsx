@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
 import { Crown, Pencil, Trash2, Plus, Settings, ArrowLeft, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useProfil, type ProfilJoueur } from "@/contexts/ProfilContext";
@@ -87,9 +88,10 @@ const miniBtn = (couleur: string): CSSProperties => ({
 });
 
 export default function QuiJoue() {
-  const { profils, switchProfil, ajouterProfil, renommerProfil, supprimerProfil } =
+  const { profils, switchProfil, ajouterProfil, renommerProfil, supprimerProfil, intentGestion } =
     useProfil();
-  const [gestion, setGestion] = useState(false);
+  const navigate = useNavigate();
+  const [gestion, setGestion] = useState(intentGestion);
   const [editionId, setEditionId] = useState<string | null>(null);
   const [ajout, setAjout] = useState(false);
   const [valeur, setValeur] = useState("");
@@ -104,6 +106,7 @@ export default function QuiJoue() {
   const choisir = (p: ProfilJoueur) => {
     if (gestion || editionId) return;
     switchProfil(p.id);
+    navigate("/tableau-de-bord");
   };
 
   const validerAjout = async () => {
