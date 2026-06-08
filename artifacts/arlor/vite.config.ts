@@ -4,6 +4,7 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import tailwindcss from "tailwindcss";
 import autoprefixer from "autoprefixer";
+import { VitePWA } from "vite-plugin-pwa";
 
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
@@ -19,6 +20,37 @@ export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
+    VitePWA({
+      registerType: "prompt",
+      includeAssets: [
+        "favicon.ico",
+        "favicon-32x32.png",
+        "apple-touch-icon.png",
+      ],
+      manifest: {
+        name: "Hurlevent — GN de Destéa",
+        short_name: "Hurlevent",
+        description:
+          "Gère ton personnage du GN médiéval-fantastique Hurlevent, dans l'univers de Destéa.",
+        lang: "fr",
+        start_url: "/",
+        scope: "/",
+        display: "standalone",
+        background_color: "#0a0a0a",
+        theme_color: "#0a0a0a",
+        icons: [
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/pwa-maskable-192x192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "/pwa-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+      },
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [

@@ -11,6 +11,7 @@ import Navbar from "@/components/Navbar";
 import ScrollToTop from "@/components/ScrollToTop";
 import Footer from "@/components/Footer";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PwaUpdatePrompt from "@/components/PwaUpdatePrompt";
 
 // Pages publiques
 import Accueil from "@/pages/Accueil";
@@ -163,6 +164,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PwaUpdatePrompt />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <ScrollToTop />
           {doitChoisirProfil ? (
