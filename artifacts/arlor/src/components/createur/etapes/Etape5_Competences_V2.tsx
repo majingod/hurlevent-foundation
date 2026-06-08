@@ -1650,6 +1650,17 @@ const Etape5_Competences_V2 = ({
     />
   );
 
+  /**
+   * Libellé VISIBLE « Manque X XP ». Le tooltip `title` des cases ne s'affiche
+   * pas au survol sur mobile : sans ce libellé, une case grisée faute d'XP
+   * paraît cassée. À afficher uniquement quand `xpInsuffisants` est vrai.
+   */
+  const renderManqueXp = (coutXp: number): ReactNode => (
+    <span className="flex items-center gap-1 text-xs text-amber-400">
+      <Lock className="h-3 w-3" /> Manque {coutXp - xpDisponible} XP
+    </span>
+  );
+
   /** Ligne « Prérequis » d'un niveau donné (vert ✓ rempli / orange ⚠ cliquable). */
   const renderLignePrereqNiveau = (
     niv: NiveauInfo,
@@ -1719,6 +1730,7 @@ const Etape5_Competences_V2 = ({
                 Acquis gratuitement
               </Badge>
             )}
+            {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
           </Label>
         </div>
         {niv.description && (
@@ -1785,6 +1797,7 @@ const Etape5_Competences_V2 = ({
                       ✓
                     </span>
                   )}
+                  {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
                 </div>
               </div>
               {open && (
@@ -1872,6 +1885,7 @@ const Etape5_Competences_V2 = ({
           <span className="ml-2 text-muted-foreground">
             ({niv1.cout_xp} XP / achat)
           </span>
+          {xpInsuffisants && renderManqueXp(niv1.cout_xp)}
         </div>
         <Button
           size="sm"
@@ -2017,6 +2031,7 @@ const Etape5_Competences_V2 = ({
                         <Lock className="h-3 w-3" /> Niv. {niv.niveau - 1} requis
                       </span>
                     )}
+                    {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
                   </Label>
                 </div>
               );
@@ -2103,6 +2118,7 @@ const Etape5_Competences_V2 = ({
                       {niv1.cout_xp} XP
                     </Badge>
                   )}
+                  {xpInsuffisants && renderManqueXp(niv1.cout_xp)}
                 </Label>
                 {estReligion && religionObj && (
                   <button
@@ -2218,6 +2234,7 @@ const Etape5_Competences_V2 = ({
                       Acquis gratuitement
                     </Badge>
                   )}
+                  {xpInsuff1 && renderManqueXp(niv1.cout_xp)}
                 </span>
                 {niv1.description && (
                   <span className="text-muted-foreground">{niv1.description}</span>
