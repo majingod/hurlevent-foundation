@@ -9,6 +9,7 @@ import {
   FileText,
   MonitorDown,
   BookOpen,
+  ChevronDown,
 } from "lucide-react";
 
 /**
@@ -49,6 +50,7 @@ export default function Telechargements() {
   const [plateforme, setPlateforme] = useState<Plateforme>(detecterPlateforme);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installee, setInstallee] = useState<boolean>(dejaInstallee);
+  const [replisOuvert, setReplisOuvert] = useState(false);
 
   useEffect(() => {
     const onBeforeInstall = (e: Event) => {
@@ -107,28 +109,7 @@ export default function Telechargements() {
           </p>
         </CardHeader>
         <CardContent>
-          {/* Sélecteur de plateforme */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            {plateformes.map((p) => {
-              const actif = plateforme === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setPlateforme(p.id)}
-                  className={
-                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors " +
-                    (actif
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:text-foreground")
-                  }
-                >
-                  {p.libelle}
-                </button>
-              );
-            })}
-          </div>
-
+          {/* Action principale, selon la plateforme détectée */}
           {installee ? (
             <EtatInstallee />
           ) : plateforme === "ios" ? (
@@ -149,6 +130,47 @@ export default function Telechargements() {
             </BoutonInstaller>
           ) : (
             <ReplisInstall texte="Clique sur l'icône d'installation dans la barre d'adresse de ton navigateur (Chrome, Edge)." />
+          )}
+
+          {/* Repli discret : autre appareil (la détection mène, ceci dépanne) */}
+          {!installee && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setReplisOuvert((v) => !v)}
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Autre appareil ?
+                <ChevronDown
+                  className={
+                    "h-3.5 w-3.5 transition-transform " +
+                    (replisOuvert ? "rotate-180" : "")
+                  }
+                />
+              </button>
+              {replisOuvert && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {plateformes.map((p) => {
+                    const actif = plateforme === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPlateforme(p.id)}
+                        className={
+                          "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors " +
+                          (actif
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        {p.libelle}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
