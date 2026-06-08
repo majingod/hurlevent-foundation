@@ -9,6 +9,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import StepperEtapes, { type EtapeDef } from "@/components/createur/StepperEtapes";
@@ -57,6 +58,7 @@ export interface EtapeProps {
 
 const PersonnageNouveauV2 = () => {
   const { user, loading: authLoading } = useAuth();
+  const { joueurId } = useProfil();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -78,7 +80,7 @@ const PersonnageNouveauV2 = () => {
   // 1) Démarrage : soit reprise d'un personnage précis (?id=),
   //    soit création / récupération du brouillon unique.
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !joueurId) return;
     if (personnageId) return; // garde anti double-démarrage
     let annule = false;
 
@@ -97,7 +99,7 @@ const PersonnageNouveauV2 = () => {
       setDemarrage(true);
       setErreurDemarrage(null);
 
-      const { data, error } = await supabase.rpc("demarrer_creation_personnage");
+      const { data, error } = await supabase.rpc("demarrer_creation_personnage", { p_profil_id: joueurId });
 
       if (annule) return;
 
@@ -140,7 +142,7 @@ const PersonnageNouveauV2 = () => {
     return () => {
       annule = true;
     };
-  }, [authLoading, user?.id, personnageIdParUrl]);
+  }, [authLoading, user?.id, joueurId, personnageIdParUrl]);
 
   // 2) État du personnage (XP, étape) — rafraîchi après chaque mutation
   const { data: personnage, error: erreurPersonnage } =

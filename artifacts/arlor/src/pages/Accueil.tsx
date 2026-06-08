@@ -3,6 +3,7 @@ import { useCartesAccueil } from "@/hooks/useCartesAccueil";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, MapPin, Users, Sparkles } from "lucide-react";
@@ -58,6 +59,7 @@ const typeLabel = (t: string | null) => {
 /* ---------- component ---------- */
 const Accueil = () => {
   const { user } = useAuth();
+  const { joueurId } = useProfil();
   const creerLink = user ? "/personnage/nouveau" : "/connexion";
 
   const { data: cartes, loading: cartesLoading } = useCartesAccueil();
@@ -97,20 +99,20 @@ const Accueil = () => {
 
   // load player's active characters + check existing inscription
   useEffect(() => {
-    if (!user || !evenement?.id) return;
+    if (!user || !joueurId || !evenement?.id) return;
     const load = async () => {
       const [pRes, iRes] = await Promise.all([
         supabase
           .from("personnages")
           .select("id, nom")
-          .eq("joueur_id", user.id)
+          .eq("joueur_id", joueurId ?? "")
           .eq("est_actif", true)
           .order("created_at", { ascending: true }),
         supabase
           .from("inscriptions_evenements")
           .select("id")
           .eq("evenement_id", evenement.id ?? "")
-          .eq("joueur_id", user.id)
+          .eq("joueur_id", joueurId ?? "")
           .limit(1),
       ]);
       const persos = (pRes.data ?? []) as Personnage[];
@@ -120,14 +122,13 @@ const Accueil = () => {
       setPersonnagesLoaded(true);
     };
     load();
-  }, [user, evenement?.id]);
+  }, [user, joueurId, evenement?.id]);
 
   const handleInscription = async () => {
     if (!user || !evenement?.id || !selectedPerso) return;
     setInscribing(true);
     const { data: { session } } = await supabase.auth.getSession();
-    const joueurId = session?.user?.id;
-    if (!joueurId) {
+    if (!session?.user || !joueurId) {
       toast.error("Session expirée, veuillez vous reconnecter.");
       setInscribing(false);
       return;

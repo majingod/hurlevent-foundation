@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +87,7 @@ const xpLabel = (ev: Evenement) => {
 /* ---------- component ---------- */
 const Evenements = () => {
   const { user } = useAuth();
+  const { joueurId } = useProfil();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -113,30 +115,30 @@ const Evenements = () => {
   });
 
   const { data: inscriptions = [] } = useQuery({
-    queryKey: ["mes-inscriptions", user?.id],
+    queryKey: ["mes-inscriptions", joueurId],
     queryFn: async () => {
-      if (!user) return [] as Inscription[];
+      if (!joueurId) return [] as Inscription[];
       const { data } = await supabase
         .from("inscriptions_evenements")
         .select("id, evenement_id, statut")
-        .eq("joueur_id", user.id);
+        .eq("joueur_id", joueurId);
       return (data ?? []) as Inscription[];
     },
-    enabled: !!user,
+    enabled: !!joueurId,
   });
 
   const { data: personnages = [] } = useQuery({
-    queryKey: ["mes-personnages-actifs", user?.id],
+    queryKey: ["mes-personnages-actifs", joueurId],
     queryFn: async () => {
       const { data } = await supabase
         .from("personnages")
         .select("id, nom")
-        .eq("joueur_id", user!.id)
+        .eq("joueur_id", joueurId!)
         .eq("est_actif", true)
         .eq("est_mort", false);
       return (data ?? []) as Personnage[];
     },
-    enabled: !!user,
+    enabled: !!joueurId,
   });
 
   // Realtime : invalide le cache quand les inscriptions changent
@@ -148,15 +150,15 @@ const Evenements = () => {
         { event: "*", schema: "public", table: "inscriptions_evenements" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["evenements-publies"] });
-          if (user) {
-            queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
+          if (joueurId) {
+            queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", joueurId] });
           }
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, queryClient]);
+  }, [joueurId, queryClient]);
 
   const openModal = (ev: Evenement) => {
     if (!user) {
@@ -173,8 +175,7 @@ const Evenements = () => {
     setSubmitting(true);
 
     const { data: { session } } = await supabase.auth.getSession();
-    const joueurId = session?.user?.id;
-    if (!joueurId) {
+    if (!session?.user || !joueurId) {
       toast.error("Session expirée, veuillez vous reconnecter.");
       setSubmitting(false);
       return;
