@@ -65,6 +65,7 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
     const { data: profilsData, error } = await supabase
       .from("profils_joueur")
       .select("id, compte_id, nom, avatar_url, est_principal, cree_le")
+      .eq("compte_id", user.id)
       .order("est_principal", { ascending: false })
       .order("cree_le", { ascending: true });
 
