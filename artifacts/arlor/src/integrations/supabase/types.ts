@@ -5171,9 +5171,11 @@ export type Database = {
       vue_journal_staff: {
         Row: {
           acteur_id: string | null
+          acteur_nom: string | null
           acteur_role: string | null
           action: string | null
           cible_id: string | null
+          cible_nom: string | null
           cible_type: string | null
           created_at: string | null
           details: Json | null
@@ -5181,9 +5183,11 @@ export type Database = {
         }
         Insert: {
           acteur_id?: string | null
+          acteur_nom?: string | null
           acteur_role?: string | null
           action?: string | null
           cible_id?: string | null
+          cible_nom?: string | null
           cible_type?: string | null
           created_at?: string | null
           details?: Json | null
@@ -5191,9 +5195,11 @@ export type Database = {
         }
         Update: {
           acteur_id?: string | null
+          acteur_nom?: string | null
           acteur_role?: string | null
           action?: string | null
           cible_id?: string | null
+          cible_nom?: string | null
           cible_type?: string | null
           created_at?: string | null
           details?: Json | null
