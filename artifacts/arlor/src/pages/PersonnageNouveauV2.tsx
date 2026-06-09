@@ -7,7 +7,7 @@ import {
   Hammer, ClipboardCheck, AlertTriangle, Coins,
 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, setCanalAdmin } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
@@ -82,6 +82,14 @@ const PersonnageNouveauV2 = () => {
   // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
   // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
   const [etapeInitialisee, setEtapeInitialisee] = useState(false);
+
+  // AUDIT-ADMIN-MODE-ROLE : en admin mode, marquer le canal pour que les
+  // actions auditées soient taguées « admin » (visibles au feed staff),
+  // même sur son propre perso. Retiré au démontage / sortie d'admin mode.
+  useEffect(() => {
+    setCanalAdmin(modeAdmin);
+    return () => setCanalAdmin(false);
+  }, [modeAdmin]);
 
   // 1) Démarrage : soit reprise d'un personnage précis (?id=),
   //    soit création / récupération du brouillon unique.
