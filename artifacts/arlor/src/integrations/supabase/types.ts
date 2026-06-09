@@ -5183,11 +5183,11 @@ export type Database = {
         }
         Insert: {
           acteur_id?: string | null
-          acteur_nom?: string | null
+          acteur_nom?: never
           acteur_role?: string | null
           action?: string | null
           cible_id?: string | null
-          cible_nom?: string | null
+          cible_nom?: never
           cible_type?: string | null
           created_at?: string | null
           details?: Json | null
@@ -5195,11 +5195,11 @@ export type Database = {
         }
         Update: {
           acteur_id?: string | null
-          acteur_nom?: string | null
+          acteur_nom?: never
           acteur_role?: string | null
           action?: string | null
           cible_id?: string | null
-          cible_nom?: string | null
+          cible_nom?: never
           cible_type?: string | null
           created_at?: string | null
           details?: Json | null
@@ -6089,6 +6089,10 @@ export type Database = {
       }
       cloturer_evenement: { Args: { p_evenement_id: string }; Returns: Json }
       compte_voit_joueur: { Args: { p_joueur_id: string }; Returns: boolean }
+      corriger_xp_personnage: {
+        Args: { p_montant: number; p_personnage_id: string; p_raison?: string }
+        Returns: Json
+      }
       crediter_banque_xp: {
         Args: {
           p_description?: string
