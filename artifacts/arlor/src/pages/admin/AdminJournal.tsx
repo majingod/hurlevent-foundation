@@ -46,7 +46,10 @@ function detailChips(details: StaffRow["details"]): Chip[] {
   const chips: Chip[] = [];
   if (!details || typeof details !== "object") return chips;
   const d = details as Record<string, unknown>;
-  if (typeof d.nom === "string") chips.push({ t: d.nom, tone: "neutre" });
+  if (typeof d.nom === "string") {
+    const niv = typeof d.niveau === "number" ? ` · niv ${d.niveau}` : "";
+    chips.push({ t: `${d.nom}${niv}`, tone: "gold" });
+  }
   if (typeof d.cout_xp === "number") chips.push({ t: `−${d.cout_xp} XP`, tone: "bordeaux" });
   if (typeof d.xp_rembourse === "number" && d.xp_rembourse > 0)
     chips.push({ t: `+${d.xp_rembourse} XP`, tone: "gold" });
