@@ -425,7 +425,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   return (
     <div className={mode === 'route' ? 'container max-w-6xl py-8 space-y-6' : 'space-y-6'}>
-      {mode === 'route' && isAdmin && (
+      {mode === 'route' && isAdmin && !isOwner && (
         <div className="rounded-xl border border-gold/20 bg-card p-4 flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <Wand2 className="h-5 w-5 shrink-0 mt-0.5 text-gold" />
@@ -468,7 +468,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         )}
       </div>
 
-      {mode === 'route' && (
+      {mode === 'route' && isOwner && (
         <div className="max-w-sm">
           <BoutonRemodeler personnageId={personnageId} />
         </div>

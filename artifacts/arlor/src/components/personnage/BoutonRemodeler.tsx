@@ -44,9 +44,17 @@ export default function BoutonRemodeler({ personnageId, compact = false }: Props
   if (isLoading || !etat) return null;
 
   const peutEditer = etat.peut_tout_editer === true;
+  // brouillon = perso déjà rouvert / en cours de remodelage. reouvrir_personnage
+  // n'accepte que remodelage_libre → pour un brouillon on continue directement
+  // dans le wizard (sinon la RPC échoue « Ce personnage est déjà en création »).
+  const enCours = etat.etat === "brouillon";
   const size = compact ? "sm" : "default";
 
   const handleRemodeler = async () => {
+    if (enCours) {
+      navigate(`/personnage/nouveau?id=${personnageId}`);
+      return;
+    }
     setBusy(true);
     const { data, error } = await supabase.rpc("reouvrir_personnage", {
       p_personnage_id: personnageId,
@@ -105,7 +113,7 @@ export default function BoutonRemodeler({ personnageId, compact = false }: Props
       ) : (
         <Wrench className="h-4 w-4" />
       )}
-      Remodeler le personnage
+      {enCours ? "Continuer le remodelage" : "Remodeler le personnage"}
     </Button>
   );
 }

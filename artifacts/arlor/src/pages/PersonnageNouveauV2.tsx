@@ -198,7 +198,7 @@ const PersonnageNouveauV2 = () => {
   useEffect(() => {
     if (!modeAdmin && personnage && personnage.etape_creation > TOTAL_STEPS) {
       toast.info(
-        "Ce personnage est finalisé. La modification post-finalisation arrivera bientôt.",
+        "Ce personnage est finalisé. Utilise « Remodeler » depuis sa fiche pour le modifier.",
       );
       navigate(`/personnage/${personnage.id}`, { replace: true });
     }
