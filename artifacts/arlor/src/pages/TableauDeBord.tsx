@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, User, Edit2, MoreVertical, ArrowRightLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Loader2, Plus, Trash2, User, Edit2, MoreVertical, ArrowRightLeft, ScrollText } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
@@ -49,6 +49,7 @@ const TableauDeBord = () => {
   const [personnageASupprimer, setPersonnageASupprimer] = useState<PersonnageResume | null>(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
   const [personnageATransferer, setPersonnageATransferer] = useState<PersonnageResume | null>(null);
+  const navigate = useNavigate();
 
   // DATA-FIRST : vue_personnages_joueur retourne directement race_nom / classe_nom
   // Remplace la requête sur la table brute personnages qui affichait des UUIDs
@@ -194,6 +195,14 @@ const TableauDeBord = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="border-white/10 bg-slate-900 text-white">
+                      <DropdownMenuItem
+                        onClick={() => navigate(`/personnage/${p.id}/journal`)}
+                        className="cursor-pointer focus:bg-white/10"
+                      >
+                        <ScrollText className="mr-2 h-4 w-4" />
+                        Journal
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-white/10" />
                       <DropdownMenuItem
                         onClick={() => setPersonnageATransferer(p)}
                         className="cursor-pointer focus:bg-white/10"

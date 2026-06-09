@@ -1247,6 +1247,39 @@ export type Database = {
           },
         ]
       }
+      journal_audit: {
+        Row: {
+          acteur_id: string
+          acteur_role: string
+          action: string
+          cible_id: string
+          cible_type: string
+          created_at: string
+          details: Json
+          id: string
+        }
+        Insert: {
+          acteur_id: string
+          acteur_role: string
+          action: string
+          cible_id: string
+          cible_type: string
+          created_at?: string
+          details?: Json
+          id?: string
+        }
+        Update: {
+          acteur_id?: string
+          acteur_role?: string
+          action?: string
+          cible_id?: string
+          cible_type?: string
+          created_at?: string
+          details?: Json
+          id?: string
+        }
+        Relationships: []
+      }
       langues: {
         Row: {
           created_at: string | null
@@ -5066,6 +5099,108 @@ export type Database = {
         }
         Relationships: []
       }
+      vue_journal_mon_personnage: {
+        Row: {
+          acteur_id: string | null
+          acteur_nom: string | null
+          acteur_role: string | null
+          action: string | null
+          cible_id: string | null
+          cible_type: string | null
+          created_at: string | null
+          details: Json | null
+          id: string | null
+        }
+        Insert: {
+          acteur_id?: string | null
+          acteur_nom?: never
+          acteur_role?: string | null
+          action?: string | null
+          cible_id?: string | null
+          cible_type?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string | null
+        }
+        Update: {
+          acteur_id?: string | null
+          acteur_nom?: never
+          acteur_role?: string | null
+          action?: string | null
+          cible_id?: string | null
+          cible_type?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string | null
+        }
+        Relationships: []
+      }
+      vue_journal_proprietaire: {
+        Row: {
+          acteur_id: string | null
+          acteur_role: string | null
+          action: string | null
+          cible_id: string | null
+          cible_type: string | null
+          created_at: string | null
+          details: Json | null
+          id: string | null
+        }
+        Insert: {
+          acteur_id?: string | null
+          acteur_role?: string | null
+          action?: string | null
+          cible_id?: string | null
+          cible_type?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string | null
+        }
+        Update: {
+          acteur_id?: string | null
+          acteur_role?: string | null
+          action?: string | null
+          cible_id?: string | null
+          cible_type?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string | null
+        }
+        Relationships: []
+      }
+      vue_journal_staff: {
+        Row: {
+          acteur_id: string | null
+          acteur_role: string | null
+          action: string | null
+          cible_id: string | null
+          cible_type: string | null
+          created_at: string | null
+          details: Json | null
+          id: string | null
+        }
+        Insert: {
+          acteur_id?: string | null
+          acteur_role?: string | null
+          action?: string | null
+          cible_id?: string | null
+          cible_type?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string | null
+        }
+        Update: {
+          acteur_id?: string | null
+          acteur_role?: string | null
+          action?: string | null
+          cible_id?: string | null
+          cible_type?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string | null
+        }
+        Relationships: []
+      }
       vue_personnage_creation_complet: {
         Row: {
           a_forge_legendaire: boolean | null
@@ -5994,6 +6129,7 @@ export type Database = {
         Args: { p_montant: number; p_personnage_id: string; p_raison?: string }
         Returns: Json
       }
+      est_admin: { Args: never; Returns: boolean }
       est_animateur_ou_admin: { Args: never; Returns: boolean }
       etat_edition_personnage: {
         Args: { p_personnage_id: string }
@@ -6035,8 +6171,18 @@ export type Database = {
       get_stats_admin: { Args: never; Returns: Json }
       immutable_array_to_string: { Args: { arr: string[] }; Returns: string }
       joueur_actif: { Args: { p_profil_id?: string }; Returns: string }
+      log_audit: {
+        Args: {
+          p_action: string
+          p_cible_id: string
+          p_cible_type: string
+          p_details?: Json
+        }
+        Returns: string
+      }
       marquer_absent: { Args: { p_inscription_id: string }; Returns: Json }
       marquer_present: { Args: { p_inscription_id: string }; Returns: Json }
+      nom_profil_principal: { Args: { p_acteur_id: string }; Returns: string }
       personnage_a_des_prieres: {
         Args: { p_personnage_id: string }
         Returns: boolean
@@ -6070,6 +6216,10 @@ export type Database = {
           p_trait_id: string
         }
         Returns: Json
+      }
+      peut_editer_personnage: {
+        Args: { p_joueur_id: string }
+        Returns: boolean
       }
       profils_du_compte: { Args: { c: string }; Returns: string[] }
       recalculer_ps_max: {
