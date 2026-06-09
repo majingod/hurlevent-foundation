@@ -426,34 +426,36 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   return (
     <div className={mode === 'route' ? 'container max-w-6xl py-8 space-y-6' : 'space-y-6'}>
       {mode === 'route' && isAdmin && (
-        <div className="rounded-xl border border-gold/20 bg-card p-4 flex items-start gap-3">
-          <Wand2 className="h-5 w-5 shrink-0 mt-0.5 text-gold" />
-          <div className="flex-1">
-            <p className="font-heading font-bold text-gold">Mode admin</p>
-            <p className="text-sm mt-1 text-muted-foreground">
-              Plein pouvoir sur <b>{fiche.nom}</b> (compétences, sorts, prières, XP)
-              via l'éditeur complet, sans changer l'état du personnage. Chaque action
-              est journalisée.
-            </p>
+        <div className="rounded-xl border border-gold/20 bg-card p-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <Wand2 className="h-5 w-5 shrink-0 mt-0.5 text-gold" />
+            <div className="min-w-0">
+              <p className="font-heading font-bold text-gold">Mode admin</p>
+              <p className="text-sm mt-1 text-muted-foreground">
+                Plein pouvoir sur <b>{fiche.nom}</b> (compétences, sorts, prières, XP)
+                via l'éditeur complet, sans changer l'état du personnage. Chaque action
+                est journalisée.
+              </p>
+            </div>
           </div>
           <Button
             size="sm"
             onClick={() => navigate(`/personnage/nouveau?id=${fiche.id}&admin=1`)}
-            className="shrink-0 gap-2"
+            className="shrink-0 gap-2 w-full sm:w-auto"
           >
             <Wand2 className="h-4 w-4" /> Ouvrir l'éditeur complet
           </Button>
         </div>
       )}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-4xl font-bold text-primary">{fiche.nom}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-heading text-4xl font-bold text-primary break-words">{fiche.nom}</h1>
           <p className="text-muted-foreground mt-1">
             {fiche.race_nom} {fiche.race_nom_latin && <span className="italic">({fiche.race_nom_latin})</span>} • {fiche.classe_nom} • Niveau {fiche.niveau}
           </p>
         </div>
         {mode === 'route' && (
-          <div className="flex gap-2 flex-wrap justify-end">
+          <div className="flex gap-2 flex-wrap sm:justify-end">
             <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
               Fiche Version Courte
