@@ -7,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb, Eye, Lock, Unlock, AlertTriangle } from "lucide-react";
+import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb, Wand2 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 import type {
@@ -61,8 +62,8 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { joueurId } = useProfil();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [editingHistorique, setEditingHistorique] = useState(false);
-  const [editAdminActif, setEditAdminActif] = useState(false);
   const [historiqueTmp, setHistoriqueTmp] = useState("");
   const [ameTmp, setAmeTmp] = useState("");
   const [saving, setSaving] = useState(false);
@@ -319,9 +320,9 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   // ISOWNER-COMPTE-VS-PROFIL : on compare le PROFIL actif (joueurId), pas le compte (user.id).
   const isOwner = joueurId === fiche?.joueur_id;
   const isAdmin = role === "admin";
-  // Impersonation : admin éditant le perso d'un AUTRE compte. Gate serveur = peut_editer_personnage().
-  const peutEditerImpersonation = isAdmin && !isOwner;
-  const peutEditer = isOwner || (peutEditerImpersonation && editAdminActif);
+  // ÉDITION-ADMIN-WIZARD : l'édition in-place (historique/âme) reste réservée au
+  // propriétaire ; l'admin passe par l'éditeur complet (wizard ?admin=1).
+  const peutEditer = isOwner;
   const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
 
   const traits = Array.isArray(fiche?.traits_raciaux_choisis)
@@ -424,42 +425,23 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   return (
     <div className={mode === 'route' ? 'container max-w-6xl py-8 space-y-6' : 'space-y-6'}>
-      {mode === 'route' && peutEditerImpersonation && (
-        <div
-          className={`rounded-xl border p-4 flex items-start gap-3 ${
-            editAdminActif
-              ? 'border-bordeaux bg-bordeaux text-white'
-              : 'border-primary/20 bg-card'
-          }`}
-        >
-          {editAdminActif ? (
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-          ) : (
-            <Eye className="h-5 w-5 shrink-0 mt-0.5 text-gold" />
-          )}
+      {mode === 'route' && isAdmin && (
+        <div className="rounded-xl border border-gold/20 bg-card p-4 flex items-start gap-3">
+          <Wand2 className="h-5 w-5 shrink-0 mt-0.5 text-gold" />
           <div className="flex-1">
-            <p className={`font-heading font-bold ${editAdminActif ? 'text-white' : 'text-gold'}`}>
-              {editAdminActif ? "Édition admin active" : "Mode staff — lecture seule"}
-            </p>
-            <p className={`text-sm mt-1 ${editAdminActif ? 'text-white/85' : 'text-muted-foreground'}`}>
-              {editAdminActif ? (
-                <>Tu modifies <b>{fiche.nom}</b> (personnage d'un autre joueur). Chaque action est journalisée à ton nom.</>
-              ) : (
-                <>Tu consultes <b>{fiche.nom}</b> (personnage d'un autre joueur). Active l'édition pour intervenir.</>
-              )}
+            <p className="font-heading font-bold text-gold">Mode admin</p>
+            <p className="text-sm mt-1 text-muted-foreground">
+              Plein pouvoir sur <b>{fiche.nom}</b> (compétences, sorts, prières, XP)
+              via l'éditeur complet, sans changer l'état du personnage. Chaque action
+              est journalisée.
             </p>
           </div>
           <Button
             size="sm"
-            variant={editAdminActif ? 'outline' : 'default'}
-            onClick={() => setEditAdminActif((v) => !v)}
+            onClick={() => navigate(`/personnage/nouveau?id=${fiche.id}&admin=1`)}
             className="shrink-0 gap-2"
           >
-            {editAdminActif ? (
-              <><Lock className="h-4 w-4" /> Quitter</>
-            ) : (
-              <><Unlock className="h-4 w-4" /> Activer l'édition</>
-            )}
+            <Wand2 className="h-4 w-4" /> Ouvrir l'éditeur complet
           </Button>
         </div>
       )}

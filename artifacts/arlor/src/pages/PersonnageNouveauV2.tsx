@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Loader2, User, Fingerprint, Sparkles, Swords, Star, Wand2, Sun, Shapes,
-  Hammer, ClipboardCheck,
+  Hammer, ClipboardCheck, AlertTriangle, Coins,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import StepperEtapes, { type EtapeDef } from "@/components/createur/StepperEtapes";
+import DrawerAjusterXp from "@/components/createur/DrawerAjusterXp";
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
@@ -57,7 +58,7 @@ export interface EtapeProps {
 }
 
 const PersonnageNouveauV2 = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const { joueurId, rechargerProfils } = useProfil();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -67,12 +68,17 @@ const PersonnageNouveauV2 = () => {
   // de bord. Si présent, on NE passe PAS par demarrer_creation_personnage.
   const personnageIdParUrl = searchParams.get("id");
 
+  // ÉDITION-ADMIN-WIZARD : un admin peut ouvrir l'éditeur complet d'un perso
+  // finalisé (?admin=1). Le gate backend est contourné côté serveur (s141).
+  const modeAdmin = role === "admin" && searchParams.get("admin") === "1";
+
   const [personnageId, setPersonnageId] = useState<string | null>(null);
   const [etape, setEtape] = useState<number>(1);
   const [xpDeltaCourant, setXpDeltaCourant] = useState<number>(0);
   const [xpGainCourant, setXpGainCourant] = useState<number>(0);
   const [demarrage, setDemarrage] = useState(true);
   const [erreurDemarrage, setErreurDemarrage] = useState<string | null>(null);
+  const [xpDrawerOpen, setXpDrawerOpen] = useState(false);
   // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
   // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
   const [etapeInitialisee, setEtapeInitialisee] = useState(false);
@@ -160,17 +166,35 @@ const PersonnageNouveauV2 = () => {
       },
     });
 
+  // ÉDITION-ADMIN-WIZARD : état courant (gele / campagne / …) pour le bandeau admin.
+  const { data: etatAdmin } = useQuery<string | null>({
+    queryKey: ["v2-etat-admin", personnageId],
+    enabled: !!personnageId && modeAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("etat_edition_personnage", {
+        p_personnage_id: personnageId!,
+      });
+      if (error) throw error;
+      return ((data as unknown as Record<string, unknown> | null)?.etat as string | null) ?? null;
+    },
+  });
+
+  // ÉDITION-ADMIN-WIZARD : sortie propre de l'éditeur admin (retour fiche).
+  const terminerEditionAdmin = () => {
+    if (personnageId) navigate(`/personnage/${personnageId}`);
+  };
+
   // Redirect automatique : si le personnage est finalisé (etape_creation > TOTAL_STEPS),
-  // on bascule vers la fiche read-only. La modification post-finalisation (achats inter-événements)
-  // sera implémentée dans le chantier section 8.
+  // on bascule vers la fiche read-only — SAUF en mode admin, où l'on reste dans
+  // l'éditeur complet pour modifier le perso finalisé en place.
   useEffect(() => {
-    if (personnage && personnage.etape_creation > TOTAL_STEPS) {
+    if (!modeAdmin && personnage && personnage.etape_creation > TOTAL_STEPS) {
       toast.info(
         "Ce personnage est finalisé. La modification post-finalisation arrivera bientôt.",
       );
       navigate(`/personnage/${personnage.id}`, { replace: true });
     }
-  }, [personnage, navigate]);
+  }, [personnage, navigate, modeAdmin]);
 
   // 1b) Reprise via ?id= : positionner l'étape initiale sur etape_creation
   //     lu en base, une seule fois (ne pas écraser la navigation manuelle).
@@ -209,10 +233,10 @@ const PersonnageNouveauV2 = () => {
   );
 
   // Étape la plus avancée atteinte : étapes <= etapeMax cliquables dans le stepper.
-  const etapeMax = Math.max(
-    etape,
-    Math.min(personnage?.etape_creation ?? 1, TOTAL_STEPS)
-  );
+  // En mode admin (perso finalisé), toutes les étapes sont accessibles.
+  const etapeMax = modeAdmin
+    ? TOTAL_STEPS
+    : Math.max(etape, Math.min(personnage?.etape_creation ?? 1, TOTAL_STEPS));
   const sauterEtape = (n: number) => {
     if (n >= 1 && n <= etapeMax) setEtape(n);
   };
@@ -231,6 +255,13 @@ const PersonnageNouveauV2 = () => {
         return data as PersonnageRow;
       },
     });
+
+    // ÉDITION-ADMIN-WIZARD : un perso finalisé a etape_creation > TOTAL_STEPS.
+    // En mode admin on ne quitte pas l'éditeur : on avance simplement via le stepper.
+    if (modeAdmin) {
+      setEtape((e) => Math.min(e + 1, TOTAL_STEPS));
+      return;
+    }
 
     // Personnage finalisé (étape 10 → 11) : sortir du wizard.
     // Le toast de succès est déjà affiché par Etape10_Recapitulatif_V2.
@@ -291,129 +322,179 @@ const PersonnageNouveauV2 = () => {
 
   // -- Rendu principal -------------------------------------------------------
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 py-10">
-      {/* En-tête : progression + XP */}
-      <header className="space-y-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="font-heading text-3xl text-gold">
-              Création de personnage
-            </h1>
-            <p className="text-sm text-white/50">
-              Étape {etape} / {TOTAL_STEPS}
-              {personnage?.nom ? ` — ${personnage.nom}` : ""}
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-gold/30 bg-gold/5 px-4 py-2 text-right">
-            <div className="text-[10px] uppercase tracking-widest text-gold/60">
-              XP disponible
+    <>
+      {/* ÉDITION-ADMIN-WIZARD : bandeau sticky d'indication + actions admin */}
+      {modeAdmin && (
+        <div className="sticky top-0 z-20 border-b border-bordeaux bg-bordeaux px-4 py-3">
+          <div className="mx-auto flex max-w-4xl items-center gap-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-white" />
+            <div className="min-w-0 flex-1">
+              <p className="font-heading text-sm font-bold text-white">
+                ÉDITION ADMIN — {personnage?.nom ?? "Personnage"}
+              </p>
+              <p className="text-xs text-white/85">
+                Verrous d'état contournés · l'état reste{" "}
+                <b>{etatAdmin ?? "…"}</b> · chaque achat est journalisé.
+              </p>
             </div>
-            <div className="font-heading text-2xl text-gold">
-              {xpDisponible}
-            </div>
-            <div className="text-[11px] text-white/50">
-              {xpDepense} dépensés / {xpTotalAffiche} totaux
+            <div className="grid shrink-0 gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={terminerEditionAdmin}
+                className="gap-2 border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              >
+                ← Terminer
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setXpDrawerOpen(true)}
+                className="gap-2 border-white/50 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              >
+                <Coins className="h-4 w-4" /> Ajuster XP
+              </Button>
             </div>
           </div>
         </div>
+      )}
 
-        <Progress value={progression} className="h-2" />
+      <div className="mx-auto max-w-4xl space-y-8 px-4 py-10">
+        {/* En-tête : progression + XP */}
+        <header className="space-y-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h1 className="font-heading text-3xl text-gold">
+                Création de personnage
+              </h1>
+              <p className="text-sm text-white/50">
+                Étape {etape} / {TOTAL_STEPS}
+                {personnage?.nom ? ` — ${personnage.nom}` : ""}
+              </p>
+            </div>
 
-        <StepperEtapes
-          etapes={ETAPES_DEF}
-          courant={etape}
-          max={etapeMax}
-          onJump={sauterEtape}
+            <div className="rounded-lg border border-gold/30 bg-gold/5 px-4 py-2 text-right">
+              <div className="text-[10px] uppercase tracking-widest text-gold/60">
+                XP disponible
+              </div>
+              <div className="font-heading text-2xl text-gold">
+                {xpDisponible}
+              </div>
+              <div className="text-[11px] text-white/50">
+                {xpDepense} dépensés / {xpTotalAffiche} totaux
+              </div>
+            </div>
+          </div>
+
+          <Progress value={progression} className="h-2" />
+
+          <StepperEtapes
+            etapes={ETAPES_DEF}
+            courant={etape}
+            max={etapeMax}
+            onJump={sauterEtape}
+          />
+        </header>
+
+        {/* Contenu de l'étape */}
+        <main className="rounded-xl border border-white/10 bg-black/30 p-6 shadow-lg">
+          {etape === 1 && (
+            <Etape1_V2
+              personnageId={personnageId}
+              onSuccess={handleEtapeSuccess}
+              onXpGainChange={setXpGainCourant}
+            />
+          )}
+          {etape === 2 && (
+            <Etape2_V2
+              personnageId={personnageId}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+            />
+          )}
+          {etape === 3 && (
+            <Etape3_V2
+              personnageId={personnageId}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+              onXpDeltaChange={setXpDeltaCourant}
+            />
+          )}
+          {etape === 4 && (
+            <Etape4_V2
+              personnageId={personnageId}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+            />
+          )}
+          {etape === 5 && (
+            <Etape5_Competences_V2
+              personnageId={personnageId}
+              xpDisponible={xpDisponible}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+              onXpDeltaChange={setXpDeltaCourant}
+            />
+          )}
+          {etape === 6 && (
+            <Etape6_Sorts_V2
+              personnageId={personnageId}
+              etapeCreation={personnage?.etape_creation ?? 0}
+              xpDisponible={xpDisponible}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+            />
+          )}
+          {etape === 7 && (
+            <Etape7_Prieres_V2
+              personnageId={personnageId}
+              etapeCreation={personnage?.etape_creation ?? 0}
+              xpDisponible={xpDisponible}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+            />
+          )}
+          {etape === 8 && (
+            <Etape8_Assemblages_V2
+              personnageId={personnageId}
+              etapeCreation={personnage?.etape_creation ?? 0}
+              xpDisponible={xpDisponible}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+            />
+          )}
+          {etape === 9 && (
+            <Etape9_Artisanat_V2
+              personnageId={personnageId}
+              etapeCreation={personnage?.etape_creation ?? 0}
+              xpDisponible={xpDisponible}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+            />
+          )}
+          {etape === 10 && (
+            <Etape10_Recapitulatif_V2
+              personnageId={personnageId}
+              onSuccess={handleEtapeSuccess}
+              onPrevious={handlePrevious}
+              modeAdmin={modeAdmin}
+              onTerminerAdmin={terminerEditionAdmin}
+            />
+          )}
+        </main>
+      </div>
+
+      {modeAdmin && (
+        <DrawerAjusterXp
+          personnageId={personnageId}
+          nom={personnage?.nom ?? null}
+          xpTotal={xpTotal}
+          xpDepense={xpDepense}
+          open={xpDrawerOpen}
+          onOpenChange={setXpDrawerOpen}
         />
-      </header>
-
-      {/* Contenu de l'étape */}
-      <main className="rounded-xl border border-white/10 bg-black/30 p-6 shadow-lg">
-        {etape === 1 && (
-          <Etape1_V2
-            personnageId={personnageId}
-            onSuccess={handleEtapeSuccess}
-            onXpGainChange={setXpGainCourant}
-          />
-        )}
-        {etape === 2 && (
-          <Etape2_V2
-            personnageId={personnageId}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-        {etape === 3 && (
-          <Etape3_V2
-            personnageId={personnageId}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-            onXpDeltaChange={setXpDeltaCourant}
-          />
-        )}
-        {etape === 4 && (
-          <Etape4_V2
-            personnageId={personnageId}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-        {etape === 5 && (
-          <Etape5_Competences_V2
-            personnageId={personnageId}
-            xpDisponible={xpDisponible}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-            onXpDeltaChange={setXpDeltaCourant}
-          />
-        )}
-        {etape === 6 && (
-          <Etape6_Sorts_V2
-            personnageId={personnageId}
-            etapeCreation={personnage?.etape_creation ?? 0}
-            xpDisponible={xpDisponible}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-        {etape === 7 && (
-          <Etape7_Prieres_V2
-            personnageId={personnageId}
-            etapeCreation={personnage?.etape_creation ?? 0}
-            xpDisponible={xpDisponible}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-        {etape === 8 && (
-          <Etape8_Assemblages_V2
-            personnageId={personnageId}
-            etapeCreation={personnage?.etape_creation ?? 0}
-            xpDisponible={xpDisponible}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-        {etape === 9 && (
-          <Etape9_Artisanat_V2
-            personnageId={personnageId}
-            etapeCreation={personnage?.etape_creation ?? 0}
-            xpDisponible={xpDisponible}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-        {etape === 10 && (
-          <Etape10_Recapitulatif_V2
-            personnageId={personnageId}
-            onSuccess={handleEtapeSuccess}
-            onPrevious={handlePrevious}
-          />
-        )}
-      </main>
-
-    </div>
+      )}
+    </>
   );
 };
 
