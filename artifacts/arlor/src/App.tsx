@@ -25,6 +25,7 @@ import Telechargements from "@/pages/Telechargements";
 import TableauDeBord from "@/pages/TableauDeBord";
 import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
 import PersonnageFiche from "@/pages/PersonnageFiche";
+import PersonnageJournal from "@/pages/PersonnageJournal";
 
 // Pages administration
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -81,6 +82,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <PersonnageFiche />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/personnage/:id/journal"
+      element={
+        <ProtectedRoute>
+          <PersonnageJournal />
         </ProtectedRoute>
       }
     />
