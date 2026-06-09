@@ -33,6 +33,7 @@ import AdminJoueurs from "@/pages/admin/AdminJoueurs";
 import AdminPersonnages from "@/pages/admin/AdminPersonnages";
 import AdminEvenements from "@/pages/admin/AdminEvenements";
 import AdminApprobations from "@/pages/admin/AdminApprobations";
+import AdminJournal from "@/pages/admin/AdminJournal";
 import AdminDonnees from "@/pages/admin/AdminDonnees";
 
 const queryClient = new QueryClient({
@@ -135,6 +136,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute requiredRole="animateur">
           <AdminApprobations />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/administration/journal"
+      element={
+        <ProtectedRoute requiredRole="animateur">
+          <AdminJournal />
         </ProtectedRoute>
       }
     />
