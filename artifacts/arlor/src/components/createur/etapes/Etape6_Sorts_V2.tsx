@@ -708,7 +708,7 @@ const Etape6_Sorts_V2 = ({
           ) : (
             sortsAchetes.map((ps) => {
               // PR-C2 : sort scellé par la photo de compo (désachat refusé).
-              const acquis = estSortAcquis(modeCampagne, photo, ps.sort_id);
+              const acquis = estSortAcquis(modeCampagne, photo, ps.sort_id, ps.id);
               return (
               <div
                 key={ps.id}
