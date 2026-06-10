@@ -796,7 +796,7 @@ const Etape7_Prieres_V2 = ({
           ) : (
             prieresAchetees.map((pp) => {
               // PR-C2 : prière scellée par la photo de compo (désachat refusé).
-              const acquis = estPriereAcquise(modeCampagne, photo, pp.priere_id);
+              const acquis = estPriereAcquise(modeCampagne, photo, pp.priere_id, pp.id);
               return (
               <div
                 key={pp.id}

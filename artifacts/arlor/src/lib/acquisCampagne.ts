@@ -16,8 +16,9 @@
 
 export interface PhotoCompo {
   competences?: { id: string; choix: string | null; niveau: number; niveaux?: number[] }[];
-  sorts?: { id: string }[];
-  prieres?: { id: string }[];
+  /** instance_id présent dans les photos capturées depuis la migration 20260610204155. */
+  sorts?: { id: string; instance_id?: string }[];
+  prieres?: { id: string; instance_id?: string }[];
   recettes?: { id: string }[];
   assemblages?: { id: string }[];
   pieges?: { nom: string; niveau: number }[];
@@ -57,20 +58,38 @@ export function estSortAcquis(
   actif: boolean,
   photo: PhotoState,
   sortId: string,
+  instanceId: string,
 ): boolean {
   if (!actif) return false;
   if (photoIndisponible(photo)) return true;
-  return (photo as PhotoCompo).sorts?.some((e) => e.id === sortId) ?? false;
+  // Miroir INV-3 backend : match par instance quand l'entrée photo porte un
+  // instance_id ; repli conservateur par sort de base (photos antérieures).
+  return (
+    (photo as PhotoCompo).sorts?.some((e) =>
+      e.instance_id !== undefined
+        ? e.instance_id === instanceId
+        : e.id === sortId,
+    ) ?? false
+  );
 }
 
 export function estPriereAcquise(
   actif: boolean,
   photo: PhotoState,
   priereId: string,
+  instanceId: string,
 ): boolean {
   if (!actif) return false;
   if (photoIndisponible(photo)) return true;
-  return (photo as PhotoCompo).prieres?.some((e) => e.id === priereId) ?? false;
+  // Miroir INV-3 backend : match par instance quand l'entrée photo porte un
+  // instance_id ; repli conservateur par prière de base (photos antérieures).
+  return (
+    (photo as PhotoCompo).prieres?.some((e) =>
+      e.instance_id !== undefined
+        ? e.instance_id === instanceId
+        : e.id === priereId,
+    ) ?? false
+  );
 }
 
 export function estRecetteAcquise(
