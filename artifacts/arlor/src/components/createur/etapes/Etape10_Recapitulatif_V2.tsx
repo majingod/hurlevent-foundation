@@ -14,6 +14,8 @@ interface Etape10Props {
   onPrevious?: () => void;
   modeAdmin?: boolean;
   onTerminerAdmin?: () => void;
+  modeCampagne?: boolean;
+  onTerminerCampagne?: () => void;
 }
 
 interface ValidationError {
@@ -43,6 +45,8 @@ const Etape10_Recapitulatif_V2 = ({
   onPrevious,
   modeAdmin = false,
   onTerminerAdmin,
+  modeCampagne = false,
+  onTerminerCampagne,
 }: Etape10Props) => {
   const finaliserMutation = useMutation({
     mutationFn: async () => {
@@ -103,6 +107,8 @@ const Etape10_Recapitulatif_V2 = ({
         <p className="text-sm text-muted-foreground">
           {modeAdmin
             ? "Aperçu de la fiche. En mode admin, terminer l'édition ne change pas l'état du personnage."
+            : modeCampagne
+            ? "Aperçu de la fiche. Tes ajouts et améliorations sont déjà enregistrés ; tu peux terminer."
             : "Vérifiez l'ensemble des informations de votre personnage avant de le finaliser. Une fois finalisé, le personnage sera verrouillé."}
         </p>
       </div>
@@ -123,6 +129,15 @@ const Etape10_Recapitulatif_V2 = ({
           >
             <CheckCircle2 className="mr-2 h-4 w-4" />
             Terminer l'édition admin
+          </Button>
+        ) : modeCampagne ? (
+          <Button
+            size="lg"
+            className="ml-auto"
+            onClick={() => onTerminerCampagne?.()}
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            Terminer
           </Button>
         ) : (
           <Button

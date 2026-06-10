@@ -220,16 +220,21 @@ const PersonnageNouveauV2 = () => {
     navigate(`/personnage/${personnage.id}`, { replace: true });
   }, [personnage, navigate, modeAdmin, etatPending, etatEdition]);
 
-  // 1b) Reprise via ?id= : positionner l'étape initiale sur etape_creation
-  //     lu en base, une seule fois (ne pas écraser la navigation manuelle).
+  // 1b) Reprise via ?id= : positionner l'étape initiale, une seule fois
+  //     (ne pas écraser la navigation manuelle ensuite).
+  //     - Brouillon (etape_creation <= TOTAL_STEPS) : reprendre où le joueur
+  //       en était (« Continuer la création »).
+  //     - Perso finalisé (campagne / remodelage_libre, etape_creation >
+  //       TOTAL_STEPS) : repartir de l'étape 1 (parcours de remodelage /
+  //       évolution complet), pas du récapitulatif.
   useEffect(() => {
     if (etapeInitialisee) return;
     if (!personnageIdParUrl) return;
     if (!personnage) return;
-    const cible = Math.max(
-      1,
-      Math.min(personnage.etape_creation ?? 1, TOTAL_STEPS)
-    );
+    const finalise = (personnage.etape_creation ?? 1) > TOTAL_STEPS;
+    const cible = finalise
+      ? 1
+      : Math.max(1, Math.min(personnage.etape_creation ?? 1, TOTAL_STEPS));
     setEtape(cible);
     setEtapeInitialisee(true);
   }, [etapeInitialisee, personnageIdParUrl, personnage]);
@@ -545,6 +550,8 @@ const PersonnageNouveauV2 = () => {
               onPrevious={handlePrevious}
               modeAdmin={modeAdmin}
               onTerminerAdmin={terminerEditionAdmin}
+              modeCampagne={modeCampagne}
+              onTerminerCampagne={() => navigate(`/personnage/${personnageId}`)}
             />
           )}
         </main>
