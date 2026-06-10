@@ -24,7 +24,9 @@ export function calculerCoutPS(coutXp: number): number {
 }
 
 // --- Calcul du coût XP total d'un sort ou d'une prière ---
-// Formule : (cout_zone + cout_portee + cout_duree + niveau) × cout_xp_base
+// Formule : CEIL((cout_zone + cout_portee + cout_duree + niveau) × cout_xp_base)
+// ⚠️ MIROIR EXACT de la fonction SQL public.calculer_cout_xp_magie (CEIL) :
+// avec un coût de base 0.5 ou 1.5, la DB arrondit à l'entier supérieur.
 export function calculerCoutXP(
   zoneChoisie: string,
   porteeChoisie: string,
@@ -35,7 +37,7 @@ export function calculerCoutXP(
   const coutZone   = COUT_ZONE[zoneChoisie]                              ?? 0;
   const coutPortee = PORTEES.find(p => p.label === porteeChoisie)?.cout  ?? 0;
   const coutDuree  = DUREES.find(d => d.label === dureeChoisie)?.cout    ?? 0;
-  return (coutZone + coutPortee + coutDuree + niveau) * coutXpBase;
+  return Math.ceil((coutZone + coutPortee + coutDuree + niveau) * coutXpBase);
 }
 
 // --- Coût XP maximum autorisé pour un personnage ---

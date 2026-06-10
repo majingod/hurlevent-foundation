@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,20 +11,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Loader2, Sparkles, Trash2 } from "lucide-react";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
+import ConstructeurMagie, {
+  type ValeursConstructeur,
+} from "@/components/createur/ConstructeurMagie";
+import DescriptionDepliable from "@/components/createur/DescriptionDepliable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estSortAcquis } from "@/lib/acquisCampagne";
 import {
@@ -41,9 +35,6 @@ import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
   calculerCoutPS,
   calculerCoutXP,
-  filterDureesDisponibles,
-  filterPorteesDisponibles,
-  getNoteZone,
   isZoneUnique,
 } from "@/utils/calculsMagie";
 
@@ -101,11 +92,13 @@ const Etape6_Sorts_V2 = ({
 
   const [cercleSelectionne, setCercleSelectionne] = useState<string | null>(null);
   const [sortId, setSortId] = useState<string | null>(null);
-  const [zoneChoisie, setZoneChoisie] = useState<string>("");
-  const [porteeChoisie, setPorteeChoisie] = useState<string>("");
-  const [dureeChoisie, setDureeChoisie] = useState<string>("");
-  const [niveauSort, setNiveauSort] = useState<number>(1);
-  const [nomPersonnalise, setNomPersonnalise] = useState<string>("");
+  const [valeurs, setValeurs] = useState<ValeursConstructeur>({
+    zone: "",
+    portee: "",
+    duree: "",
+    niveau: 1,
+    nom: "",
+  });
   const [aSupprimer, setASupprimer] = useState<{
     personnage_sort_id: string;
     nom: string;
@@ -198,68 +191,34 @@ const Etape6_Sorts_V2 = ({
   // Reset / pré-remplissage quand on change de sort
   useEffect(() => {
     if (!sortSelectionne) {
-      setZoneChoisie("");
-      setPorteeChoisie("");
-      setDureeChoisie("");
-      setNiveauSort(1);
-      setNomPersonnalise("");
+      setValeurs({ zone: "", portee: "", duree: "", niveau: 1, nom: "" });
       return;
     }
-    setNomPersonnalise(sortSelectionne.nom);
-    setNiveauSort(sortSelectionne.niveau ?? 1);
-    if (
-      sortSelectionne.zone_effet &&
-      isZoneUnique(sortSelectionne.zone_effet)
-    ) {
-      const zones = ZONES_PAR_TYPE[sortSelectionne.zone_effet] ?? [];
-      setZoneChoisie(zones[0] ?? "");
-    } else {
-      setZoneChoisie("");
-    }
-    setPorteeChoisie("");
-    setDureeChoisie("");
+    const zoneUnique =
+      !!sortSelectionne.zone_effet && isZoneUnique(sortSelectionne.zone_effet);
+    const zones = zoneUnique
+      ? ZONES_PAR_TYPE[sortSelectionne.zone_effet!] ?? []
+      : [];
+    setValeurs({
+      zone: zoneUnique ? zones[0] ?? "" : "",
+      portee: "",
+      duree: "",
+      niveau: sortSelectionne.niveau ?? 1,
+      nom: sortSelectionne.nom,
+    });
   }, [sortId, sortSelectionne]);
-
-  const zonesDisponibles = useMemo(() => {
-    if (!sortSelectionne?.zone_effet) return [] as string[];
-    return ZONES_PAR_TYPE[sortSelectionne.zone_effet] ?? [];
-  }, [sortSelectionne]);
-
-  const porteesDispo = useMemo(
-    () =>
-      sortSelectionne?.portee
-        ? filterPorteesDisponibles(sortSelectionne.portee)
-        : PORTEES,
-    [sortSelectionne],
-  );
-
-  const dureesDispo = useMemo(
-    () =>
-      sortSelectionne?.duree
-        ? filterDureesDisponibles(sortSelectionne.duree)
-        : DUREES,
-    [sortSelectionne],
-  );
 
   const coutXpBase = Number(sortSelectionne?.cout_xp_base ?? 0);
   const coutXp =
-    sortSelectionne && zoneChoisie && porteeChoisie && dureeChoisie
+    sortSelectionne && valeurs.zone && valeurs.portee && valeurs.duree
       ? calculerCoutXP(
-          zoneChoisie,
-          porteeChoisie,
-          dureeChoisie,
-          niveauSort,
+          valeurs.zone,
+          valeurs.portee,
+          valeurs.duree,
+          valeurs.niveau,
           coutXpBase,
         )
       : 0;
-  const coutPS = coutXp > 0 ? calculerCoutPS(coutXp) : 0;
-
-  const zoneEstUnique = sortSelectionne?.zone_effet
-    ? isZoneUnique(sortSelectionne.zone_effet)
-    : false;
-  const noteZone = sortSelectionne?.zone_effet
-    ? getNoteZone(sortSelectionne.zone_effet)
-    : null;
 
   const mutation = useMutation({
     mutationFn: async (params: AcheterSortParams) => {
@@ -350,10 +309,10 @@ const Etape6_Sorts_V2 = ({
 
   const peutAcheter =
     !!sortSelectionne &&
-    !!zoneChoisie &&
-    !!porteeChoisie &&
-    !!dureeChoisie &&
-    nomPersonnalise.trim().length > 0 &&
+    !!valeurs.zone &&
+    !!valeurs.portee &&
+    !!valeurs.duree &&
+    valeurs.nom.trim().length > 0 &&
     coutXp > 0;
 
   const handleAcheter = () => {
@@ -361,11 +320,11 @@ const Etape6_Sorts_V2 = ({
     mutation.mutate({
       p_personnage_id: personnageId,
       p_sort_id: sortSelectionne.id,
-      p_zone_choisie: zoneChoisie,
-      p_portee_choisie: porteeChoisie,
-      p_duree_choisie: dureeChoisie,
-      p_niveau_sort: niveauSort,
-      p_nom_personnalise: nomPersonnalise.trim(),
+      p_zone_choisie: valeurs.zone,
+      p_portee_choisie: valeurs.portee,
+      p_duree_choisie: valeurs.duree,
+      p_niveau_sort: valeurs.niveau,
+      p_nom_personnalise: valeurs.nom.trim(),
     });
   };
 
@@ -479,21 +438,31 @@ const Etape6_Sorts_V2 = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select
-            value={cercleSelectionne ?? ""}
-            onValueChange={(v) => setCercleSelectionne(v || null)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner un cercle" />
-            </SelectTrigger>
-            <SelectContent>
-              {cerclesDisponibles.map((c) => (
-                <SelectItem key={c.cercle ?? ""} value={c.cercle ?? ""}>
-                  {c.cercle} — sorts jusqu'au niveau {c.niveau_max_sorts}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-2">
+            {cerclesDisponibles.map((c) => {
+              const selectionne = cercleSelectionne === c.cercle;
+              return (
+                <Button
+                  key={c.cercle ?? ""}
+                  type="button"
+                  variant={selectionne ? "default" : "outline"}
+                  onClick={() => setCercleSelectionne(c.cercle)}
+                  className="h-auto flex-col items-start gap-0 px-3 py-2"
+                >
+                  <span>{c.cercle}</span>
+                  <span
+                    className={`text-xs font-normal ${
+                      selectionne
+                        ? "text-primary-foreground/80"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    ≤ niv {c.niveau_max_sorts}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
@@ -541,13 +510,18 @@ const Etape6_Sorts_V2 = ({
                           <Badge variant="secondary">{s.type_sort}</Badge>
                         )}
                         <Badge>{s.cout_xp_base} XP base</Badge>
+                        {s.portee && (
+                          <Badge variant="outline">portée ≤ {s.portee}</Badge>
+                        )}
+                        {s.duree && (
+                          <Badge variant="outline">durée ≤ {s.duree}</Badge>
+                        )}
                       </div>
                     </div>
-                    {s.description && (
-                      <p className="text-sm text-muted-foreground">
-                        {s.description}
-                      </p>
-                    )}
+                    <DescriptionDepliable
+                      courte={s.description_courte}
+                      complete={s.description}
+                    />
                   </CardContent>
                 </Card>
               ))
@@ -568,99 +542,17 @@ const Etape6_Sorts_V2 = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Zone */}
-            <div className="space-y-2">
-              <Label>Zone d'effet</Label>
-              {zoneEstUnique ? (
-                <Input value={zoneChoisie} readOnly className="opacity-60" />
-              ) : (
-                <Select value={zoneChoisie} onValueChange={setZoneChoisie}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une zone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zonesDisponibles.map((z) => (
-                      <SelectItem key={z} value={z}>
-                        {z} ({COUT_ZONE[z] ?? 0} pts)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {noteZone && (
-                <p className="text-xs italic text-muted-foreground">
-                  {noteZone}
-                </p>
-              )}
-            </div>
-
-            {/* Portée */}
-            <div className="space-y-2">
-              <Label>Portée</Label>
-              <Select value={porteeChoisie} onValueChange={setPorteeChoisie}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une portée" />
-                </SelectTrigger>
-                <SelectContent>
-                  {porteesDispo.map((p) => (
-                    <SelectItem key={p.label} value={p.label}>
-                      {p.label} ({p.cout} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Durée */}
-            <div className="space-y-2">
-              <Label>Durée</Label>
-              <Select value={dureeChoisie} onValueChange={setDureeChoisie}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une durée" />
-                </SelectTrigger>
-                <SelectContent>
-                  {dureesDispo.map((d) => (
-                    <SelectItem key={d.label} value={d.label}>
-                      {d.label} ({d.cout} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Niveau */}
-            <div className="space-y-2">
-              <Label>Niveau du sort : {niveauSort}</Label>
-              <Slider
-                value={[niveauSort]}
-                onValueChange={(v) => setNiveauSort(v[0])}
-                min={1}
-                max={Math.max(1, niveauMaxCercle)}
-                step={1}
-              />
-            </div>
-
-            {/* Nom personnalisé */}
-            <div className="space-y-2">
-              <Label>Nom personnalisé</Label>
-              <Input
-                value={nomPersonnalise}
-                onChange={(e) => setNomPersonnalise(e.target.value)}
-                placeholder="Nom du sort"
-              />
-            </div>
-
-            {/* Récapitulatif coûts */}
-            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4 text-sm">
-              <div className="flex justify-between">
-                <span>Coût XP :</span>
-                <strong className="text-primary">{coutXp} XP</strong>
-              </div>
-              <div className="flex justify-between">
-                <span>Coût PS à l'incantation :</span>
-                <strong>{coutPS} PS</strong>
-              </div>
-            </div>
+            <ConstructeurMagie
+              type="sort"
+              zoneEffet={sortSelectionne.zone_effet ?? ""}
+              porteeMax={sortSelectionne.portee ?? ""}
+              dureeMax={sortSelectionne.duree ?? ""}
+              coutXpBase={coutXpBase}
+              niveauMax={Math.max(1, niveauMaxCercle)}
+              valeurs={valeurs}
+              onChange={setValeurs}
+              plancher={null}
+            />
 
             {(() => {
               const xpInsuffisants = peutAcheter && coutXp > xpDisponible;
@@ -750,9 +642,24 @@ const Etape6_Sorts_V2 = ({
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {ps.zone_choisie} • {ps.portee_choisie} • {ps.duree_choisie}
-                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="outline">
+                    {ps.zone_choisie} · {COUT_ZONE[ps.zone_choisie ?? ""] ?? 0}
+                    pt
+                  </Badge>
+                  <Badge variant="outline">
+                    {ps.portee_choisie} ·{" "}
+                    {PORTEES.find((p) => p.label === ps.portee_choisie)?.cout ??
+                      0}
+                    pt
+                  </Badge>
+                  <Badge variant="outline">
+                    {ps.duree_choisie} ·{" "}
+                    {DUREES.find((d) => d.label === ps.duree_choisie)?.cout ??
+                      0}
+                    pt
+                  </Badge>
+                </div>
                 <p className="text-xs">
                   <strong>{ps.xp_depense} XP</strong> •{" "}
                   {calculerCoutPS(ps.xp_depense)} PS
