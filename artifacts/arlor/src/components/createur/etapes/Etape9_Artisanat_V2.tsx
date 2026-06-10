@@ -38,6 +38,7 @@ import {
 import { COUT_RECETTE_SUPPLEMENTAIRE } from "@/constants/artisanat";
 import { SectionAlchimieAccordion } from "./SectionAlchimieAccordion";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estRecetteAcquise, estPiegeAcquis } from "@/lib/acquisCampagne";
 
@@ -858,7 +859,9 @@ const Etape9_Artisanat_V2 = ({
                                 className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
                                   scelle
                                     ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
-                                    : "border-border"
+                                    : acquis && modeCampagne
+                                      ? "border-emerald-600/40 bg-emerald-600/10"
+                                      : "border-border"
                                 } ${
                                   !scelle && niveauPrecedentRequis && !acquis
                                     ? "opacity-50"
@@ -889,6 +892,9 @@ const Etape9_Artisanat_V2 = ({
                                   <div className="flex flex-wrap items-center gap-2">
                                     <strong>Niveau {niv}</strong>
                                     {scelle && <BadgeAcquis />}
+                                    {!scelle && acquis && modeCampagne && (
+                                      <LabelAjoutAnnulable />
+                                    )}
                                     {acquis && ligneAcquise?.est_gratuit ? (
                                       <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                                         Acquis gratuitement

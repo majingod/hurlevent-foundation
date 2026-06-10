@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import type { Database } from "@/integrations/supabase/types";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import {
@@ -318,9 +319,7 @@ export const SectionAlchimieAccordion = ({
                                       </strong>
                                       {scellee && <BadgeAcquis />}
                                       {!scellee && estAcquise && modeCampagne && (
-                                        <span className="text-[10px] font-semibold text-emerald-400">
-                                          ✓ ajout — annulable
-                                        </span>
+                                        <LabelAjoutAnnulable />
                                       )}
                                     </span>
                                     <div className="mt-2">

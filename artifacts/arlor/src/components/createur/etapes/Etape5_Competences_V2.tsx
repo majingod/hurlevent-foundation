@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estNiveauCompetenceAcquis } from "@/lib/acquisCampagne";
 import {
@@ -1786,11 +1787,17 @@ const Etape5_Competences_V2 = ({
     const achetes = niveauxAchetes.get(comp.id) ?? new Set<number>();
     const maxAchete = achetes.size ? Math.max(...achetes) : 0;
     const st = niveauAchatState(comp, niv, maxAchete);
+    // PR-C2.2 : niveau acheté depuis la photo mais non scellé → ajout vert.
+    const ajout = modeCampagne && st.dejaAchete && !st.acquis;
     return (
       <div className="space-y-2">
         <div
           className={`flex items-center gap-3 rounded border p-2 ${
-            st.acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
+            st.acquis
+              ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+              : ajout
+                ? "border-emerald-600/40 bg-emerald-600/10"
+                : "border-border"
           } ${
             !st.acquis &&
             (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
@@ -1807,6 +1814,7 @@ const Etape5_Competences_V2 = ({
               {niv.cout_xp} XP
             </Badge>
             {st.acquis && <BadgeAcquis />}
+            {ajout && <LabelAjoutAnnulable />}
             {st.estGratuit && (
               <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                 Acquis gratuitement
@@ -1836,13 +1844,19 @@ const Etape5_Competences_V2 = ({
       <div className="space-y-1.5">
         {niveaux.map((niv) => {
           const st = niveauAchatState(comp, niv, maxAchete);
+          // PR-C2.2 : niveau acheté depuis la photo mais non scellé → ajout vert.
+          const ajout = modeCampagne && st.dejaAchete && !st.acquis;
           const key = `${comp.id}-${niv.niveau}`;
           const open = niveauxDeplies.has(key);
           return (
             <div
               key={niv.niveau}
               className={`rounded border ${
-                st.acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
+                st.acquis
+                  ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                  : ajout
+                    ? "border-emerald-600/40 bg-emerald-600/10"
+                    : "border-border"
               } ${
                 !st.acquis &&
                 (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
@@ -1874,12 +1888,13 @@ const Etape5_Competences_V2 = ({
                     {niv.cout_xp} XP
                   </Badge>
                   {st.acquis && <BadgeAcquis />}
+                  {ajout && <LabelAjoutAnnulable />}
                   {st.estGratuit && (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
                     </Badge>
                   )}
-                  {st.dejaAchete && !st.estGratuit && (
+                  {!ajout && st.dejaAchete && !st.estGratuit && (
                     <span className="text-xs text-emerald-400" aria-hidden>
                       ✓
                     </span>
@@ -2083,13 +2098,17 @@ const Etape5_Competences_V2 = ({
           <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
             {niveauxAMontrer.map((niv) => {
               const st = niveauChoixState(comp, niv, opt.value);
+              // PR-C2.2 : niveau acheté depuis la photo mais non scellé → ajout vert.
+              const ajout = modeCampagne && st.dejaAchete && !st.acquis;
               return (
                 <div
                   key={niv.niveau}
                   className={`flex flex-wrap items-center gap-3 ${
                     st.acquis
                       ? "rounded border border-gold/60 border-l-4 border-l-gold bg-gold/15 p-1"
-                      : "pl-1"
+                      : ajout
+                        ? "rounded border border-emerald-600/40 bg-emerald-600/10 p-1"
+                        : "pl-1"
                   } ${!st.acquis && st.bloque ? "opacity-50" : ""}`}
                 >
                   <Checkbox
@@ -2118,6 +2137,7 @@ const Etape5_Competences_V2 = ({
                       {niv.cout_xp} XP
                     </Badge>
                     {st.acquis && <BadgeAcquis />}
+                    {ajout && <LabelAjoutAnnulable />}
                     {st.estGratuit && (
                       <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                         Gratuit
@@ -2183,6 +2203,8 @@ const Etape5_Competences_V2 = ({
             (dejaAchete && estGratuit) ||
             xpInsuffisants ||
             acquis;
+          // PR-C2.2 : option achetée depuis la photo mais non scellée → ajout vert.
+          const ajout = modeCampagne && dejaAchete && !acquis;
           const religionObj = estReligion
             ? (religions ?? []).find((r) => r.id === opt.value)
             : undefined;
@@ -2193,7 +2215,11 @@ const Etape5_Competences_V2 = ({
             <div
               key={opt.value}
               className={`rounded border ${
-                acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
+                acquis
+                  ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                  : ajout
+                    ? "border-emerald-600/40 bg-emerald-600/10"
+                    : "border-border"
               }`}
             >
               <div className="flex flex-wrap items-center gap-3 p-2">
@@ -2220,6 +2246,7 @@ const Etape5_Competences_V2 = ({
                 >
                   <strong>{opt.label}</strong>
                   {acquis && <BadgeAcquis />}
+                  {ajout && <LabelAjoutAnnulable />}
                   {estGratuit ? (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
@@ -2305,6 +2332,8 @@ const Etape5_Competences_V2 = ({
         null,
         1,
       );
+      // PR-C2.2 : niveau 1 acheté depuis la photo mais non scellé → ajout vert.
+      const niv1Ajout = modeCampagne && niv1Acquis && !niv1Scelle;
       const accKey = `crimfam-${comp.id}`;
       const famOpen = optionsOuvertes[accKey] ?? niv1Acquis;
 
@@ -2317,7 +2346,11 @@ const Etape5_Competences_V2 = ({
           {niv1 && (
             <div
               className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
-                niv1Scelle ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
+                niv1Scelle
+                  ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                  : niv1Ajout
+                    ? "border-emerald-600/40 bg-emerald-600/10"
+                    : "border-border"
               }`}
             >
               <Checkbox
@@ -2354,6 +2387,7 @@ const Etape5_Competences_V2 = ({
                     {niv1.cout_xp} XP
                   </Badge>
                   {niv1Scelle && <BadgeAcquis />}
+                  {niv1Ajout && <LabelAjoutAnnulable />}
                   {estGratuit1 && (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Sparkles, Trash2 } from "lucide-react";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estPriereAcquise } from "@/lib/acquisCampagne";
 import {
@@ -800,7 +801,11 @@ const Etape7_Prieres_V2 = ({
               <div
                 key={pp.id}
                 className={`space-y-1 rounded-lg border p-3 text-sm ${
-                  acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
+                  acquis
+                    ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                    : modeCampagne
+                      ? "border-emerald-600/40 bg-emerald-600/10"
+                      : "border-border"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -813,6 +818,7 @@ const Etape7_Prieres_V2 = ({
                     )}
                     <Badge variant="secondary">Niv. {pp.niveau_priere}</Badge>
                     {acquis && <BadgeAcquis />}
+                    {!acquis && modeCampagne && <LabelAjoutAnnulable />}
                   </div>
                   {!acquis && (
                     <Button
