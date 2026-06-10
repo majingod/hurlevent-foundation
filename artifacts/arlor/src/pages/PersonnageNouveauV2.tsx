@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Loader2, User, Fingerprint, Sparkles, Swords, Star, Wand2, Sun, Shapes,
-  Hammer, ClipboardCheck, AlertTriangle, Coins,
+  Hammer, ClipboardCheck, AlertTriangle, Coins, TrendingUp,
 } from "lucide-react";
 
 import { supabase, setCanalAdmin } from "@/integrations/supabase/client";
@@ -174,18 +174,29 @@ const PersonnageNouveauV2 = () => {
       },
     });
 
-  // ÉDITION-ADMIN-WIZARD : état courant (gele / campagne / …) pour le bandeau admin.
-  const { data: etatAdmin } = useQuery<string | null>({
-    queryKey: ["v2-etat-admin", personnageId],
-    enabled: !!personnageId && modeAdmin,
+  // État courant (gele / campagne / …) — toujours actif (cache partagé avec
+  // BoutonRemodeler et FichePersonnageView via la queryKey ["etat-edition"]).
+  // On garde la même forme d'objet que BoutonRemodeler pour ne pas corrompre le
+  // cache partagé (le bouton « Faire évoluer » remplit ce cache juste avant la
+  // navigation vers le wizard) ; on lit l'état via .etat.
+  const { data: etatEditionData, isPending: etatPending } = useQuery<{
+    etat: string | null;
+  } | null>({
+    queryKey: ["etat-edition", personnageId],
+    enabled: !!personnageId,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("etat_edition_personnage", {
         p_personnage_id: personnageId!,
       });
       if (error) throw error;
-      return ((data as unknown as Record<string, unknown> | null)?.etat as string | null) ?? null;
+      return (data ?? null) as { etat: string | null } | null;
     },
   });
+  const etatEdition = etatEditionData?.etat ?? null;
+
+  // M3a PR-C1 : mode évolution de campagne — détecté par l'ÉTAT en base,
+  // jamais par un paramètre d'URL (non truquable). Le mode admin prime.
+  const modeCampagne = !modeAdmin && etatEdition === "campagne";
 
   // ÉDITION-ADMIN-WIZARD : sortie propre de l'éditeur admin (retour fiche).
   const terminerEditionAdmin = () => {
@@ -196,13 +207,18 @@ const PersonnageNouveauV2 = () => {
   // on bascule vers la fiche read-only — SAUF en mode admin, où l'on reste dans
   // l'éditeur complet pour modifier le perso finalisé en place.
   useEffect(() => {
-    if (!modeAdmin && personnage && personnage.etape_creation > TOTAL_STEPS) {
-      toast.info(
-        "Ce personnage est finalisé. Utilise « Remodeler » depuis sa fiche pour le modifier.",
-      );
-      navigate(`/personnage/${personnage.id}`, { replace: true });
-    }
-  }, [personnage, navigate, modeAdmin]);
+    if (modeAdmin) return;
+    if (!personnage || personnage.etape_creation <= TOTAL_STEPS) return;
+    // Perso finalisé : attendre de connaître l'état avant de décider (la query
+    // état est async ; sans cette garde, un perso campagne serait éjecté vers
+    // la fiche avant que modeCampagne soit connu).
+    if (etatPending) return;
+    if (etatEdition === "campagne") return; // mode évolution : on reste.
+    toast.info(
+      "Ce personnage est finalisé. Utilise « Remodeler » depuis sa fiche pour le modifier.",
+    );
+    navigate(`/personnage/${personnage.id}`, { replace: true });
+  }, [personnage, navigate, modeAdmin, etatPending, etatEdition]);
 
   // 1b) Reprise via ?id= : positionner l'étape initiale sur etape_creation
   //     lu en base, une seule fois (ne pas écraser la navigation manuelle).
@@ -240,12 +256,18 @@ const PersonnageNouveauV2 = () => {
     [etape]
   );
 
+  // M3a PR-C1 : en campagne, race (2), stats (3) et classe (4) sont figées.
+  const ETAPES_VERROUILLEES_CAMPAGNE = [2, 3, 4];
+  const etapeVerrouillee = (n: number) =>
+    modeCampagne && ETAPES_VERROUILLEES_CAMPAGNE.includes(n);
+
   // Étape la plus avancée atteinte : étapes <= etapeMax cliquables dans le stepper.
-  // En mode admin (perso finalisé), toutes les étapes sont accessibles.
-  const etapeMax = modeAdmin
+  // En mode admin OU campagne (perso finalisé), toutes les étapes sont accessibles.
+  const etapeMax = modeAdmin || modeCampagne
     ? TOTAL_STEPS
     : Math.max(etape, Math.min(personnage?.etape_creation ?? 1, TOTAL_STEPS));
   const sauterEtape = (n: number) => {
+    if (etapeVerrouillee(n)) return;
     if (n >= 1 && n <= etapeMax) setEtape(n);
   };
 
@@ -264,10 +286,15 @@ const PersonnageNouveauV2 = () => {
       },
     });
 
-    // ÉDITION-ADMIN-WIZARD : un perso finalisé a etape_creation > TOTAL_STEPS.
-    // En mode admin on ne quitte pas l'éditeur : on avance simplement via le stepper.
-    if (modeAdmin) {
-      setEtape((e) => Math.min(e + 1, TOTAL_STEPS));
+    // ÉDITION-ADMIN-WIZARD / campagne : un perso finalisé a etape_creation >
+    // TOTAL_STEPS. On ne quitte pas l'éditeur : on avance via le stepper, en
+    // sautant les étapes verrouillées (campagne) au passage.
+    if (modeAdmin || modeCampagne) {
+      setEtape((e) => {
+        let n = Math.min(e + 1, TOTAL_STEPS);
+        while (etapeVerrouillee(n) && n < TOTAL_STEPS) n += 1;
+        return n;
+      });
       return;
     }
 
@@ -287,7 +314,11 @@ const PersonnageNouveauV2 = () => {
   // Précédent = simple navigation. Aucune sauvegarde ni remboursement :
   // le retrait d'achats passe uniquement par le désachat par item (cascade).
   const handlePrevious = () => {
-    if (etape > 1) setEtape(etape - 1);
+    setEtape((e) => {
+      let n = e - 1;
+      while (n > 1 && etapeVerrouillee(n)) n -= 1;
+      return Math.max(1, n);
+    });
   };
 
 
@@ -342,7 +373,7 @@ const PersonnageNouveauV2 = () => {
               </p>
               <p className="text-xs text-white/85">
                 Verrous d'état contournés · l'état reste{" "}
-                <b>{etatAdmin ?? "…"}</b> · chaque achat est journalisé.
+                <b>{etatEdition ?? "…"}</b> · chaque achat est journalisé.
               </p>
             </div>
             <div className="grid shrink-0 gap-2">
@@ -367,13 +398,38 @@ const PersonnageNouveauV2 = () => {
         </div>
       )}
 
+      {modeCampagne && (
+        <div className="sticky top-0 z-20 border-b border-gold/40 bg-gold/10 px-4 py-3 backdrop-blur">
+          <div className="mx-auto flex max-w-4xl items-center gap-3">
+            <TrendingUp className="h-5 w-5 shrink-0 text-gold-accent" />
+            <div className="min-w-0 flex-1">
+              <p className="font-heading text-sm font-bold text-gold-accent">
+                ÉVOLUTION DE CAMPAGNE — {personnage?.nom ?? "Personnage"}
+              </p>
+              <p className="text-xs text-foreground/80">
+                Ajouts et améliorations uniquement. Ce qui a été joué en
+                événement reste acquis.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/personnage/${personnageId}`)}
+              className="shrink-0 gap-2"
+            >
+              ← Terminer
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-4xl space-y-8 px-4 py-10">
         {/* En-tête : progression + XP */}
         <header className="space-y-4">
           <div className="flex items-end justify-between gap-4">
             <div>
               <h1 className="font-heading text-3xl text-gold">
-                Création de personnage
+                {modeCampagne ? "Évolution du personnage" : "Création de personnage"}
               </h1>
               <p className="text-sm text-white/50">
                 Étape {etape} / {TOTAL_STEPS}
@@ -401,6 +457,7 @@ const PersonnageNouveauV2 = () => {
             courant={etape}
             max={etapeMax}
             onJump={sauterEtape}
+            verrouillees={modeCampagne ? ETAPES_VERROUILLEES_CAMPAGNE : []}
           />
         </header>
 
@@ -411,6 +468,7 @@ const PersonnageNouveauV2 = () => {
               personnageId={personnageId}
               onSuccess={handleEtapeSuccess}
               onXpGainChange={setXpGainCourant}
+              modeCampagne={modeCampagne}
             />
           )}
           {etape === 2 && (

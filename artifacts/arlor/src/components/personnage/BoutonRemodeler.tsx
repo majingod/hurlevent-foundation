@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Wrench, Lock, Loader2 } from "lucide-react";
+import { Wrench, Lock, Loader2, TrendingUp } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,30 @@ export default function BoutonRemodeler({ personnageId, compact = false }: Props
   // dans le wizard (sinon la RPC échoue « Ce personnage est déjà en création »).
   const enCours = etat.etat === "brouillon";
   const size = compact ? "sm" : "default";
+
+  // M3a PR-C1 : en campagne, le perso peut évoluer (ajouts/améliorations).
+  // On ouvre le wizard directement via ?id= — PAS de reouvrir_personnage
+  // (cette RPC n'accepte que remodelage_libre).
+  const enCampagne = etat.etat === "campagne" && etat.peut_ajouter === true;
+
+  if (enCampagne) {
+    return (
+      <div className="w-full">
+        <Button
+          onClick={() => navigate(`/personnage/nouveau?id=${personnageId}`)}
+          size={size}
+          variant="secondary"
+          className="w-full gap-2 border border-gold/40 bg-gold/10 text-gold-accent hover:bg-gold/20"
+        >
+          <TrendingUp className="h-4 w-4" />
+          Faire évoluer
+        </Button>
+        {!compact && (
+          <p className="mt-1.5 text-xs text-muted-foreground">{etat.raison}</p>
+        )}
+      </div>
+    );
+  }
 
   const handleRemodeler = async () => {
     if (enCours) {

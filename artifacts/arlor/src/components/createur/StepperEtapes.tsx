@@ -15,15 +15,18 @@ interface Props {
   /** étape la plus avancée atteinte (incluse) — au-delà = verrouillé */
   max: number;
   onJump: (n: number) => void;
+  /** M3a PR-C1 : étapes figées en campagne (race/stats/classe) — visibles mais non cliquables */
+  verrouillees?: number[];
 }
 
-export default function StepperEtapes({ etapes, courant, max, onJump }: Props) {
+export default function StepperEtapes({ etapes, courant, max, onJump, verrouillees = [] }: Props) {
   return (
     <div className="flex gap-2 overflow-x-auto px-1 pb-2">
       {etapes.map((e) => {
+        const figee = verrouillees.includes(e.n);
         const statut =
           e.n === courant ? "current" : e.n <= max ? "done" : "locked";
-        const locked = statut === "locked";
+        const locked = statut === "locked" || figee;
         const Ic = statut === "done" ? Check : e.Icon;
         const cercle =
           statut === "current"
@@ -37,13 +40,17 @@ export default function StepperEtapes({ etapes, courant, max, onJump }: Props) {
             type="button"
             disabled={locked}
             onClick={() => !locked && onJump(e.n)}
-            title={`Étape ${e.n} — ${e.t}`}
-            className="flex w-16 shrink-0 flex-col items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            title={figee ? "Figé en campagne" : `Étape ${e.n} — ${e.t}`}
+            className={`flex w-16 shrink-0 flex-col items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50 ${
+              figee ? "opacity-45 cursor-not-allowed" : ""
+            }`}
           >
             <span
               className={`relative flex h-10 w-10 items-center justify-center rounded-full border ${cercle}`}
             >
-              {locked ? (
+              {figee ? (
+                <Lock className="h-3 w-3" />
+              ) : locked ? (
                 <Lock className="h-4 w-4" />
               ) : (
                 <Ic className="h-[18px] w-[18px]" />
