@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Gem } from "lucide-react";
 import { COUT_ASSEMBLAGE_SUPPLEMENTAIRE } from "@/constants/artisanat";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estAssemblageAcquis } from "@/lib/acquisCampagne";
 
@@ -331,7 +332,9 @@ const Etape8_Assemblages_V2 = ({
                     scelle
                       ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
                       : estAcquis
-                        ? "border-primary/50 bg-primary/5"
+                        ? modeCampagne
+                          ? "border-emerald-600/40 bg-emerald-600/10"
+                          : "border-primary/50 bg-primary/5"
                         : "border-border"
                   }`}
                 >
@@ -342,6 +345,9 @@ const Etape8_Assemblages_V2 = ({
                           {assemblage.nom}
                         </strong>
                         {scelle && <BadgeAcquis />}
+                        {!scelle && estAcquis && modeCampagne && (
+                          <LabelAjoutAnnulable />
+                        )}
                       </span>
                       {assemblage.description_longue && (
                         <p className="text-xs text-muted-foreground">
