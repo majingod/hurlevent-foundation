@@ -718,6 +718,7 @@ const Etape9_Artisanat_V2 = ({
                     estRecetteScellee={(recetteId) =>
                       estRecetteAcquise(modeCampagne, photo, recetteId)
                     }
+                    modeCampagne={modeCampagne}
                   />
                 )}
               </CardContent>
@@ -856,7 +857,7 @@ const Etape9_Artisanat_V2 = ({
                                 key={niv}
                                 className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
                                   scelle
-                                    ? "border-gold/40 bg-gold/10"
+                                    ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
                                     : "border-border"
                                 } ${
                                   !scelle && niveauPrecedentRequis && !acquis

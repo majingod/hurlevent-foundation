@@ -800,7 +800,7 @@ const Etape7_Prieres_V2 = ({
               <div
                 key={pp.id}
                 className={`space-y-1 rounded-lg border p-3 text-sm ${
-                  acquis ? "border-gold/40 bg-gold/10" : "border-border"
+                  acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">

@@ -1712,6 +1712,33 @@ const Etape5_Competences_V2 = ({
     </span>
   );
 
+  /**
+   * Libellé VISIBLE des prérequis manquants d'un niveau, affiché sur l'en-tête
+   * (même logique que renderManqueXp : le détail dans le sous-accordéon ne
+   * suffit pas, une case grisée sans explication paraît cassée).
+   */
+  const renderPrereqManquantHeader = (
+    niv: NiveauInfo,
+    blocData: BlocPrerequisData,
+    st: NiveauAchatState,
+  ): ReactNode => {
+    if (!st.prereqBloque || st.dejaAchete) return null;
+    const ligne = blocData.lignes.find((l) => l.niveau === niv.niveau);
+    const labels = (ligne?.pastilles ?? [])
+      .filter(
+        (p) =>
+          p.statut === "manquant" &&
+          p.label !== "Inaccessible hors de votre classe",
+      )
+      .map((p) => p.label);
+    if (labels.length === 0) return null;
+    return (
+      <span className="flex items-center gap-1 text-xs text-amber-400">
+        <Lock className="h-3 w-3" /> Prérequis : {labels.join(", ")}
+      </span>
+    );
+  };
+
   /** Ligne « Prérequis » d'un niveau donné (vert ✓ rempli / orange ⚠ cliquable). */
   const renderLignePrereqNiveau = (
     niv: NiveauInfo,
@@ -1763,7 +1790,7 @@ const Etape5_Competences_V2 = ({
       <div className="space-y-2">
         <div
           className={`flex items-center gap-3 rounded border p-2 ${
-            st.acquis ? "border-gold/40 bg-gold/10" : "border-border"
+            st.acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
           } ${
             !st.acquis &&
             (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
@@ -1786,6 +1813,7 @@ const Etape5_Competences_V2 = ({
               </Badge>
             )}
             {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
+            {renderPrereqManquantHeader(niv, blocData, st)}
           </Label>
         </div>
         {niv.description && (
@@ -1814,7 +1842,7 @@ const Etape5_Competences_V2 = ({
             <div
               key={niv.niveau}
               className={`rounded border ${
-                st.acquis ? "border-gold/40 bg-gold/10" : "border-border"
+                st.acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
               } ${
                 !st.acquis &&
                 (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
@@ -1857,6 +1885,7 @@ const Etape5_Competences_V2 = ({
                     </span>
                   )}
                   {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
+                  {renderPrereqManquantHeader(niv, blocData, st)}
                 </div>
               </div>
               {open && (
@@ -2059,7 +2088,7 @@ const Etape5_Competences_V2 = ({
                   key={niv.niveau}
                   className={`flex flex-wrap items-center gap-3 ${
                     st.acquis
-                      ? "rounded border border-gold/40 bg-gold/10 p-1"
+                      ? "rounded border border-gold/60 border-l-4 border-l-gold bg-gold/15 p-1"
                       : "pl-1"
                   } ${!st.acquis && st.bloque ? "opacity-50" : ""}`}
                 >
@@ -2164,7 +2193,7 @@ const Etape5_Competences_V2 = ({
             <div
               key={opt.value}
               className={`rounded border ${
-                acquis ? "border-gold/40 bg-gold/10" : "border-border"
+                acquis ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
               }`}
             >
               <div className="flex flex-wrap items-center gap-3 p-2">
@@ -2288,7 +2317,7 @@ const Etape5_Competences_V2 = ({
           {niv1 && (
             <div
               className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
-                niv1Scelle ? "border-gold/40 bg-gold/10" : "border-border"
+                niv1Scelle ? "border-gold/60 border-l-4 border-l-gold bg-gold/15" : "border-border"
               }`}
             >
               <Checkbox

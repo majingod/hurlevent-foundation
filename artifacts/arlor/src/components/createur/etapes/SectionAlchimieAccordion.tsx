@@ -37,6 +37,12 @@ interface SectionAlchimieAccordionProps {
    * détient le mode campagne + la photo. Absent → jamais scellé.
    */
   estRecetteScellee?: (recetteId: string) => boolean;
+  /**
+   * PR-C2.1 : en mode campagne, les ajouts annulables passent au vert pour
+   * se distinguer du scellé or (hors campagne, l'acquis garde le fond doré
+   * `primary` historique).
+   */
+  modeCampagne?: boolean;
 }
 
 const NIVEAU_LABEL: Record<number, string> = {
@@ -140,6 +146,7 @@ export const SectionAlchimieAccordion = ({
   mutationsPending,
   onToggle,
   estRecetteScellee,
+  modeCampagne = false,
 }: SectionAlchimieAccordionProps) => {
   // Par défaut : tout replié à l'arrivée sur l'étape (niveaux, types et
   // fiches). Le joueur déplie à la demande.
@@ -269,9 +276,11 @@ export const SectionAlchimieAccordion = ({
                                 key={recette.id}
                                 className={`overflow-hidden rounded-[10px] border transition-colors ${
                                   scellee
-                                    ? "border-gold/40 bg-gold/10"
+                                    ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
                                     : estAcquise
-                                      ? "border-primary/50 bg-primary/5"
+                                      ? modeCampagne
+                                        ? "border-emerald-600/40 bg-emerald-600/10"
+                                        : "border-primary/50 bg-primary/5"
                                       : "border-border bg-card"
                                 }`}
                               >
@@ -308,6 +317,11 @@ export const SectionAlchimieAccordion = ({
                                         {recette.nom}
                                       </strong>
                                       {scellee && <BadgeAcquis />}
+                                      {!scellee && estAcquise && modeCampagne && (
+                                        <span className="text-[10px] font-semibold text-emerald-400">
+                                          ✓ ajout — annulable
+                                        </span>
+                                      )}
                                     </span>
                                     <div className="mt-2">
                                       <PastilleCout

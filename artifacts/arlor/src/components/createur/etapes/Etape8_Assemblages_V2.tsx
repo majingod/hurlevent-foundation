@@ -329,7 +329,7 @@ const Etape8_Assemblages_V2 = ({
                   key={assemblage.id}
                   className={`space-y-2 rounded-lg border p-3 transition-colors ${
                     scelle
-                      ? "border-gold/40 bg-gold/10"
+                      ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
                       : estAcquis
                         ? "border-primary/50 bg-primary/5"
                         : "border-border"
