@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import type { Database } from "@/integrations/supabase/types";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import {
@@ -30,6 +31,12 @@ interface SectionAlchimieAccordionProps {
     recette: RecetteRow,
     acquise: PersonnageRecetteRow | undefined,
   ) => void;
+  /**
+   * PR-C2 : prédicat de scellement campagne d'une recette (acquise dans la
+   * dernière photo de compo → désachat verrouillé). Fourni par le parent qui
+   * détient le mode campagne + la photo. Absent → jamais scellé.
+   */
+  estRecetteScellee?: (recetteId: string) => boolean;
 }
 
 const NIVEAU_LABEL: Record<number, string> = {
@@ -132,6 +139,7 @@ export const SectionAlchimieAccordion = ({
   coutSupplementaire,
   mutationsPending,
   onToggle,
+  estRecetteScellee,
 }: SectionAlchimieAccordionProps) => {
   // Par défaut : tout replié à l'arrivée sur l'étape (niveaux, types et
   // fiches). Le joueur déplie à la demande.
@@ -251,15 +259,20 @@ export const SectionAlchimieAccordion = ({
                               !seraGratuite &&
                               !estAcquise &&
                               coutSupplementaire > xpDisponible;
+                            // PR-C2 : recette scellée par la photo de compo.
+                            const scellee =
+                              estRecetteScellee?.(recette.id) ?? false;
                             const ficheOuverte = fichesOuvertes.has(recette.id);
 
                             return (
                               <div
                                 key={recette.id}
                                 className={`overflow-hidden rounded-[10px] border transition-colors ${
-                                  estAcquise
-                                    ? "border-primary/50 bg-primary/5"
-                                    : "border-border bg-card"
+                                  scellee
+                                    ? "border-gold/40 bg-gold/10"
+                                    : estAcquise
+                                      ? "border-primary/50 bg-primary/5"
+                                      : "border-border bg-card"
                                 }`}
                               >
                                 <div className="flex items-center gap-3 px-3.5 py-3">
@@ -278,7 +291,9 @@ export const SectionAlchimieAccordion = ({
                                     <Checkbox
                                       checked={estAcquise}
                                       disabled={
-                                        mutationsPending || xpInsuffisants
+                                        mutationsPending ||
+                                        xpInsuffisants ||
+                                        scellee
                                       }
                                       onCheckedChange={() =>
                                         onToggle(recette, acquise)
@@ -288,9 +303,12 @@ export const SectionAlchimieAccordion = ({
                                   </label>
 
                                   <div className="min-w-0 flex-1">
-                                    <strong className="text-[15px] font-bold text-foreground">
-                                      {recette.nom}
-                                    </strong>
+                                    <span className="flex flex-wrap items-center gap-2">
+                                      <strong className="text-[15px] font-bold text-foreground">
+                                        {recette.nom}
+                                      </strong>
+                                      {scellee && <BadgeAcquis />}
+                                    </span>
                                     <div className="mt-2">
                                       <PastilleCout
                                         gratuite={gratuite}

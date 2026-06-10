@@ -23,6 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Sparkles, Trash2 } from "lucide-react";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
+import { estSortAcquis } from "@/lib/acquisCampagne";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +67,11 @@ interface Etape6Props {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
+  /**
+   * Mode campagne (évolution) : verrouille visuellement le désachat des sorts
+   * acquis (PR-C2). Miroir d'INV-3 backend, qui reste l'autorité.
+   */
+  modeCampagne?: boolean;
 }
 
 interface AcheterSortParams {
@@ -83,8 +91,12 @@ const Etape6_Sorts_V2 = ({
   onSuccess,
   onError,
   onPrevious,
+  modeCampagne = false,
 }: Etape6Props) => {
   const queryClient = useQueryClient();
+
+  // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
+  const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
 
   const [cercleSelectionne, setCercleSelectionne] = useState<string | null>(null);
   const [sortId, setSortId] = useState<string | null>(null);
@@ -693,10 +705,15 @@ const Etape6_Sorts_V2 = ({
               Aucun sort acheté pour le moment.
             </p>
           ) : (
-            sortsAchetes.map((ps) => (
+            sortsAchetes.map((ps) => {
+              // PR-C2 : sort scellé par la photo de compo (désachat refusé).
+              const acquis = estSortAcquis(modeCampagne, photo, ps.sort_id);
+              return (
               <div
                 key={ps.id}
-                className="space-y-1 rounded-lg border border-border p-3 text-sm"
+                className={`space-y-1 rounded-lg border p-3 text-sm ${
+                  acquis ? "border-gold/40 bg-gold/10" : "border-border"
+                }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -707,22 +724,25 @@ const Etape6_Sorts_V2 = ({
                       <Badge variant="outline">{ps.sorts.cercle}</Badge>
                     )}
                     <Badge variant="secondary">Niv. {ps.niveau_sort}</Badge>
+                    {acquis && <BadgeAcquis />}
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() =>
-                      setASupprimer({
-                        personnage_sort_id: ps.id,
-                        nom: ps.nom_personnalise ?? ps.sorts?.nom ?? "Sort",
-                        xp_depense: ps.xp_depense,
-                      })
-                    }
-                    disabled={desacheterMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {!acquis && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() =>
+                        setASupprimer({
+                          personnage_sort_id: ps.id,
+                          nom: ps.nom_personnalise ?? ps.sorts?.nom ?? "Sort",
+                          xp_depense: ps.xp_depense,
+                        })
+                      }
+                      disabled={desacheterMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {ps.zone_choisie} • {ps.portee_choisie} • {ps.duree_choisie}
@@ -732,7 +752,8 @@ const Etape6_Sorts_V2 = ({
                   {calculerCoutPS(ps.xp_depense)} PS
                 </p>
               </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>

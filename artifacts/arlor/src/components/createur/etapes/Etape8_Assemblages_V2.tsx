@@ -15,6 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Gem } from "lucide-react";
 import { COUT_ASSEMBLAGE_SUPPLEMENTAIRE } from "@/constants/artisanat";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
+import { estAssemblageAcquis } from "@/lib/acquisCampagne";
 
 type AssemblageRow = Database["public"]["Tables"]["assemblages_runes"]["Row"];
 type PersonnageAssemblageRow =
@@ -38,6 +41,11 @@ interface Etape8Props {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
+  /**
+   * Mode campagne (évolution) : verrouille visuellement le désachat des
+   * assemblages acquis (PR-C2). Miroir d'INV-3 backend, qui reste l'autorité.
+   */
+  modeCampagne?: boolean;
 }
 
 const Etape8_Assemblages_V2 = ({
@@ -47,8 +55,12 @@ const Etape8_Assemblages_V2 = ({
   onSuccess,
   onError,
   onPrevious,
+  modeCampagne = false,
 }: Etape8Props) => {
   const queryClient = useQueryClient();
+
+  // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
+  const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
 
   // Quotas (vue_artisanat_quotas)
   const { data: quotas, isLoading: loadingQuotas } = useQuery({
@@ -193,6 +205,14 @@ const Etape8_Assemblages_V2 = ({
 
   const handleToggle = (assemblage: AssemblageRow, acquis: PersonnageAssemblageRow | undefined) => {
     if (acquis) {
+      // PR-C2 : garde défensive — un assemblage scellé par la photo ne peut
+      // être retiré (le backend INV-3 refuserait de toute façon).
+      if (estAssemblageAcquis(modeCampagne, photo, assemblage.id)) {
+        toast.error(
+          "Cet acquis a été joué en événement — il ne peut plus être retiré.",
+        );
+        return;
+      }
       // Désacheter
       desacheterMutation.mutate({ p_personnage_assemblage_id: acquis.id });
     } else {
@@ -297,21 +317,32 @@ const Etape8_Assemblages_V2 = ({
                 !seraGratuit &&
                 !estAcquis &&
                 COUT_ASSEMBLAGE_SUPPLEMENTAIRE > xpDisponible;
+              // PR-C2 : assemblage scellé par la photo de compo (désachat refusé).
+              const scelle = estAssemblageAcquis(
+                modeCampagne,
+                photo,
+                assemblage.id,
+              );
 
               return (
                 <div
                   key={assemblage.id}
                   className={`space-y-2 rounded-lg border p-3 transition-colors ${
-                    estAcquis
-                      ? "border-primary/50 bg-primary/5"
-                      : "border-border"
+                    scelle
+                      ? "border-gold/40 bg-gold/10"
+                      : estAcquis
+                        ? "border-primary/50 bg-primary/5"
+                        : "border-border"
                   }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="space-y-1">
-                      <strong className="font-heading text-primary">
-                        {assemblage.nom}
-                      </strong>
+                      <span className="flex flex-wrap items-center gap-2">
+                        <strong className="font-heading text-primary">
+                          {assemblage.nom}
+                        </strong>
+                        {scelle && <BadgeAcquis />}
+                      </span>
                       {assemblage.description_longue && (
                         <p className="text-xs text-muted-foreground">
                           {assemblage.description_longue}
@@ -357,7 +388,7 @@ const Etape8_Assemblages_V2 = ({
                     >
                       <Checkbox
                         checked={estAcquis}
-                        disabled={mutationsPending || xpInsuffisants}
+                        disabled={mutationsPending || xpInsuffisants || scelle}
                         onCheckedChange={() => handleToggle(assemblage, acquis)}
                       />
                       {estAcquis

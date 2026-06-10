@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ReligionDetails from "@/components/shared/ReligionDetails";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
+import { estNiveauCompetenceAcquis } from "@/lib/acquisCampagne";
 import {
   Dialog,
   DialogContent,
@@ -85,6 +88,11 @@ interface Etape5Props {
   onError?: (error: Error) => void;
   onPrevious?: () => void;
   onXpDeltaChange?: (delta: number) => void;
+  /**
+   * Mode campagne (évolution) : verrouille visuellement les désachats d'acquis
+   * (PR-C2). Miroir d'INV-3 backend, qui reste l'autorité.
+   */
+  modeCampagne?: boolean;
 }
 
 // =========================================================================
@@ -502,8 +510,12 @@ const Etape5_Competences_V2 = ({
   onError,
   onPrevious,
   onXpDeltaChange,
+  modeCampagne = false,
 }: Etape5Props) => {
   const queryClient = useQueryClient();
+
+  // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
+  const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
 
   // =======================================================================
   // ÉTATS LOCAUX
@@ -1186,6 +1198,8 @@ const Etape5_Competences_V2 = ({
     niveauPrecedentRequis: boolean;
     bloque: boolean;
     xpInsuffisants: boolean;
+    /** PR-C2 : niveau (pour ce choix) scellé par la photo de compo. */
+    acquis: boolean;
   };
 
   /**
@@ -1219,6 +1233,13 @@ const Etape5_Competences_V2 = ({
     const compBloqueeClasse = classeBloque(comp);
     const xpInsuffisants =
       !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
+    const acquis = estNiveauCompetenceAcquis(
+      modeCampagne,
+      photo,
+      comp.id,
+      choixValue,
+      niv.niveau,
+    );
     const disabled =
       compBloqueeClasse ||
       niveauHorsClasse ||
@@ -1226,7 +1247,8 @@ const Etape5_Competences_V2 = ({
       (!dejaAchete && niveauPrecedentRequis) ||
       mutationEnCours ||
       (dejaAchete && estGratuit) ||
-      xpInsuffisants;
+      xpInsuffisants ||
+      acquis;
     return {
       achat,
       dejaAchete,
@@ -1235,6 +1257,7 @@ const Etape5_Competences_V2 = ({
       niveauPrecedentRequis,
       bloque: compBloqueeClasse || niveauHorsClasse || prereqBloque,
       xpInsuffisants,
+      acquis,
     };
   };
 
@@ -1395,6 +1418,22 @@ const Etape5_Competences_V2 = ({
     comp: CompetenceWithNiveaux,
     achat: PersonnageCompetenceRow,
   ) => {
+    // PR-C2 : garde défensive — un acquis scellé par la photo ne peut être
+    // retiré (miroir d'INV-3 backend, qui refuse de toute façon le désachat).
+    if (
+      estNiveauCompetenceAcquis(
+        modeCampagne,
+        photo,
+        comp.id,
+        achat.choix_achat ?? null,
+        achat.niveau_acquis,
+      )
+    ) {
+      toast.error(
+        "Cet acquis a été joué en événement — il ne peut plus être retiré.",
+      );
+      return;
+    }
     if (achat.xp_depense === 0 && !comp.desachat_force) {
       toast.error("Une compétence gratuite ne peut pas être désachetée.");
       return;
@@ -1581,6 +1620,8 @@ const Etape5_Competences_V2 = ({
     compBloqueeClasse: boolean;
     xpInsuffisants: boolean;
     niveauPrecedentRequis: boolean;
+    /** PR-C2 : niveau scellé par la photo de compo (acquis, désachat refusé). */
+    acquis: boolean;
     disabled: boolean;
   };
 
@@ -1602,6 +1643,14 @@ const Etape5_Competences_V2 = ({
     const compBloqueeClasse = classeBloque(comp);
     const xpInsuffisants =
       !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
+    // PR-C2 : les renderers `simple` n'ont pas de choix → choixAchat = null.
+    const acquis = estNiveauCompetenceAcquis(
+      modeCampagne,
+      photo,
+      comp.id,
+      null,
+      niv.niveau,
+    );
     const disabled =
       compBloqueeClasse ||
       niveauHorsClasse ||
@@ -1609,7 +1658,8 @@ const Etape5_Competences_V2 = ({
       niveauPrecedentRequis ||
       mutationEnCours ||
       (dejaAchete && estGratuit && !comp.desachat_force) ||
-      xpInsuffisants;
+      xpInsuffisants ||
+      acquis;
     return {
       dejaAchete,
       achat,
@@ -1619,6 +1669,7 @@ const Etape5_Competences_V2 = ({
       compBloqueeClasse,
       xpInsuffisants,
       niveauPrecedentRequis,
+      acquis,
       disabled,
     };
   };
@@ -1711,8 +1762,11 @@ const Etape5_Competences_V2 = ({
     return (
       <div className="space-y-2">
         <div
-          className={`flex items-center gap-3 rounded border border-border p-2 ${
-            st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque
+          className={`flex items-center gap-3 rounded border p-2 ${
+            st.acquis ? "border-gold/40 bg-gold/10" : "border-border"
+          } ${
+            !st.acquis &&
+            (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
               ? "opacity-50"
               : ""
           }`}
@@ -1725,6 +1779,7 @@ const Etape5_Competences_V2 = ({
             <Badge variant="secondary" className="text-xs">
               {niv.cout_xp} XP
             </Badge>
+            {st.acquis && <BadgeAcquis />}
             {st.estGratuit && (
               <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                 Acquis gratuitement
@@ -1758,8 +1813,11 @@ const Etape5_Competences_V2 = ({
           return (
             <div
               key={niv.niveau}
-              className={`rounded border border-border ${
-                st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque
+              className={`rounded border ${
+                st.acquis ? "border-gold/40 bg-gold/10" : "border-border"
+              } ${
+                !st.acquis &&
+                (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
                   ? "opacity-50"
                   : ""
               }`}
@@ -1787,6 +1845,7 @@ const Etape5_Competences_V2 = ({
                   <Badge variant="secondary" className="text-xs">
                     {niv.cout_xp} XP
                   </Badge>
+                  {st.acquis && <BadgeAcquis />}
                   {st.estGratuit && (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
@@ -1804,6 +1863,12 @@ const Etape5_Competences_V2 = ({
                 <div className="space-y-2 border-t border-border/60 px-3 py-2 text-xs">
                   {niv.description && (
                     <p className="text-muted-foreground">{niv.description}</p>
+                  )}
+                  {st.acquis && (
+                    <p className="flex items-center gap-1 text-[11px] text-gold-accent">
+                      <Lock className="h-2.5 w-2.5" /> Joué en événement —
+                      conservé définitivement.
+                    </p>
                   )}
                   {st.niveauPrecedentRequis &&
                     !st.dejaAchete &&
@@ -1992,9 +2057,11 @@ const Etape5_Competences_V2 = ({
               return (
                 <div
                   key={niv.niveau}
-                  className={`flex flex-wrap items-center gap-3 pl-1 ${
-                    st.bloque ? "opacity-50" : ""
-                  }`}
+                  className={`flex flex-wrap items-center gap-3 ${
+                    st.acquis
+                      ? "rounded border border-gold/40 bg-gold/10 p-1"
+                      : "pl-1"
+                  } ${!st.acquis && st.bloque ? "opacity-50" : ""}`}
                 >
                   <Checkbox
                     id={`${comp.id}-${opt.value}-${niv.niveau}`}
@@ -2021,6 +2088,7 @@ const Etape5_Competences_V2 = ({
                     <Badge variant="secondary" className="text-xs">
                       {niv.cout_xp} XP
                     </Badge>
+                    {st.acquis && <BadgeAcquis />}
                     {st.estGratuit && (
                       <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                         Gratuit
@@ -2072,12 +2140,20 @@ const Etape5_Competences_V2 = ({
           const estGratuit = achat?.xp_depense === 0;
           const xpInsuffisants =
             !dejaAchete && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+          const acquis = estNiveauCompetenceAcquis(
+            modeCampagne,
+            photo,
+            comp.id,
+            opt.value,
+            1,
+          );
           const disabled =
             compBloqueeClasse ||
             prereqCompBloquee ||
             mutationEnCours ||
             (dejaAchete && estGratuit) ||
-            xpInsuffisants;
+            xpInsuffisants ||
+            acquis;
           const religionObj = estReligion
             ? (religions ?? []).find((r) => r.id === opt.value)
             : undefined;
@@ -2085,7 +2161,12 @@ const Etape5_Competences_V2 = ({
           const manKey = `relman-${comp.id}-${opt.value}`;
           const detOuvert = !!optionsOuvertes[detKey];
           return (
-            <div key={opt.value} className="rounded border border-border">
+            <div
+              key={opt.value}
+              className={`rounded border ${
+                acquis ? "border-gold/40 bg-gold/10" : "border-border"
+              }`}
+            >
               <div className="flex flex-wrap items-center gap-3 p-2">
                 <Checkbox
                   id={`${comp.id}-${opt.value}`}
@@ -2109,6 +2190,7 @@ const Etape5_Competences_V2 = ({
                   className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
                 >
                   <strong>{opt.label}</strong>
+                  {acquis && <BadgeAcquis />}
                   {estGratuit ? (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
@@ -2186,6 +2268,14 @@ const Etape5_Competences_V2 = ({
       const estGratuit1 = achatNiv1?.xp_depense === 0;
       const xpInsuff1 =
         !niv1Acquis && !!niv1 && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+      // PR-C2 : niveau 1 = savoir général sans choix → choixAchat = null.
+      const niv1Scelle = estNiveauCompetenceAcquis(
+        modeCampagne,
+        photo,
+        comp.id,
+        null,
+        1,
+      );
       const accKey = `crimfam-${comp.id}`;
       const famOpen = optionsOuvertes[accKey] ?? niv1Acquis;
 
@@ -2196,7 +2286,11 @@ const Etape5_Competences_V2 = ({
           }`}
         >
           {niv1 && (
-            <div className="flex flex-wrap items-center gap-3 rounded border border-border p-2">
+            <div
+              className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
+                niv1Scelle ? "border-gold/40 bg-gold/10" : "border-border"
+              }`}
+            >
               <Checkbox
                 id={`${comp.id}-crim-niv1`}
                 checked={niv1Acquis}
@@ -2205,7 +2299,8 @@ const Etape5_Competences_V2 = ({
                   prereqCompBloquee ||
                   mutationEnCours ||
                   (niv1Acquis && estGratuit1) ||
-                  xpInsuff1
+                  xpInsuff1 ||
+                  niv1Scelle
                 }
                 title={
                   xpInsuff1
@@ -2229,6 +2324,7 @@ const Etape5_Competences_V2 = ({
                   <Badge variant="secondary" className="text-xs">
                     {niv1.cout_xp} XP
                   </Badge>
+                  {niv1Scelle && <BadgeAcquis />}
                   {estGratuit1 && (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
