@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb, Wand2 } from "lucide-react";
+import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb, Wand2, Snowflake, Skull } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -281,6 +281,44 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     },
   });
 
+  // M3a PR-C1 : état d'édition (cache partagé avec BoutonRemodeler via ["etat-edition"]).
+  // Sert aux bandeaux lecture seule gelé / mort sur la fiche route.
+  const { data: etatEdition } = useQuery<{
+    etat: string;
+    raison: string;
+    evenement_bloquant_id: string | null;
+  } | null>({
+    queryKey: ["etat-edition", personnageId],
+    enabled: mode === "route" && !!personnageId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("etat_edition_personnage", {
+        p_personnage_id: personnageId,
+      });
+      if (error) throw error;
+      return (data ?? null) as {
+        etat: string;
+        raison: string;
+        evenement_bloquant_id: string | null;
+      } | null;
+    },
+  });
+
+  // Événement bloquant (seulement si gelé) — RLS lecture joueurs sur est_publie.
+  const evenementBloquantId = etatEdition?.evenement_bloquant_id ?? null;
+  const { data: evenementBloquant } = useQuery({
+    queryKey: ["evenement-bloquant", evenementBloquantId],
+    enabled: !!evenementBloquantId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("evenements")
+        .select("titre, date_evenement")
+        .eq("id", evenementBloquantId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const competencesGroupees = useMemo(() => {
     // Grouping par competence_id (PR2 v39).
     // Conserve les rows pour permettre un rendu spécifique selon type_achat :
@@ -445,6 +483,34 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           >
             <Wand2 className="h-4 w-4" /> Ouvrir l'éditeur complet
           </Button>
+        </div>
+      )}
+      {mode === "route" && etatEdition?.etat === "gele" && (
+        <div className="flex items-start gap-3 rounded-lg border border-sky-700/50 bg-sky-900/20 px-4 py-3">
+          <Snowflake className="mt-0.5 h-5 w-5 shrink-0 text-sky-400" />
+          <div className="min-w-0">
+            <p className="font-heading text-sm font-bold text-sky-300">Fiche gelée</p>
+            <p className="mt-0.5 text-sm text-foreground/85">
+              {evenementBloquant?.titre ? (
+                <>Inscrit à <b>{evenementBloquant.titre}</b>
+                {evenementBloquant.date_evenement
+                  ? ` (${new Date(evenementBloquant.date_evenement).toLocaleDateString("fr-CA")})`
+                  : ""}. </>
+              ) : null}
+              La fiche sera de nouveau modifiable après la clôture de l'événement.
+            </p>
+          </div>
+        </div>
+      )}
+      {mode === "route" && etatEdition?.etat === "mort" && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-800/50 bg-red-950/25 px-4 py-3">
+          <Skull className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+          <div>
+            <p className="font-heading text-sm font-bold text-red-300">Personnage mort</p>
+            <p className="mt-0.5 text-sm text-foreground/85">
+              Cette fiche est conservée en mémoire, en lecture seule.
+            </p>
+          </div>
         </div>
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

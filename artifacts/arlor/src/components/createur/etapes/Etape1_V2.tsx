@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock, Info } from "lucide-react";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -48,8 +48,24 @@ interface Etape1Form {
   ame_personnage: string;
 }
 
-const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
+const Etape1_V2 = ({
+  personnageId,
+  onSuccess,
+  onXpGainChange,
+  modeCampagne = false,
+}: EtapeProps & { modeCampagne?: boolean }) => {
   const [submitting, setSubmitting] = useState(false);
+  // M3a PR-C1 : valeurs d'identité figées en campagne (INV-4). On capture les
+  // valeurs DB d'origine au chargement pour les renvoyer telles quelles au RPC,
+  // quoi qu'il arrive côté formulaire (garantie anti-identite_figee_campagne).
+  const valeursFigees = useRef<{
+    nom: string;
+    gn_completes: number;
+    mini_gn_completes: number;
+    ouvertures_terrain: number;
+    est_croyant: boolean | null;
+    religion_id: string | null;
+  } | null>(null);
   // XP des GN/mini-GN/ouvertures DÉJÀ sauvegardé (donc déjà inclus dans xp_total serveur).
   // Sert à ne remonter au header que la portion NON sauvegardée (évite le double-compte).
   const [gainSauvegarde, setGainSauvegarde] = useState(0);
@@ -120,6 +136,15 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
         .eq("id", personnageId)
         .single();
       if (!data) return;
+      // Garder les valeurs DB d'origine des 6 champs figés (INV-4) pour le submit campagne.
+      valeursFigees.current = {
+        nom: data.nom ?? "",
+        gn_completes: data.gn_completes ?? 0,
+        mini_gn_completes: data.mini_gn_completes ?? 0,
+        ouvertures_terrain: data.ouvertures_terrain ?? 0,
+        est_croyant: data.est_croyant ?? null,
+        religion_id: data.religion_id ?? null,
+      };
       reset({
         nom: data.nom ?? "",
         gn_completes: data.gn_completes ?? 0,
@@ -145,29 +170,47 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
   }, [personnageId, reset]);
 
   const onSubmit = async (values: Etape1Form) => {
-    if (!values.nom.trim()) {
-      toast.error("Le nom est obligatoire.");
-      return;
+    // M3a PR-C1 : en campagne, l'identité (6 champs INV-4) est figée et provient
+    // STRICTEMENT de la DB. On ignore les valeurs du formulaire pour ces champs,
+    // et on saute leurs validations (déjà valides à la finalisation).
+    const figees = modeCampagne ? valeursFigees.current : null;
+
+    if (!figees) {
+      if (!values.nom.trim()) {
+        toast.error("Le nom est obligatoire.");
+        return;
+      }
+      if (values.est_croyant === "") {
+        toast.error("Indique si ton personnage est croyant ou non.");
+        return;
+      }
+      const croyant = values.est_croyant === "oui";
+      if (croyant && !values.religion_id) {
+        toast.error("Choisis une religion pour ton personnage croyant.");
+        return;
+      }
     }
-    if (values.est_croyant === "") {
-      toast.error("Indique si ton personnage est croyant ou non.");
-      return;
-    }
-    const croyant = values.est_croyant === "oui";
-    if (croyant && !values.religion_id) {
-      toast.error("Choisis une religion pour ton personnage croyant.");
-      return;
-    }
+
+    const nom = figees ? figees.nom : values.nom.trim();
+    const gnCompletes = figees ? figees.gn_completes : Number(values.gn_completes) || 0;
+    const miniGnCompletesV = figees ? figees.mini_gn_completes : Number(values.mini_gn_completes) || 0;
+    const ouverturesV = figees ? figees.ouvertures_terrain : Number(values.ouvertures_terrain) || 0;
+    const croyant = figees ? figees.est_croyant === true : values.est_croyant === "oui";
+    const religionId = figees
+      ? figees.religion_id
+      : croyant
+      ? values.religion_id
+      : null;
 
     setSubmitting(true);
     const { data, error } = await supabase.rpc("sauvegarder_etape_1", {
       p_personnage_id: personnageId,
-      p_nom: values.nom.trim(),
-      p_gn_completes: Number(values.gn_completes) || 0,
-      p_mini_gn_completes: Number(values.mini_gn_completes) || 0,
-      p_ouvertures_terrain: Number(values.ouvertures_terrain) || 0,
+      p_nom: nom,
+      p_gn_completes: gnCompletes,
+      p_mini_gn_completes: miniGnCompletesV,
+      p_ouvertures_terrain: ouverturesV,
       p_est_croyant: croyant,
-      p_religion_id: (croyant ? values.religion_id : null) as unknown as string,
+      p_religion_id: religionId as unknown as string,
       p_historique: values.historique,
       p_ame_personnage: values.ame_personnage,
     });
@@ -213,15 +256,27 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
         </p>
       </div>
 
+      {modeCampagne && (
+        <p className="flex items-start gap-2 text-xs text-muted-foreground">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          L'identité de ton personnage est figée. Son histoire, elle, continue de
+          s'écrire.
+        </p>
+      )}
+
       <div className="space-y-2">
-        <Label htmlFor="nom" className="text-base text-gold">
+        <Label htmlFor="nom" className="flex items-center gap-1.5 text-base text-gold">
+          {modeCampagne && <Lock className="h-3.5 w-3.5" />}
           Nom du personnage
         </Label>
         <Input
           id="nom"
-          {...register("nom", { required: true })}
+          {...register("nom", { required: !modeCampagne })}
+          readOnly={modeCampagne}
           placeholder="Ex : Valerius l'Ancien"
-          className="bg-white/5 border-white/10"
+          className={`bg-white/5 border-white/10 ${
+            modeCampagne ? "opacity-60 pointer-events-none" : ""
+          }`}
         />
         {errors.nom && (
           <p className="text-xs text-red-400">Le nom est requis.</p>
@@ -230,7 +285,8 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="gn" className="text-sm text-white/70">
+          <Label htmlFor="gn" className="flex items-center gap-1.5 text-sm text-white/70">
+            {modeCampagne && <Lock className="h-3 w-3" />}
             GN réguliers complétés{" "}
             <span className="text-white/40">(+15 XP et +1 niveau par GN)</span>
           </Label>
@@ -238,6 +294,7 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
             id="gn"
             type="number"
             min={0}
+            readOnly={modeCampagne}
             {...register("gn_completes", {
               valueAsNumber: true,
               min: 0,
@@ -247,11 +304,14 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
                 return Math.floor(n);
               },
             })}
-            className="bg-white/5 border-white/10"
+            className={`bg-white/5 border-white/10 ${
+              modeCampagne ? "opacity-60 pointer-events-none" : ""
+            }`}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="mini" className="text-sm text-white/70">
+          <Label htmlFor="mini" className="flex items-center gap-1.5 text-sm text-white/70">
+            {modeCampagne && <Lock className="h-3 w-3" />}
             Mini-GN complétés{" "}
             <span className="text-white/40">(+15 XP par mini-GN)</span>
           </Label>
@@ -259,6 +319,7 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
             id="mini"
             type="number"
             min={0}
+            readOnly={modeCampagne}
             {...register("mini_gn_completes", {
               valueAsNumber: true,
               min: 0,
@@ -268,11 +329,14 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
                 return Math.floor(n);
               },
             })}
-            className="bg-white/5 border-white/10"
+            className={`bg-white/5 border-white/10 ${
+              modeCampagne ? "opacity-60 pointer-events-none" : ""
+            }`}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="ouv" className="text-sm text-white/70">
+          <Label htmlFor="ouv" className="flex items-center gap-1.5 text-sm text-white/70">
+            {modeCampagne && <Lock className="h-3 w-3" />}
             Ouvertures de terrain{" "}
             <span className="text-white/40">(+10 XP par ouverture)</span>
           </Label>
@@ -280,6 +344,7 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
             id="ouv"
             type="number"
             min={0}
+            readOnly={modeCampagne}
             {...register("ouvertures_terrain", {
               valueAsNumber: true,
               min: 0,
@@ -289,7 +354,9 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
                 return Math.floor(n);
               },
             })}
-            className="bg-white/5 border-white/10"
+            className={`bg-white/5 border-white/10 ${
+              modeCampagne ? "opacity-60 pointer-events-none" : ""
+            }`}
           />
         </div>
       </div>
@@ -321,7 +388,8 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base text-gold">
+        <Label className="flex items-center gap-1.5 text-base text-gold">
+          {modeCampagne && <Lock className="h-3.5 w-3.5" />}
           Ton personnage est-il croyant ?
         </Label>
         <Controller
@@ -331,7 +399,8 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
             <RadioGroup
               value={field.value}
               onValueChange={field.onChange}
-              className="flex gap-6"
+              disabled={modeCampagne}
+              className={`flex gap-6 ${modeCampagne ? "opacity-60" : ""}`}
             >
               <div className="flex items-center gap-2">
                 <RadioGroupItem id="croyant-oui" value="oui" />
@@ -348,13 +417,16 @@ const Etape1_V2 = ({ personnageId, onSuccess, onXpGainChange }: EtapeProps) => {
 
       {estCroyant === "oui" && (
         <div className="space-y-2">
-          <Label className="text-base text-gold">Religion</Label>
+          <Label className="flex items-center gap-1.5 text-base text-gold">
+            {modeCampagne && <Lock className="h-3.5 w-3.5" />}
+            Religion
+          </Label>
           <Controller
             control={control}
             name="religion_id"
             render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="bg-white/5 border-white/10">
+              <Select value={field.value} onValueChange={field.onChange} disabled={modeCampagne}>
+                <SelectTrigger className={`bg-white/5 border-white/10 ${modeCampagne ? "opacity-60" : ""}`}>
                   <SelectValue
                     placeholder={
                       loadingReligions
