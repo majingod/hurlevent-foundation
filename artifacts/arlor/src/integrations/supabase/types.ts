@@ -1882,6 +1882,184 @@ export type Database = {
           },
         ]
       }
+      personnage_compo_photos: {
+        Row: {
+          acteur_id: string | null
+          compo: Json
+          created_at: string
+          evenement_id: string | null
+          id: string
+          inscription_id: string | null
+          personnage_id: string
+        }
+        Insert: {
+          acteur_id?: string | null
+          compo: Json
+          created_at?: string
+          evenement_id?: string | null
+          id?: string
+          inscription_id?: string | null
+          personnage_id: string
+        }
+        Update: {
+          acteur_id?: string | null
+          compo?: Json
+          created_at?: string
+          evenement_id?: string | null
+          id?: string
+          inscription_id?: string | null
+          personnage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_compo_photos_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_publies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_prochain_evenement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "inscriptions_evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["inscription_id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_inscription_id_fkey"
+            columns: ["inscription_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_resumees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_maitres"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_verrou_competences"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personnage_objets_forge: {
         Row: {
           date_acquisition: string
@@ -6070,6 +6248,10 @@ export type Database = {
         }
         Returns: number
       }
+      capturer_compo_personnage: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
       changer_classe_personnage: {
         Args: {
           p_choix_par_competence?: Json
@@ -6135,6 +6317,11 @@ export type Database = {
         Args: { p_personnage_id: string }
         Returns: Json
       }
+      diff_compo_photos: {
+        Args: { p_apres: Json; p_avant: Json }
+        Returns: Json
+      }
+      doit_logger_action: { Args: { p_joueur_id: string }; Returns: boolean }
       donner_xp_bonus: {
         Args: { p_montant: number; p_personnage_id: string; p_raison?: string }
         Returns: Json
@@ -6181,6 +6368,10 @@ export type Database = {
       get_stats_admin: { Args: never; Returns: Json }
       immutable_array_to_string: { Args: { arr: string[] }; Returns: string }
       joueur_actif: { Args: { p_profil_id?: string }; Returns: string }
+      journal_evolution_personnage: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
       log_audit: {
         Args: {
           p_action: string
