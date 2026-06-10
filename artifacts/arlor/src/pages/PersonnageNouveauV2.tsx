@@ -505,6 +505,7 @@ const PersonnageNouveauV2 = () => {
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
               onXpDeltaChange={setXpDeltaCourant}
+              modeCampagne={modeCampagne}
             />
           )}
           {etape === 6 && (
@@ -514,6 +515,7 @@ const PersonnageNouveauV2 = () => {
               xpDisponible={xpDisponible}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
+              modeCampagne={modeCampagne}
             />
           )}
           {etape === 7 && (
@@ -523,6 +525,7 @@ const PersonnageNouveauV2 = () => {
               xpDisponible={xpDisponible}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
+              modeCampagne={modeCampagne}
             />
           )}
           {etape === 8 && (
@@ -532,6 +535,7 @@ const PersonnageNouveauV2 = () => {
               xpDisponible={xpDisponible}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
+              modeCampagne={modeCampagne}
             />
           )}
           {etape === 9 && (
@@ -541,6 +545,7 @@ const PersonnageNouveauV2 = () => {
               xpDisponible={xpDisponible}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
+              modeCampagne={modeCampagne}
             />
           )}
           {etape === 10 && (

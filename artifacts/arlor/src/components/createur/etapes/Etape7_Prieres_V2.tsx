@@ -23,6 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Sparkles, Trash2 } from "lucide-react";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
+import { estPriereAcquise } from "@/lib/acquisCampagne";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +69,11 @@ interface Etape7Props {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
+  /**
+   * Mode campagne (évolution) : verrouille visuellement le désachat des prières
+   * acquises (PR-C2). Miroir d'INV-3 backend, qui reste l'autorité.
+   */
+  modeCampagne?: boolean;
 }
 
 interface AcheterPriereParams {
@@ -85,8 +93,12 @@ const Etape7_Prieres_V2 = ({
   onSuccess,
   onError,
   onPrevious,
+  modeCampagne = false,
 }: Etape7Props) => {
   const queryClient = useQueryClient();
+
+  // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
+  const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
 
   const [domaineSelectionne, setDomaineSelectionne] = useState<string | null>(
     null,
@@ -781,10 +793,15 @@ const Etape7_Prieres_V2 = ({
               Aucune prière acquise pour le moment.
             </p>
           ) : (
-            prieresAchetees.map((pp) => (
+            prieresAchetees.map((pp) => {
+              // PR-C2 : prière scellée par la photo de compo (désachat refusé).
+              const acquis = estPriereAcquise(modeCampagne, photo, pp.priere_id);
+              return (
               <div
                 key={pp.id}
-                className="space-y-1 rounded-lg border border-border p-3 text-sm"
+                className={`space-y-1 rounded-lg border p-3 text-sm ${
+                  acquis ? "border-gold/40 bg-gold/10" : "border-border"
+                }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -795,23 +812,26 @@ const Etape7_Prieres_V2 = ({
                       <Badge variant="outline">{pp.prieres.domaine}</Badge>
                     )}
                     <Badge variant="secondary">Niv. {pp.niveau_priere}</Badge>
+                    {acquis && <BadgeAcquis />}
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() =>
-                      setASupprimer({
-                        personnage_priere_id: pp.id,
-                        nom:
-                          pp.nom_personnalise ?? pp.prieres?.nom ?? "Prière",
-                        xp_depense: pp.xp_depense,
-                      })
-                    }
-                    disabled={desacheterMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {!acquis && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() =>
+                        setASupprimer({
+                          personnage_priere_id: pp.id,
+                          nom:
+                            pp.nom_personnalise ?? pp.prieres?.nom ?? "Prière",
+                          xp_depense: pp.xp_depense,
+                        })
+                      }
+                      disabled={desacheterMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {pp.zone_choisie} • {pp.portee_choisie} • {pp.duree_choisie}
@@ -823,7 +843,8 @@ const Etape7_Prieres_V2 = ({
                   {calculerCoutPS(pp.xp_depense)} PS
                 </p>
               </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>

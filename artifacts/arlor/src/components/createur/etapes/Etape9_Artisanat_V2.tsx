@@ -37,6 +37,9 @@ import {
 } from "lucide-react";
 import { COUT_RECETTE_SUPPLEMENTAIRE } from "@/constants/artisanat";
 import { SectionAlchimieAccordion } from "./SectionAlchimieAccordion";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
+import { estRecetteAcquise, estPiegeAcquis } from "@/lib/acquisCampagne";
 
 type RecetteRow = Database["public"]["Tables"]["recettes_alchimie"]["Row"];
 type ObjetForgeRow = Database["public"]["Tables"]["objets_forge"]["Row"];
@@ -81,6 +84,12 @@ interface Etape9Props {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
+  /**
+   * Mode campagne (évolution) : verrouille visuellement le désachat des
+   * recettes et paliers de pièges acquis (PR-C2). Miroir d'INV-3 backend,
+   * qui reste l'autorité.
+   */
+  modeCampagne?: boolean;
 }
 
 const Etape9_Artisanat_V2 = ({
@@ -90,8 +99,13 @@ const Etape9_Artisanat_V2 = ({
   onSuccess,
   onError,
   onPrevious,
+  modeCampagne = false,
 }: Etape9Props) => {
   const queryClient = useQueryClient();
+
+  // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne
+  // (une seule fois pour les deux sections recettes + pièges).
+  const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
 
   // Modale de confirmation de cascade (décochage d'un palier de piège).
   const [cascadePiege, setCascadePiege] = useState<CascadePiegeContext | null>(
@@ -391,6 +405,14 @@ const Etape9_Artisanat_V2 = ({
 
   const handleToggle = (recette: RecetteRow, acquise: PersonnageRecetteRow | undefined) => {
     if (acquise) {
+      // PR-C2 : garde défensive — une recette scellée par la photo ne peut
+      // être retirée (le backend INV-3 refuserait de toute façon).
+      if (estRecetteAcquise(modeCampagne, photo, recette.id)) {
+        toast.error(
+          "Cet acquis a été joué en événement — il ne peut plus être retiré.",
+        );
+        return;
+      }
       // Désacheter
       desacheterMutation.mutate({ p_personnage_recette_id: acquise.id });
     } else {
@@ -479,6 +501,14 @@ const Etape9_Artisanat_V2 = ({
   // confirmation (miroir cascadeDialog étape 5). Un palier gratuit reste
   // décochable (la DB ne le bloque pas).
   const handleDecocherPiege = (nom: string, niveau: number) => {
+    // PR-C2 : garde défensive — un palier scellé par la photo ne peut être
+    // retiré (le backend INV-3 refuserait de toute façon).
+    if (estPiegeAcquis(modeCampagne, photo, nom, niveau)) {
+      toast.error(
+        "Cet acquis a été joué en événement — il ne peut plus être retiré.",
+      );
+      return;
+    }
     const inner = paliersParFamille.get(nom);
     const cible = inner?.get(niveau);
     if (!inner || !cible) return;
@@ -685,6 +715,9 @@ const Etape9_Artisanat_V2 = ({
                     coutSupplementaire={COUT_RECETTE_SUPPLEMENTAIRE}
                     mutationsPending={mutationsPending}
                     onToggle={handleToggle}
+                    estRecetteScellee={(recetteId) =>
+                      estRecetteAcquise(modeCampagne, photo, recetteId)
+                    }
                   />
                 )}
               </CardContent>
@@ -806,16 +839,27 @@ const Etape9_Artisanat_V2 = ({
                               quotaPiegeRestantPourNiveau(niv) > 0;
                             const xpInsuffisant =
                               !acquis && !seraGratuit && cout > xpDisponible;
+                            // PR-C2 : palier scellé par la photo (désachat refusé).
+                            const scelle = estPiegeAcquis(
+                              modeCampagne,
+                              photo,
+                              nom,
+                              niv,
+                            );
                             const disabled = acquis
-                              ? mutationsPiegesPending
+                              ? mutationsPiegesPending || scelle
                               : niveauPrecedentRequis ||
                                 mutationsPiegesPending ||
                                 xpInsuffisant;
                             return (
                               <div
                                 key={niv}
-                                className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
-                                  niveauPrecedentRequis && !acquis
+                                className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
+                                  scelle
+                                    ? "border-gold/40 bg-gold/10"
+                                    : "border-border"
+                                } ${
+                                  !scelle && niveauPrecedentRequis && !acquis
                                     ? "opacity-50"
                                     : ""
                                 }`}
@@ -843,6 +887,7 @@ const Etape9_Artisanat_V2 = ({
                                 >
                                   <div className="flex flex-wrap items-center gap-2">
                                     <strong>Niveau {niv}</strong>
+                                    {scelle && <BadgeAcquis />}
                                     {acquis && ligneAcquise?.est_gratuit ? (
                                       <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                                         Acquis gratuitement
