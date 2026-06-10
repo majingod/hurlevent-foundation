@@ -469,8 +469,21 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
       </div>
 
       {mode === 'route' && isOwner && (
-        <div className="max-w-sm">
-          <BoutonRemodeler personnageId={personnageId} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="max-w-sm">
+            <BoutonRemodeler personnageId={personnageId} />
+          </div>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/personnage/nouveau?id=${fiche.id}&admin=1`)}
+              title="Édite via l'éditeur complet, sans changer l'état du personnage"
+              className="gap-2 border-dashed border-gold/30 text-gold hover:bg-gold/10 hover:text-gold"
+            >
+              <Wand2 className="h-4 w-4" /> Éditer en admin
+            </Button>
+          )}
         </div>
       )}
 
