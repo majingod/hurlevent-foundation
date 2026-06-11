@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
+import type { PalierSort } from "@/utils/calculsMagie";
+import { PaliersDepliable } from "@/components/createur/DescriptionDepliable";
 import type { Sort } from "./types";
 
 interface SortsSectionProps {
@@ -81,6 +83,11 @@ export const SortsSection = ({
                 {sort.sort_description_courte ?? sort.sort_description}
               </p>
             )}
+
+            <PaliersDepliable
+              paliers={sort.paliers as PalierSort[] | null}
+              niveau={sort.niveau_sort}
+            />
 
             <ToggleManuel
               texte={sort.sort_description}
