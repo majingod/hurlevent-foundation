@@ -119,6 +119,9 @@ const Etape6_Sorts_V2 = ({
       coutXpBase: number;
       groupe: string;
       bonusNiveau: BonusNiveau | null;
+      courte?: string | null;
+      tronc?: string | null;
+      paliers?: PalierSort[] | null;
     };
     niveauMax: number;
     plancher: ReturnType<typeof plancherInstanceSort>;
@@ -190,7 +193,7 @@ const Etape6_Sorts_V2 = ({
       const { data, error } = await supabase
         .from("personnage_sorts")
         .select(
-          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau)",
+          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau, description_courte, description_tronc, paliers)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
@@ -204,6 +207,9 @@ const Etape6_Sorts_V2 = ({
           duree: string | null;
           cout_xp_base: number | null;
           bonus_niveau: BonusNiveau | null;
+          description_courte: string | null;
+          description_tronc: string | null;
+          paliers: unknown;
         } | null;
       })[];
     },
@@ -586,6 +592,7 @@ const Etape6_Sorts_V2 = ({
               onChange={setValeurs}
               plancher={null}
               bonusNiveau={sortSelectionne.bonus_niveau as BonusNiveau | null}
+              paliers={sortSelectionne.paliers as PalierSort[] | null}
             />
 
             {(() => {
@@ -689,6 +696,9 @@ const Etape6_Sorts_V2 = ({
                             coutXpBase: Number(ps.sorts?.cout_xp_base ?? 0),
                             groupe: ps.sorts?.cercle ?? "",
                             bonusNiveau: ps.sorts?.bonus_niveau ?? null,
+                            courte: ps.sorts?.description_courte ?? null,
+                            tronc: ps.sorts?.description_tronc ?? null,
+                            paliers: (ps.sorts?.paliers ?? null) as PalierSort[] | null,
                           },
                           niveauMax: Math.max(
                             1,

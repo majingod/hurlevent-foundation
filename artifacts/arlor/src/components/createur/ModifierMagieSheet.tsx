@@ -21,7 +21,9 @@ import {
   filterDureesDisponibles,
   filterPorteesDisponibles,
   type BonusNiveau,
+  type PalierSort,
 } from "@/utils/calculsMagie";
+import DescriptionDepliable from "@/components/createur/DescriptionDepliable";
 
 // Coût pts par variable — mêmes barèmes que ConstructeurMagie / cout_pts_* SQL.
 const ptsZone = (zone: string) => COUT_ZONE[zone] ?? 0;
@@ -53,6 +55,9 @@ export interface ModifierMagieBase {
   groupe: string;
   /** bonus par niveau dérivé (PR #361), affiché dans la barre de formule */
   bonusNiveau?: BonusNiveau | null;
+  courte?: string | null;
+  tronc?: string | null;
+  paliers?: PalierSort[] | null;
 }
 
 interface ModifierMagieSheetProps {
@@ -249,6 +254,8 @@ const ModifierMagieSheet = ({
             </p>
           )}
 
+          <DescriptionDepliable courte={base.courte} tronc={base.tronc} />
+
           <ConstructeurMagie
             type={type}
             zoneEffet={base.zoneEffet}
@@ -260,6 +267,7 @@ const ModifierMagieSheet = ({
             onChange={setValeurs}
             plancher={plancher}
             bonusNiveau={base.bonusNiveau ?? null}
+            paliers={base.paliers ?? null}
           />
 
           {/* Encadré différence signée */}

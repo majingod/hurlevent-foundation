@@ -13,7 +13,9 @@ import {
   getNoteZone,
   isZoneUnique,
   type BonusNiveau,
+  type PalierSort,
 } from "@/utils/calculsMagie";
+import { PaliersDepliable } from "@/components/createur/DescriptionDepliable";
 
 export interface ValeursConstructeur {
   zone: string;
@@ -44,6 +46,7 @@ interface ConstructeurMagieProps {
   onChange: (v: ValeursConstructeur) => void;
   plancher?: PlancherMagie | null; // null/undefined = achat (aucun verrou)
   bonusNiveau?: BonusNiveau | null; // bonus par niveau dérivé (PR #361)
+  paliers?: PalierSort[] | null; // paliers du sort/prière (s161 PR-C)
 }
 
 const ptsZone = (zone: string) => COUT_ZONE[zone] ?? 0;
@@ -115,6 +118,7 @@ const ConstructeurMagie = ({
   onChange,
   plancher,
   bonusNiveau,
+  paliers,
 }: ConstructeurMagieProps) => {
   const zoneUnique = isZoneUnique(zoneEffet);
   const noteZone = getNoteZone(zoneEffet);
@@ -289,6 +293,8 @@ const ConstructeurMagie = ({
           step={1}
         />
       </div>
+
+      <PaliersDepliable paliers={paliers} niveau={valeurs.niveau} />
 
       {/* Nom personnalisé (toujours libre, jamais verrouillé) */}
       <div className="space-y-2">
