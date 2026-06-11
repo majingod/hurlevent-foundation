@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
+import type { PalierSort } from "@/utils/calculsMagie";
+import { PaliersDepliable } from "@/components/createur/DescriptionDepliable";
 import type { Priere } from "./types";
 
 interface PrieresSectionProps {
@@ -71,6 +73,11 @@ export const PrieresSection = ({
                 {priere.priere_description_courte ?? priere.priere_description}
               </p>
             )}
+
+            <PaliersDepliable
+              paliers={priere.paliers as PalierSort[] | null}
+              niveau={priere.niveau_priere}
+            />
 
             <ToggleManuel
               texte={priere.priere_description}

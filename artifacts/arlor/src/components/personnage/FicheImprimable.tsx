@@ -1,4 +1,5 @@
 import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
+import type { PalierSort } from "@/utils/calculsMagie";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { resoudreChoixAffichage } from "./sections/helpers";
@@ -140,6 +141,18 @@ export const FicheImprimable = ({
     return d ? <div className="fp-row fp-desc">{d}</div> : null;
   };
 
+  const palierActifRow = (paliers: PalierSort[] | null | undefined, niveau: number) => {
+    if (!paliers || paliers.length === 0) return null;
+    const atteints = paliers.filter((p) => p.niveau <= niveau);
+    if (atteints.length === 0) return null;
+    const actif = atteints[atteints.length - 1];
+    return (
+      <div className="fp-row">
+        <strong>Effet ({actif.libelle}) :</strong> {actif.texte}
+      </div>
+    );
+  };
+
   // Pastille XP : 0 ou absent => "Gratuit" (zéro ambiguïté, convention compétences).
   const xpBadge = (v: number | null | undefined) =>
     v == null || Number(v) === 0 ? "Gratuit" : `${v} XP`;
@@ -255,6 +268,7 @@ export const FicheImprimable = ({
         {s.duree_choisie && <div className="fp-row"><span className="fp-k">Durée :</span> {s.duree_choisie}</div>}
         <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
         {descRow(s.sort_description_courte, s.sort_description)}
+        {palierActifRow(s.paliers, s.niveau_sort)}
       </div>
     );
   };
@@ -284,6 +298,7 @@ export const FicheImprimable = ({
           <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
         )}
         {descRow(p.priere_description_courte, p.priere_description)}
+        {palierActifRow(p.paliers, p.niveau_priere)}
       </div>
     );
   };
