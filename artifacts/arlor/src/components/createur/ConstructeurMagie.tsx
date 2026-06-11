@@ -4,6 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { Lock } from "lucide-react";
 import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
+  calculerBonusNiveau,
   calculerCoutPS,
   calculerCoutXP,
   calculerDureeIncantation,
@@ -11,6 +12,7 @@ import {
   filterPorteesDisponibles,
   getNoteZone,
   isZoneUnique,
+  type BonusNiveau,
 } from "@/utils/calculsMagie";
 
 export interface ValeursConstructeur {
@@ -41,6 +43,7 @@ interface ConstructeurMagieProps {
   valeurs: ValeursConstructeur;
   onChange: (v: ValeursConstructeur) => void;
   plancher?: PlancherMagie | null; // null/undefined = achat (aucun verrou)
+  bonusNiveau?: BonusNiveau | null; // bonus par niveau dérivé (PR #361)
 }
 
 const ptsZone = (zone: string) => COUT_ZONE[zone] ?? 0;
@@ -111,6 +114,7 @@ const ConstructeurMagie = ({
   valeurs,
   onChange,
   plancher,
+  bonusNiveau,
 }: ConstructeurMagieProps) => {
   const zoneUnique = isZoneUnique(zoneEffet);
   const noteZone = getNoteZone(zoneEffet);
@@ -137,6 +141,86 @@ const ConstructeurMagie = ({
       )
     : 0;
   const coutPS = coutXp > 0 ? calculerCoutPS(coutXp) : 0;
+
+  // Bonus par niveau (PR #361) affiché dans la barre de formule live.
+  const renderBonusNiveau = () => {
+    if (!bonusNiveau) return null;
+    const f = bonusNiveau.formule;
+
+    // formule:null → texte verbatim seul, aucun calcul.
+    if (!f) {
+      return (
+        <p className="text-xs italic text-muted-foreground">
+          {bonusNiveau.texte}
+        </p>
+      );
+    }
+
+    // condition non-null + zone choisie sans « ayon » (Rayon) → texte seul.
+    if (f.condition && !valeurs.zone.includes("ayon")) {
+      return (
+        <p className="text-xs italic text-muted-foreground">
+          {bonusNiveau.texte}
+        </p>
+      );
+    }
+
+    const b = calculerBonusNiveau(bonusNiveau, valeurs.niveau);
+
+    let ligne: string;
+    if (b === null) {
+      ligne = `✦ Bonus inactif (s'active au-delà du niveau ${f.seuil})`;
+    } else {
+      const n = b.n;
+      switch (f.variable) {
+        case "duree": {
+          const m = valeurs.duree.match(/^(\d+) Minutes?$/);
+          if (m) {
+            const base = Number(m[1]);
+            ligne = `✦ Durée effective : ${base + n} min (${base} choisie + ${n} gratuites)`;
+          } else {
+            ligne = `✦ +${n} minute(s) gratuites de durée`;
+          }
+          break;
+        }
+        case "cibles": {
+          const m = valeurs.zone.match(/^(\d+) Cibles?$/);
+          if (m) {
+            const base = Number(m[1]);
+            ligne = `✦ Cibles effectives : ${base + n} (${base} + ${n} gratuites)`;
+          } else {
+            ligne = `✦ +${n} cible(s) gratuites`;
+          }
+          break;
+        }
+        case "rayon":
+          ligne = `✦ +${n} pied(s) de rayon gratuits`;
+          break;
+        case "questions":
+          ligne = `✦ +${n} question(s) au niveau ${valeurs.niveau}`;
+          break;
+        default:
+          ligne = "";
+      }
+    }
+
+    return (
+      <>
+        <p
+          className={
+            b === null
+              ? "text-xs text-muted-foreground"
+              : "text-xs text-primary"
+          }
+        >
+          {ligne}
+        </p>
+        <p className="text-xs italic text-muted-foreground">
+          {bonusNiveau.texte}
+        </p>
+      </>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -249,6 +333,7 @@ const ConstructeurMagie = ({
             s
           </p>
         )}
+        {renderBonusNiveau()}
       </div>
     </div>
   );
