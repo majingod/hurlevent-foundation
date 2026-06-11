@@ -823,6 +823,9 @@ const Etape5_Competences_V2 = ({
    * compétence, scrolle au centre et la met en surbrillance ~2 s.
    */
   const goToComp = (compId: string) => {
+    // Cross-nav fiable : la cible peut être « Disponible » alors que le
+    // filtre actif est « Bloquées » (ou inversement) → retour à « Toutes ».
+    setFiltre("toutes");
     const cible = (competences ?? []).find((c) => c.id === compId);
     if (cible) {
       const cat = normalizeCategorie(cible.categorie);
@@ -993,6 +996,46 @@ const Etape5_Competences_V2 = ({
     if (!opposingComp) return null;
     const achatsOp = achatsParCompetence.get(opposingComp.id) ?? [];
     return achatsOp.length > 0 ? opposingCat : null;
+  };
+
+  /**
+   * Cross-nav pour les compétences duales mage/prêtre (COMP_VERROUS_MUTUELS) :
+   * quand la version affichée est bloquée, retourne la pastille cliquable qui
+   * explique POURQUOI et pointe vers la version jumelle dans l'autre liste.
+   * - Version jumelle déjà achetée → « Déjà acquise dans la liste X » (✓ vert)
+   * - Version réservée à la classe opposée → « Bloqué ici — achetable dans la
+   *   liste X » (✗ rouge)
+   * Retourne null si la compétence n'est pas duale, si la jumelle est absente,
+   * ou si le blocage vient d'ailleurs (classes_requises pures → BlocClasses).
+   */
+  const crossNavDual = (
+    comp: CompetenceWithNiveaux,
+  ): { label: string; targetId: string; statut: StatusPastille } | null => {
+    if (!comp.nom || !COMP_VERROUS_MUTUELS.has(comp.nom)) return null;
+    const cat = normalizeCategorie(comp.categorie);
+    if (cat !== "mage" && cat !== "pretre") return null;
+    const opposingCat = cat === "mage" ? "pretre" : "mage";
+    const opposing = (competences ?? []).find(
+      (c) =>
+        c.nom === comp.nom && normalizeCategorie(c.categorie) === opposingCat,
+    );
+    if (!opposing) return null;
+    const labelCat = opposingCat === "mage" ? "Mage" : "Prêtre";
+    if ((achatsParCompetence.get(opposing.id) ?? []).length > 0) {
+      return {
+        label: `Déjà acquise dans la liste ${labelCat}`,
+        targetId: opposing.id,
+        statut: "acquis",
+      };
+    }
+    if (classeReservataireOpposee(comp)) {
+      return {
+        label: `Bloqué ici — achetable dans la liste ${labelCat}`,
+        targetId: opposing.id,
+        statut: "manquant",
+      };
+    }
+    return null;
   };
 
   /**
@@ -2509,9 +2552,14 @@ const Etape5_Competences_V2 = ({
     const coutBadge = headerCoutBadge(comp, statut);
     const surbrillance = highlightId === comp.id;
 
-    // Verrou mutuel « Déjà acquise via » : conservé via MessageBlocage.
+    // Compétences duales mage/prêtre : pastille cliquable cross-nav qui
+    // explique le blocage et saute vers la version jumelle (s159).
+    const crossNav = classeBloque(comp) ? crossNavDual(comp) : null;
+    // Verrou mutuel « Déjà acquise via » : MessageBlocage statique conservé
+    // uniquement en fallback si la cross-nav ne s'applique pas.
     // Les « Réservé aux classes » sont déjà couverts par BlocClasses.
-    const detailBlocage = classeBloque(comp) ? blocageDetail(comp) : null;
+    const detailBlocage =
+      !crossNav && classeBloque(comp) ? blocageDetail(comp) : null;
     const messageBlocage =
       detailBlocage && !detailBlocage.label.startsWith("Réservé")
         ? detailBlocage
@@ -2575,6 +2623,17 @@ const Etape5_Competences_V2 = ({
               normalizeCategorieFn={normalizeCategorie}
             />
           </div>
+
+          {crossNav && (
+            <div className="pl-6">
+              <BadgePrereqCliquable
+                statut={crossNav.statut}
+                label={crossNav.label}
+                competenceId={crossNav.targetId}
+                onGo={goToComp}
+              />
+            </div>
+          )}
 
           {messageBlocage && (
             <div className="pl-6">
