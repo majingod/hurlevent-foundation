@@ -11,20 +11,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Loader2, Sparkles, Trash2 } from "lucide-react";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
+import ConstructeurMagie, {
+  type ValeursConstructeur,
+} from "@/components/createur/ConstructeurMagie";
+import DescriptionDepliable from "@/components/createur/DescriptionDepliable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estPriereAcquise } from "@/lib/acquisCampagne";
 import {
@@ -41,10 +35,6 @@ import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
   calculerCoutPS,
   calculerCoutXP,
-  calculerDureeIncantation,
-  filterDureesDisponibles,
-  filterPorteesDisponibles,
-  getNoteZone,
   isZoneUnique,
 } from "@/utils/calculsMagie";
 
@@ -105,11 +95,13 @@ const Etape7_Prieres_V2 = ({
     null,
   );
   const [priereId, setPriereId] = useState<string | null>(null);
-  const [zoneChoisie, setZoneChoisie] = useState<string>("");
-  const [porteeChoisie, setPorteeChoisie] = useState<string>("");
-  const [dureeChoisie, setDureeChoisie] = useState<string>("");
-  const [niveauPriere, setNiveauPriere] = useState<number>(1);
-  const [nomPersonnalise, setNomPersonnalise] = useState<string>("");
+  const [valeurs, setValeurs] = useState<ValeursConstructeur>({
+    zone: "",
+    portee: "",
+    duree: "",
+    niveau: 1,
+    nom: "",
+  });
   const [aSupprimer, setASupprimer] = useState<{
     personnage_priere_id: string;
     nom: string;
@@ -248,72 +240,35 @@ const Etape7_Prieres_V2 = ({
   // Reset / pré-remplissage quand on change de prière
   useEffect(() => {
     if (!priereSelectionnee) {
-      setZoneChoisie("");
-      setPorteeChoisie("");
-      setDureeChoisie("");
-      setNiveauPriere(1);
-      setNomPersonnalise("");
+      setValeurs({ zone: "", portee: "", duree: "", niveau: 1, nom: "" });
       return;
     }
-    setNomPersonnalise(priereSelectionnee.nom);
-    setNiveauPriere(priereSelectionnee.niveau ?? 1);
-    if (
-      priereSelectionnee.zone_effet &&
-      isZoneUnique(priereSelectionnee.zone_effet)
-    ) {
-      const zones = ZONES_PAR_TYPE[priereSelectionnee.zone_effet] ?? [];
-      setZoneChoisie(zones[0] ?? "");
-    } else {
-      setZoneChoisie("");
-    }
-    setPorteeChoisie("");
-    setDureeChoisie("");
+    const zoneUnique =
+      !!priereSelectionnee.zone_effet &&
+      isZoneUnique(priereSelectionnee.zone_effet);
+    const zones = zoneUnique
+      ? ZONES_PAR_TYPE[priereSelectionnee.zone_effet!] ?? []
+      : [];
+    setValeurs({
+      zone: zoneUnique ? zones[0] ?? "" : "",
+      portee: "",
+      duree: "",
+      niveau: priereSelectionnee.niveau ?? 1,
+      nom: priereSelectionnee.nom,
+    });
   }, [priereId, priereSelectionnee]);
-
-  const zonesDisponibles = useMemo(() => {
-    if (!priereSelectionnee?.zone_effet) return [] as string[];
-    return ZONES_PAR_TYPE[priereSelectionnee.zone_effet] ?? [];
-  }, [priereSelectionnee]);
-
-  const porteesDispo = useMemo(
-    () =>
-      priereSelectionnee?.portee
-        ? filterPorteesDisponibles(priereSelectionnee.portee)
-        : PORTEES,
-    [priereSelectionnee],
-  );
-
-  const dureesDispo = useMemo(
-    () =>
-      priereSelectionnee?.duree
-        ? filterDureesDisponibles(priereSelectionnee.duree)
-        : DUREES,
-    [priereSelectionnee],
-  );
 
   const coutXpBase = Number(priereSelectionnee?.cout_xp_base ?? 0);
   const coutXp =
-    priereSelectionnee && zoneChoisie && porteeChoisie && dureeChoisie
+    priereSelectionnee && valeurs.zone && valeurs.portee && valeurs.duree
       ? calculerCoutXP(
-          zoneChoisie,
-          porteeChoisie,
-          dureeChoisie,
-          niveauPriere,
+          valeurs.zone,
+          valeurs.portee,
+          valeurs.duree,
+          valeurs.niveau,
           coutXpBase,
         )
       : 0;
-  const coutPS = coutXp > 0 ? calculerCoutPS(coutXp) : 0;
-  const dureeIncantation =
-    priereSelectionnee && zoneChoisie && porteeChoisie && dureeChoisie
-      ? calculerDureeIncantation(porteeChoisie, zoneChoisie, dureeChoisie, niveauPriere)
-      : 0;
-
-  const zoneEstUnique = priereSelectionnee?.zone_effet
-    ? isZoneUnique(priereSelectionnee.zone_effet)
-    : false;
-  const noteZone = priereSelectionnee?.zone_effet
-    ? getNoteZone(priereSelectionnee.zone_effet)
-    : null;
 
   const mutation = useMutation({
     mutationFn: async (params: AcheterPriereParams) => {
@@ -422,10 +377,10 @@ const Etape7_Prieres_V2 = ({
 
   const peutAcheter =
     !!priereSelectionnee &&
-    !!zoneChoisie &&
-    !!porteeChoisie &&
-    !!dureeChoisie &&
-    nomPersonnalise.trim().length > 0 &&
+    !!valeurs.zone &&
+    !!valeurs.portee &&
+    !!valeurs.duree &&
+    valeurs.nom.trim().length > 0 &&
     coutXp > 0;
 
   const handleAcheter = () => {
@@ -433,11 +388,11 @@ const Etape7_Prieres_V2 = ({
     mutation.mutate({
       p_personnage_id: personnageId,
       p_priere_id: priereSelectionnee.id,
-      p_zone_choisie: zoneChoisie,
-      p_portee_choisie: porteeChoisie,
-      p_duree_choisie: dureeChoisie,
-      p_niveau_priere: niveauPriere,
-      p_nom_personnalise: nomPersonnalise.trim(),
+      p_zone_choisie: valeurs.zone,
+      p_portee_choisie: valeurs.portee,
+      p_duree_choisie: valeurs.duree,
+      p_niveau_priere: valeurs.niveau,
+      p_nom_personnalise: valeurs.nom.trim(),
     });
   };
 
@@ -561,21 +516,31 @@ const Etape7_Prieres_V2 = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select
-            value={domaineSelectionne ?? ""}
-            onValueChange={(v) => setDomaineSelectionne(v || null)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner un domaine" />
-            </SelectTrigger>
-            <SelectContent>
-              {domainesAffiches.map((d) => (
-                <SelectItem key={d.domaine ?? ""} value={d.domaine ?? ""}>
-                  {d.domaine} — prières jusqu'au niveau {d.niveau_max_prieres}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-2">
+            {domainesAffiches.map((d) => {
+              const selectionne = domaineSelectionne === d.domaine;
+              return (
+                <Button
+                  key={d.domaine ?? ""}
+                  type="button"
+                  variant={selectionne ? "default" : "outline"}
+                  onClick={() => setDomaineSelectionne(d.domaine)}
+                  className="h-auto flex-col items-start gap-0 px-3 py-2"
+                >
+                  <span>{d.domaine}</span>
+                  <span
+                    className={`text-xs font-normal ${
+                      selectionne
+                        ? "text-primary-foreground/80"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    ≤ niv {d.niveau_max_prieres}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
@@ -623,13 +588,18 @@ const Etape7_Prieres_V2 = ({
                           <Badge variant="secondary">{p.type_priere}</Badge>
                         )}
                         <Badge>{p.cout_xp_base} XP base</Badge>
+                        {p.portee && (
+                          <Badge variant="outline">portée ≤ {p.portee}</Badge>
+                        )}
+                        {p.duree && (
+                          <Badge variant="outline">durée ≤ {p.duree}</Badge>
+                        )}
                       </div>
                     </div>
-                    {p.description && (
-                      <p className="text-sm text-muted-foreground">
-                        {p.description}
-                      </p>
-                    )}
+                    <DescriptionDepliable
+                      courte={p.description_courte}
+                      complete={p.description}
+                    />
                   </CardContent>
                 </Card>
               ))
@@ -650,105 +620,17 @@ const Etape7_Prieres_V2 = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Zone */}
-            <div className="space-y-2">
-              <Label>Zone d'effet</Label>
-              {zoneEstUnique ? (
-                <Input value={zoneChoisie} readOnly className="opacity-60" />
-              ) : (
-                <Select value={zoneChoisie} onValueChange={setZoneChoisie}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une zone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zonesDisponibles.map((z) => (
-                      <SelectItem key={z} value={z}>
-                        {z} ({COUT_ZONE[z] ?? 0} pts)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {noteZone && (
-                <p className="text-xs italic text-muted-foreground">
-                  {noteZone}
-                </p>
-              )}
-            </div>
-
-            {/* Portée */}
-            <div className="space-y-2">
-              <Label>Portée</Label>
-              <Select value={porteeChoisie} onValueChange={setPorteeChoisie}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une portée" />
-                </SelectTrigger>
-                <SelectContent>
-                  {porteesDispo.map((p) => (
-                    <SelectItem key={p.label} value={p.label}>
-                      {p.label} ({p.cout} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Durée */}
-            <div className="space-y-2">
-              <Label>Durée</Label>
-              <Select value={dureeChoisie} onValueChange={setDureeChoisie}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une durée" />
-                </SelectTrigger>
-                <SelectContent>
-                  {dureesDispo.map((d) => (
-                    <SelectItem key={d.label} value={d.label}>
-                      {d.label} ({d.cout} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Niveau */}
-            <div className="space-y-2">
-              <Label>Niveau de la prière : {niveauPriere}</Label>
-              <Slider
-                value={[niveauPriere]}
-                onValueChange={(v) => setNiveauPriere(v[0])}
-                min={1}
-                max={Math.max(1, niveauMaxDomaine)}
-                step={1}
-              />
-            </div>
-
-            {/* Nom personnalisé */}
-            <div className="space-y-2">
-              <Label>Nom personnalisé</Label>
-              <Input
-                value={nomPersonnalise}
-                onChange={(e) => setNomPersonnalise(e.target.value)}
-                placeholder="Nom de la prière"
-              />
-            </div>
-
-            {/* Récapitulatif coûts */}
-            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4 text-sm">
-              <div className="flex justify-between">
-                <span>Coût XP :</span>
-                <strong className="text-primary">{coutXp} XP</strong>
-              </div>
-              <div className="flex justify-between">
-                <span>Coût PS à l'invocation :</span>
-                <strong>{coutPS} PS</strong>
-              </div>
-              {dureeIncantation > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Durée d'incantation :</span>
-                  <span>{dureeIncantation} s</span>
-                </div>
-              )}
-            </div>
+            <ConstructeurMagie
+              type="priere"
+              zoneEffet={priereSelectionnee.zone_effet ?? ""}
+              porteeMax={priereSelectionnee.portee ?? ""}
+              dureeMax={priereSelectionnee.duree ?? ""}
+              coutXpBase={coutXpBase}
+              niveauMax={Math.max(1, niveauMaxDomaine)}
+              valeurs={valeurs}
+              onChange={setValeurs}
+              plancher={null}
+            />
 
             {(() => {
               const xpInsuffisants = peutAcheter && coutXp > xpDisponible;
@@ -839,11 +721,29 @@ const Etape7_Prieres_V2 = ({
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {pp.zone_choisie} • {pp.portee_choisie} • {pp.duree_choisie}
-                  {pp.duree_incantation_calculee != null &&
-                    ` • Incantation : ${pp.duree_incantation_calculee} s`}
-                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="outline">
+                    {pp.zone_choisie} · {COUT_ZONE[pp.zone_choisie ?? ""] ?? 0}
+                    pt
+                  </Badge>
+                  <Badge variant="outline">
+                    {pp.portee_choisie} ·{" "}
+                    {PORTEES.find((p) => p.label === pp.portee_choisie)?.cout ??
+                      0}
+                    pt
+                  </Badge>
+                  <Badge variant="outline">
+                    {pp.duree_choisie} ·{" "}
+                    {DUREES.find((d) => d.label === pp.duree_choisie)?.cout ??
+                      0}
+                    pt
+                  </Badge>
+                </div>
+                {pp.duree_incantation_calculee != null && (
+                  <p className="text-xs text-muted-foreground">
+                    Incantation : {pp.duree_incantation_calculee} s
+                  </p>
+                )}
                 <p className="text-xs">
                   <strong>{pp.xp_depense} XP</strong> •{" "}
                   {calculerCoutPS(pp.xp_depense)} PS
