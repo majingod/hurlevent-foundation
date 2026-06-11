@@ -1,5 +1,5 @@
-import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
-import type { PalierSort } from "@/utils/calculsMagie";
+import { calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
+import type { PalierSort, EffetInstance } from "@/utils/calculsMagie";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { resoudreChoixAffichage } from "./sections/helpers";
@@ -153,6 +153,26 @@ export const FicheImprimable = ({
     );
   };
 
+  // Effets calculés (s162) : si l'instance a un effet_instance rendu, ligne
+  // statique « Effets : … » (rendu print sobre, sans pastille ni encadré) ;
+  // sinon repli sur palierActifRow (comportement actuel).
+  const effetRow = (
+    effet: EffetInstance | null | undefined,
+    paliers: PalierSort[] | null | undefined,
+    niveau: number,
+  ) => {
+    const segments = rendreEffetInstance(effet, paliers, niveau);
+    if (!segments) return null;
+    return (
+      <div className="fp-row">
+        <strong>Effets :</strong>{" "}
+        {segments.map((seg, i) =>
+          seg.fort ? <strong key={i}>{seg.texte}</strong> : <span key={i}>{seg.texte}</span>,
+        )}
+      </div>
+    );
+  };
+
   // Pastille XP : 0 ou absent => "Gratuit" (zéro ambiguïté, convention compétences).
   const xpBadge = (v: number | null | undefined) =>
     v == null || Number(v) === 0 ? "Gratuit" : `${v} XP`;
@@ -268,7 +288,7 @@ export const FicheImprimable = ({
         {s.duree_choisie && <div className="fp-row"><span className="fp-k">Durée :</span> {s.duree_choisie}</div>}
         <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
         {descRow(s.sort_description_courte, s.sort_description)}
-        {palierActifRow(s.paliers, s.niveau_sort)}
+        {effetRow(s.effet_instance, s.paliers, s.niveau_sort) ?? palierActifRow(s.paliers, s.niveau_sort)}
       </div>
     );
   };
@@ -298,7 +318,7 @@ export const FicheImprimable = ({
           <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
         )}
         {descRow(p.priere_description_courte, p.priere_description)}
-        {palierActifRow(p.paliers, p.niveau_priere)}
+        {effetRow(p.effet_instance, p.paliers, p.niveau_priere) ?? palierActifRow(p.paliers, p.niveau_priere)}
       </div>
     );
   };

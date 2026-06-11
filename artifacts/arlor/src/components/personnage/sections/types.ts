@@ -1,5 +1,5 @@
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { PalierSort } from "@/utils/calculsMagie";
+import type { PalierSort, EffetInstance } from "@/utils/calculsMagie";
 
 // ── Interfaces alignées sur les vues SQL ──────────────────────
 // Partagées entre FichePersonnageView (parent) et les briques sections/*.
@@ -92,6 +92,8 @@ export interface Sort {
   sort_description: string | null;
   sort_description_courte: string | null;
   paliers?: PalierSort[] | null;
+  effet_instance?: EffetInstance | null;
+  type_sort?: string | null;
 }
 
 export interface Priere {
@@ -109,6 +111,8 @@ export interface Priere {
   duree_incantation_calculee: number | null;
   cout_xp_base: number | null;
   paliers?: PalierSort[] | null;
+  effet_instance?: EffetInstance | null;
+  type_priere?: string | null;
 }
 
 export interface Assemblage {
