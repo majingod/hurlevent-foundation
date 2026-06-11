@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import { PastilleType } from "@/components/shared/PastilleType";
-import { calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
+import { calculerBonusNiveau, calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
 import type { PalierSort } from "@/utils/calculsMagie";
 import { PaliersDepliable, BlocPaliers } from "@/components/createur/DescriptionDepliable";
 import type { Priere } from "./types";
@@ -52,6 +52,15 @@ export const PrieresSection = ({
         const paliers = priere.paliers as PalierSort[] | null;
         const segments = rendreEffetInstance(priere.effet_instance, paliers, priere.niveau_priere);
         const prochainPalier = paliers?.find((p) => p.niveau > priere.niveau_priere) ?? null;
+        // Bonus de durée gratuit (bonus_niveau variable "duree") → suffixe sur la ligne Durée.
+        const bonusDuree =
+          priere.bonus_niveau?.formule?.variable === "duree"
+            ? calculerBonusNiveau(priere.bonus_niveau, priere.niveau_priere)
+            : null;
+        const suffixeDuree =
+          bonusDuree && bonusDuree.gratuit
+            ? ` (+${bonusDuree.n} gratuite${bonusDuree.n > 1 ? "s" : ""})`
+            : "";
         const showIncantationBox = priere.duree_incantation_calculee != null && priere.duree_incantation_calculee > 0;
 
         return (
@@ -108,7 +117,10 @@ export const PrieresSection = ({
                       {priere.duree_choisie && (
                         <>
                           <span className="text-muted-foreground">Durée</span>
-                          <span className="text-foreground">{priere.duree_choisie}</span>
+                          <span className="text-foreground">
+                            {priere.duree_choisie}
+                            {suffixeDuree && <span className="text-muted-foreground">{suffixeDuree}</span>}
+                          </span>
                         </>
                       )}
                     </div>
@@ -160,7 +172,7 @@ export const PrieresSection = ({
                         !showIncantationBox && priere.duree_incantation_calculee != null && `Incantation : ${priere.duree_incantation_calculee} s`,
                         priere.zone_choisie && `Zone : ${priere.zone_choisie}`,
                         priere.portee_choisie && `Portée : ${priere.portee_choisie}`,
-                        priere.duree_choisie && `Durée : ${priere.duree_choisie}`,
+                        priere.duree_choisie && `Durée : ${priere.duree_choisie}${suffixeDuree}`,
                       ]
                         .filter(Boolean)
                         .join(" • ")}

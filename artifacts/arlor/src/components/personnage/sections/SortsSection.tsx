@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import { PastilleType } from "@/components/shared/PastilleType";
-import { calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
+import { calculerBonusNiveau, calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
 import type { PalierSort } from "@/utils/calculsMagie";
 import { PaliersDepliable, BlocPaliers } from "@/components/createur/DescriptionDepliable";
 import type { Sort } from "./types";
@@ -52,6 +52,15 @@ export const SortsSection = ({
         const paliers = sort.paliers as PalierSort[] | null;
         const segments = rendreEffetInstance(sort.effet_instance, paliers, sort.niveau_sort);
         const prochainPalier = paliers?.find((p) => p.niveau > sort.niveau_sort) ?? null;
+        // Bonus de durée gratuit (bonus_niveau variable "duree") → suffixe sur la ligne Durée.
+        const bonusDuree =
+          sort.bonus_niveau?.formule?.variable === "duree"
+            ? calculerBonusNiveau(sort.bonus_niveau, sort.niveau_sort)
+            : null;
+        const suffixeDuree =
+          bonusDuree && bonusDuree.gratuit
+            ? ` (+${bonusDuree.n} gratuite${bonusDuree.n > 1 ? "s" : ""})`
+            : "";
 
         return (
           <Card key={sort.id}>
@@ -104,7 +113,10 @@ export const SortsSection = ({
                       {sort.duree_choisie && (
                         <>
                           <span className="text-muted-foreground">Durée</span>
-                          <span className="text-foreground">{sort.duree_choisie}</span>
+                          <span className="text-foreground">
+                            {sort.duree_choisie}
+                            {suffixeDuree && <span className="text-muted-foreground">{suffixeDuree}</span>}
+                          </span>
                         </>
                       )}
                     </div>
@@ -152,7 +164,7 @@ export const SortsSection = ({
                       {[
                         sort.zone_choisie && `Zone : ${sort.zone_choisie}`,
                         sort.portee_choisie && `Portée : ${sort.portee_choisie}`,
-                        sort.duree_choisie && `Durée : ${sort.duree_choisie}`,
+                        sort.duree_choisie && `Durée : ${sort.duree_choisie}${suffixeDuree}`,
                       ]
                         .filter(Boolean)
                         .join(" • ")}
