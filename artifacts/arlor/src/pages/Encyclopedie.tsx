@@ -24,6 +24,7 @@ import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 import { BlocPaliers } from "@/components/createur/DescriptionDepliable";
+import PastilleType from "@/components/shared/PastilleType";
 import type { BonusNiveau, PalierSort } from "@/utils/calculsMagie";
 
 /* ── types ── */
@@ -939,7 +940,7 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
                       </AccordionTrigger>
                       <AccordionContent className="text-sm text-muted-foreground">
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
-                          {s.type_sort && <span>Type : {s.type_sort}</span>}
+                          {s.type_sort && <PastilleType type={s.type_sort} />}
                           {s.portee && <span>Portée : {s.portee}</span>}
                           {s.zone_effet && <span>Zone : {s.zone_effet}</span>}
                           {s.duree && <span>Durée : {s.duree}</span>}
@@ -1065,7 +1066,7 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
                 </AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
-                    {p.type_priere && <span>Type : {p.type_priere}</span>}
+                    {p.type_priere && <PastilleType type={p.type_priere} />}
                     {p.portee && <span>Portée : {p.portee}</span>}
                     {p.zone_effet && <span>Zone : {p.zone_effet}</span>}
                     {p.duree && <span>Durée : {p.duree}</span>}
