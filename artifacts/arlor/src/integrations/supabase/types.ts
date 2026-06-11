@@ -3320,9 +3320,11 @@ export type Database = {
       }
       prieres: {
         Row: {
+          bonus_niveau: Json | null
           cout_xp_base: number | null
           description: string | null
           description_courte: string | null
+          description_tronc: string | null
           domaine: string
           duree: string | null
           duree_incantation: string | null
@@ -3330,6 +3332,7 @@ export type Database = {
           id: string
           niveau: number
           nom: string
+          paliers: Json | null
           portee: string | null
           recherche_tsv: unknown
           religion_id: string | null
@@ -3337,9 +3340,11 @@ export type Database = {
           zone_effet: string | null
         }
         Insert: {
+          bonus_niveau?: Json | null
           cout_xp_base?: number | null
           description?: string | null
           description_courte?: string | null
+          description_tronc?: string | null
           domaine: string
           duree?: string | null
           duree_incantation?: string | null
@@ -3347,6 +3352,7 @@ export type Database = {
           id?: string
           niveau?: number
           nom: string
+          paliers?: Json | null
           portee?: string | null
           recherche_tsv?: unknown
           religion_id?: string | null
@@ -3354,9 +3360,11 @@ export type Database = {
           zone_effet?: string | null
         }
         Update: {
+          bonus_niveau?: Json | null
           cout_xp_base?: number | null
           description?: string | null
           description_courte?: string | null
+          description_tronc?: string | null
           domaine?: string
           duree?: string | null
           duree_incantation?: string | null
@@ -3364,6 +3372,7 @@ export type Database = {
           id?: string
           niveau?: number
           nom?: string
+          paliers?: Json | null
           portee?: string | null
           recherche_tsv?: unknown
           religion_id?: string | null
@@ -3812,45 +3821,54 @@ export type Database = {
       }
       sorts: {
         Row: {
+          bonus_niveau: Json | null
           cercle: string
           cout_xp_base: number | null
           description: string | null
           description_courte: string | null
+          description_tronc: string | null
           duree: string | null
           est_actif: boolean
           id: string
           niveau: number
           nom: string
+          paliers: Json | null
           portee: string | null
           recherche_tsv: unknown
           type_sort: string | null
           zone_effet: string | null
         }
         Insert: {
+          bonus_niveau?: Json | null
           cercle: string
           cout_xp_base?: number | null
           description?: string | null
           description_courte?: string | null
+          description_tronc?: string | null
           duree?: string | null
           est_actif?: boolean
           id?: string
           niveau?: number
           nom: string
+          paliers?: Json | null
           portee?: string | null
           recherche_tsv?: unknown
           type_sort?: string | null
           zone_effet?: string | null
         }
         Update: {
+          bonus_niveau?: Json | null
           cercle?: string
           cout_xp_base?: number | null
           description?: string | null
           description_courte?: string | null
+          description_tronc?: string | null
           duree?: string | null
           est_actif?: boolean
           id?: string
           niveau?: number
           nom?: string
+          paliers?: Json | null
           portee?: string | null
           recherche_tsv?: unknown
           type_sort?: string | null
