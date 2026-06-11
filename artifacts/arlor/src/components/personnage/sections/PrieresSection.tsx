@@ -52,6 +52,7 @@ export const PrieresSection = ({
         const paliers = priere.paliers as PalierSort[] | null;
         const segments = rendreEffetInstance(priere.effet_instance, paliers, priere.niveau_priere);
         const prochainPalier = paliers?.find((p) => p.niveau > priere.niveau_priere) ?? null;
+        const showIncantationBox = priere.duree_incantation_calculee != null && priere.duree_incantation_calculee > 0;
 
         return (
           <Card key={priere.id}>
@@ -71,14 +72,22 @@ export const PrieresSection = ({
                 )}
               </div>
 
+              {showIncantationBox && (
+                <div className="border border-primary/45 rounded-md bg-primary/10 px-2.5 py-2 text-center">
+                  <p className="font-mono italic text-[13.5px] text-primary">
+                    ✦ Prier sa Divinité pendant {priere.duree_incantation_calculee} seconde{priere.duree_incantation_calculee! > 1 ? "s" : ""} ✦
+                  </p>
+                </div>
+              )}
+
               {segments !== null ? (
                 <>
-                  {(priere.duree_incantation_calculee != null ||
+                  {((!showIncantationBox && priere.duree_incantation_calculee != null) ||
                     priere.zone_choisie ||
                     priere.portee_choisie ||
                     priere.duree_choisie) && (
                     <div className="grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-0.5 text-sm">
-                      {priere.duree_incantation_calculee != null && (
+                      {!showIncantationBox && priere.duree_incantation_calculee != null && (
                         <>
                           <span className="text-muted-foreground">Incantation</span>
                           <span className="text-foreground">{priere.duree_incantation_calculee} s</span>
@@ -142,13 +151,13 @@ export const PrieresSection = ({
                 </>
               ) : (
                 <>
-                  {(priere.duree_incantation_calculee != null ||
+                  {((!showIncantationBox && priere.duree_incantation_calculee != null) ||
                     priere.zone_choisie ||
                     priere.portee_choisie ||
                     priere.duree_choisie) && (
                     <p className="text-xs text-muted-foreground">
                       {[
-                        priere.duree_incantation_calculee != null && `Incantation : ${priere.duree_incantation_calculee} s`,
+                        !showIncantationBox && priere.duree_incantation_calculee != null && `Incantation : ${priere.duree_incantation_calculee} s`,
                         priere.zone_choisie && `Zone : ${priere.zone_choisie}`,
                         priere.portee_choisie && `Portée : ${priere.portee_choisie}`,
                         priere.duree_choisie && `Durée : ${priere.duree_choisie}`,
