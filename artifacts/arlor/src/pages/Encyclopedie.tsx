@@ -23,6 +23,8 @@ import RaceCard from "@/components/encyclopedie/RaceCard";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
+import { BlocPaliers } from "@/components/createur/DescriptionDepliable";
+import type { BonusNiveau, PalierSort } from "@/utils/calculsMagie";
 
 /* ── types ── */
 
@@ -69,6 +71,9 @@ interface Sort {
   zone_effet: string | null;
   portee: string | null;
   duree: string | null;
+  paliers: PalierSort[] | null;
+  description_tronc: string | null;
+  bonus_niveau: BonusNiveau | null;
 }
 
 interface Priere {
@@ -83,6 +88,9 @@ interface Priere {
   portee: string | null;
   duree: string | null;
   duree_incantation: string | null;
+  paliers: PalierSort[] | null;
+  description_tronc: string | null;
+  bonus_niveau: BonusNiveau | null;
 }
 
 interface Religion {
@@ -937,6 +945,11 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
                           {s.duree && <span>Durée : {s.duree}</span>}
                         </div>
                         {(s.description_courte ?? s.description) && <p>{s.description_courte ?? s.description}</p>}
+                        {s.paliers && s.paliers.length > 0 && (
+                          <div className="mt-2">
+                            <BlocPaliers paliers={s.paliers} niveauActif={null} />
+                          </div>
+                        )}
                         <ToggleManuel
                           texte={s.description}
                           isOpen={isManuelOpen(s.id)}
@@ -1059,6 +1072,11 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
                     {p.duree_incantation && <span>Incantation : {p.duree_incantation}</span>}
                   </div>
                   {(p.description_courte ?? p.description) && <p>{p.description_courte ?? p.description}</p>}
+                  {p.paliers && p.paliers.length > 0 && (
+                    <div className="mt-2">
+                      <BlocPaliers paliers={p.paliers} niveauActif={null} />
+                    </div>
+                  )}
                   <ToggleManuel
                     texte={p.description}
                     isOpen={isManuelOpen(p.id)}

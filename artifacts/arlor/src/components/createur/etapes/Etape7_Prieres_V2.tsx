@@ -39,6 +39,8 @@ import {
   calculerCoutPS,
   calculerCoutXP,
   isZoneUnique,
+  type BonusNiveau,
+  type PalierSort,
 } from "@/utils/calculsMagie";
 
 type PriereRow = Database["public"]["Tables"]["prieres"]["Row"];
@@ -119,6 +121,7 @@ const Etape7_Prieres_V2 = ({
       dureeMax: string;
       coutXpBase: number;
       groupe: string;
+      bonusNiveau: BonusNiveau | null;
     };
     niveauMax: number;
     plancher: ReturnType<typeof plancherInstancePriere>;
@@ -236,7 +239,7 @@ const Etape7_Prieres_V2 = ({
       const { data, error } = await supabase
         .from("personnage_prieres")
         .select(
-          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base)",
+          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
@@ -249,6 +252,7 @@ const Etape7_Prieres_V2 = ({
           portee: string | null;
           duree: string | null;
           cout_xp_base: number | null;
+          bonus_niveau: BonusNiveau | null;
         } | null;
       })[];
     },
@@ -624,6 +628,10 @@ const Etape7_Prieres_V2 = ({
                     <DescriptionDepliable
                       courte={p.description_courte}
                       complete={p.description}
+                      tronc={p.description_tronc}
+                      paliers={p.paliers as PalierSort[] | null}
+                      bonusTexte={(p.bonus_niveau as BonusNiveau | null)?.texte}
+                      niveauActif={priereId === p.id ? valeurs.niveau : null}
                     />
                   </CardContent>
                 </Card>
@@ -655,6 +663,7 @@ const Etape7_Prieres_V2 = ({
               valeurs={valeurs}
               onChange={setValeurs}
               plancher={null}
+              bonusNiveau={priereSelectionnee.bonus_niveau as BonusNiveau | null}
             />
 
             {(() => {
@@ -757,6 +766,7 @@ const Etape7_Prieres_V2 = ({
                             dureeMax: pp.prieres?.duree ?? "",
                             coutXpBase: Number(pp.prieres?.cout_xp_base ?? 0),
                             groupe: pp.prieres?.domaine ?? "",
+                            bonusNiveau: pp.prieres?.bonus_niveau ?? null,
                           },
                           niveauMax: Math.max(
                             1,

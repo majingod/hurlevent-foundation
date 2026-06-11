@@ -1,44 +1,176 @@
 import { useState } from "react";
+import type { PalierSort } from "@/utils/calculsMagie";
+
+/**
+ * Bloc « Effets par palier » — règle d'état générique pilotée par niveauActif :
+ *   - dernier palier atteint (max niveau ≤ niveauActif) = surligné or + pastille ACTIF
+ *   - paliers atteints inférieurs = rendu normal (PAS grisés)
+ *   - paliers futurs (niveau > niveauActif) = grisés visibles + mention « à venir »
+ *   - niveauActif null (encyclopédie / carte non sélectionnée) = tous neutres
+ * `libelle` est verbatim Manuel, affiché tel quel sans reformatage.
+ */
+export const BlocPaliers = ({
+  paliers,
+  niveauActif,
+}: {
+  paliers?: PalierSort[] | null;
+  niveauActif?: number | null;
+}) => {
+  if (!paliers || paliers.length === 0) return null;
+
+  // Dernier palier atteint = plus haut niveau parmi ceux ≤ niveauActif.
+  const niveauDernierAtteint =
+    niveauActif == null
+      ? null
+      : paliers.reduce<number | null>(
+          (acc, p) =>
+            p.niveau <= niveauActif ? Math.max(acc ?? p.niveau, p.niveau) : acc,
+          null,
+        );
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Effets par palier
+      </p>
+      {paliers.map((p, i) => {
+        const futur = niveauActif != null && p.niveau > niveauActif;
+        const actif = niveauActif != null && p.niveau === niveauDernierAtteint;
+        return (
+          <div
+            key={i}
+            className={`rounded-md border p-2.5 text-sm ${
+              actif
+                ? "border-primary bg-primary/10"
+                : futur
+                  ? "border-border opacity-45"
+                  : "border-border"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium text-foreground">{p.libelle}</span>
+              {actif && (
+                <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+                  Actif
+                </span>
+              )}
+              {futur && (
+                <span className="shrink-0 text-xs italic text-muted-foreground">
+                  à venir
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 whitespace-pre-line text-muted-foreground">
+              {p.texte}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 interface DescriptionDepliableProps {
   courte?: string | null;
   complete?: string | null;
+  /** Prose d'intro pure (sans la note `(*)`). Remplace le verbatim dans le dépliable. */
+  tronc?: string | null;
+  /** Paliers dérivés ; rend le bloc « Effets par palier » sous la description. */
+  paliers?: PalierSort[] | null;
+  /** Niveau de référence pour la surbrillance des paliers (slider / instance). */
+  niveauActif?: number | null;
+  /** Note bonus par niveau verbatim, affichée à la suite du tronc déplié. */
+  bonusTexte?: string | null;
 }
 
 /**
- * Description courte + verbatim Manuel dépliable. État local par instance —
+ * Description courte + verbatim/tronc Manuel dépliable. État local par instance —
  * PAS de Radix Accordion (AccordionTrigger rend un <button>, interdit avec
  * enfants interactifs imbriqués). Les cartes parentes étant cliquables pour
  * la sélection, le clic du lien fait stopPropagation.
+ *
+ * Rétrocompatible : sans `tronc` ni `paliers`, comportement historique inchangé
+ * (courte + verbatim `complete` dépliable). Avec `tronc`/`paliers`, le dépliable
+ * révèle le tronc (plus le verbatim brut) et le bloc paliers s'affiche dessous.
  */
-const DescriptionDepliable = ({ courte, complete }: DescriptionDepliableProps) => {
+const DescriptionDepliable = ({
+  courte,
+  complete,
+  tronc,
+  paliers,
+  niveauActif,
+  bonusTexte,
+}: DescriptionDepliableProps) => {
   const [deplie, setDeplie] = useState(false);
 
-  const texteCourt = courte ?? complete;
-  const aVerbatim = !!complete && complete !== courte;
+  const aPaliers = !!paliers && paliers.length > 0;
+  const modeEtendu = aPaliers || !!tronc;
 
-  if (!texteCourt) return null;
+  // --- Mode historique : aucune colonne dérivée fournie ---
+  if (!modeEtendu) {
+    const texteCourt = courte ?? complete;
+    const aVerbatim = !!complete && complete !== courte;
+
+    if (!texteCourt) return null;
+
+    return (
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">{texteCourt}</p>
+        {deplie && aVerbatim && (
+          <p className="whitespace-pre-line text-sm text-muted-foreground">
+            {complete}
+          </p>
+        )}
+        {aVerbatim && (
+          <button
+            type="button"
+            className="text-xs text-primary underline-offset-2 hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeplie((d) => !d);
+            }}
+          >
+            {deplie ? "Réduire" : "Voir la description complète"}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // --- Mode étendu : tronc dépliable + bloc paliers ---
+  const texteCourt = courte ?? tronc ?? complete ?? null;
+  const aDepliableTronc = !!tronc && tronc !== texteCourt;
 
   return (
-    <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">{texteCourt}</p>
-      {deplie && aVerbatim && (
-        <p className="whitespace-pre-line text-sm text-muted-foreground">
-          {complete}
-        </p>
-      )}
-      {aVerbatim && (
-        <button
-          type="button"
-          className="text-xs text-primary underline-offset-2 hover:underline"
-          onClick={(e) => {
-            e.stopPropagation();
-            setDeplie((d) => !d);
-          }}
-        >
-          {deplie ? "Réduire" : "Voir la description complète"}
-        </button>
-      )}
+    <div className="space-y-2">
+      <div className="space-y-1">
+        {texteCourt && (
+          <p className="text-sm text-muted-foreground">{texteCourt}</p>
+        )}
+        {deplie && aDepliableTronc && (
+          <>
+            <p className="whitespace-pre-line text-sm text-muted-foreground">
+              {tronc}
+            </p>
+            {bonusTexte && (
+              <p className="text-xs italic text-muted-foreground">{bonusTexte}</p>
+            )}
+          </>
+        )}
+        {aDepliableTronc && (
+          <button
+            type="button"
+            className="text-xs text-primary underline-offset-2 hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeplie((d) => !d);
+            }}
+          >
+            {deplie ? "Réduire" : "Voir la description complète"}
+          </button>
+        )}
+      </div>
+      {aPaliers && <BlocPaliers paliers={paliers} niveauActif={niveauActif} />}
     </div>
   );
 };

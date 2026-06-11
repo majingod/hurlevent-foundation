@@ -20,6 +20,7 @@ import {
   calculerCoutXP,
   filterDureesDisponibles,
   filterPorteesDisponibles,
+  type BonusNiveau,
 } from "@/utils/calculsMagie";
 
 // Coût pts par variable — mêmes barèmes que ConstructeurMagie / cout_pts_* SQL.
@@ -50,6 +51,8 @@ export interface ModifierMagieBase {
   coutXpBase: number;
   /** cercle (sort) ou domaine (prière) */
   groupe: string;
+  /** bonus par niveau dérivé (PR #361), affiché dans la barre de formule */
+  bonusNiveau?: BonusNiveau | null;
 }
 
 interface ModifierMagieSheetProps {
@@ -256,6 +259,7 @@ const ModifierMagieSheet = ({
             valeurs={valeurs}
             onChange={setValeurs}
             plancher={plancher}
+            bonusNiveau={base.bonusNiveau ?? null}
           />
 
           {/* Encadré différence signée */}

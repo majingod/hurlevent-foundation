@@ -86,3 +86,40 @@ export function getNoteZone(zoneEffet: string): string | null {
 export function isZoneUnique(zoneEffet: string): boolean {
   return ["Personnelle", "1 cible", "1 cible (mort)", "1 cible (objet)"].includes(zoneEffet);
 }
+
+// ============================================================
+// PALIERS / TRONC / BONUS PAR NIVEAU — colonnes dérivées (PR #361)
+// Colonnes jsonb sorts/prieres castées via ces interfaces locales :
+// on ne régénère pas les types Supabase pour ces champs.
+// ============================================================
+
+export interface PalierSort {
+  niveau: number;
+  libelle: string;
+  texte: string;
+}
+
+export interface BonusNiveauFormule {
+  variable: "duree" | "cibles" | "rayon" | "questions";
+  seuil: number;       // 0 = chaque niveau
+  increment: number;
+  unite: string;       // "minute" | "cible" | "pied" | "question"
+  gratuit: boolean;
+  condition: string | null;
+}
+
+export interface BonusNiveau {
+  texte: string;
+  formule: BonusNiveauFormule | null;
+}
+
+/** n unités bonus au niveau donné ; null si formule absente ou n ≤ 0. */
+export const calculerBonusNiveau = (
+  bonus: BonusNiveau | null | undefined,
+  niveau: number,
+): { n: number; unite: string; gratuit: boolean } | null => {
+  const f = bonus?.formule;
+  if (!f) return null;
+  const n = (f.seuil === 0 ? niveau : Math.max(0, niveau - f.seuil)) * f.increment;
+  return n > 0 ? { n, unite: f.unite, gratuit: f.gratuit } : null;
+};

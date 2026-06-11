@@ -39,6 +39,8 @@ import {
   calculerCoutPS,
   calculerCoutXP,
   isZoneUnique,
+  type BonusNiveau,
+  type PalierSort,
 } from "@/utils/calculsMagie";
 
 type SortRow = Database["public"]["Tables"]["sorts"]["Row"];
@@ -116,6 +118,7 @@ const Etape6_Sorts_V2 = ({
       dureeMax: string;
       coutXpBase: number;
       groupe: string;
+      bonusNiveau: BonusNiveau | null;
     };
     niveauMax: number;
     plancher: ReturnType<typeof plancherInstanceSort>;
@@ -187,7 +190,7 @@ const Etape6_Sorts_V2 = ({
       const { data, error } = await supabase
         .from("personnage_sorts")
         .select(
-          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base)",
+          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
@@ -200,6 +203,7 @@ const Etape6_Sorts_V2 = ({
           portee: string | null;
           duree: string | null;
           cout_xp_base: number | null;
+          bonus_niveau: BonusNiveau | null;
         } | null;
       })[];
     },
@@ -546,6 +550,10 @@ const Etape6_Sorts_V2 = ({
                     <DescriptionDepliable
                       courte={s.description_courte}
                       complete={s.description}
+                      tronc={s.description_tronc}
+                      paliers={s.paliers as PalierSort[] | null}
+                      bonusTexte={(s.bonus_niveau as BonusNiveau | null)?.texte}
+                      niveauActif={sortId === s.id ? valeurs.niveau : null}
                     />
                   </CardContent>
                 </Card>
@@ -577,6 +585,7 @@ const Etape6_Sorts_V2 = ({
               valeurs={valeurs}
               onChange={setValeurs}
               plancher={null}
+              bonusNiveau={sortSelectionne.bonus_niveau as BonusNiveau | null}
             />
 
             {(() => {
@@ -679,6 +688,7 @@ const Etape6_Sorts_V2 = ({
                             dureeMax: ps.sorts?.duree ?? "",
                             coutXpBase: Number(ps.sorts?.cout_xp_base ?? 0),
                             groupe: ps.sorts?.cercle ?? "",
+                            bonusNiveau: ps.sorts?.bonus_niveau ?? null,
                           },
                           niveauMax: Math.max(
                             1,
