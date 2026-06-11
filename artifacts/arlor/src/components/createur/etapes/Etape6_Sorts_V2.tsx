@@ -12,15 +12,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles, Trash2 } from "lucide-react";
+import { ArrowUp, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import ConstructeurMagie, {
   type ValeursConstructeur,
 } from "@/components/createur/ConstructeurMagie";
+import ModifierMagieSheet, {
+  type ModifierMagieInstance,
+} from "@/components/createur/ModifierMagieSheet";
 import DescriptionDepliable from "@/components/createur/DescriptionDepliable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
-import { estSortAcquis } from "@/lib/acquisCampagne";
+import { estSortAcquis, plancherInstanceSort } from "@/lib/acquisCampagne";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,6 +107,19 @@ const Etape6_Sorts_V2 = ({
     nom: string;
     xp_depense: number;
   } | null>(null);
+  // PR-B : instance ciblée par le geste « Modifier » (sheet plancher photo).
+  const [enModification, setEnModification] = useState<{
+    instance: ModifierMagieInstance;
+    base: {
+      zoneEffet: string;
+      porteeMax: string;
+      dureeMax: string;
+      coutXpBase: number;
+      groupe: string;
+    };
+    niveauMax: number;
+    plancher: ReturnType<typeof plancherInstanceSort>;
+  } | null>(null);
 
   // Cercles disponibles (vue_cercles_disponibles)
   const { data: cerclesDisponibles, isLoading: loadingCercles } = useQuery({
@@ -170,12 +186,21 @@ const Etape6_Sorts_V2 = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnage_sorts")
-        .select("*, sorts(nom, cercle)")
+        .select(
+          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base)",
+        )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
       if (error) throw error;
       return (data ?? []) as (PersonnageSortRow & {
-        sorts: { nom: string | null; cercle: string | null } | null;
+        sorts: {
+          nom: string | null;
+          cercle: string | null;
+          zone_effet: string | null;
+          portee: string | null;
+          duree: string | null;
+          cout_xp_base: number | null;
+        } | null;
       })[];
     },
     enabled: !!personnageId,
@@ -624,23 +649,74 @@ const Etape6_Sorts_V2 = ({
                     {acquis && <BadgeAcquis />}
                     {!acquis && modeCampagne && <LabelAjoutAnnulable />}
                   </div>
-                  {!acquis && (
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0"
-                      onClick={() =>
-                        setASupprimer({
-                          personnage_sort_id: ps.id,
-                          nom: ps.nom_personnalise ?? ps.sorts?.nom ?? "Sort",
-                          xp_depense: ps.xp_depense,
-                        })
-                      }
-                      disabled={desacheterMutation.isPending}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 border-primary/50 text-primary"
+                      onClick={() => {
+                        const valeursActuelles = {
+                          niveau: ps.niveau_sort,
+                          zone: ps.zone_choisie ?? "",
+                          portee: ps.portee_choisie ?? "",
+                          duree: ps.duree_choisie ?? "",
+                        };
+                        setEnModification({
+                          instance: {
+                            id: ps.id,
+                            baseId: ps.sort_id,
+                            nomBase: ps.sorts?.nom ?? "Sort",
+                            nomPersonnalise: ps.nom_personnalise,
+                            niveau: ps.niveau_sort,
+                            zone: ps.zone_choisie ?? "",
+                            portee: ps.portee_choisie ?? "",
+                            duree: ps.duree_choisie ?? "",
+                            xpDepense: ps.xp_depense,
+                          },
+                          base: {
+                            zoneEffet: ps.sorts?.zone_effet ?? "",
+                            porteeMax: ps.sorts?.portee ?? "",
+                            dureeMax: ps.sorts?.duree ?? "",
+                            coutXpBase: Number(ps.sorts?.cout_xp_base ?? 0),
+                            groupe: ps.sorts?.cercle ?? "",
+                          },
+                          niveauMax: Math.max(
+                            1,
+                            cerclesDisponibles?.find(
+                              (c) => c.cercle === ps.sorts?.cercle,
+                            )?.niveau_max_sorts ?? 1,
+                          ),
+                          plancher: plancherInstanceSort(
+                            modeCampagne,
+                            photo,
+                            ps.sort_id,
+                            ps.id,
+                            valeursActuelles,
+                          ),
+                        });
+                      }}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <ArrowUp className="h-4 w-4" />
+                      Modifier
                     </Button>
-                  )}
+                    {!acquis && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() =>
+                          setASupprimer({
+                            personnage_sort_id: ps.id,
+                            nom: ps.nom_personnalise ?? ps.sorts?.nom ?? "Sort",
+                            xp_depense: ps.xp_depense,
+                          })
+                        }
+                        disabled={desacheterMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="outline">
@@ -670,6 +746,21 @@ const Etape6_Sorts_V2 = ({
           )}
         </CardContent>
       </Card>
+
+      {enModification && (
+        <ModifierMagieSheet
+          type="sort"
+          open
+          onClose={() => setEnModification(null)}
+          personnageId={personnageId}
+          instance={enModification.instance}
+          base={enModification.base}
+          niveauMax={enModification.niveauMax}
+          plancher={enModification.plancher}
+          xpDisponible={xpDisponible}
+          modeCampagne={modeCampagne}
+        />
+      )}
 
       <AlertDialog
         open={aSupprimer !== null}

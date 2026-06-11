@@ -12,15 +12,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles, Trash2 } from "lucide-react";
+import { ArrowUp, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import ConstructeurMagie, {
   type ValeursConstructeur,
 } from "@/components/createur/ConstructeurMagie";
+import ModifierMagieSheet, {
+  type ModifierMagieInstance,
+} from "@/components/createur/ModifierMagieSheet";
 import DescriptionDepliable from "@/components/createur/DescriptionDepliable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
-import { estPriereAcquise } from "@/lib/acquisCampagne";
+import { estPriereAcquise, plancherInstancePriere } from "@/lib/acquisCampagne";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,6 +109,19 @@ const Etape7_Prieres_V2 = ({
     personnage_priere_id: string;
     nom: string;
     xp_depense: number;
+  } | null>(null);
+  // PR-B : instance ciblée par le geste « Modifier » (sheet plancher photo).
+  const [enModification, setEnModification] = useState<{
+    instance: ModifierMagieInstance;
+    base: {
+      zoneEffet: string;
+      porteeMax: string;
+      dureeMax: string;
+      coutXpBase: number;
+      groupe: string;
+    };
+    niveauMax: number;
+    plancher: ReturnType<typeof plancherInstancePriere>;
   } | null>(null);
 
   // Personnage : est_croyant + religion
@@ -219,12 +235,21 @@ const Etape7_Prieres_V2 = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnage_prieres")
-        .select("*, prieres(nom, domaine)")
+        .select(
+          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base)",
+        )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
       if (error) throw error;
       return (data ?? []) as (PersonnagePriereRow & {
-        prieres: { nom: string | null; domaine: string | null } | null;
+        prieres: {
+          nom: string | null;
+          domaine: string | null;
+          zone_effet: string | null;
+          portee: string | null;
+          duree: string | null;
+          cout_xp_base: number | null;
+        } | null;
       })[];
     },
     enabled: !!personnageId,
@@ -702,24 +727,77 @@ const Etape7_Prieres_V2 = ({
                     {acquis && <BadgeAcquis />}
                     {!acquis && modeCampagne && <LabelAjoutAnnulable />}
                   </div>
-                  {!acquis && (
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0"
-                      onClick={() =>
-                        setASupprimer({
-                          personnage_priere_id: pp.id,
-                          nom:
-                            pp.nom_personnalise ?? pp.prieres?.nom ?? "Prière",
-                          xp_depense: pp.xp_depense,
-                        })
-                      }
-                      disabled={desacheterMutation.isPending}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 border-primary/50 text-primary"
+                      onClick={() => {
+                        const valeursActuelles = {
+                          niveau: pp.niveau_priere,
+                          zone: pp.zone_choisie ?? "",
+                          portee: pp.portee_choisie ?? "",
+                          duree: pp.duree_choisie ?? "",
+                        };
+                        setEnModification({
+                          instance: {
+                            id: pp.id,
+                            baseId: pp.priere_id,
+                            nomBase: pp.prieres?.nom ?? "Prière",
+                            nomPersonnalise: pp.nom_personnalise,
+                            niveau: pp.niveau_priere,
+                            zone: pp.zone_choisie ?? "",
+                            portee: pp.portee_choisie ?? "",
+                            duree: pp.duree_choisie ?? "",
+                            xpDepense: pp.xp_depense,
+                          },
+                          base: {
+                            zoneEffet: pp.prieres?.zone_effet ?? "",
+                            porteeMax: pp.prieres?.portee ?? "",
+                            dureeMax: pp.prieres?.duree ?? "",
+                            coutXpBase: Number(pp.prieres?.cout_xp_base ?? 0),
+                            groupe: pp.prieres?.domaine ?? "",
+                          },
+                          niveauMax: Math.max(
+                            1,
+                            domainesDisponibles?.find(
+                              (d) => d.domaine === pp.prieres?.domaine,
+                            )?.niveau_max_prieres ?? 1,
+                          ),
+                          plancher: plancherInstancePriere(
+                            modeCampagne,
+                            photo,
+                            pp.priere_id,
+                            pp.id,
+                            valeursActuelles,
+                          ),
+                        });
+                      }}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <ArrowUp className="h-4 w-4" />
+                      Modifier
                     </Button>
-                  )}
+                    {!acquis && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() =>
+                          setASupprimer({
+                            personnage_priere_id: pp.id,
+                            nom:
+                              pp.nom_personnalise ??
+                              pp.prieres?.nom ??
+                              "Prière",
+                            xp_depense: pp.xp_depense,
+                          })
+                        }
+                        disabled={desacheterMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="outline">
@@ -754,6 +832,21 @@ const Etape7_Prieres_V2 = ({
           )}
         </CardContent>
       </Card>
+
+      {enModification && (
+        <ModifierMagieSheet
+          type="priere"
+          open
+          onClose={() => setEnModification(null)}
+          personnageId={personnageId}
+          instance={enModification.instance}
+          base={enModification.base}
+          niveauMax={enModification.niveauMax}
+          plancher={enModification.plancher}
+          xpDisponible={xpDisponible}
+          modeCampagne={modeCampagne}
+        />
+      )}
 
       <AlertDialog
         open={aSupprimer !== null}
