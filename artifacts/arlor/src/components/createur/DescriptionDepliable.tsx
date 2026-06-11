@@ -70,6 +70,73 @@ export const BlocPaliers = ({
   );
 };
 
+/** Variante C (s161) : palier actif + dépliable vers la liste complète.
+ *  Affiché sous le slider niveau du ConstructeurMagie. */
+export const PaliersDepliable = ({
+  paliers,
+  niveau,
+}: {
+  paliers?: PalierSort[] | null;
+  niveau: number;
+}) => {
+  const [tout, setTout] = useState(false);
+  if (!paliers || paliers.length === 0) return null;
+
+  const atteints = paliers.filter((p) => p.niveau <= niveau);
+  const actif = atteints.length ? atteints[atteints.length - 1] : null;
+  const prochain = paliers.find((p) => p.niveau > niveau);
+  const autres = paliers.length - (actif ? 1 : 0);
+
+  if (tout) {
+    return (
+      <div className="space-y-1.5">
+        <BlocPaliers paliers={paliers} niveauActif={niveau} />
+        <button
+          type="button"
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+          onClick={(e) => { e.stopPropagation(); setTout(false); }}
+        >
+          Réduire au palier actif
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {actif ? (
+        <div className="rounded-md border border-primary bg-primary/10 p-2.5 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-foreground">{actif.libelle}</span>
+            <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+              Actif
+            </span>
+          </div>
+          <p className="mt-0.5 whitespace-pre-line text-muted-foreground">{actif.texte}</p>
+          {prochain && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Prochain palier : {prochain.libelle}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-md border p-2.5 text-sm text-muted-foreground">
+          Aucun palier atteint au niveau {niveau} (premier palier : {paliers[0].libelle}).
+        </div>
+      )}
+      {autres > 0 && (
+        <button
+          type="button"
+          className="text-xs text-primary underline-offset-2 hover:underline"
+          onClick={(e) => { e.stopPropagation(); setTout(true); }}
+        >
+          Voir les {autres} autres paliers
+        </button>
+      )}
+    </div>
+  );
+};
+
 interface DescriptionDepliableProps {
   courte?: string | null;
   complete?: string | null;
