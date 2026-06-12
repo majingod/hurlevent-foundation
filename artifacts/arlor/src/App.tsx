@@ -165,13 +165,27 @@ const AppRoutes = () => (
 );
 
 const App = () => {
-  const { loading, user } = useAuth();
+  const { loading, user, bootLent } = useAuth();
   const { loadingProfils, profilActif } = useProfil();
 
   if (loading || (user && loadingProfils)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-black px-6">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
+        {bootLent && (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-white/70">
+              La connexion prend plus de temps que prévu…
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black"
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
       </div>
     );
   }
