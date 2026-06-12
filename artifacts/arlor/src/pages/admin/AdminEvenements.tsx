@@ -69,7 +69,7 @@ import {
 
 type StatutInscription = "inscrit" | "present" | "absent" | "en_attente";
 
-type TypeEvenement = "gn_regulier" | "mini_gn" | "ouverture_terrain";
+type TypeEvenement = "gn_regulier" | "mini_gn" | "entretien_terrain";
 
 interface Evenement {
   id: string;
@@ -107,13 +107,13 @@ interface PersonnageOption {
 const TYPE_LABELS: Record<TypeEvenement, string> = {
   gn_regulier: "GN régulier",
   mini_gn: "Mini-GN",
-  ouverture_terrain: "Ouverture de terrain",
+  entretien_terrain: "Ouverture de terrain",
 };
 
 const TYPE_DEFAULTS: Record<TypeEvenement, { xp: number; niveaux: number }> = {
   gn_regulier: { xp: 15, niveaux: 1 },
   mini_gn: { xp: 15, niveaux: 0 },
-  ouverture_terrain: { xp: 10, niveaux: 0 },
+  entretien_terrain: { xp: 10, niveaux: 0 },
 };
 
 const STATUT_LABELS: Record<string, string> = {
@@ -371,9 +371,20 @@ const AdminEvenements = () => {
                 Cette action est <strong>irréversible</strong>.
               </span>
               <span className="block">
-                L'XP ({eventToClose?.xp_recompense ?? 0}) et les niveaux (
-                {eventToClose?.niveaux_recompense ?? 0}) seront distribués à
-                tous les participants marqués <strong>présents</strong>.
+                {eventToClose?.type_evenement === "mini_gn" ? (
+                  <>
+                    L'XP ({eventToClose?.xp_recompense ?? 0}) sera versé en{" "}
+                    <strong>banque de profil</strong> des participants marqués{" "}
+                    <strong>présents</strong> (utilisable sur n'importe quel
+                    personnage).
+                  </>
+                ) : (
+                  <>
+                    L'XP ({eventToClose?.xp_recompense ?? 0}) et les niveaux (
+                    {eventToClose?.niveaux_recompense ?? 0}) seront distribués
+                    aux participants marqués <strong>présents</strong>.
+                  </>
+                )}
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>

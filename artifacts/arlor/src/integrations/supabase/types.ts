@@ -6240,7 +6240,7 @@ export type Database = {
         Returns: Json
       }
       attribuer_xp_evenement: {
-        Args: { p_inscription_id: string; p_xp_montant: number }
+        Args: { p_inscription_id: string }
         Returns: Json
       }
       avancer_etape: {
