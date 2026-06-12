@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useMutation,
   useQueries,
@@ -23,13 +23,13 @@ import ConstructeurMagie, {
   type PlancherMagie,
 } from "@/components/createur/ConstructeurMagie";
 import { PastilleType } from "@/components/shared/PastilleType";
-import JaugeXP, { type CoutEnCours } from "@/components/createur/magie/JaugeXP";
+import JaugeXP, { type CoutEnCours } from "@/components/createur/aide/JaugeXP";
 import IntroEtape, {
   IntroEtapeItem,
-} from "@/components/createur/magie/IntroEtape";
+} from "@/components/createur/aide/IntroEtape";
 import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
-import { TapBulle, useTapBulle } from "@/components/createur/magie/TapBulle";
-import Astuce from "@/components/createur/magie/Astuce";
+import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
+import Astuce from "@/components/createur/aide/Astuce";
 import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
@@ -85,11 +85,6 @@ type AchatPriere = PersonnagePriereRow & { prieres: PriereJointe | null };
 
 interface Etape7Props {
   personnageId: string;
-  /**
-   * Etape de creation actuelle cote serveur (personnages.etape_creation).
-   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
-   */
-  etapeCreation?: number;
   /**
    * XP encore disponibles pour le personnage (xp_total - xp_depense).
    * Sert au grisage UI du bouton d'achat quand le budget est insuffisant.
@@ -156,7 +151,6 @@ const Chevron = ({ ouvert }: { ouvert: boolean }) => (
 
 const Etape7_Prieres_V2 = ({
   personnageId,
-  etapeCreation,
   xpDisponible = 0,
   onSuccess,
   onError,
@@ -488,34 +482,6 @@ const Etape7_Prieres_V2 = ({
     },
   });
 
-  // Auto-skip : si l'utilisateur arrive sur l'etape 7 en avancement
-  // (etapeCreation === 7) et qu'aucune prière n'est achetable pour ce
-  // personnage, on fait avancer etape_creation cote serveur immédiatement.
-  // Deux cas couverts :
-  //   1. !conditionsRemplies : sans Acquisition de Prière
-  //   2. conditionsRemplies mais domaines tous proscrits / aucun disponible
-  // La garde queriesPrerequisChargees évite un déclenchement prématuré
-  // avant que personnage + acquisitionPriere soient résolus (pattern
-  // PR #139 réinstauré). Plus complexe que l'auto-skip d'É6.
-  const queriesPrerequisChargees = !loadingPersonnage && !loadingAcquisition;
-  const aucunePriereAchetable =
-    queriesPrerequisChargees &&
-    (!conditionsRemplies ||
-      (!loadingDomaines &&
-        proscritsResolus &&
-        domainesAffiches.length === 0));
-
-  useEffect(() => {
-    if (
-      etapeCreation === 7 &&
-      aucunePriereAchetable &&
-      !avancerMutation.isPending
-    ) {
-      avancerMutation.mutate();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etapeCreation, aucunePriereAchetable]);
-
   // ---------- Dérivés ----------
 
   const nivMaxDomaine = (domaine: string | null | undefined) =>
@@ -728,7 +694,7 @@ const Etape7_Prieres_V2 = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-heading">
-              Étape 7 — Prières divines indisponibles
+              Prières divines indisponibles
             </CardTitle>
             <CardDescription>
               Pour acquérir des prières, ce personnage doit posséder la
@@ -825,7 +791,7 @@ const Etape7_Prieres_V2 = ({
 
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
-          Étape 7 — Achat de prières divines
+          Achat de prières divines
         </h2>
         <p className="text-sm text-muted-foreground">
           Choisissez un domaine, touchez une prière, personnalisez-la — vos

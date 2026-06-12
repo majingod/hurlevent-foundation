@@ -241,7 +241,7 @@ const Etape1_V2 = ({
       if (a.message) toast.info(a.message);
     });
 
-    toast.success("Étape 1 enregistrée.");
+    toast.success("Identité enregistrée.");
     onSuccess();
   };
 

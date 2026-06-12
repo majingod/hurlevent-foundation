@@ -40,7 +40,7 @@ export default function StepperEtapes({ etapes, courant, max, onJump, verrouille
             type="button"
             disabled={locked}
             onClick={() => !locked && onJump(e.n)}
-            title={figee ? "Figé en campagne" : `Étape ${e.n} — ${e.t}`}
+            title={figee ? "Figé en campagne" : `${e.t}`}
             className={`flex w-16 shrink-0 flex-col items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50 ${
               figee ? "opacity-45 cursor-not-allowed" : ""
             }`}
@@ -55,9 +55,7 @@ export default function StepperEtapes({ etapes, courant, max, onJump, verrouille
               ) : (
                 <Ic className="h-[18px] w-[18px]" />
               )}
-              <span className="absolute -bottom-1 -right-1 min-w-[14px] rounded-full border border-current bg-background px-1 text-center text-[9px] font-bold leading-tight">
-                {e.n}
-              </span>
+
             </span>
             <span
               className={`text-center text-[9.5px] leading-tight ${

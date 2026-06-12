@@ -23,13 +23,13 @@ import ConstructeurMagie, {
   type PlancherMagie,
 } from "@/components/createur/ConstructeurMagie";
 import { PastilleType } from "@/components/shared/PastilleType";
-import JaugeXP, { type CoutEnCours } from "@/components/createur/magie/JaugeXP";
+import JaugeXP, { type CoutEnCours } from "@/components/createur/aide/JaugeXP";
 import IntroEtape, {
   IntroEtapeItem,
-} from "@/components/createur/magie/IntroEtape";
+} from "@/components/createur/aide/IntroEtape";
 import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
-import { TapBulle, useTapBulle } from "@/components/createur/magie/TapBulle";
-import Astuce from "@/components/createur/magie/Astuce";
+import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
+import Astuce from "@/components/createur/aide/Astuce";
 import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
@@ -84,11 +84,6 @@ type AchatSort = PersonnageSortRow & { sorts: SortJoint | null };
 
 interface Etape6Props {
   personnageId: string;
-  /**
-   * Etape de creation actuelle cote serveur (personnages.etape_creation).
-   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
-   */
-  etapeCreation?: number;
   /**
    * XP encore disponibles pour le personnage (xp_total - xp_depense).
    * Sert au grisage UI du bouton d'achat quand le budget est insuffisant.
@@ -154,7 +149,6 @@ const Chevron = ({ ouvert }: { ouvert: boolean }) => (
 
 const Etape6_Sorts_V2 = ({
   personnageId,
-  etapeCreation,
   xpDisponible = 0,
   onSuccess,
   onError,
@@ -650,7 +644,7 @@ const Etape6_Sorts_V2 = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-heading">
-              Étape 6 — Sorts arcaniques indisponibles
+              Sorts arcaniques indisponibles
             </CardTitle>
             <CardDescription>
               Pour acquérir des sorts, ce personnage doit posséder la compétence
@@ -737,7 +731,7 @@ const Etape6_Sorts_V2 = ({
 
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
-          Étape 6 — Achat de sorts arcaniques
+          Achat de sorts arcaniques
         </h2>
         <p className="text-sm text-muted-foreground">
           Choisissez un cercle, touchez un sort, personnalisez-le — vos sorts
