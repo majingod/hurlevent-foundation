@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import StepperEtapes, { type EtapeDef } from "@/components/createur/StepperEtapes";
 import DrawerAjusterXp from "@/components/createur/DrawerAjusterXp";
+import { useEtapesApplicables } from "@/components/createur/useEtapesApplicables";
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
@@ -82,6 +83,18 @@ const PersonnageNouveauV2 = () => {
   // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
   // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
   const [etapeInitialisee, setEtapeInitialisee] = useState(false);
+  // NAV-2 : étape serveur brute (1..TOTAL_STEPS) issue du démarrage / de la
+  // reprise. Le positionnement réel (skip des étapes non applicables +
+  // rattrapage avancer_etape) est différé jusqu'à `chargee` (cf. effet dédié).
+  const [etapeCibleInitiale, setEtapeCibleInitiale] = useState<number | null>(null);
+  // NAV-2 : garde anti double-déclenchement pendant l'enchaînement des
+  // appels avancer_etape (rattrapage des étapes masquées).
+  const [rattrapageEnCours, setRattrapageEnCours] = useState(false);
+
+  // NAV-2 : applicabilité dynamique des étapes (É6 Sorts / É7 Prières /
+  // É8 Assemblages). Cache partagé avec les étapes → apparition live après
+  // achat de la compétence en É5.
+  const { chargee, applicable } = useEtapesApplicables(personnageId);
 
   // AUDIT-ADMIN-MODE-ROLE : en admin mode, marquer le canal pour que les
   // actions auditées soient taguées « admin » (visibles au feed staff),
@@ -138,8 +151,10 @@ const PersonnageNouveauV2 = () => {
 
       if (succesExplicite || brouillonExistant) {
         setPersonnageId(personnage_id!);
-        setEtape(Math.max(1, Math.min(etape_courante, TOTAL_STEPS)));
-        setEtapeInitialisee(true);
+        // NAV-2 : on ne positionne pas l'étape ici — on mémorise la cible
+        // serveur et l'effet de positionnement l'appliquera une fois les
+        // données d'applicabilité chargées (skip + rattrapage éventuel).
+        setEtapeCibleInitiale(Math.max(1, Math.min(etape_courante, TOTAL_STEPS)));
         setDemarrage(false);
         return;
       }
@@ -235,9 +250,94 @@ const PersonnageNouveauV2 = () => {
     const cible = finalise
       ? 1
       : Math.max(1, Math.min(personnage.etape_creation ?? 1, TOTAL_STEPS));
-    setEtape(cible);
-    setEtapeInitialisee(true);
+    // NAV-2 : positionnement réel différé à l'effet dédié (gate `chargee`).
+    setEtapeCibleInitiale(cible);
   }, [etapeInitialisee, personnageIdParUrl, personnage]);
+
+  // NAV-2 — helpers de navigation : prochaine / précédente étape applicable.
+  const prochaineApplicable = (n: number) => {
+    for (let m = n + 1; m <= TOTAL_STEPS; m += 1) if (applicable(m)) return m;
+    return TOTAL_STEPS;
+  };
+  const precedenteApplicable = (n: number) => {
+    for (let m = n - 1; m >= 1; m -= 1) if (applicable(m)) return m;
+    return 1;
+  };
+
+  // NAV-2 — rattrapage serveur : avance etape_creation en enchaînant
+  // avancer_etape(+1) sur chaque étape masquée `m` de `depuis` à `cible − 1`
+  // (toutes ∈ 6..9 par construction). Réutilise le pattern de payload
+  // {succes, erreurs} des étapes. Ne JAMAIS boucler : au premier échec
+  // (succes !== true ou erreur réseau), on retourne l'étape bloquante.
+  const rattraperEtapesMasquees = async (
+    depuis: number,
+    cible: number,
+  ): Promise<{ ok: true } | { ok: false; bloque: number; message: string }> => {
+    if (!personnageId) return { ok: false, bloque: depuis, message: "Personnage introuvable." };
+    for (let m = depuis; m < cible; m += 1) {
+      if (applicable(m)) continue; // sécurité : ne jamais sauter une étape applicable
+      const { data, error } = await supabase.rpc("avancer_etape", {
+        p_personnage_id: personnageId,
+        p_etape_courante: m,
+      });
+      const payload = (data ?? {}) as Record<string, any>;
+      if (error || payload.succes !== true) {
+        const message =
+          error?.message ??
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          (payload.erreurs?.[0]?.code as string | undefined) ??
+          "Impossible de passer à l'étape suivante.";
+        return { ok: false, bloque: m, message };
+      }
+    }
+    return { ok: true };
+  };
+
+  // 1c) NAV-2 — positionnement initial unifié (démarrage ?id= ET brouillon).
+  //     Ne s'exécute qu'une fois `chargee === true` pour ne jamais afficher
+  //     une étape non applicable. Si la cible serveur pointe une étape masquée,
+  //     on rattrape le serveur (avancer_etape séquentiel) avant d'afficher,
+  //     exactement comme handleEtapeSuccess. En mode admin/campagne (perso
+  //     finalisé), aucun avancer_etape : le serveur est déjà au-delà de la
+  //     dernière étape, on se contente de viser la prochaine étape applicable.
+  useEffect(() => {
+    if (etapeInitialisee) return;
+    if (etapeCibleInitiale == null) return;
+    if (!chargee) return;
+    let annule = false;
+
+    const positionner = async () => {
+      const depart = etapeCibleInitiale;
+      const cible = applicable(depart)
+        ? depart
+        : prochaineApplicable(depart - 1);
+
+      // Rattrapage serveur uniquement en création normale (brouillon) : un
+      // perso finalisé (admin/campagne) a déjà etape_creation > TOTAL_STEPS.
+      if (!modeAdmin && !modeCampagne && !applicable(depart) && cible > depart) {
+        setRattrapageEnCours(true);
+        const r = await rattraperEtapesMasquees(depart, cible);
+        if (annule) return;
+        setRattrapageEnCours(false);
+        if (!r.ok) {
+          toast.error(r.message);
+          setEtape(r.bloque);
+          setEtapeInitialisee(true);
+          return;
+        }
+      }
+
+      if (annule) return;
+      setEtape(cible);
+      setEtapeInitialisee(true);
+    };
+
+    void positionner();
+    return () => {
+      annule = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etapeInitialisee, etapeCibleInitiale, chargee, modeAdmin, modeCampagne]);
 
   useEffect(() => {
     setXpDeltaCourant(0);
@@ -273,10 +373,16 @@ const PersonnageNouveauV2 = () => {
     : Math.max(etape, Math.min(personnage?.etape_creation ?? 1, TOTAL_STEPS));
   const sauterEtape = (n: number) => {
     if (etapeVerrouillee(n)) return;
+    // NAV-2 : clamp de sécurité — une étape non applicable n'a pas d'icône
+    // dans le stepper, ce saut ne devrait donc jamais survenir.
+    if (!applicable(n)) return;
     if (n >= 1 && n <= etapeMax) setEtape(n);
   };
 
   const handleEtapeSuccess = async () => {
+    // NAV-2 : garde anti double-déclenchement pendant un rattrapage en cours.
+    if (rattrapageEnCours) return;
+
     // Recharger l'état serveur et faire confiance à etape_creation
     const result = await queryClient.fetchQuery<PersonnageRow>({
       queryKey: ["v2-personnage", personnageId],
@@ -295,9 +401,12 @@ const PersonnageNouveauV2 = () => {
     // TOTAL_STEPS. On ne quitte pas l'éditeur : on avance via le stepper, en
     // sautant les étapes verrouillées (campagne) au passage.
     if (modeAdmin || modeCampagne) {
+      // NAV-2 : perso finalisé — pas de rattrapage serveur (etape_creation est
+      // déjà > TOTAL_STEPS). On saute les étapes figées (campagne) ET non
+      // applicables (sans Acquisition de Sort/Prière, sans runes).
       setEtape((e) => {
         let n = Math.min(e + 1, TOTAL_STEPS);
-        while (etapeVerrouillee(n) && n < TOTAL_STEPS) n += 1;
+        while (n < TOTAL_STEPS && (etapeVerrouillee(n) || !applicable(n))) n += 1;
         return n;
       });
       return;
@@ -312,26 +421,45 @@ const PersonnageNouveauV2 = () => {
       return;
     }
 
-    const cible = Math.max(1, Math.min(result.etape_creation ?? etape + 1, TOTAL_STEPS));
+    // NAV-2 : l'étape courante a déjà fait passer etape_creation à `etape + 1`
+    // côté serveur (avancer_etape appelé par l'étape). On vise la prochaine
+    // étape applicable et on rattrape le serveur sur les étapes masquées
+    // intermédiaires (toutes ∈ 6..9) via avancer_etape séquentiel.
+    const cible = prochaineApplicable(etape);
+    if (cible > etape + 1) {
+      setRattrapageEnCours(true);
+      const r = await rattraperEtapesMasquees(etape + 1, cible);
+      setRattrapageEnCours(false);
+      if (!r.ok) {
+        // Fallback : afficher l'étape masquée bloquante (son écran
+        // « indisponibles » + bouton manuel prend le relais). Ne jamais boucler.
+        toast.error(r.message);
+        setEtape(r.bloque);
+        return;
+      }
+    }
     setEtape(cible);
   };
 
   // Précédent = simple navigation. Aucune sauvegarde ni remboursement :
   // le retrait d'achats passe uniquement par le désachat par item (cascade).
   const handlePrevious = () => {
-    setEtape((e) => {
-      let n = e - 1;
-      while (n > 1 && etapeVerrouillee(n)) n -= 1;
-      return Math.max(1, n);
-    });
+    // NAV-2 : navigation pure (aucun appel serveur). On vise la précédente
+    // étape applicable, en sautant aussi les étapes figées (campagne).
+    let n = precedenteApplicable(etape);
+    while (n > 1 && etapeVerrouillee(n)) n = precedenteApplicable(n);
+    setEtape(n);
   };
 
 
   // -- Rendus de chargement / erreur ----------------------------------------
-  // Cas reprise via ?id= : on attend que l'étape initiale soit positionnée
-  // (ou qu'une erreur de chargement survienne) avant d'afficher le wizard.
+  // On attend que l'étape initiale soit positionnée (ou qu'une erreur de
+  // chargement survienne) avant d'afficher le wizard. NAV-2 : ce positionnement
+  // dépend désormais de `chargee` (applicabilité) — pour les DEUX chemins de
+  // démarrage (brouillon et reprise ?id=) — afin de ne JAMAIS monter une étape
+  // non applicable, même une fraction de seconde.
   const enAttenteEtapeInitiale =
-    !!personnageIdParUrl && !etapeInitialisee && !erreurPersonnage;
+    !!personnageId && !etapeInitialisee && !erreurPersonnage;
 
   if (authLoading || demarrage || enAttenteEtapeInitiale) {
     return (
@@ -457,13 +585,42 @@ const PersonnageNouveauV2 = () => {
 
           <Progress value={progression} className="h-2" />
 
-          <StepperEtapes
-            etapes={ETAPES_DEF}
-            courant={etape}
-            max={etapeMax}
-            onJump={sauterEtape}
-            verrouillees={modeCampagne ? ETAPES_VERROUILLEES_CAMPAGNE : []}
-          />
+          {/* NAV-2 : étapes non applicables absentes du stepper. Tant que
+              l'applicabilité n'est pas résolue, on affiche un placeholder
+              (rangée de pastilles squelettes, même hauteur) — jamais la liste
+              complète puis retrait (pas de flash d'icônes qui disparaissent). */}
+          {chargee ? (
+            <StepperEtapes
+              etapes={ETAPES_DEF.filter((e) => applicable(e.n))}
+              courant={etape}
+              max={etapeMax}
+              onJump={sauterEtape}
+              verrouillees={modeCampagne ? ETAPES_VERROUILLEES_CAMPAGNE : []}
+            />
+          ) : (
+            <div
+              className="flex gap-2 overflow-x-auto px-1 pb-2"
+              aria-hidden
+            >
+              {ETAPES_DEF.map((e) => (
+                <div
+                  key={e.n}
+                  className="flex w-16 shrink-0 flex-col items-center gap-1.5"
+                >
+                  <span className="h-10 w-10 animate-pulse rounded-full border border-white/10 bg-white/5" />
+                  <span className="h-2 w-10 animate-pulse rounded bg-white/5" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* NAV-2 : loader discret pendant l'enchaînement des avancer_etape. */}
+          {rattrapageEnCours && (
+            <div className="flex items-center gap-2 text-xs text-white/50">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Passage des étapes non applicables…
+            </div>
+          )}
         </header>
 
         {/* Contenu de l'étape */}
