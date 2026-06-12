@@ -28,11 +28,6 @@ type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 interface Etape8Props {
   personnageId: string;
   /**
-   * Etape de creation actuelle cote serveur (personnages.etape_creation).
-   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
-   */
-  etapeCreation?: number;
-  /**
    * XP disponible du personnage (xp_total - xp_depense, ajuste du delta
    * courant). Calcule par PersonnageNouveauV2.tsx. Sert a griser le
    * bouton « Acheter » quand XP insuffisant. Fallback 0 = bloque par
@@ -51,7 +46,6 @@ interface Etape8Props {
 
 const Etape8_Assemblages_V2 = ({
   personnageId,
-  etapeCreation,
   xpDisponible = 0,
   onSuccess,
   onError,
@@ -240,7 +234,7 @@ const Etape8_Assemblages_V2 = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-heading">
-              Étape 8 — Assemblages de runes
+              Assemblages de runes
             </CardTitle>
             <CardDescription>
               Vous ne possédez pas la compétence « Assemblage de Runes ». Vous
@@ -275,7 +269,7 @@ const Etape8_Assemblages_V2 = ({
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
-          Étape 8 — Assemblages de runes
+          Assemblages de runes
         </h2>
         <p className="text-sm text-muted-foreground">
           Sélectionnez vos assemblages gratuits et complétez avec des

@@ -102,7 +102,7 @@ const Etape10_Recapitulatif_V2 = ({
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2">
           <ScrollText className="h-5 w-5" />
-          Étape 10 — Récapitulatif et finalisation
+          Récapitulatif et finalisation
         </h2>
         <p className="text-sm text-muted-foreground">
           {modeAdmin

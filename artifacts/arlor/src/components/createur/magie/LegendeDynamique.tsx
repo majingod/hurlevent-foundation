@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { PastilleType } from "@/components/shared/PastilleType";
-import { ecrireStockage, lireStockage } from "./stockageLocal";
+import { ecrireStockage, lireStockage } from "../aide/stockageLocal";
 
 // L1 — Légende dynamique (spec s171) : carte « ℹ Comprendre les symboles »,
 // OUVERTE par défaut, repli mémorisé en localStorage. DYNAMIQUE : chaque
