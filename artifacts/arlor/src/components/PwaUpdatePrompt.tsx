@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 // Tokens Hurlevent (inline pour indépendance totale du thème Tailwind)
@@ -14,20 +15,42 @@ const BORD = "hsl(43 30% 30%)";
  * l'utilisateur clique « Mettre à jour » (registerType: 'prompt').
  */
 export default function PwaUpdatePrompt() {
+  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
-      // Re-vérifie l'existence d'une nouvelle version toutes les heures
-      // (utile : les joueurs gardent l'onglet ouvert longtemps).
       if (registration) {
+        registrationRef.current = registration;
+        // Filet pour les onglets desktop laissés ouverts longtemps.
+        // (Le vrai déclencheur mobile est visibilitychange ci-dessous :
+        // ce timer est suspendu par l'OS quand la PWA est en arrière-plan.)
         setInterval(() => {
           registration.update();
-        }, 60 * 60 * 1000);
+        }, 15 * 60 * 1000);
       }
     },
   });
+
+  // Retour au premier plan (PWA mobile reprise d'arrière-plan) :
+  // 1) déclenche une vérification de nouvelle version ;
+  // 2) si un SW est déjà en attente (bandeau fermé via ✕ auparavant),
+  //    ré-affiche le bandeau — impossible de rester figé indéfiniment.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const reg = registrationRef.current;
+      if (!reg) return;
+      reg.update().catch(() => {
+        // Hors-ligne ou réseau capricieux : on retentera au prochain retour.
+      });
+      if (reg.waiting) setNeedRefresh(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [setNeedRefresh]);
 
   if (!needRefresh) return null;
 
