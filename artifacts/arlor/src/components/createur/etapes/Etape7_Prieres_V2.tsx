@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -12,16 +17,22 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUp, Loader2, Sparkles, Trash2 } from "lucide-react";
-import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
-import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
+import { ChevronRight, Loader2, Lock, Sparkles, Trash2 } from "lucide-react";
 import ConstructeurMagie, {
   type ValeursConstructeur,
+  type PlancherMagie,
 } from "@/components/createur/ConstructeurMagie";
-import ModifierMagieSheet, {
-  type ModifierMagieInstance,
-} from "@/components/createur/ModifierMagieSheet";
-import DescriptionDepliable from "@/components/createur/DescriptionDepliable";
+import { PastilleType } from "@/components/shared/PastilleType";
+import JaugeXP, { type CoutEnCours } from "@/components/createur/magie/JaugeXP";
+import IntroEtape, {
+  IntroEtapeItem,
+} from "@/components/createur/magie/IntroEtape";
+import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
+import { TapBulle, useTapBulle } from "@/components/createur/magie/TapBulle";
+import Astuce from "@/components/createur/magie/Astuce";
+import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
+import { AvantApres } from "@/components/createur/magie/ApercuEffet";
+import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estPriereAcquise, plancherInstancePriere } from "@/lib/acquisCampagne";
 import {
@@ -38,16 +49,39 @@ import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
   calculerCoutPS,
   calculerCoutXP,
+  filterDureesDisponibles,
+  filterPorteesDisponibles,
   isZoneUnique,
   type BonusNiveau,
+  type EffetInstance,
   type PalierSort,
 } from "@/utils/calculsMagie";
 
 type PriereRow = Database["public"]["Tables"]["prieres"]["Row"];
+/** prieres.effet_instance (s162) absent des types générés — cast local, comme
+ *  paliers (on ne régénère pas les types Supabase pour ces colonnes jsonb). */
+type PriereCatalogue = PriereRow & { effet_instance?: EffetInstance | null };
 type PersonnagePriereRow =
   Database["public"]["Tables"]["personnage_prieres"]["Row"];
 type DomaineDispo =
   Database["public"]["Views"]["vue_domaines_disponibles"]["Row"];
+
+/** Join prieres(...) du select personnage_prieres — + type_priere, effet_instance (s171). */
+interface PriereJointe {
+  nom: string | null;
+  domaine: string | null;
+  zone_effet: string | null;
+  portee: string | null;
+  duree: string | null;
+  cout_xp_base: number | null;
+  bonus_niveau: BonusNiveau | null;
+  description_courte: string | null;
+  description_tronc: string | null;
+  paliers: unknown;
+  type_priere: string | null;
+  effet_instance: unknown;
+}
+type AchatPriere = PersonnagePriereRow & { prieres: PriereJointe | null };
 
 interface Etape7Props {
   personnageId: string;
@@ -82,6 +116,44 @@ interface AcheterPriereParams {
   p_nom_personnalise: string;
 }
 
+// Préfixe localStorage paramétrable (miroir É6 : « hv-e7 »).
+const PREFIXE_LS = "hv-e7";
+
+// Coût pts par variable — mêmes barèmes que ConstructeurMagie / cout_pts_* SQL.
+const ptsZone = (zone: string) => COUT_ZONE[zone] ?? 0;
+const ptsPortee = (portee: string) =>
+  PORTEES.find((p) => p.label === portee)?.cout ?? 0;
+const ptsDuree = (duree: string) =>
+  DUREES.find((d) => d.label === duree)?.cout ?? 0;
+
+// L2 : textes d'aide des pastilles de type (tap → TapBulle).
+const AIDE_TYPES: Record<string, { libelle: string; texte: string }> = {
+  "effet bénéfique": {
+    libelle: "Bénéfique",
+    texte: "Prière qui avantage ses cibles (protection, soin, bonus).",
+  },
+  effet: {
+    libelle: "Effet",
+    texte:
+      "Prière qui altère ou contraint ses cibles sans infliger de dégâts.",
+  },
+  "dégâts": {
+    libelle: "Dégâts",
+    texte: "Prière qui inflige des dégâts.",
+  },
+};
+
+// Ordre canonique des types pour la légende.
+const ORDRE_TYPES = ["effet bénéfique", "effet", "dégâts"];
+
+const Chevron = ({ ouvert }: { ouvert: boolean }) => (
+  <ChevronRight
+    className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${
+      ouvert ? "rotate-90" : ""
+    }`}
+  />
+);
+
 const Etape7_Prieres_V2 = ({
   personnageId,
   etapeCreation,
@@ -96,47 +168,59 @@ const Etape7_Prieres_V2 = ({
   // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
   const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
 
-  const [domaineSelectionne, setDomaineSelectionne] = useState<string | null>(
-    null,
+  // Accordéons en état manuel (pattern É5 / maquette useSet) — PAS de Radix
+  // Accordion : enfants interactifs → bug connu.
+  const [domainesOuverts, setDomainesOuverts] = useState<Set<string>>(
+    new Set(),
   );
-  const [priereId, setPriereId] = useState<string | null>(null);
-  const [valeurs, setValeurs] = useState<ValeursConstructeur>({
+  const [domainesAchetesOuverts, setDomainesAchetesOuverts] = useState<
+    Set<string>
+  >(new Set());
+  const [sectionAchetesOuverte, setSectionAchetesOuverte] = useState(true);
+  // Une seule prière du catalogue ouverte à la fois (radio).
+  const [priereOuverteId, setPriereOuverteId] = useState<string | null>(null);
+  const [valeursAchat, setValeursAchat] = useState<ValeursConstructeur>({
     zone: "",
     portee: "",
     duree: "",
     niveau: 1,
     nom: "",
   });
+  // Une seule instance possédée ouverte à la fois — ouverte = en modification.
+  const [instanceOuverteId, setInstanceOuverteId] = useState<string | null>(
+    null,
+  );
+  const [valeursModif, setValeursModif] = useState<ValeursConstructeur | null>(
+    null,
+  );
+  // I7 : filtre par type, indépendant par domaine.
+  const [filtres, setFiltres] = useState<Record<string, string | null>>({});
   const [aSupprimer, setASupprimer] = useState<{
     personnage_priere_id: string;
     nom: string;
     xp_depense: number;
   } | null>(null);
-  // PR-B : instance ciblée par le geste « Modifier » (sheet plancher photo).
-  const [enModification, setEnModification] = useState<{
-    instance: ModifierMagieInstance;
-    base: {
-      zoneEffet: string;
-      porteeMax: string;
-      dureeMax: string;
-      coutXpBase: number;
-      groupe: string;
-      bonusNiveau: BonusNiveau | null;
-      courte?: string | null;
-      tronc?: string | null;
-      paliers?: PalierSort[] | null;
-    };
-    niveauMax: number;
-    plancher: ReturnType<typeof plancherInstancePriere>;
-  } | null>(null);
+  // L2 : bulle d'aide au tap sur un symbole.
+  const { aide, montrer: montrerAide, fermer: fermerAide } = useTapBulle();
 
-  // Personnage : est_croyant + religion
+  const basculerSet = (
+    set: Set<string>,
+    setSet: (s: Set<string>) => void,
+    cle: string,
+  ) => {
+    const suivant = new Set(set);
+    if (suivant.has(cle)) suivant.delete(cle);
+    else suivant.add(cle);
+    setSet(suivant);
+  };
+
+  // Personnage : religion (domaines proscrits). Aucun prérequis de croyance.
   const { data: personnage, isLoading: loadingPersonnage } = useQuery({
     queryKey: ["personnage-prieres-meta", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnages")
-        .select("id, est_croyant, religion_id")
+        .select("id, religion_id")
         .eq("id", personnageId)
         .single();
       if (error) throw error;
@@ -165,9 +249,9 @@ const Etape7_Prieres_V2 = ({
 
   const niveauAcquisition = acquisitionPriere ?? 0;
   const religionId = personnage?.religion_id ?? null;
-  // Pas de prérequis "est_croyant" pour Acquisition de Domaine selon le Manuel 2026.
-  // Le backend a déjà été corrigé en session 26 (RPC acheter_priere + vue
-  // vue_domaines_disponibles). Régression frontend corrigée en session 33.
+  // Aucun prérequis de croyance pour Acquisition de Prière selon le Manuel
+  // 2026. Le backend a déjà été corrigé en session 26 ; régression frontend
+  // corrigée en session 33 — ne pas réintroduire de garde de croyance ici.
   const conditionsRemplies = niveauAcquisition >= 1;
 
   // Domaines disponibles (vue_domaines_disponibles)
@@ -212,98 +296,49 @@ const Etape7_Prieres_V2 = ({
     );
   }, [domainesDisponibles, domainesProscrits]);
 
-  const domaineObj = domainesAffiches.find(
-    (d) => d.domaine === domaineSelectionne,
-  );
-  const niveauMaxDomaine = domaineObj?.niveau_max_prieres ?? 0;
-
-  // Prières du domaine (niveau ≤ niveau_max_prieres)
-  const { data: prieres, isLoading: loadingPrieres } = useQuery({
-    queryKey: ["prieres-domaine", domaineSelectionne, niveauMaxDomaine],
-    queryFn: async () => {
-      if (!domaineSelectionne) return [] as PriereRow[];
-      const { data, error } = await supabase
-        .from("prieres")
-        .select("*")
-        .eq("domaine", domaineSelectionne)
-        .lte("niveau", niveauMaxDomaine)
-        .eq("est_actif", true)
-        .order("nom");
-      if (error) throw error;
-      return (data ?? []) as PriereRow[];
-    },
-    enabled: !!domaineSelectionne && niveauMaxDomaine > 0,
+  // Prières par domaine (niveau ≤ niveau_max_prieres) — une query par domaine,
+  // select("*") inchangé ; chargées d'avance pour les compteurs des headers.
+  const prieresQueries = useQueries({
+    queries: domainesAffiches.map((d) => ({
+      queryKey: ["prieres-domaine", d.domaine, d.niveau_max_prieres],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("prieres")
+          .select("*")
+          .eq("domaine", d.domaine ?? "")
+          .lte("niveau", d.niveau_max_prieres ?? 0)
+          .eq("est_actif", true)
+          .order("nom");
+        if (error) throw error;
+        return (data ?? []) as PriereCatalogue[];
+      },
+      enabled: !!d.domaine && (d.niveau_max_prieres ?? 0) > 0,
+    })),
+  });
+  const prieresParDomaine: Record<string, PriereCatalogue[] | undefined> = {};
+  domainesAffiches.forEach((d, i) => {
+    if (d.domaine) prieresParDomaine[d.domaine] = prieresQueries[i]?.data;
   });
 
-  // Prières déjà achetées (lecture seule)
+  // Prières déjà achetées — le join récupère aussi type_priere, effet_instance
+  // (pastilles + effet AVANT→APRÈS), miroir exact d'É6.
   const { data: prieresAchetees, isLoading: loadingAchats } = useQuery({
     queryKey: ["personnage-prieres", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnage_prieres")
         .select(
-          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau, description_courte, description_tronc, paliers)",
+          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau, description_courte, description_tronc, paliers, type_priere, effet_instance)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
       if (error) throw error;
-      return (data ?? []) as (PersonnagePriereRow & {
-        prieres: {
-          nom: string | null;
-          domaine: string | null;
-          zone_effet: string | null;
-          portee: string | null;
-          duree: string | null;
-          cout_xp_base: number | null;
-          bonus_niveau: BonusNiveau | null;
-          description_courte: string | null;
-          description_tronc: string | null;
-          paliers: unknown;
-        } | null;
-      })[];
+      return (data ?? []) as unknown as AchatPriere[];
     },
     enabled: !!personnageId,
   });
 
-  const priereSelectionnee = prieres?.find((p) => p.id === priereId) ?? null;
-
-  // Reset quand on change de domaine
-  useEffect(() => {
-    setPriereId(null);
-  }, [domaineSelectionne]);
-
-  // Reset / pré-remplissage quand on change de prière
-  useEffect(() => {
-    if (!priereSelectionnee) {
-      setValeurs({ zone: "", portee: "", duree: "", niveau: 1, nom: "" });
-      return;
-    }
-    const zoneUnique =
-      !!priereSelectionnee.zone_effet &&
-      isZoneUnique(priereSelectionnee.zone_effet);
-    const zones = zoneUnique
-      ? ZONES_PAR_TYPE[priereSelectionnee.zone_effet!] ?? []
-      : [];
-    setValeurs({
-      zone: zoneUnique ? zones[0] ?? "" : "",
-      portee: "",
-      duree: "",
-      niveau: priereSelectionnee.niveau ?? 1,
-      nom: priereSelectionnee.nom,
-    });
-  }, [priereId, priereSelectionnee]);
-
-  const coutXpBase = Number(priereSelectionnee?.cout_xp_base ?? 0);
-  const coutXp =
-    priereSelectionnee && valeurs.zone && valeurs.portee && valeurs.duree
-      ? calculerCoutXP(
-          valeurs.zone,
-          valeurs.portee,
-          valeurs.duree,
-          valeurs.niveau,
-          coutXpBase,
-        )
-      : 0;
+  const achats = prieresAchetees ?? [];
 
   const mutation = useMutation({
     mutationFn: async (params: AcheterPriereParams) => {
@@ -313,16 +348,15 @@ const Etape7_Prieres_V2 = ({
     },
     onSuccess: () => {
       // Invalide toutes les queries qui contiennent personnageId dans leur
-      // clef. Cela couvre ["personnage-prieres", id], ["domaines-disponibles", id]
-      // ET ["v2-personnage", id] du parent (header XP), sans avoir a lister
-      // chaque queryKey explicitement.
+      // clef. Cela couvre ["personnage-prieres", id],
+      // ["domaines-disponibles", id] ET ["v2-personnage", id] du parent
+      // (header XP), sans avoir a lister chaque queryKey explicitement.
       queryClient.invalidateQueries({
         predicate: (q) =>
           Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
       toast.success("Prière acquise !");
-      setPriereId(null);
-      setDomaineSelectionne(null);
+      setPriereOuverteId(null);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -345,17 +379,79 @@ const Etape7_Prieres_V2 = ({
       }
       return payload;
     },
-    onSuccess: () => {
+    onSuccess: (_payload, personnagePriereId) => {
       queryClient.invalidateQueries({
         predicate: (q) =>
           Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
       });
       toast.success("Prière supprimée et XP remboursés.");
       setASupprimer(null);
+      if (instanceOuverteId === personnagePriereId) setInstanceOuverteId(null);
     },
     onError: (error: Error) => {
       toast.error(error.message);
       onError?.(error);
+    },
+  });
+
+  // Modification M2 inline — RPC modifier_priere, nom envoyé seulement s'il
+  // change, gestion d'erreur acquis_regression avec affichage du plancher,
+  // toasts xp_diff identiques (miroir exact de modifier_sort d'É6).
+  const modifierMutation = useMutation({
+    mutationFn: async (args: {
+      personnagePriereId: string;
+      valeurs: ValeursConstructeur;
+      nomActuel: string;
+    }) => {
+      const nomTrim = args.valeurs.nom.trim();
+      const params: Record<string, unknown> = {
+        p_personnage_priere_id: args.personnagePriereId,
+        p_niveau_priere: args.valeurs.niveau,
+        p_zone_choisie: args.valeurs.zone,
+        p_portee_choisie: args.valeurs.portee,
+        p_duree_choisie: args.valeurs.duree,
+      };
+      // Nom envoyé seulement s'il change : DEFAULT NULL ⇒ COALESCE conserve l'actuel.
+      if (nomTrim !== args.nomActuel) params.p_nom_personnalise = nomTrim;
+
+      const { data, error } = await (supabase as any).rpc(
+        "modifier_priere",
+        params,
+      );
+      if (error) throw error;
+      const payload = (data ?? {}) as Record<string, any>;
+      if (payload.succes !== true) {
+        const err = new Error(
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+            "Modification impossible.",
+        );
+        (err as any).code = payload.erreurs?.[0]?.code as string | undefined;
+        (err as any).plancher = payload.donnees?.plancher;
+        throw err;
+      }
+      return payload;
+    },
+    onSuccess: (payload) => {
+      // Convention B1 : invalide toute query dont la clef contient personnageId.
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) && q.queryKey.includes(personnageId),
+      });
+      const xpDiff = (payload.donnees?.xp_diff as number | undefined) ?? 0;
+      if (xpDiff > 0) toast.success(`Prière modifiée (−${xpDiff} XP).`);
+      else if (xpDiff < 0)
+        toast.success(`Prière modifiée, ${-xpDiff} XP remboursés.`);
+      else toast.success("Prière modifiée.");
+    },
+    onError: (error: any) => {
+      if (error?.code === "acquis_regression" && error?.plancher) {
+        const pl = error.plancher as PlancherMagie;
+        toast.error(
+          `${error.message} (plancher : niv ${pl.niveau} · ${pl.zone} · ${pl.portee} · ${pl.duree})`,
+        );
+      } else {
+        toast.error(error?.message ?? "Modification impossible.");
+      }
     },
   });
 
@@ -396,13 +492,12 @@ const Etape7_Prieres_V2 = ({
   // (etapeCreation === 7) et qu'aucune prière n'est achetable pour ce
   // personnage, on fait avancer etape_creation cote serveur immédiatement.
   // Deux cas couverts :
-  //   1. !conditionsRemplies : Non-croyant ou sans Acquisition de Domaine
+  //   1. !conditionsRemplies : sans Acquisition de Prière
   //   2. conditionsRemplies mais domaines tous proscrits / aucun disponible
   // La garde queriesPrerequisChargees évite un déclenchement prématuré
-  // avant que personnage + acquisitionDomaine soient résolus (pattern
-  // PR #139 réinstauré).
-  const queriesPrerequisChargees =
-    !loadingPersonnage && !loadingAcquisition;
+  // avant que personnage + acquisitionPriere soient résolus (pattern
+  // PR #139 réinstauré). Plus complexe que l'auto-skip d'É6.
+  const queriesPrerequisChargees = !loadingPersonnage && !loadingAcquisition;
   const aucunePriereAchetable =
     queriesPrerequisChargees &&
     (!conditionsRemplies ||
@@ -410,26 +505,213 @@ const Etape7_Prieres_V2 = ({
         proscritsResolus &&
         domainesAffiches.length === 0));
 
+  useEffect(() => {
+    if (
+      etapeCreation === 7 &&
+      aucunePriereAchetable &&
+      !avancerMutation.isPending
+    ) {
+      avancerMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etapeCreation, aucunePriereAchetable]);
+
+  // ---------- Dérivés ----------
+
+  const nivMaxDomaine = (domaine: string | null | undefined) =>
+    Math.max(
+      1,
+      domainesDisponibles?.find((d) => d.domaine === domaine)
+        ?.niveau_max_prieres ?? 1,
+    );
+
+  // ⧉ ×N (I9) : nombre d'instances possédées par prière de base.
+  const compteParPriereId: Record<string, number> = {};
+  achats.forEach((pp) => {
+    compteParPriereId[pp.priere_id] =
+      (compteParPriereId[pp.priere_id] ?? 0) + 1;
+  });
+
+  const achatsParDomaine: Record<string, AchatPriere[]> = {};
+  achats.forEach((pp) => {
+    const domaine = pp.prieres?.domaine ?? "?";
+    (achatsParDomaine[domaine] ??= []).push(pp);
+  });
+
+  const nbAcquis = achats.filter((pp) =>
+    estPriereAcquise(modeCampagne, photo, pp.priere_id, pp.id),
+  ).length;
+
+  // Prière du catalogue actuellement ouverte (radio global).
+  const priereOuverte = priereOuverteId
+    ? Object.values(prieresParDomaine)
+        .flatMap((liste) => liste ?? [])
+        .find((p) => p.id === priereOuverteId) ?? null
+    : null;
+
+  const coutXpBaseAchat = Number(priereOuverte?.cout_xp_base ?? 0);
+  const achatComplet =
+    !!valeursAchat.zone && !!valeursAchat.portee && !!valeursAchat.duree;
+  const coutXpAchat =
+    priereOuverte && achatComplet
+      ? calculerCoutXP(
+          valeursAchat.zone,
+          valeursAchat.portee,
+          valeursAchat.duree,
+          valeursAchat.niveau,
+          coutXpBaseAchat,
+        )
+      : 0;
+
   const peutAcheter =
-    !!priereSelectionnee &&
-    !!valeurs.zone &&
-    !!valeurs.portee &&
-    !!valeurs.duree &&
-    valeurs.nom.trim().length > 0 &&
-    coutXp > 0;
+    !!priereOuverte &&
+    achatComplet &&
+    valeursAchat.nom.trim().length > 0 &&
+    coutXpAchat > 0;
 
   const handleAcheter = () => {
-    if (!peutAcheter || !priereSelectionnee) return;
+    if (!peutAcheter || !priereOuverte) return;
     mutation.mutate({
       p_personnage_id: personnageId,
-      p_priere_id: priereSelectionnee.id,
-      p_zone_choisie: valeurs.zone,
-      p_portee_choisie: valeurs.portee,
-      p_duree_choisie: valeurs.duree,
-      p_niveau_priere: valeurs.niveau,
-      p_nom_personnalise: valeurs.nom.trim(),
+      p_priere_id: priereOuverte.id,
+      p_zone_choisie: valeursAchat.zone,
+      p_portee_choisie: valeursAchat.portee,
+      p_duree_choisie: valeursAchat.duree,
+      p_niveau_priere: valeursAchat.niveau,
+      p_nom_personnalise: valeursAchat.nom.trim(),
     });
   };
+
+  // I4 : coût de la config active (modification prioritaire, sinon achat).
+  const instanceOuverte = instanceOuverteId
+    ? achats.find((pp) => pp.id === instanceOuverteId) ?? null
+    : null;
+  let coutEnCours: CoutEnCours | null = null;
+  if (
+    instanceOuverte &&
+    valeursModif?.zone &&
+    valeursModif.portee &&
+    valeursModif.duree
+  ) {
+    const delta =
+      calculerCoutXP(
+        valeursModif.zone,
+        valeursModif.portee,
+        valeursModif.duree,
+        valeursModif.niveau,
+        Number(instanceOuverte.prieres?.cout_xp_base ?? 0),
+      ) - instanceOuverte.xp_depense;
+    if (delta !== 0)
+      coutEnCours = {
+        delta,
+        libelle: delta > 0 ? "modification en cours" : "remboursement",
+      };
+  }
+  if (!coutEnCours && priereOuverte && achatComplet) {
+    coutEnCours = { delta: coutXpAchat, libelle: "achat en cours" };
+  }
+
+  // L1 : entrées dynamiques de la légende (uniquement ce que CE joueur voit).
+  const prieresChargees = Object.values(prieresParDomaine).flatMap(
+    (liste) => liste ?? [],
+  );
+  const typesVisibles = new Set(
+    [
+      ...prieresChargees.map((p) => p.type_priere),
+      ...achats.map((pp) => pp.prieres?.type_priere),
+    ].filter((t): t is string => !!t),
+  );
+  const typesPresents = ORDRE_TYPES.filter((t) => typesVisibles.has(t));
+  const plafonds = [
+    ...new Set(
+      domainesAffiches
+        .map((d) => d.niveau_max_prieres ?? 0)
+        .filter((n) => n > 0),
+    ),
+  ].sort((a, b) => a - b);
+  const multiples = [...new Set(Object.values(compteParPriereId))].sort(
+    (a, b) => a - b,
+  );
+  const niveauxMin = [
+    ...new Set(prieresChargees.map((p) => p.niveau).filter((n) => n > 1)),
+  ].sort((a, b) => a - b);
+
+  // I6 : tout est au plafond → MAX ; sinon ↑ (au moins un réglage peut monter).
+  const estInstanceAuMax = (pp: AchatPriere) => {
+    const maxZonePts = Math.max(
+      0,
+      ...(ZONES_PAR_TYPE[pp.prieres?.zone_effet ?? ""] ?? []).map(ptsZone),
+    );
+    const maxPorteePts = Math.max(
+      0,
+      ...filterPorteesDisponibles(pp.prieres?.portee ?? "").map((p) => p.cout),
+    );
+    const maxDureePts = Math.max(
+      0,
+      ...filterDureesDisponibles(pp.prieres?.duree ?? "").map((d) => d.cout),
+    );
+    return (
+      pp.niveau_priere >= nivMaxDomaine(pp.prieres?.domaine) &&
+      ptsZone(pp.zone_choisie ?? "") >= maxZonePts &&
+      ptsPortee(pp.portee_choisie ?? "") >= maxPorteePts &&
+      ptsDuree(pp.duree_choisie ?? "") >= maxDureePts
+    );
+  };
+
+  const tapPriere = (p: PriereCatalogue) => {
+    if (priereOuverteId === p.id) {
+      setPriereOuverteId(null);
+      return;
+    }
+    const zoneUnique = !!p.zone_effet && isZoneUnique(p.zone_effet);
+    const zones = zoneUnique ? ZONES_PAR_TYPE[p.zone_effet!] ?? [] : [];
+    setPriereOuverteId(p.id);
+    setValeursAchat({
+      zone: zoneUnique ? zones[0] ?? "" : "",
+      portee: "",
+      duree: "",
+      niveau: p.niveau ?? 1,
+      nom: p.nom,
+    });
+  };
+
+  const tapInstance = (pp: AchatPriere) => {
+    if (instanceOuverteId === pp.id) {
+      setInstanceOuverteId(null);
+      return;
+    }
+    setInstanceOuverteId(pp.id);
+    setValeursModif({
+      zone: pp.zone_choisie ?? "",
+      portee: pp.portee_choisie ?? "",
+      duree: pp.duree_choisie ?? "",
+      niveau: pp.niveau_priere,
+      nom: pp.nom_personnalise ?? pp.prieres?.nom ?? "",
+    });
+  };
+
+  // Pastille de type tappable (L2) — stopPropagation pour ne pas basculer la rangée.
+  const pastilleAide = (type: string | null | undefined) => {
+    if (!type) return null;
+    const cfg = AIDE_TYPES[type];
+    return (
+      <span
+        onClick={(e) => {
+          e.stopPropagation();
+          if (cfg)
+            montrerAide({
+              titre: `Pastille « ${cfg.libelle} »`,
+              texte: cfg.texte,
+            });
+        }}
+        className={cfg ? "cursor-pointer" : undefined}
+      >
+        <PastilleType type={type} />
+      </span>
+    );
+  };
+
+  // ---------- États vides / chargement (conservés) ----------
 
   if (loadingPersonnage || loadingAcquisition) {
     return (
@@ -449,8 +731,8 @@ const Etape7_Prieres_V2 = ({
               Étape 7 — Prières divines indisponibles
             </CardTitle>
             <CardDescription>
-              Pour acquérir des prières, ce personnage doit posséder la compétence
-              « Acquisition de Prière » au niveau 1 minimum.
+              Pour acquérir des prières, ce personnage doit posséder la
+              compétence « Acquisition de Prière » au niveau 1 minimum.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
@@ -531,342 +813,677 @@ const Etape7_Prieres_V2 = ({
     );
   }
 
+  // Premier domaine ouvert (ordre d'affichage) : porte l'astuce W3 catalogue.
+  const premierDomaineOuvert =
+    domainesAffiches.find((d) => domainesOuverts.has(d.domaine ?? ""))
+      ?.domaine ?? null;
+
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-5">
+      {/* I4 : jauge XP live, AU-DESSUS du bandeau calcul (z-20 > z-[15]) */}
+      <JaugeXP xpDisponible={xpDisponible} coutEnCours={coutEnCours} />
+
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
           Étape 7 — Achat de prières divines
         </h2>
         <p className="text-sm text-muted-foreground">
-          Choisissez un domaine, sélectionnez une prière, puis personnalisez sa
-          zone, sa portée, sa durée et son niveau.
+          Choisissez un domaine, touchez une prière, personnalisez-la — vos
+          prières acquises sont regroupées en bas.
         </p>
       </div>
 
-      {/* 1. Domaine */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            1. Choisir un domaine
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {domainesAffiches.map((d) => {
-              const selectionne = domaineSelectionne === d.domaine;
-              return (
-                <Button
-                  key={d.domaine ?? ""}
-                  type="button"
-                  variant={selectionne ? "default" : "outline"}
-                  onClick={() => setDomaineSelectionne(d.domaine)}
-                  className="h-auto flex-col items-start gap-0 px-3 py-2"
-                >
-                  <span>{d.domaine}</span>
+      {/* W1 : intro d'étape (ouverte par défaut, repli mémorisé) */}
+      <IntroEtape
+        storageKey={`${PREFIXE_LS}-intro-replie`}
+        titre="Comment fonctionne cette étape ?"
+      >
+        <IntroEtapeItem n={1}>
+          Grâce à la compétence{" "}
+          <strong>« Acquisition de Prière »</strong>, votre personnage invoque
+          les prières de certains <strong>domaines divins</strong> — les cartes
+          ci-dessous. Ouvrez un domaine pour découvrir ses prières.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          Touchez une prière pour lire ce qu'elle fait. Pour la préparer, vous
+          devez <strong>choisir un réglage dans chacune des 4 familles</strong>{" "}
+          : <strong>zone</strong> (combien de cibles), <strong>portée</strong> (à
+          quelle distance), <strong>durée</strong> et <strong>niveau</strong>{" "}
+          (la puissance).
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          Chaque réglage a un coût : le <strong>coût d'achat en XP</strong> se
+          calcule tout seul — (zone + portée + durée + niveau) × le{" "}
+          <strong>coefficient</strong> propre à la prière. L'encadré doré montre{" "}
+          <strong>l'effet exact</strong> que vous obtiendrez.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={4}>
+          Invoquer une prière en jeu coûte aussi des{" "}
+          <strong>points de spiritualité (PS)</strong> : ce coût s'affiche juste
+          sous le calcul du coût d'achat, et change avec vos réglages.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={5}>
+          Quand ça vous plaît, donnez-lui un nom et <strong>achetez</strong>. La
+          prière rejoint « Prières déjà achetées », tout en bas.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={6}>
+          Changé d'avis ? Touchez une prière possédée pour{" "}
+          <strong>l'améliorer</strong>
+          {modeCampagne
+            ? " — ou la supprimer si elle n'a pas encore été jouée en GN"
+            : " ou la supprimer"}
+          .
+        </IntroEtapeItem>
+        {modeCampagne && (
+          <p className="border-t pt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+            En campagne : <strong className="text-gold">fond doré 🔒</strong> =
+            prière scellée à un GN (elle ne peut que s'améliorer) ·{" "}
+            <strong className="text-emerald-700 dark:text-emerald-400">
+              fond vert ＋
+            </strong>{" "}
+            = ajout récent, encore annulable.
+          </p>
+        )}
+      </IntroEtape>
+
+      {/* L1 : légende dynamique */}
+      <LegendeDynamique
+        type="priere"
+        storageKey={`${PREFIXE_LS}-legende-repliee`}
+        typesPresents={typesPresents}
+        plafonds={plafonds}
+        multiples={multiples}
+        niveauxMin={niveauxMin}
+        aDesAcquis={modeCampagne && nbAcquis > 0}
+        aDesAchats={achats.length > 0}
+        modeCampagne={modeCampagne}
+      />
+
+      {/* Catalogue : un accordéon par domaine, tout fermé par défaut */}
+      <div className="space-y-2.5">
+        {domainesAffiches.map((d) => {
+          const domaine = d.domaine ?? "";
+          const ouvert = domainesOuverts.has(domaine);
+          const prieresDuDomaine = prieresParDomaine[domaine];
+          const filtre = filtres[domaine] ?? null;
+          const visibles = (prieresDuDomaine ?? []).filter(
+            (p) => !filtre || p.type_priere === filtre,
+          );
+          const nbAchetesDomaine = achatsParDomaine[domaine]?.length ?? 0;
+          const compteParType: Record<string, number> = {};
+          (prieresDuDomaine ?? []).forEach((p) => {
+            if (p.type_priere)
+              compteParType[p.type_priere] =
+                (compteParType[p.type_priere] ?? 0) + 1;
+          });
+
+          return (
+            <div key={domaine} className="rounded-lg border bg-card">
+              <div
+                onClick={() =>
+                  basculerSet(domainesOuverts, setDomainesOuverts, domaine)
+                }
+                className="flex cursor-pointer flex-wrap items-center gap-2 px-3.5 py-3"
+              >
+                <Chevron ouvert={ouvert} />
+                <span className="flex-1 font-heading text-[15px] font-bold text-foreground">
+                  {domaine}
+                </span>
+                <Badge variant="outline">≤ niv {d.niveau_max_prieres}</Badge>
+                {prieresDuDomaine && (
+                  <Badge variant="secondary">
+                    {prieresDuDomaine.length} prières
+                  </Badge>
+                )}
+                {nbAchetesDomaine > 0 && (
                   <span
-                    className={`text-xs font-normal ${
-                      selectionne
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground"
+                    className={`whitespace-nowrap rounded-full border px-2 py-px text-[10.5px] font-bold ${
+                      modeCampagne
+                        ? "border-gold/50 text-gold"
+                        : "border-primary/50 text-primary"
                     }`}
                   >
-                    ≤ niv {d.niveau_max_prieres}
+                    {nbAchetesDomaine} achetée{nbAchetesDomaine > 1 ? "s" : ""}
                   </span>
-                </Button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 2. Prière */}
-      {domaineSelectionne && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-heading">
-              2. Choisir une prière
-            </CardTitle>
-            <CardDescription>
-              Prières du domaine « {domaineSelectionne} » jusqu'au niveau{" "}
-              {niveauMaxDomaine}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {loadingPrieres ? (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Chargement des prières…
+                )}
               </div>
-            ) : (prieres ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucune prière disponible pour ce domaine.
+
+              {ouvert && (
+                <div>
+                  {/* W3 : astuce à la première découverte du catalogue */}
+                  {domaine === premierDomaineOuvert && (
+                    <Astuce
+                      storageKey={`${PREFIXE_LS}-astuce-catalogue-vue`}
+                      texte="Touchez une prière pour lire sa description et la configurer. Les réglages (zone, portée, durée, niveau) font varier sa puissance et son coût en XP."
+                    />
+                  )}
+
+                  {/* I7 : filtre par type (masqué si < 2 types) */}
+                  <FiltreTypeMagie
+                    compteParType={compteParType}
+                    total={(prieresDuDomaine ?? []).length}
+                    filtre={filtre}
+                    onFiltre={(f) => setFiltres({ ...filtres, [domaine]: f })}
+                  />
+
+                  {prieresDuDomaine === undefined ? (
+                    <div className="flex items-center border-t px-3 py-2.5 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Chargement des prières…
+                    </div>
+                  ) : visibles.length === 0 ? (
+                    <p className="border-t px-3 py-2.5 text-xs text-muted-foreground">
+                      {filtre
+                        ? "Aucune prière de ce type dans ce domaine."
+                        : "Aucune prière disponible pour ce domaine."}
+                    </p>
+                  ) : (
+                    visibles.map((p) => {
+                      const selectionnee = priereOuverteId === p.id;
+                      const possede = compteParPriereId[p.id] ?? 0;
+                      return (
+                        <div key={p.id} className="border-t">
+                          <div
+                            onClick={() => tapPriere(p)}
+                            className={`flex cursor-pointer items-center gap-2 px-3 py-2.5 ${
+                              selectionnee ? "bg-primary/5" : ""
+                            }`}
+                          >
+                            <Chevron ouvert={selectionnee} />
+                            <strong className="min-w-0 flex-1 truncate font-heading text-[13.5px] text-primary">
+                              {p.nom}
+                            </strong>
+                            {/* I9 : déjà possédé ×N */}
+                            {possede > 0 && (
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  montrerAide({
+                                    titre: `⧉ ×${possede}`,
+                                    texte: `Vous possédez déjà ${possede} version${possede > 1 ? "s" : ""} de cette prière (configurations différentes possibles). Retrouvez-les dans « Prières déjà achetées ».`,
+                                  });
+                                }}
+                                className="cursor-pointer whitespace-nowrap rounded-full border border-gold/50 px-2 py-px text-[10px] font-bold text-gold"
+                              >
+                                ⧉ ×{possede}
+                              </span>
+                            )}
+                            {p.niveau > 1 && (
+                              <Badge variant="outline">Niv. {p.niveau}+</Badge>
+                            )}
+                            {pastilleAide(p.type_priere)}
+                          </div>
+
+                          {selectionnee && (
+                            <div className="space-y-2.5 border-l-[3px] border-l-primary px-3 pb-4 pt-1">
+                              {p.description_courte && (
+                                <p className="text-sm text-muted-foreground">
+                                  {p.description_courte}
+                                </p>
+                              )}
+                              <ManuelDepliable
+                                tronc={p.description_tronc}
+                                description={p.description}
+                              />
+                              <ConstructeurMagie
+                                type="priere"
+                                zoneEffet={p.zone_effet ?? ""}
+                                porteeMax={p.portee ?? ""}
+                                dureeMax={p.duree ?? ""}
+                                coutXpBase={Number(p.cout_xp_base ?? 0)}
+                                niveauMax={Math.max(
+                                  1,
+                                  d.niveau_max_prieres ?? 1,
+                                )}
+                                valeurs={valeursAchat}
+                                onChange={setValeursAchat}
+                                plancher={null}
+                                bonusNiveau={
+                                  p.bonus_niveau as BonusNiveau | null
+                                }
+                                paliers={p.paliers as PalierSort[] | null}
+                                stickyTop={54}
+                                preReglages
+                                effetInstance={
+                                  (p.effet_instance ??
+                                    null) as EffetInstance | null
+                                }
+                                afficherProchainPalier
+                              />
+                              {(() => {
+                                const xpInsuffisants =
+                                  peutAcheter && coutXpAchat > xpDisponible;
+                                return (
+                                  <Button
+                                    onClick={handleAcheter}
+                                    disabled={
+                                      !peutAcheter ||
+                                      mutation.isPending ||
+                                      xpInsuffisants
+                                    }
+                                    title={
+                                      xpInsuffisants
+                                        ? `XP insuffisants (manque ${coutXpAchat - xpDisponible} XP)`
+                                        : undefined
+                                    }
+                                    className={`w-full ${
+                                      xpInsuffisants ? "opacity-50" : ""
+                                    }`}
+                                  >
+                                    {mutation.isPending ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Sparkles className="mr-2 h-4 w-4" />
+                                    )}
+                                    Acheter cette prière ({coutXpAchat} XP)
+                                  </Button>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Prières déjà achetées : accordéon à 2 niveaux (section → domaine →
+          instances), tap sur une instance = modification directe (M2). */}
+      <div className="rounded-lg border bg-card">
+        <div
+          onClick={() => setSectionAchetesOuverte((o) => !o)}
+          className="flex cursor-pointer items-center gap-2 px-3.5 py-3"
+        >
+          <Chevron ouvert={sectionAchetesOuverte} />
+          <span className="flex-1 font-heading text-[15px] font-bold text-foreground">
+            Prières déjà achetées
+          </span>
+          <Badge variant="secondary">{achats.length}</Badge>
+          {modeCampagne && (
+            <span className="whitespace-nowrap text-[10.5px] font-bold text-gold">
+              🔒 {nbAcquis} · ＋ {achats.length - nbAcquis}
+            </span>
+          )}
+        </div>
+
+        {sectionAchetesOuverte && (
+          <div>
+            {/* W3 : astuce à la première visite des achetés */}
+            {achats.length > 0 && (
+              <Astuce
+                storageKey={`${PREFIXE_LS}-astuce-achetes-vue`}
+                texte={`Touchez une de vos prières pour l'améliorer${
+                  modeCampagne
+                    ? " — fond doré 🔒 = scellée à un GN (améliorable seulement), fond vert ＋ = encore annulable"
+                    : ""
+                }.`}
+              />
+            )}
+
+            {loadingAchats ? (
+              <div className="flex items-center border-t px-3 py-2.5 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Chargement…
+              </div>
+            ) : achats.length === 0 ? (
+              <p className="border-t px-3.5 py-3 text-sm text-muted-foreground">
+                Aucune prière achetée pour le moment.
               </p>
             ) : (
-              (prieres ?? []).map((p) => (
-                <Card
-                  key={p.id}
-                  className={`cursor-pointer transition-all hover:border-primary/50 ${
-                    priereId === p.id
-                      ? "border-2 border-primary ring-2 ring-primary/20"
-                      : ""
-                  }`}
-                  onClick={() => setPriereId(p.id)}
-                >
-                  <CardContent className="space-y-2 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <strong className="font-heading text-primary">
-                        {p.nom}
-                      </strong>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">Niv. {p.niveau}</Badge>
-                        {p.type_priere && (
-                          <Badge variant="secondary">{p.type_priere}</Badge>
-                        )}
-                        <Badge>{p.cout_xp_base} XP base</Badge>
-                        {p.portee && (
-                          <Badge variant="outline">portée ≤ {p.portee}</Badge>
-                        )}
-                        {p.duree && (
-                          <Badge variant="outline">durée ≤ {p.duree}</Badge>
-                        )}
-                      </div>
+              Object.entries(achatsParDomaine).map(([domaine, liste]) => {
+                const domaineOuvert = domainesAchetesOuverts.has(domaine);
+                return (
+                  <div key={domaine} className="border-t">
+                    <div
+                      onClick={() =>
+                        basculerSet(
+                          domainesAchetesOuverts,
+                          setDomainesAchetesOuverts,
+                          domaine,
+                        )
+                      }
+                      className="flex cursor-pointer items-center gap-2 py-2.5 pl-6 pr-3.5"
+                    >
+                      <Chevron ouvert={domaineOuvert} />
+                      <span className="flex-1 font-heading text-[13.5px] font-semibold text-foreground">
+                        {domaine}
+                      </span>
+                      <Badge variant="outline">{liste.length}</Badge>
                     </div>
-                    <DescriptionDepliable
-                      courte={p.description_courte}
-                      complete={p.description}
-                      tronc={p.description_tronc}
-                      paliers={p.paliers as PalierSort[] | null}
-                      bonusTexte={(p.bonus_niveau as BonusNiveau | null)?.texte}
-                      niveauActif={priereId === p.id ? valeurs.niveau : null}
-                    />
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      )}
 
-      {/* 3. Personnalisation */}
-      {priereSelectionnee && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-heading">
-              3. Personnaliser la prière
-            </CardTitle>
-            <CardDescription>
-              Coût XP = (zone + portée + durée + niveau) × coût de base.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ConstructeurMagie
-              type="priere"
-              zoneEffet={priereSelectionnee.zone_effet ?? ""}
-              porteeMax={priereSelectionnee.portee ?? ""}
-              dureeMax={priereSelectionnee.duree ?? ""}
-              coutXpBase={coutXpBase}
-              niveauMax={Math.max(1, niveauMaxDomaine)}
-              valeurs={valeurs}
-              onChange={setValeurs}
-              plancher={null}
-              bonusNiveau={priereSelectionnee.bonus_niveau as BonusNiveau | null}
-              paliers={priereSelectionnee.paliers as PalierSort[] | null}
-            />
-
-            {(() => {
-              const xpInsuffisants = peutAcheter && coutXp > xpDisponible;
-              return (
-                <Button
-                  onClick={handleAcheter}
-                  disabled={!peutAcheter || mutation.isPending || xpInsuffisants}
-                  title={
-                    xpInsuffisants
-                      ? `XP insuffisants (manque ${coutXp - xpDisponible} XP)`
-                      : undefined
-                  }
-                  className={`w-full ${xpInsuffisants ? "opacity-50" : ""}`}
-                >
-                  {mutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
-                  )}
-                  Acheter cette prière ({coutXp} XP)
-                </Button>
-              );
-            })()}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Prières déjà achetées (lecture seule) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            Prières déjà acquises ({prieresAchetees?.length ?? 0})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {loadingAchats ? (
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Chargement…
-            </div>
-          ) : !prieresAchetees || prieresAchetees.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Aucune prière acquise pour le moment.
-            </p>
-          ) : (
-            prieresAchetees.map((pp) => {
-              // PR-C2 : prière scellée par la photo de compo (désachat refusé).
-              const acquis = estPriereAcquise(modeCampagne, photo, pp.priere_id, pp.id);
-              return (
-              <div
-                key={pp.id}
-                className={`space-y-1 rounded-lg border p-3 text-sm ${
-                  acquis
-                    ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
-                    : modeCampagne
-                      ? "border-emerald-600/40 bg-emerald-600/10"
-                      : "border-border"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <strong className="font-heading text-primary">
-                      {pp.nom_personnalise ?? pp.prieres?.nom}
-                    </strong>
-                    {pp.prieres?.domaine && (
-                      <Badge variant="outline">{pp.prieres.domaine}</Badge>
-                    )}
-                    <Badge variant="secondary">Niv. {pp.niveau_priere}</Badge>
-                    {acquis && <BadgeAcquis />}
-                    {!acquis && modeCampagne && <LabelAjoutAnnulable />}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1 border-primary/50 text-primary"
-                      onClick={() => {
+                    {domaineOuvert &&
+                      liste.map((pp) => {
+                        const acquis = estPriereAcquise(
+                          modeCampagne,
+                          photo,
+                          pp.priere_id,
+                          pp.id,
+                        );
+                        const ajout = modeCampagne && !acquis;
+                        const auMax = estInstanceAuMax(pp);
+                        const ouverte = instanceOuverteId === pp.id;
+                        const nomActuel =
+                          pp.nom_personnalise ?? pp.prieres?.nom ?? "Prière";
                         const valeursActuelles = {
                           niveau: pp.niveau_priere,
                           zone: pp.zone_choisie ?? "",
                           portee: pp.portee_choisie ?? "",
                           duree: pp.duree_choisie ?? "",
                         };
-                        setEnModification({
-                          instance: {
-                            id: pp.id,
-                            baseId: pp.priere_id,
-                            nomBase: pp.prieres?.nom ?? "Prière",
-                            nomPersonnalise: pp.nom_personnalise,
-                            niveau: pp.niveau_priere,
-                            zone: pp.zone_choisie ?? "",
-                            portee: pp.portee_choisie ?? "",
-                            duree: pp.duree_choisie ?? "",
-                            xpDepense: pp.xp_depense,
-                          },
-                          base: {
-                            zoneEffet: pp.prieres?.zone_effet ?? "",
-                            porteeMax: pp.prieres?.portee ?? "",
-                            dureeMax: pp.prieres?.duree ?? "",
-                            coutXpBase: Number(pp.prieres?.cout_xp_base ?? 0),
-                            groupe: pp.prieres?.domaine ?? "",
-                            bonusNiveau: pp.prieres?.bonus_niveau ?? null,
-                            courte: pp.prieres?.description_courte ?? null,
-                            tronc: pp.prieres?.description_tronc ?? null,
-                            paliers: (pp.prieres?.paliers ?? null) as PalierSort[] | null,
-                          },
-                          niveauMax: Math.max(
-                            1,
-                            domainesDisponibles?.find(
-                              (d) => d.domaine === pp.prieres?.domaine,
-                            )?.niveau_max_prieres ?? 1,
-                          ),
-                          plancher: plancherInstancePriere(
-                            modeCampagne,
-                            photo,
-                            pp.priere_id,
-                            pp.id,
-                            valeursActuelles,
-                          ),
-                        });
-                      }}
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                      Modifier
-                    </Button>
-                    {!acquis && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={() =>
-                          setASupprimer({
-                            personnage_priere_id: pp.id,
-                            nom:
-                              pp.nom_personnalise ??
-                              pp.prieres?.nom ??
-                              "Prière",
-                            xp_depense: pp.xp_depense,
-                          })
-                        }
-                        disabled={desacheterMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="outline">
-                    {pp.zone_choisie} · {COUT_ZONE[pp.zone_choisie ?? ""] ?? 0}
-                    pt
-                  </Badge>
-                  <Badge variant="outline">
-                    {pp.portee_choisie} ·{" "}
-                    {PORTEES.find((p) => p.label === pp.portee_choisie)?.cout ??
-                      0}
-                    pt
-                  </Badge>
-                  <Badge variant="outline">
-                    {pp.duree_choisie} ·{" "}
-                    {DUREES.find((d) => d.label === pp.duree_choisie)?.cout ??
-                      0}
-                    pt
-                  </Badge>
-                </div>
-                {pp.duree_incantation_calculee != null && (
-                  <p className="text-xs text-muted-foreground">
-                    Incantation : {pp.duree_incantation_calculee} s
-                  </p>
-                )}
-                <p className="text-xs">
-                  <strong>{pp.xp_depense} XP</strong> •{" "}
-                  {calculerCoutPS(pp.xp_depense)} PS
-                </p>
-              </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+                        // Plancher photo (acquis) — valeurs de la PHOTO, pas
+                        // l'état courant (plancherInstancePriere, tel quel).
+                        const plancher = plancherInstancePriere(
+                          modeCampagne,
+                          photo,
+                          pp.priere_id,
+                          pp.id,
+                          valeursActuelles,
+                        );
 
-      {enModification && (
-        <ModifierMagieSheet
-          type="priere"
-          open
-          onClose={() => setEnModification(null)}
-          personnageId={personnageId}
-          instance={enModification.instance}
-          base={enModification.base}
-          niveauMax={enModification.niveauMax}
-          plancher={enModification.plancher}
-          xpDisponible={xpDisponible}
-          modeCampagne={modeCampagne}
-        />
-      )}
+                        return (
+                          <div
+                            key={pp.id}
+                            className={`ml-2.5 border-t ${
+                              acquis
+                                ? "border-l-4 border-l-gold bg-gold/10"
+                                : ajout
+                                  ? "border-l-[3px] border-l-emerald-600/60 bg-emerald-600/[0.07]"
+                                  : ""
+                            }`}
+                          >
+                            <div
+                              onClick={() => tapInstance(pp)}
+                              className={`flex cursor-pointer items-center gap-1.5 px-3 py-2.5 ${
+                                ouverte ? "bg-primary/5" : ""
+                              }`}
+                            >
+                              <Chevron ouvert={ouverte} />
+                              <strong className="min-w-0 flex-1 truncate font-heading text-[13.5px] text-primary">
+                                {nomActuel}
+                              </strong>
+                              <Badge variant="secondary">
+                                Niv. {pp.niveau_priere}
+                              </Badge>
+                              {pastilleAide(pp.prieres?.type_priere)}
+                              {/* I6 : indicateur de balayage pur — tap = aide L2 */}
+                              {auMax ? (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    montrerAide({
+                                      titre: "MAX",
+                                      texte:
+                                        "Cette prière est au maximum : niveau, zone, portée et durée sont tous au plafond. Seul le nom peut encore changer.",
+                                    });
+                                  }}
+                                  className="cursor-pointer rounded-full border border-border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-muted-foreground"
+                                >
+                                  MAX
+                                </span>
+                              ) : (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    montrerAide({
+                                      titre: "↑ Améliorable",
+                                      texte:
+                                        "Cette prière peut encore monter : au moins un réglage (niveau, zone, portée ou durée) n'est pas au plafond. Touchez-la pour l'améliorer.",
+                                    });
+                                  }}
+                                  className="cursor-pointer px-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
+                                >
+                                  ↑
+                                </span>
+                              )}
+                              {acquis && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    montrerAide({
+                                      titre: "🔒 Acquis (scellé)",
+                                      texte:
+                                        "Confirmée à un GN : impossible à supprimer ou à affaiblir. Vous pouvez seulement l'améliorer (jamais sous son plancher).",
+                                    });
+                                  }}
+                                  className="cursor-pointer text-xs"
+                                >
+                                  🔒
+                                </span>
+                              )}
+                              {ajout && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    montrerAide({
+                                      titre: "＋ Ajout annulable",
+                                      texte:
+                                        "Achetée dans la fenêtre courante (pas encore jouée en GN) : modifiable et supprimable librement, XP remboursés.",
+                                    });
+                                  }}
+                                  className="cursor-pointer text-xs font-bold text-emerald-700 dark:text-emerald-400"
+                                >
+                                  ＋
+                                </span>
+                              )}
+                            </div>
+
+                            {/* M2 : bloc de MODIFICATION directe */}
+                            {ouverte && valeursModif && (
+                              <div className="space-y-2.5 border-l-[3px] border-l-primary py-2 pl-5 pr-3 pb-4">
+                                {/* Config actuelle + désachat */}
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <Badge variant="outline">
+                                    {pp.zone_choisie} ·{" "}
+                                    {ptsZone(pp.zone_choisie ?? "")} XP
+                                  </Badge>
+                                  <Badge variant="outline">
+                                    {pp.portee_choisie} ·{" "}
+                                    {ptsPortee(pp.portee_choisie ?? "")} XP
+                                  </Badge>
+                                  <Badge variant="outline">
+                                    {pp.duree_choisie} ·{" "}
+                                    {ptsDuree(pp.duree_choisie ?? "")} XP
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    · {pp.xp_depense} XP ·{" "}
+                                    {calculerCoutPS(pp.xp_depense)} PS
+                                  </span>
+                                  <span className="flex-1" />
+                                  {!acquis && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setASupprimer({
+                                          personnage_priere_id: pp.id,
+                                          nom: nomActuel,
+                                          xp_depense: pp.xp_depense,
+                                        });
+                                      }}
+                                      disabled={desacheterMutation.isPending}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  )}
+                                </div>
+
+                                {/* Incantation : conservée des instances É7 */}
+                                {pp.duree_incantation_calculee != null && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Incantation : {pp.duree_incantation_calculee}{" "}
+                                    s
+                                  </p>
+                                )}
+
+                                {auMax && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Déjà au maximum — seul le nom peut changer.
+                                  </p>
+                                )}
+
+                                {/* Bandeau d'état (plancher OR / ajout vert) */}
+                                {plancher !== null ? (
+                                  <div className="flex items-start gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-xs text-gold">
+                                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>
+                                      Acquis : confirmée à un GN. Améliorable
+                                      seulement — jamais sous niv{" "}
+                                      {plancher.niveau} · {plancher.zone} ·{" "}
+                                      {plancher.portee} · {plancher.duree}.
+                                    </span>
+                                  </div>
+                                ) : modeCampagne ? (
+                                  <div className="rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                                    Ajout de la fenêtre courante : modification
+                                    libre dans les deux sens (baisser =
+                                    remboursement).
+                                  </div>
+                                ) : null}
+
+                                {pp.prieres?.description_courte && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {pp.prieres.description_courte}
+                                  </p>
+                                )}
+                                <ManuelDepliable
+                                  tronc={pp.prieres?.description_tronc}
+                                  description={pp.prieres?.description_courte}
+                                />
+
+                                {/* Effet calculé AVANT → APRÈS (live) */}
+                                <AvantApres
+                                  effet={
+                                    (pp.prieres?.effet_instance ??
+                                      null) as EffetInstance | null
+                                  }
+                                  paliers={
+                                    pp.prieres?.paliers as PalierSort[] | null
+                                  }
+                                  niveauAvant={pp.niveau_priere}
+                                  niveauApres={valeursModif.niveau}
+                                />
+
+                                <ConstructeurMagie
+                                  type="priere"
+                                  zoneEffet={pp.prieres?.zone_effet ?? ""}
+                                  porteeMax={pp.prieres?.portee ?? ""}
+                                  dureeMax={pp.prieres?.duree ?? ""}
+                                  coutXpBase={Number(
+                                    pp.prieres?.cout_xp_base ?? 0,
+                                  )}
+                                  niveauMax={nivMaxDomaine(pp.prieres?.domaine)}
+                                  valeurs={valeursModif}
+                                  onChange={setValeursModif}
+                                  plancher={plancher}
+                                  bonusNiveau={pp.prieres?.bonus_niveau ?? null}
+                                  paliers={
+                                    pp.prieres?.paliers as PalierSort[] | null
+                                  }
+                                  stickyTop={54}
+                                  afficherProchainPalier
+                                />
+
+                                {/* Delta signé + bouton Modifier (M2) */}
+                                {(() => {
+                                  const complet =
+                                    !!valeursModif.zone &&
+                                    !!valeursModif.portee &&
+                                    !!valeursModif.duree;
+                                  const coutApres = complet
+                                    ? calculerCoutXP(
+                                        valeursModif.zone,
+                                        valeursModif.portee,
+                                        valeursModif.duree,
+                                        valeursModif.niveau,
+                                        Number(pp.prieres?.cout_xp_base ?? 0),
+                                      )
+                                    : pp.xp_depense;
+                                  const diff = coutApres - pp.xp_depense;
+                                  const nomTrim = valeursModif.nom.trim();
+                                  const inchange =
+                                    valeursModif.zone ===
+                                      (pp.zone_choisie ?? "") &&
+                                    valeursModif.portee ===
+                                      (pp.portee_choisie ?? "") &&
+                                    valeursModif.duree ===
+                                      (pp.duree_choisie ?? "") &&
+                                    valeursModif.niveau === pp.niveau_priere &&
+                                    nomTrim === nomActuel;
+                                  const xpInsuffisants = diff > xpDisponible;
+                                  return (
+                                    <>
+                                      {diff > 0 ? (
+                                        <div className="space-y-0.5 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-gold">
+                                          <p className="font-semibold">
+                                            Coût de la modification : +{diff} XP
+                                          </p>
+                                          <p className="text-xs opacity-90">
+                                            {pp.xp_depense} XP → {coutApres} XP ·
+                                            il vous reste {xpDisponible} XP
+                                          </p>
+                                        </div>
+                                      ) : diff < 0 ? (
+                                        <div className="rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                                          Remboursement : {-diff} XP
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-muted-foreground">
+                                          Aucun changement de coût
+                                        </p>
+                                      )}
+                                      {xpInsuffisants && (
+                                        <p className="text-sm font-medium text-destructive">
+                                          XP insuffisants : il manque{" "}
+                                          {diff - xpDisponible} XP
+                                        </p>
+                                      )}
+                                      <Button
+                                        className="w-full"
+                                        disabled={
+                                          !complet ||
+                                          inchange ||
+                                          xpInsuffisants ||
+                                          modifierMutation.isPending
+                                        }
+                                        onClick={() =>
+                                          modifierMutation.mutate({
+                                            personnagePriereId: pp.id,
+                                            valeurs: valeursModif,
+                                            nomActuel,
+                                          })
+                                        }
+                                      >
+                                        {modifierMutation.isPending && (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        )}
+                                        {diff > 0
+                                          ? `Modifier (+${diff} XP)`
+                                          : diff < 0
+                                            ? `Modifier (récupérer ${-diff} XP)`
+                                            : "Modifier"}
+                                      </Button>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
 
       <AlertDialog
         open={aSupprimer !== null}
@@ -920,6 +1537,9 @@ const Etape7_Prieres_V2 = ({
           Suivant →
         </Button>
       </div>
+
+      {/* L2 : bulle d'aide au tap */}
+      <TapBulle aide={aide} onClose={fermerAide} />
     </div>
   );
 };
