@@ -61,6 +61,15 @@ export const SortsSection = ({
           bonusDuree && bonusDuree.gratuit
             ? ` (+${bonusDuree.n} gratuite${bonusDuree.n > 1 ? "s" : ""})`
             : "";
+        // Bonus de rayon gratuit (bonus_niveau variable "rayon") → suffixe sur la ligne Zone (s168).
+        const bonusRayon =
+          sort.bonus_niveau?.formule?.variable === "rayon"
+            ? calculerBonusNiveau(sort.bonus_niveau, sort.niveau_sort)
+            : null;
+        const suffixeZone =
+          bonusRayon && bonusRayon.gratuit
+            ? ` (+${bonusRayon.n} ${bonusRayon.unite}${bonusRayon.n > 1 ? "s" : ""} gratuit${bonusRayon.n > 1 ? "s" : ""})`
+            : "";
 
         return (
           <Card key={sort.id}>
@@ -101,7 +110,10 @@ export const SortsSection = ({
                       {sort.zone_choisie && (
                         <>
                           <span className="text-muted-foreground">Zone</span>
-                          <span className="text-foreground">{sort.zone_choisie}</span>
+                          <span className="text-foreground">
+                            {sort.zone_choisie}
+                            {suffixeZone && <span className="text-muted-foreground">{suffixeZone}</span>}
+                          </span>
                         </>
                       )}
                       {sort.portee_choisie && (
@@ -162,7 +174,7 @@ export const SortsSection = ({
                   {(sort.zone_choisie || sort.portee_choisie || sort.duree_choisie) && (
                     <p className="text-xs text-muted-foreground">
                       {[
-                        sort.zone_choisie && `Zone : ${sort.zone_choisie}`,
+                        sort.zone_choisie && `Zone : ${sort.zone_choisie}${suffixeZone}`,
                         sort.portee_choisie && `Portée : ${sort.portee_choisie}`,
                         sort.duree_choisie && `Durée : ${sort.duree_choisie}${suffixeDuree}`,
                       ]

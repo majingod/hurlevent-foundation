@@ -61,6 +61,15 @@ export const PrieresSection = ({
           bonusDuree && bonusDuree.gratuit
             ? ` (+${bonusDuree.n} gratuite${bonusDuree.n > 1 ? "s" : ""})`
             : "";
+        // Bonus de rayon gratuit (bonus_niveau variable "rayon") → suffixe sur la ligne Zone (s168).
+        const bonusRayon =
+          priere.bonus_niveau?.formule?.variable === "rayon"
+            ? calculerBonusNiveau(priere.bonus_niveau, priere.niveau_priere)
+            : null;
+        const suffixeZone =
+          bonusRayon && bonusRayon.gratuit
+            ? ` (+${bonusRayon.n} ${bonusRayon.unite}${bonusRayon.n > 1 ? "s" : ""} gratuit${bonusRayon.n > 1 ? "s" : ""})`
+            : "";
         const showIncantationBox = priere.duree_incantation_calculee != null && priere.duree_incantation_calculee > 0;
 
         return (
@@ -105,7 +114,10 @@ export const PrieresSection = ({
                       {priere.zone_choisie && (
                         <>
                           <span className="text-muted-foreground">Zone</span>
-                          <span className="text-foreground">{priere.zone_choisie}</span>
+                          <span className="text-foreground">
+                            {priere.zone_choisie}
+                            {suffixeZone && <span className="text-muted-foreground">{suffixeZone}</span>}
+                          </span>
                         </>
                       )}
                       {priere.portee_choisie && (
@@ -170,7 +182,7 @@ export const PrieresSection = ({
                     <p className="text-xs text-muted-foreground">
                       {[
                         !showIncantationBox && priere.duree_incantation_calculee != null && `Incantation : ${priere.duree_incantation_calculee} s`,
-                        priere.zone_choisie && `Zone : ${priere.zone_choisie}`,
+                        priere.zone_choisie && `Zone : ${priere.zone_choisie}${suffixeZone}`,
                         priere.portee_choisie && `Portée : ${priere.portee_choisie}`,
                         priere.duree_choisie && `Durée : ${priere.duree_choisie}${suffixeDuree}`,
                       ]
