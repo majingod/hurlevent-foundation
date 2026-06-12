@@ -61,14 +61,16 @@ export const PrieresSection = ({
           bonusDuree && bonusDuree.gratuit
             ? ` (+${bonusDuree.n} gratuite${bonusDuree.n > 1 ? "s" : ""})`
             : "";
-        // Bonus de rayon gratuit (bonus_niveau variable "rayon") → suffixe sur la ligne Zone (s168).
-        const bonusRayon =
-          priere.bonus_niveau?.formule?.variable === "rayon"
+        // Bonus de rayon/cibles gratuit (variable "rayon" | "cibles") → suffixe sur la ligne Zone (s168, s170).
+        const varZone = priere.bonus_niveau?.formule?.variable;
+        const bonusZone =
+          varZone === "rayon" || varZone === "cibles"
             ? calculerBonusNiveau(priere.bonus_niveau, priere.niveau_priere)
             : null;
+        const accordZone = bonusZone?.unite === "cible" ? "e" : "";
         const suffixeZone =
-          bonusRayon && bonusRayon.gratuit
-            ? ` (+${bonusRayon.n} ${bonusRayon.unite}${bonusRayon.n > 1 ? "s" : ""} gratuit${bonusRayon.n > 1 ? "s" : ""})`
+          bonusZone && bonusZone.gratuit
+            ? ` (+${bonusZone.n} ${bonusZone.unite}${bonusZone.n > 1 ? "s" : ""} gratuit${accordZone}${bonusZone.n > 1 ? "s" : ""})`
             : "";
         const showIncantationBox = priere.duree_incantation_calculee != null && priere.duree_incantation_calculee > 0;
 
