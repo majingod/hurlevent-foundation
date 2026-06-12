@@ -13,9 +13,15 @@ import {
   getNoteZone,
   isZoneUnique,
   type BonusNiveau,
+  type EffetInstance,
   type PalierSort,
 } from "@/utils/calculsMagie";
 import { PaliersDepliable } from "@/components/createur/DescriptionDepliable";
+import {
+  ApercuEffet,
+  AvantApres,
+} from "@/components/createur/magie/ApercuEffet";
+import ProchainPalier from "@/components/createur/magie/ProchainPalier";
 
 export interface ValeursConstructeur {
   zone: string;
@@ -47,6 +53,22 @@ interface ConstructeurMagieProps {
   plancher?: PlancherMagie | null; // null/undefined = achat (aucun verrou)
   bonusNiveau?: BonusNiveau | null; // bonus par niveau dérivé (PR #361)
   paliers?: PalierSort[] | null; // paliers du sort/prière (s161 PR-C)
+  // --- Props optionnelles REFONTE-UI-E6 (spec s171) — rétro-compatibles :
+  // sans elles, comportement identique (hors vocabulaire XP/coefficient et
+  // position du bandeau de calcul, harmonisation voulue).
+  /** Décalage sticky (px) du bandeau de calcul ; É6 passe ≈ 54 pour passer
+   *  sous la JaugeXP. Défaut 6. z-index SOUS la jauge (z-20). */
+  stickyTop?: number;
+  /** I8 : boutons « ○ Config minimale / ★ Config maximale » en tête.
+   *  Jamais rendus si `plancher` non-null. */
+  preReglages?: boolean;
+  /** Effet calculé live : rend ApercuEffet sous le slider (ou AvantApres si
+   *  `niveauOrigine` est fourni et diffère du niveau courant). */
+  effetInstance?: EffetInstance | null;
+  /** Niveau d'origine d'une instance en modification (variante AvantApres). */
+  niveauOrigine?: number;
+  /** I3 : encadré « Prochain palier » sous l'effet. */
+  afficherProchainPalier?: boolean;
 }
 
 const ptsZone = (zone: string) => COUT_ZONE[zone] ?? 0;
@@ -93,7 +115,7 @@ const RangeePills = ({
             } ${sousPlancher ? "opacity-40" : ""}`}
           >
             {sousPlancher && <Lock className="h-3 w-3" />}
-            {opt.label} · {opt.cout}pt
+            {opt.label} · {opt.cout} XP
           </button>
         );
       })}
@@ -103,9 +125,9 @@ const RangeePills = ({
 
 /**
  * Constructeur de sort/prière partagé (achat étapes 6-7, éditeur Modifier
- * PR-B) : pills zone/portée/durée, slider niveau, nom personnalisé et barre
- * de formule live. Composant contrôlé, purement présentation + calcul local
- * (aucun fetch).
+ * PR-B) : bandeau de calcul sticky en tête, pills zone/portée/durée, slider
+ * niveau et nom personnalisé. Composant contrôlé, purement présentation +
+ * calcul local (aucun fetch).
  */
 const ConstructeurMagie = ({
   type,
@@ -119,6 +141,11 @@ const ConstructeurMagie = ({
   plancher,
   bonusNiveau,
   paliers,
+  stickyTop,
+  preReglages,
+  effetInstance,
+  niveauOrigine,
+  afficherProchainPalier,
 }: ConstructeurMagieProps) => {
   const zoneUnique = isZoneUnique(zoneEffet);
   const noteZone = getNoteZone(zoneEffet);
@@ -129,12 +156,6 @@ const ConstructeurMagie = ({
   const niveauMin = plancher?.niveau ?? 1;
 
   const complet = !!valeurs.zone && !!valeurs.portee && !!valeurs.duree;
-  const ptsTotal = complet
-    ? ptsZone(valeurs.zone) +
-      ptsPortee(valeurs.portee) +
-      ptsDuree(valeurs.duree) +
-      valeurs.niveau
-    : 0;
   const coutXp = complet
     ? calculerCoutXP(
         valeurs.zone,
@@ -226,14 +247,101 @@ const ConstructeurMagie = ({
     );
   };
 
+  // I8 : préréglages 1-tap (achat seulement — un plancher les interdit).
+  const configMinimale = () =>
+    onChange({
+      ...valeurs,
+      zone: zonesDisponibles[0] ?? "",
+      portee: porteesDispo[0]?.label ?? "",
+      duree: dureesDispo[0]?.label ?? "",
+      niveau: 1,
+    });
+  const configMaximale = () =>
+    onChange({
+      ...valeurs,
+      zone: zonesDisponibles[zonesDisponibles.length - 1] ?? "",
+      portee: porteesDispo[porteesDispo.length - 1]?.label ?? "",
+      duree: dureesDispo[dureesDispo.length - 1]?.label ?? "",
+      niveau: niveauMax,
+    });
+
   return (
     <div className="space-y-4">
+      {/* I8 : préréglages */}
+      {preReglages && !plancher && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={configMinimale}
+            className="flex-1 rounded-md border border-border px-2 py-1.5 text-xs text-foreground transition-colors hover:border-primary/50"
+          >
+            ○ Config minimale
+          </button>
+          <button
+            type="button"
+            onClick={configMaximale}
+            className="flex-1 rounded-md border border-primary/50 px-2 py-1.5 text-xs text-primary transition-colors hover:bg-primary/10"
+          >
+            ★ Config maximale
+          </button>
+        </div>
+      )}
+
+      {/* Bandeau de calcul EN TÊTE (spec s171) : sticky CSS pur, borné par
+          son conteneur — il disparaît avec le bloc inline, zéro JS. z-index
+          SOUS la JaugeXP (z-20). */}
+      <div
+        className="sticky z-[15] space-y-1 rounded-lg border bg-card p-3 text-sm shadow-md"
+        style={{ top: stickyTop ?? 6 }}
+      >
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Calcul du coût d'achat
+        </p>
+        <p>
+          ( zone : {valeurs.zone ? ptsZone(valeurs.zone) : "?"} + portée :{" "}
+          {valeurs.portee ? ptsPortee(valeurs.portee) : "?"} + durée :{" "}
+          {valeurs.duree ? ptsDuree(valeurs.duree) : "?"} + niv :{" "}
+          {valeurs.niveau} ) × coefficient : {coutXpBase}{" "}
+          {complet ? (
+            <strong className="text-primary">= {coutXp} XP</strong>
+          ) : (
+            "= …"
+          )}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Coefficient ×{coutXpBase} : propre à{" "}
+          {type === "sort" ? "ce sort" : "cette prière"}, il multiplie la somme
+          de vos réglages.
+          {complet && (
+            <>
+              {" "}
+              · <strong className="text-foreground">{coutPS} PS</strong> pour
+              lancer {type === "sort" ? "ce sort" : "cette prière"} (points de
+              spiritualité)
+            </>
+          )}
+        </p>
+        {type === "priere" && complet && (
+          <p className="text-xs text-muted-foreground">
+            Incantation :{" "}
+            {calculerDureeIncantation(
+              valeurs.portee,
+              valeurs.zone,
+              valeurs.duree,
+              valeurs.niveau,
+            )}{" "}
+            s
+          </p>
+        )}
+        {renderBonusNiveau()}
+      </div>
+
       {/* Zone */}
       {zoneUnique ? (
         <div className="space-y-2">
           <Label>Zone d'effet</Label>
           <p className="text-sm text-muted-foreground">
-            {valeurs.zone} ({ptsZone(valeurs.zone)} pts) — imposée par{" "}
+            {valeurs.zone} ({ptsZone(valeurs.zone)} XP) — imposée par{" "}
             {type === "sort" ? "le sort" : "la prière"}
           </p>
           {noteZone && (
@@ -294,6 +402,38 @@ const ConstructeurMagie = ({
         />
       </div>
 
+      {/* Effet calculé live + prochain palier (spec s171) */}
+      {(effetInstance || afficherProchainPalier) && (
+        <div className="space-y-2">
+          {effetInstance &&
+            (niveauOrigine !== undefined &&
+            niveauOrigine !== valeurs.niveau ? (
+              <AvantApres
+                effet={effetInstance}
+                paliers={paliers}
+                niveauAvant={niveauOrigine}
+                niveauApres={valeurs.niveau}
+              />
+            ) : (
+              <ApercuEffet
+                effet={effetInstance}
+                paliers={paliers}
+                niveau={valeurs.niveau}
+              />
+            ))}
+          {afficherProchainPalier && (
+            <ProchainPalier
+              type={type}
+              paliers={paliers}
+              niveauMax={niveauMax}
+              valeurs={valeurs}
+              coutXpBase={coutXpBase}
+              onNiveau={(niveau) => onChange({ ...valeurs, niveau })}
+            />
+          )}
+        </div>
+      )}
+
       <PaliersDepliable paliers={paliers} niveau={valeurs.niveau} />
 
       {/* Nom personnalisé (toujours libre, jamais verrouillé) */}
@@ -306,41 +446,6 @@ const ConstructeurMagie = ({
         />
       </div>
 
-      {/* Barre de formule live */}
-      <div className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Calcul du coût
-        </p>
-        <p>
-          ( zone {valeurs.zone ? ptsZone(valeurs.zone) : "?"} + portée{" "}
-          {valeurs.portee ? ptsPortee(valeurs.portee) : "?"} + durée{" "}
-          {valeurs.duree ? ptsDuree(valeurs.duree) : "?"} + niv{" "}
-          {valeurs.niveau} ) × {coutXpBase}{" "}
-          {complet ? (
-            <strong className="text-primary">= {coutXp} XP</strong>
-          ) : (
-            "= …"
-          )}
-        </p>
-        {complet && (
-          <p className="text-xs text-muted-foreground">
-            {ptsTotal} pts au total · {coutPS} PS à l'incantation
-          </p>
-        )}
-        {type === "priere" && complet && (
-          <p className="text-xs text-muted-foreground">
-            Incantation :{" "}
-            {calculerDureeIncantation(
-              valeurs.portee,
-              valeurs.zone,
-              valeurs.duree,
-              valeurs.niveau,
-            )}{" "}
-            s
-          </p>
-        )}
-        {renderBonusNiveau()}
-      </div>
     </div>
   );
 };
