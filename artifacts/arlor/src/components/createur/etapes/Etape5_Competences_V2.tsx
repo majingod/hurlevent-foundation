@@ -22,6 +22,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronRight, Loader2, Lock, Minus, Plus } from "lucide-react";
+import JaugeXP from "@/components/createur/aide/JaugeXP";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
+import Astuce from "@/components/createur/aide/Astuce";
 
 // =========================================================================
 // TYPES
@@ -455,12 +458,39 @@ function BadgePrereqCliquable({
  * Légende repliable des pastilles de statut, sous la barre de filtres.
  * Repliée par défaut (état + toggle gérés par le parent).
  */
+const LegendeSousTitre = ({ children }: { children: ReactNode }) => (
+  <p className="mt-1 text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
+    {children}
+  </p>
+);
+
+const LegendeLigne = ({
+  symbole,
+  texte,
+}: {
+  symbole: ReactNode;
+  texte: ReactNode;
+}) => (
+  <div className="flex items-start gap-2">
+    <span className="flex shrink-0">{symbole}</span>
+    <span className="text-muted-foreground">{texte}</span>
+  </div>
+);
+
+/**
+ * L1 — Légende harmonisée « ℹ Comprendre les symboles » (HARMONISATION Lot C).
+ * Ouverte par défaut (état géré par le parent), groupée. Le groupe scellé/vert
+ * n'apparaît qu'en mode campagne (seule dynamique pertinente en É5 : tout joueur
+ * voit toutes les catégories, donc statuts/accès sont toujours atteignables).
+ */
 function LegendePastilles({
   ouvert,
   onToggle,
+  modeCampagne,
 }: {
   ouvert: boolean;
   onToggle: () => void;
+  modeCampagne: boolean;
 }) {
   return (
     <div className="rounded-md border border-border/60 bg-background/40 text-xs">
@@ -474,26 +504,84 @@ function LegendePastilles({
         ) : (
           <ChevronRight className="h-3 w-3" />
         )}
-        Légende des statuts
+        ℹ Comprendre les symboles
       </button>
       {ouvert && (
-        <div className="flex flex-col gap-1.5 px-3 pb-3">
-          <PastilleStatutCompetence statut="disponible" />
-          <span className="text-muted-foreground">
-            Achetable maintenant (prochain niveau disponible).
-          </span>
-          <PastilleStatutCompetence statut="maitrisee" />
-          <span className="text-muted-foreground">
-            Tous les niveaux acquis.
-          </span>
-          <PastilleStatutCompetence statut="prereq" />
-          <span className="text-muted-foreground">
-            Une autre compétence est requise — touchez le badge ⚠ pour y aller.
-          </span>
-          <PastilleStatutCompetence statut="bloque" />
-          <span className="text-muted-foreground">
-            Réservée à une autre classe (ou verrou mutuel).
-          </span>
+        <div className="flex flex-col gap-2 px-3 pb-3">
+          <LegendeSousTitre>Statuts</LegendeSousTitre>
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="disponible" />}
+            texte="Achetable maintenant : le prochain niveau est disponible."
+          />
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="maitrisee" />}
+            texte="Tous les niveaux de cette compétence sont acquis."
+          />
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="prereq" />}
+            texte="Une autre compétence est requise d'abord — touchez le badge ↗ pour y aller."
+          />
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="bloque" />}
+            texte="Réservée à une autre classe, ou verrou mutuel avec une compétence déjà prise."
+          />
+
+          <LegendeSousTitre>Accès par classe</LegendeSousTitre>
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
+            }
+            texte="Compétence générale : accessible à toutes les classes."
+          />
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="restriction">Max niveau 2</PastilleStatus>
+            }
+            texte="Compétence d'une autre classe : vous pouvez l'apprendre, mais plafonnée au niveau 2."
+          />
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="restriction">Maître Requis</PastilleStatus>
+            }
+            texte="Ce niveau s'apprend auprès d'un maître en jeu (animateur ou joueur ayant le niveau 3). L'achat est soumis à validation."
+          />
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="manquant">Réservée</PastilleStatus>
+            }
+            texte="Unique à une classe précise : inaccessible à la vôtre."
+          />
+
+          {modeCampagne && (
+            <>
+              <LegendeSousTitre>Vos compétences (campagne)</LegendeSousTitre>
+              <LegendeLigne
+                symbole={
+                  <span className="inline-block h-4 w-[46px] shrink-0 rounded border border-gold/50 border-l-4 border-l-gold bg-gold/15" />
+                }
+                texte={
+                  <span>
+                    <strong className="text-gold">Fond doré 🔒</strong> — niveau
+                    acquis et scellé à un GN : améliorable, jamais retirable.
+                  </span>
+                }
+              />
+              <LegendeLigne
+                symbole={
+                  <span className="inline-block h-4 w-[46px] shrink-0 rounded border border-emerald-600/35 border-l-[3px] border-l-emerald-600/60 bg-emerald-600/10" />
+                }
+                texte={
+                  <span>
+                    <strong className="text-emerald-700 dark:text-emerald-400">
+                      Fond vert ＋
+                    </strong>{" "}
+                    — ajout de la fenêtre courante : retirable librement (XP
+                    remboursés).
+                  </span>
+                }
+              />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -581,7 +669,7 @@ const Etape5_Competences_V2 = ({
   };
 
   // Légende des pastilles : repliée par défaut.
-  const [legendeOuverte, setLegendeOuverte] = useState(false);
+  const [legendeOuverte, setLegendeOuverte] = useState(true);
 
   // Infra scroll + highlight pour le badge prérequis cliquable.
   const compRefs = useRef<Map<string, HTMLElement | null>>(new Map());
@@ -2676,9 +2764,41 @@ const Etape5_Competences_V2 = ({
 
   return (
     <div className="space-y-4">
+      <JaugeXP xpDisponible={xpDisponible} />
+
       <h2 className="font-heading text-xl font-semibold text-foreground">
         Achat de compétences
       </h2>
+
+      <IntroEtape
+        storageKey="hv-e5-intro-replie"
+        titre="Comment fonctionne cette étape ?"
+      >
+        <IntroEtapeItem n={1}>
+          <strong>Achetez des compétences avec vos XP.</strong> Le coût se
+          calcule tout seul et se déduit de votre solde (⚡ en haut). Elles sont
+          rangées par catégorie : <strong>Générales</strong> + les 4 classes —
+          vous pouvez piocher dans <strong>toutes</strong>, pas seulement la
+          vôtre.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          <strong>Votre classe{classe?.nom ? ` (${classe.nom})` : ""}</strong> :
+          accès libre jusqu'au <strong>niveau 2</strong>. Le{" "}
+          <strong>niveau 3 (devenir maître)</strong> se débloque en trouvant un
+          maître en jeu.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          <strong>Autres classes</strong> : <strong>niveau 1</strong> libre, le{" "}
+          <strong>niveau 2</strong> demande un maître. Certaines compétences{" "}
+          <strong>uniques à une classe</strong> restent réservées.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={4}>
+          <strong>Prérequis</strong> : si une compétence en a (autre compétence,
+          ou une classe précise), ils doivent <strong>tous</strong> être remplis
+          avant l'achat. La <strong>pastille</strong> de droite indique le
+          statut.
+        </IntroEtapeItem>
+      </IntroEtape>
 
       {/* Filtres de statut (C3c) — barre globale. */}
       <div className="flex flex-wrap gap-1.5">
@@ -2700,6 +2820,7 @@ const Etape5_Competences_V2 = ({
       <LegendePastilles
         ouvert={legendeOuverte}
         onToggle={() => setLegendeOuverte((v) => !v)}
+        modeCampagne={modeCampagne}
       />
 
       {/* Accordéons par catégorie (remplacent les Radix Tabs). */}
@@ -2737,12 +2858,14 @@ const Etape5_Competences_V2 = ({
               {open && (
                 <div className="space-y-2 border-t border-border/60 px-3 pb-3 pt-3">
                   {(t.key === "mage" || t.key === "pretre") && (
-                    <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                      💡{" "}
-                      {t.key === "mage"
-                        ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
-                        : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."}
-                    </p>
+                    <Astuce
+                      storageKey={`hv-e5-astuce-${t.key}`}
+                      texte={
+                        t.key === "mage"
+                          ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
+                          : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."
+                      }
+                    />
                   )}
                   {comps.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
