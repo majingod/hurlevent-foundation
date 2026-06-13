@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Gem } from "lucide-react";
 import { COUT_ASSEMBLAGE_SUPPLEMENTAIRE } from "@/constants/artisanat";
@@ -19,8 +18,17 @@ import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estAssemblageAcquis } from "@/lib/acquisCampagne";
+import { QuickFacts } from "@/components/shared/QuickFacts";
+import { EffetBox } from "@/components/shared/EffetBox";
+import { BlocMaitrise } from "@/components/shared/BlocMaitrise";
+import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
 
-type AssemblageRow = Database["public"]["Tables"]["assemblages_runes"]["Row"];
+/** assemblages_runes.duree (s177, D5) absent des types générés — augmentation
+ * locale, même convention que effet_instance (cf. Etape6/7). Resync global =
+ * dette RESYNC-TYPES-SUPABASE. */
+type AssemblageRow = Database["public"]["Tables"]["assemblages_runes"]["Row"] & {
+  duree: string | null;
+};
 type PersonnageAssemblageRow =
   Database["public"]["Tables"]["personnage_assemblages"]["Row"];
 type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
@@ -343,37 +351,30 @@ const Etape8_Assemblages_V2 = ({
                           <LabelAjoutAnnulable />
                         )}
                       </span>
+                      <QuickFacts
+                        facts={[
+                          { label: "Cible", value: assemblage.cible },
+                          { label: "Durée", value: assemblage.duree },
+                          { label: "Coût PS", value: assemblage.cout_ps },
+                          {
+                            label: "Runes",
+                            value:
+                              assemblage.runes_requises &&
+                              assemblage.runes_requises.length > 0
+                                ? assemblage.runes_requises.join(", ")
+                                : null,
+                          },
+                        ]}
+                      />
                       {assemblage.description_longue && (
-                        <p className="text-xs text-muted-foreground">
-                          {assemblage.description_longue}
-                        </p>
+                        <EffetBox>{assemblage.description_longue}</EffetBox>
                       )}
-                      {assemblage.effet && (
-                        <p className="text-xs">
-                          <span className="font-medium text-foreground">
-                            Effet :
-                          </span>{" "}
-                          {assemblage.effet}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {assemblage.cible && (
-                          <Badge variant="outline" className="text-xs">
-                            Cible : {assemblage.cible}
-                          </Badge>
-                        )}
-                        {assemblage.cout_ps != null && (
-                          <Badge variant="secondary" className="text-xs">
-                            Coût PS : {assemblage.cout_ps}
-                          </Badge>
-                        )}
-                        {assemblage.runes_requises &&
-                          assemblage.runes_requises.length > 0 && (
-                            <Badge variant="outline" className="text-xs">
-                              Runes : {assemblage.runes_requises.join(", ")}
-                            </Badge>
-                          )}
-                      </div>
+                      <BlocMaitrise
+                        effetMaitrise={assemblage.effet_maitrise}
+                        coutPsMaitrise={assemblage.cout_ps_maitrise}
+                        debloque={niveauRunes >= 3}
+                      />
+                      <ManuelDepliable description={assemblage.texte_manuel} />
                     </div>
                   </div>
 
