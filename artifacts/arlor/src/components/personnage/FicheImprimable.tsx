@@ -514,10 +514,14 @@ export const FicheImprimable = ({
                 </div>
                 {a.cible && <div className="fp-row"><span className="fp-k">Cible :</span> {a.cible}</div>}
                 {a.cout_ps != null && <div className="fp-row"><span className="fp-k">Coût :</span> {a.cout_ps} PS</div>}
+                {a.duree && <div className="fp-row"><span className="fp-k">Durée :</span> {a.duree}</div>}
                 {a.runes_requises && a.runes_requises.length > 0 && (
                   <div className="fp-row"><span className="fp-k">Runes :</span> {a.runes_requises.join(" · ")}</div>
                 )}
                 {a.effet && <div className="fp-row"><span className="fp-k">Effet :</span> {a.effet}</div>}
+                {a.effet_maitrise && (
+                  <div className="fp-row"><span className="fp-k">⭐ Maîtrise :</span> {a.cout_ps_maitrise != null ? `${a.effet_maitrise} (${a.cout_ps_maitrise} PS)` : a.effet_maitrise}</div>
+                )}
                 {descRow(a.description, a.texte_manuel)}
               </div>
             ))}

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
+import { EffetBox } from "@/components/shared/EffetBox";
 import type { Assemblage } from "./types";
 
 interface AssemblagesSectionProps {
@@ -39,6 +40,7 @@ export const AssemblagesSection = ({
             <p className="font-medium text-foreground">{asm.nom}</p>
             {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
             {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
+            {asm.duree && <Badge variant="outline" className="text-xs">Durée : {asm.duree}</Badge>}
           </div>
           {asm.runes_requises && asm.runes_requises.length > 0 && (
             <div className="flex flex-wrap gap-1">
@@ -48,6 +50,13 @@ export const AssemblagesSection = ({
             </div>
           )}
           {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
+          {asm.effet_maitrise && (
+            <EffetBox titre="⭐ Maîtrise">
+              {asm.cout_ps_maitrise != null
+                ? `${asm.effet_maitrise} (${asm.cout_ps_maitrise} PS)`
+                : asm.effet_maitrise}
+            </EffetBox>
+          )}
           {asm.description && <p className="text-muted-foreground whitespace-pre-line">{asm.description}</p>}
           <ToggleManuel
             texte={asm.texte_manuel}
