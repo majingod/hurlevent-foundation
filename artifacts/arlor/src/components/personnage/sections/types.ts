@@ -128,6 +128,9 @@ export interface Assemblage {
   effet: string | null;
   runes_requises: string[] | null;
   texte_manuel: string | null;
+  duree: string | null;
+  effet_maitrise: string | null;
+  cout_ps_maitrise: number | null;
 }
 
 export interface Recette {
