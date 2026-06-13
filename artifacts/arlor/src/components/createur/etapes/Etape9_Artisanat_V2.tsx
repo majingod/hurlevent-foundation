@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2,
+  Eye,
   Sparkles,
   Hammer,
   Gem,
@@ -38,6 +39,7 @@ import {
 import { COUT_RECETTE_SUPPLEMENTAIRE } from "@/constants/artisanat";
 import { SectionAlchimieAccordion } from "./SectionAlchimieAccordion";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { QuickFacts } from "@/components/shared/QuickFacts";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estRecetteAcquise, estPiegeAcquis } from "@/lib/acquisCampagne";
@@ -789,12 +791,6 @@ const Etape9_Artisanat_V2 = ({
                     const maxAcquis = maxAcquisPourFamille(nom);
                     const estPossede = maxAcquis >= 1;
                     const depliee = famillesDepliees.has(nom);
-                    // Ligne catalogue du palier le plus haut acquis (détail
-                    // verbatim toujours visible), sinon niv 1.
-                    const ligneHaute =
-                      niveaux.find((p) => p.niveau === maxAcquis) ??
-                      niveaux.find((p) => p.niveau === 1) ??
-                      niveaux[0];
                     const construction =
                       niveaux.find((p) => p.niveau === 1)?.construction ?? null;
 
@@ -850,7 +846,7 @@ const Etape9_Artisanat_V2 = ({
                             return (
                               <div
                                 key={niv}
-                                className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
+                                className={`space-y-2 rounded border p-2 ${
                                   scelle
                                     ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
                                     : acquis && modeCampagne
@@ -862,155 +858,109 @@ const Etape9_Artisanat_V2 = ({
                                     : ""
                                 }`}
                               >
-                                <Checkbox
-                                  id={`piege-${nom}-${niv}`}
-                                  checked={acquis}
-                                  disabled={disabled}
-                                  title={
-                                    xpInsuffisant
-                                      ? `XP insuffisants (manque ${cout - xpDisponible} XP)`
-                                      : undefined
-                                  }
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      handleAcheterPiege(niveaux, niv);
-                                    } else {
-                                      handleDecocherPiege(nom, niv);
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <Checkbox
+                                    id={`piege-${nom}-${niv}`}
+                                    checked={acquis}
+                                    disabled={disabled}
+                                    title={
+                                      xpInsuffisant
+                                        ? `XP insuffisants (manque ${cout - xpDisponible} XP)`
+                                        : undefined
                                     }
-                                  }}
-                                />
-                                <Label
-                                  htmlFor={`piege-${nom}-${niv}`}
-                                  className="flex-1 cursor-pointer space-y-1 text-xs"
-                                >
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <strong>Niveau {niv}</strong>
-                                    {scelle && <BadgeAcquis />}
-                                    {!scelle && acquis && modeCampagne && (
-                                      <LabelAjoutAnnulable />
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        handleAcheterPiege(niveaux, niv);
+                                      } else {
+                                        handleDecocherPiege(nom, niv);
+                                      }
+                                    }}
+                                  />
+                                  <Label
+                                    htmlFor={`piege-${nom}-${niv}`}
+                                    className="flex-1 cursor-pointer space-y-1 text-xs"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <strong>Niveau {niv}</strong>
+                                      {scelle && <BadgeAcquis />}
+                                      {!scelle && acquis && modeCampagne && (
+                                        <LabelAjoutAnnulable />
+                                      )}
+                                      {acquis && ligneAcquise?.est_gratuit ? (
+                                        <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
+                                          Acquis gratuitement
+                                        </Badge>
+                                      ) : (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs"
+                                        >
+                                          {seraGratuit && !acquis
+                                            ? "Gratuit"
+                                            : `${cout} XP`}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {niveauPrecedentRequis && !acquis && (
+                                      <p className="flex items-center gap-1 text-muted-foreground">
+                                        <Lock className="h-3 w-3" />
+                                        Acheter d'abord le niveau {niv - 1}
+                                      </p>
                                     )}
-                                    {acquis && ligneAcquise?.est_gratuit ? (
-                                      <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
-                                        Acquis gratuitement
-                                      </Badge>
-                                    ) : (
-                                      <Badge
-                                        variant="secondary"
-                                        className="text-xs"
-                                      >
-                                        {seraGratuit && !acquis
-                                          ? "Gratuit"
-                                          : `${cout} XP`}
-                                      </Badge>
-                                    )}
-                                    {palier.niveau_effet != null && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs"
-                                      >
-                                        Effet de niveau {palier.niveau_effet}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {niveauPrecedentRequis && !acquis && (
-                                    <p className="flex items-center gap-1 text-muted-foreground">
-                                      <Lock className="h-3 w-3" />
-                                      Acheter d'abord le niveau {niv - 1}
+                                  </Label>
+                                </div>
+                                {/* QuickFacts (langage Sections) + effets complet */}
+                                <div className="pl-7">
+                                  <QuickFacts
+                                    facts={[
+                                      { label: "Cible", value: palier.cible },
+                                      { label: "Durée", value: palier.duree },
+                                      {
+                                        label: "Effet de résistance",
+                                        value:
+                                          palier.niveau_effet != null
+                                            ? `niveau ${palier.niveau_effet}`
+                                            : null,
+                                      },
+                                    ]}
+                                  />
+                                  {palier.effets && (
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                      {palier.effets}
                                     </p>
                                   )}
-                                </Label>
+                                </div>
                               </div>
                             );
                           })}
                         </div>
 
-                        {/* Détail verbatim du palier le plus haut acquis */}
-                        {estPossede && ligneHaute && (
-                          <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2 text-xs">
-                            <div className="flex flex-wrap gap-2">
-                              {ligneHaute.cible && (
-                                <Badge variant="outline" className="text-xs">
-                                  Cible : {ligneHaute.cible}
-                                </Badge>
+                        {/* Matériel de construction (niveau 1) — replié. La donnée
+                            commence déjà par « Construction : » → pas de préfixe ajouté. */}
+                        {construction && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto px-1 py-1 text-xs text-muted-foreground"
+                              onClick={() => toggleFamilleDepliee(nom)}
+                            >
+                              {depliee ? (
+                                <ChevronDown className="mr-1 h-3 w-3" />
+                              ) : (
+                                <ChevronRight className="mr-1 h-3 w-3" />
                               )}
-                              {ligneHaute.duree && (
-                                <Badge variant="outline" className="text-xs">
-                                  Durée : {ligneHaute.duree}
-                                </Badge>
-                              )}
-                            </div>
-                            {ligneHaute.effets && (
-                              <p className="text-muted-foreground">
-                                {ligneHaute.effets}
-                              </p>
-                            )}
-                            {construction && (
-                              <p>
-                                <span className="text-amber-400">
-                                  Construction :
-                                </span>{" "}
+                              {depliee
+                                ? "Masquer le matériel de construction"
+                                : "Matériel de construction"}
+                            </Button>
+                            {depliee && (
+                              <p className="whitespace-pre-line border-l-2 border-border pl-3 text-xs text-muted-foreground">
                                 {construction}
                               </p>
                             )}
-                          </div>
-                        )}
-
-                        {/* Toggle « Voir le détail des 3 niveaux » (densité C) */}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto px-1 py-1 text-xs text-muted-foreground"
-                          onClick={() => toggleFamilleDepliee(nom)}
-                        >
-                          {depliee ? (
-                            <ChevronDown className="mr-1 h-3 w-3" />
-                          ) : (
-                            <ChevronRight className="mr-1 h-3 w-3" />
-                          )}
-                          {depliee
-                            ? "Masquer le détail des 3 niveaux"
-                            : "Voir le détail des 3 niveaux"}
-                        </Button>
-
-                        {depliee && (
-                          <div className="space-y-2 border-l-2 border-border pl-3">
-                            {niveaux.map((palier) => (
-                              <div
-                                key={`detail-${palier.niveau}`}
-                                className="space-y-1 text-xs"
-                              >
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <strong>Niveau {palier.niveau}</strong>
-                                  {palier.niveau_effet != null && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      Effet de niveau {palier.niveau_effet}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {palier.cible && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Cible : {palier.cible}
-                                    </Badge>
-                                  )}
-                                  {palier.duree && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Durée : {palier.duree}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {palier.effets && (
-                                  <p className="text-muted-foreground">
-                                    {palier.effets}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                          </>
                         )}
                       </div>
                     );
@@ -1036,12 +986,18 @@ const Etape9_Artisanat_V2 = ({
                       (lecture seule).
                     </CardDescription>
                   </div>
-                  {niveauForge === 3 && (
-                    <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
-                      <Crown className="mr-1 h-3 w-3" />
-                      Droit légendaire
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <Badge variant="outline" className="text-muted-foreground">
+                      <Eye className="mr-1 h-3 w-3" />
+                      Consultation
                     </Badge>
-                  )}
+                    {niveauForge === 3 && (
+                      <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
+                        <Crown className="mr-1 h-3 w-3" />
+                        Droit légendaire
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1200,12 +1156,18 @@ const Etape9_Artisanat_V2 = ({
                       Liste des pièces que vous pouvez créer (lecture seule).
                     </CardDescription>
                   </div>
-                  {niveauJoaillerie === 3 && (
-                    <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
-                      <Crown className="mr-1 h-3 w-3" />
-                      Droit légendaire
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <Badge variant="outline" className="text-muted-foreground">
+                      <Eye className="mr-1 h-3 w-3" />
+                      Consultation
                     </Badge>
-                  )}
+                    {niveauJoaillerie === 3 && (
+                      <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
+                        <Crown className="mr-1 h-3 w-3" />
+                        Droit légendaire
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
