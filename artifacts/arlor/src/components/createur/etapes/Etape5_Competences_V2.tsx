@@ -25,6 +25,7 @@ import { ChevronDown, ChevronRight, Loader2, Lock, Minus, Plus } from "lucide-re
 import JaugeXP from "@/components/createur/aide/JaugeXP";
 import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
 import Astuce from "@/components/createur/aide/Astuce";
+import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 
 // =========================================================================
 // TYPES
@@ -137,7 +138,7 @@ const CLASSE_LABELS: Record<string, string> = {
   pretre: "Classe Prêtre ⚜️",
 };
 
-/** Catégories qui correspondent à une classe jouable (pour BlocClasses). */
+/** Catégories qui correspondent à une classe jouable (pour PastilleAccesCompacte). */
 const CLASSES_JOUABLES = ["guerrier", "voleur", "mage", "pretre"] as const;
 
 // type_achat qui cascade en DB (suppression ascendante des niveaux >= N)
@@ -269,71 +270,57 @@ function MessageBlocage({
  *
  * - Cas non couvert (fallback) : ne rien afficher
  */
-function BlocClasses({
+/**
+ * Pastille d'accès COMPACTE (PR-C2, Option B) : remplace la ligne « Classes »
+ * complète dans l'en-tête replié. N'apparaît que pour les cas NON triviaux —
+ * « Max niveau 2 » (autre classe, plafonnée) ou « Réservée » (classe exclue).
+ * Tappable → bulle L2 (AIDE_SYMBOLES_E5). Générale / propre classe / classe
+ * autorisée d'une réservée → rien (aucune contrainte à signaler).
+ */
+function PastilleAccesCompacte({
   comp,
   classeJoueur,
-  normalizeCategorieFn,
+  onTap,
 }: {
   comp: CompetenceWithNiveaux;
   classeJoueur: string;
-  normalizeCategorieFn: (cat: string | null) => string;
+  onTap: (aide: { titre: string; texte: string }) => void;
 }) {
-  const cat = normalizeCategorieFn(comp.categorie);
+  const cat = normalizeCategorie(comp.categorie);
   const isGenerale = comp.est_general || cat === "generale";
+  if (isGenerale) return null;
 
-  const sectionLabel = (
-    <span className="flex items-center gap-1 text-xs text-foreground/70">
-      <span aria-hidden>🛡️</span> Classes :
-    </span>
-  );
-
-  // Cas 1 : compétence générale (accessible à toutes les classes)
-  if (isGenerale) {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sectionLabel}
-        <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
-      </div>
-    );
-  }
-
-  // Cas 2 : classes_requises set (strictement réservée)
+  let acces: { cle: "max2" | "reservee"; label: string } | null = null;
   if (comp.classes_requises && comp.classes_requises.length > 0) {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sectionLabel}
-        {comp.classes_requises.map((c) => (
-          <PastilleStatus
-            key={c}
-            status={c === classeJoueur ? "acquis" : "manquant"}
-          >
-            {CLASSE_LABELS[c] ?? c}
-          </PastilleStatus>
-        ))}
-      </div>
-    );
+    if (!comp.classes_requises.includes(classeJoueur)) {
+      acces = { cle: "reservee", label: "Réservée" };
+    }
+  } else if ((CLASSES_JOUABLES as readonly string[]).includes(cat)) {
+    if (cat !== classeJoueur && comp.niveaux_parsed.some((n) => n.niveau > 2)) {
+      acces = { cle: "max2", label: "Max niveau 2" };
+    }
   }
+  if (!acces) return null;
 
-  // Cas 3 : classes_requises NULL + catégorie de classe (accessible hors classe max 2)
-  // La pastille de limite n'est affichée que si le joueur est HORS de cette classe
-  // (pour sa propre classe, il n'y a pas de limite de niveau).
-  if ((CLASSES_JOUABLES as readonly string[]).includes(cat)) {
-    const joueurMatch = cat === classeJoueur;
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sectionLabel}
-        <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
-        {!joueurMatch && comp.niveaux_parsed.some((n) => n.niveau > 2) && (
-          <PastilleStatus status="restriction">
-            Accessible max niveau 2 sauf pour {CLASSE_LABELS[cat] ?? cat}
-          </PastilleStatus>
-        )}
-      </div>
-    );
-  }
+  const styles =
+    acces.cle === "max2"
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+      : "border-red-500/40 bg-red-500/10 text-red-300";
+  const marker = acces.cle === "max2" ? "⚠" : "✗";
 
-  // Fallback : pas d'info de classe à afficher
-  return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onTap(AIDE_SYMBOLES_E5[acces.cle]);
+      }}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${styles}`}
+    >
+      <span aria-hidden>{marker}</span>
+      {acces.label}
+    </button>
+  );
 }
 
 // =========================================================================
@@ -458,6 +445,51 @@ function BadgePrereqCliquable({
  * Légende repliable des pastilles de statut, sous la barre de filtres.
  * Repliée par défaut (état + toggle gérés par le parent).
  */
+/**
+ * Source UNIQUE des explications des symboles É5 (PR-C2). Lue par la légende L1
+ * (LegendePastilles) ET par les bulles d'aide L2 (tap inline) — pas de divergence
+ * possible. Clés disponible/maitrisee/prereq/bloque = StatutCompetence ;
+ * toutes/max2/maitre/reservee = accès par classe.
+ */
+const AIDE_SYMBOLES_E5: Record<string, { titre: string; texte: string }> = {
+  disponible: {
+    titre: "Disponible",
+    texte: "Achetable maintenant : le prochain niveau est disponible.",
+  },
+  maitrisee: {
+    titre: "Maîtrisée",
+    texte: "Tous les niveaux de cette compétence sont acquis.",
+  },
+  prereq: {
+    titre: "Prérequis manquant",
+    texte:
+      "Une autre compétence est requise d'abord — touchez le badge ↗ pour y aller.",
+  },
+  bloque: {
+    titre: "Bloquée",
+    texte:
+      "Réservée à une autre classe, ou verrou mutuel avec une compétence déjà prise.",
+  },
+  toutes: {
+    titre: "Toutes les Classes",
+    texte: "Compétence générale : accessible à toutes les classes.",
+  },
+  max2: {
+    titre: "Max niveau 2",
+    texte:
+      "Compétence d'une autre classe : vous pouvez l'apprendre, mais plafonnée au niveau 2.",
+  },
+  maitre: {
+    titre: "Maître Requis",
+    texte:
+      "Ce niveau s'apprend auprès d'un maître en jeu (animateur ou joueur ayant le niveau 3). L'achat est soumis à validation.",
+  },
+  reservee: {
+    titre: "Réservée",
+    texte: "Unique à une classe précise : inaccessible à la vôtre.",
+  },
+};
+
 const LegendeSousTitre = ({ children }: { children: ReactNode }) => (
   <p className="mt-1 text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
     {children}
@@ -511,19 +543,19 @@ function LegendePastilles({
           <LegendeSousTitre>Statuts</LegendeSousTitre>
           <LegendeLigne
             symbole={<PastilleStatutCompetence statut="disponible" />}
-            texte="Achetable maintenant : le prochain niveau est disponible."
+            texte={AIDE_SYMBOLES_E5.disponible.texte}
           />
           <LegendeLigne
             symbole={<PastilleStatutCompetence statut="maitrisee" />}
-            texte="Tous les niveaux de cette compétence sont acquis."
+            texte={AIDE_SYMBOLES_E5.maitrisee.texte}
           />
           <LegendeLigne
             symbole={<PastilleStatutCompetence statut="prereq" />}
-            texte="Une autre compétence est requise d'abord — touchez le badge ↗ pour y aller."
+            texte={AIDE_SYMBOLES_E5.prereq.texte}
           />
           <LegendeLigne
             symbole={<PastilleStatutCompetence statut="bloque" />}
-            texte="Réservée à une autre classe, ou verrou mutuel avec une compétence déjà prise."
+            texte={AIDE_SYMBOLES_E5.bloque.texte}
           />
 
           <LegendeSousTitre>Accès par classe</LegendeSousTitre>
@@ -531,25 +563,25 @@ function LegendePastilles({
             symbole={
               <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
             }
-            texte="Compétence générale : accessible à toutes les classes."
+            texte={AIDE_SYMBOLES_E5.toutes.texte}
           />
           <LegendeLigne
             symbole={
               <PastilleStatus status="restriction">Max niveau 2</PastilleStatus>
             }
-            texte="Compétence d'une autre classe : vous pouvez l'apprendre, mais plafonnée au niveau 2."
+            texte={AIDE_SYMBOLES_E5.max2.texte}
           />
           <LegendeLigne
             symbole={
               <PastilleStatus status="restriction">Maître Requis</PastilleStatus>
             }
-            texte="Ce niveau s'apprend auprès d'un maître en jeu (animateur ou joueur ayant le niveau 3). L'achat est soumis à validation."
+            texte={AIDE_SYMBOLES_E5.maitre.texte}
           />
           <LegendeLigne
             symbole={
               <PastilleStatus status="manquant">Réservée</PastilleStatus>
             }
-            texte="Unique à une classe précise : inaccessible à la vôtre."
+            texte={AIDE_SYMBOLES_E5.reservee.texte}
           />
 
           {modeCampagne && (
@@ -605,6 +637,9 @@ const Etape5_Competences_V2 = ({
 
   // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
   const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
+
+  // PR-C2 (Lot C) : aide L2 au tap (bulle sticky bottom), source AIDE_SYMBOLES_E5.
+  const { aide, montrer: montrerAide, fermer: fermerAide } = useTapBulle();
 
   // =======================================================================
   // ÉTATS LOCAUX
@@ -2032,6 +2067,11 @@ const Etape5_Competences_V2 = ({
                   )}
                   {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
                   {renderPrereqManquantHeader(niv, blocData, st)}
+                  {niv.description && !open && (
+                    <span className="ml-auto whitespace-nowrap text-[10.5px] italic text-gold">
+                      · voir l'effet
+                    </span>
+                  )}
                 </div>
               </div>
               {open && (
@@ -2645,7 +2685,8 @@ const Etape5_Competences_V2 = ({
     const crossNav = classeBloque(comp) ? crossNavDual(comp) : null;
     // Verrou mutuel « Déjà acquise via » : MessageBlocage statique conservé
     // uniquement en fallback si la cross-nav ne s'applique pas.
-    // Les « Réservé aux classes » sont déjà couverts par BlocClasses.
+    // Les « Réservé aux classes » sont déjà couverts par PastilleAccesCompacte
+    // (en-tête) ou par la pastille de statut « Bloquée ».
     const detailBlocage =
       !crossNav && classeBloque(comp) ? blocageDetail(comp) : null;
     const messageBlocage =
@@ -2691,11 +2732,24 @@ const Etape5_Competences_V2 = ({
                 <span className="font-heading text-base font-bold leading-tight">
                   {comp.nom}
                 </span>
-                <PastilleStatutCompetence statut={statut} />
+                <PastilleAccesCompacte
+                  comp={comp}
+                  classeJoueur={classeNom}
+                  onTap={montrerAide}
+                />
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    montrerAide(AIDE_SYMBOLES_E5[statut]);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <PastilleStatutCompetence statut={statut} />
+                </span>
                 {coutBadge}
               </div>
               {comp.description && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                   {comp.description}
                 </p>
               )}
@@ -2703,14 +2757,6 @@ const Etape5_Competences_V2 = ({
           </div>
 
           {badgePrereq && <div className="pl-6">{badgePrereq}</div>}
-
-          <div className="pl-6">
-            <BlocClasses
-              comp={comp}
-              classeJoueur={classeNom}
-              normalizeCategorieFn={normalizeCategorie}
-            />
-          </div>
 
           {crossNav && (
             <div className="pl-6">
@@ -2880,6 +2926,9 @@ const Etape5_Competences_V2 = ({
           );
         })}
       </div>
+
+      {/* PR-C2 : bulle d'aide L2 (sticky bottom). */}
+      <TapBulle aide={aide} onClose={fermerAide} />
 
       {/* Dialog maître requis */}
       <Dialog
