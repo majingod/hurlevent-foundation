@@ -3,12 +3,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import type { Database } from "@/integrations/supabase/types";
-import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import {
-  useManuelDisclosure,
-  ManuelGlobalSwitch,
-} from "@/components/shared/ToggleManuel";
-import { AlchimieVerbatim } from "@/components/shared/AlchimieVerbatim";
+  parseIngredientsRecette,
+  formaterComposant,
+  parseRecetteVerbatim,
+} from "@/utils/alchimie";
+import { RecetteSections } from "@/components/shared/RecetteSections";
 
 type RecetteRow = Database["public"]["Tables"]["recettes_alchimie"]["Row"];
 type PersonnageRecetteRow =
@@ -85,6 +85,15 @@ function PastilleCout({ gratuite, cout }: { gratuite: boolean; cout: number }) {
 
 /** Fiche détaillée d'une recette : Formule / Ingrédients / Manipulations / Effet / Durée. */
 function FicheRecette({ recette }: { recette: RecetteRow }) {
+  const sections = parseRecetteVerbatim(recette.description_verbatim);
+  if (sections) {
+    return (
+      <div className="border-t border-border/60 px-3.5 py-2.5">
+        <RecetteSections data={sections} />
+      </div>
+    );
+  }
+  // Fallback colonnes : verbatim absent ou non conforme.
   const { composants, manipulations } = parseIngredientsRecette(
     recette.ingredients,
   );
@@ -161,27 +170,10 @@ export const SectionAlchimieAccordion = ({
     () => new Set(),
   );
 
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } =
-    useManuelDisclosure();
-
   const niveauxDisponibles = [1, 2, 3].filter((n) => n <= niveauAlchimie);
-  const recetteIdsAvecVerbatim = recettes
-    .filter(
-      (r) =>
-        niveauxDisponibles.includes(r.niveau_requis ?? 0) &&
-        r.description_verbatim,
-    )
-    .map((r) => r.id);
 
   return (
     <div className="flex flex-col gap-3">
-      {recetteIdsAvecVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(recetteIdsAvecVerbatim)}
-          onToggle={() => toggleAll(recetteIdsAvecVerbatim)}
-          subtitle="Affiche le verbatim sur toutes les recettes"
-        />
-      )}
       {niveauxDisponibles.map((niveau) => {
         const recettesNiveau = recettes.filter(
           (r) => r.niveau_requis === niveau,
@@ -354,20 +346,7 @@ export const SectionAlchimieAccordion = ({
                                   </button>
                                 </div>
 
-                                {ficheOuverte && (
-                                  <>
-                                    <FicheRecette recette={recette} />
-                                    <div className="px-3.5 pb-2.5">
-                                      <AlchimieVerbatim
-                                        verbatim={recette.description_verbatim}
-                                        isManuelOpen={isManuelOpen(recette.id)}
-                                        onToggleManuel={() =>
-                                          toggleManuel(recette.id)
-                                        }
-                                      />
-                                    </div>
-                                  </>
-                                )}
+                                {ficheOuverte && <FicheRecette recette={recette} />}
                               </div>
                             );
                           })}
