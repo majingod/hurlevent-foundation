@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
+import { PastilleCout } from "@/components/createur/artisanat/PastilleCout";
 import type { Database } from "@/integrations/supabase/types";
 import {
   parseIngredientsRecette,
@@ -44,6 +46,11 @@ interface SectionAlchimieAccordionProps {
    * `primary` historique).
    */
   modeCampagne?: boolean;
+  /**
+   * L2 (Lot B, s183) : ouvre une bulle d'aide au tap sur la PastilleCout.
+   * Fourni par la page (useTapBulle.montrer). Absent → pastille non tappable.
+   */
+  montrerAide?: (aide: { titre: string; texte: string }) => void;
 }
 
 const NIVEAU_LABEL: Record<number, string> = {
@@ -58,29 +65,6 @@ function toggleSet<T>(set: Set<T>, val: T): Set<T> {
   if (next.has(val)) next.delete(val);
   else next.add(val);
   return next;
-}
-
-/** Pastille de coût : verte « Gratuite » ou bordeaux « N XP » (valeurs HSL maquette). */
-function PastilleCout({ gratuite, cout }: { gratuite: boolean; cout: number }) {
-  const style = gratuite
-    ? {
-        background: "hsl(150 45% 45% / 0.18)",
-        color: "hsl(150 45% 45%)",
-        border: "1px solid hsl(150 45% 45% / 0.4)",
-      }
-    : {
-        background: "hsl(348 55% 27%)",
-        color: "hsl(36 33% 93%)",
-        border: "1px solid hsl(348 55% 27%)",
-      };
-  return (
-    <span
-      className="inline-block whitespace-nowrap rounded-full px-3 py-0.5 text-xs font-semibold"
-      style={style}
-    >
-      {gratuite ? "Gratuite" : `${cout} XP`}
-    </span>
-  );
 }
 
 /** Fiche détaillée d'une recette : Formule / Ingrédients / Manipulations / Effet / Durée. */
@@ -157,6 +141,7 @@ export const SectionAlchimieAccordion = ({
   onToggle,
   estRecetteScellee,
   modeCampagne = false,
+  montrerAide,
 }: SectionAlchimieAccordionProps) => {
   // Par défaut : tout replié à l'arrivée sur l'étape (niveaux, types et
   // fiches). Le joueur déplie à la demande.
@@ -277,8 +262,32 @@ export const SectionAlchimieAccordion = ({
                                       : "border-border bg-card"
                                 }`}
                               >
-                                <div className="flex items-center gap-3 px-3.5 py-3">
+                                {/* Ligne de repli (toujours visible) */}
+                                <div
+                                  onClick={() =>
+                                    setFichesOuvertes((s) =>
+                                      toggleSet(s, recette.id),
+                                    )
+                                  }
+                                  className="flex cursor-pointer items-center gap-3 px-3.5 py-3"
+                                >
+                                  <ChevronRight
+                                    className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${ficheOuverte ? "rotate-90" : ""}`}
+                                  />
+                                  <strong className="min-w-0 flex-1 truncate text-[15px] font-bold text-foreground">
+                                    {recette.nom}
+                                  </strong>
+                                  <PastilleCout
+                                    gratuit={gratuite}
+                                    xp={coutSupplementaire}
+                                    onAide={montrerAide}
+                                  />
+                                  {scellee && <BadgeAcquis />}
+                                  {!scellee && estAcquise && modeCampagne && (
+                                    <LabelAjoutAnnulable />
+                                  )}
                                   <label
+                                    onClick={(e) => e.stopPropagation()}
                                     className={`flex shrink-0 items-center ${
                                       xpInsuffisants ? "opacity-50" : ""
                                     }`}
@@ -303,48 +312,21 @@ export const SectionAlchimieAccordion = ({
                                       aria-label={`Sélectionner ${recette.nom ?? "la recette"}`}
                                     />
                                   </label>
+                                </div>
 
-                                  <div className="min-w-0 flex-1">
-                                    <span className="flex flex-wrap items-center gap-2">
-                                      <strong className="text-[15px] font-bold text-foreground">
-                                        {recette.nom}
-                                      </strong>
-                                      {scellee && <BadgeAcquis />}
-                                      {!scellee && estAcquise && modeCampagne && (
-                                        <LabelAjoutAnnulable />
-                                      )}
-                                    </span>
-                                    <div className="mt-2">
-                                      <PastilleCout
-                                        gratuite={gratuite}
-                                        cout={coutSupplementaire}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <button
-                                    type="button"
+                                {/* Glance (replié) — clic ouvre aussi la fiche */}
+                                {!ficheOuverte && recette.description && (
+                                  <p
                                     onClick={() =>
                                       setFichesOuvertes((s) =>
                                         toggleSet(s, recette.id),
                                       )
                                     }
-                                    className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground"
-                                    aria-expanded={ficheOuverte}
+                                    className="cursor-pointer px-3.5 pb-2.5 pl-[34px] text-xs leading-snug text-muted-foreground"
                                   >
-                                    <span
-                                      className="inline-block transition-transform duration-150"
-                                      style={{
-                                        transform: ficheOuverte
-                                          ? "rotate(90deg)"
-                                          : "none",
-                                      }}
-                                    >
-                                      ❯
-                                    </span>
-                                    Détails
-                                  </button>
-                                </div>
+                                    {recette.description}
+                                  </p>
+                                )}
 
                                 {ficheOuverte && <FicheRecette recette={recette} />}
                               </div>

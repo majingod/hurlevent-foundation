@@ -43,6 +43,16 @@ import { QuickFacts } from "@/components/shared/QuickFacts";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estRecetteAcquise, estPiegeAcquis } from "@/lib/acquisCampagne";
+import JaugeXP from "@/components/createur/aide/JaugeXP";
+import IntroEtape, {
+  IntroEtapeItem,
+} from "@/components/createur/aide/IntroEtape";
+import Astuce from "@/components/createur/aide/Astuce";
+import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
+import { PastilleCout } from "@/components/createur/artisanat/PastilleCout";
+import LegendeArtisanat, {
+  type EntreeLegende,
+} from "@/components/createur/artisanat/LegendeArtisanat";
 
 type RecetteRow = Database["public"]["Tables"]["recettes_alchimie"]["Row"];
 type ObjetForgeRow = Database["public"]["Tables"]["objets_forge"]["Row"];
@@ -580,6 +590,9 @@ const Etape9_Artisanat_V2 = ({
     },
   });
 
+  // L2 — bulle d'aide au tap (Lot B, s183). État purement présentationnel.
+  const { aide, montrer: montrerAide, fermer: fermerAide } = useTapBulle();
+
   if (loadingQuotas) {
     return (
       <div className="flex items-center justify-center p-8 text-muted-foreground">
@@ -639,6 +652,138 @@ const Etape9_Artisanat_V2 = ({
   const mutationsPiegesPending =
     acheterPiegeMutation.isPending || desacheterPiegeMutation.isPending;
 
+  // Couche aide (Lot B, s183) — dérivations purement présentationnelles.
+  // Recettes acquises : la Map est clée par id de recette catalogue.
+  const acquisRecettesIds = [...recettesAcquisesParRecetteId.keys()];
+  const aScelAlch =
+    modeCampagne &&
+    acquisRecettesIds.some((id) => estRecetteAcquise(modeCampagne, photo, id));
+  const aAnnAlch =
+    modeCampagne &&
+    acquisRecettesIds.some((id) => !estRecetteAcquise(modeCampagne, photo, id));
+
+  // Pièges acquis : aplatir paliersParFamille (Map<nom, Map<niv, ligne>>).
+  const acquisPieges: { nom: string; niv: number }[] = [];
+  paliersParFamille.forEach((m, nom) =>
+    m.forEach((_l, niv) => acquisPieges.push({ nom, niv })),
+  );
+  const aScelP =
+    modeCampagne &&
+    acquisPieges.some(({ nom, niv }) =>
+      estPiegeAcquis(modeCampagne, photo, nom, niv),
+    );
+  const aAnnP =
+    modeCampagne &&
+    acquisPieges.some(
+      ({ nom, niv }) => !estPiegeAcquis(modeCampagne, photo, nom, niv),
+    );
+
+  // L1 — légende alchimie (Option B : pas de pastille de type sur la rangée →
+  // les types sont expliqués en texte).
+  const legAlch: EntreeLegende[] = [
+    { section: "Types" },
+    {
+      texte:
+        "Potion — breuvage bénéfique : se consomme pour obtenir son effet (soin, protection, bonus).",
+    },
+    {
+      texte:
+        "Poison — substance offensive : s'applique ou se fait ingérer pour nuire à la cible.",
+    },
+    { section: "Coût" },
+    {
+      sym: <PastilleCout gratuit xp={COUT_RECETTE_SUPPLEMENTAIRE} />,
+      texte: "Comprise dans votre quota gratuit du niveau.",
+    },
+    {
+      sym: <PastilleCout gratuit={false} xp={COUT_RECETTE_SUPPLEMENTAIRE} />,
+      texte: `Quota épuisé : ${COUT_RECETTE_SUPPLEMENTAIRE} XP, remboursés si retirée.`,
+    },
+    ...(aScelAlch || aAnnAlch
+      ? ([
+          { section: "Vos recettes" },
+          ...(aScelAlch
+            ? [
+                {
+                  sym: "or",
+                  texte: (
+                    <span>
+                      <strong className="text-gold">Fond doré 🔒</strong> —
+                      scellée à un GN : ne peut plus être retirée.
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+          ...(aAnnAlch
+            ? [
+                {
+                  sym: "vert",
+                  texte: (
+                    <span>
+                      <strong className="text-emerald-400">Fond vert ＋</strong>{" "}
+                      — ajout encore annulable (XP remboursés).
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+        ] as EntreeLegende[])
+      : []),
+  ];
+
+  // L1 — légende pièges. Le coût d'un palier varie → pill « Gratuit » + ligne
+  // texte pour le payant (pas de pill à montant figé).
+  const legP: EntreeLegende[] = [
+    { section: "Paliers" },
+    {
+      sym: <Lock className="h-3.5 w-3.5 text-muted-foreground" />,
+      texte:
+        "Palier verrouillé : achetez d'abord le niveau précédent de la même famille.",
+    },
+    { section: "Coût" },
+    {
+      sym: <PastilleCout gratuit xp={0} />,
+      texte:
+        "Compris dans un quota gratuit (pièges niv 1, améliorations → niv 2 / niv 3).",
+    },
+    {
+      texte:
+        "Quota épuisé : le palier devient payant en XP (montant indiqué sur chaque palier), remboursé si retiré.",
+    },
+    ...(aScelP || aAnnP
+      ? ([
+          { section: "Vos pièges" },
+          ...(aScelP
+            ? [
+                {
+                  sym: "or",
+                  texte: (
+                    <span>
+                      <strong className="text-gold">Fond doré 🔒</strong> —
+                      scellé à un GN : ne peut plus être retiré.
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+          ...(aAnnP
+            ? [
+                {
+                  sym: "vert",
+                  texte: (
+                    <span>
+                      <strong className="text-emerald-400">Fond vert ＋</strong>{" "}
+                      — ajout encore annulable (XP remboursés).
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+        ] as EntreeLegende[])
+      : []),
+  ];
+
   return (
     <div className="space-y-6">
       <div className="space-y-1">
@@ -650,6 +795,46 @@ const Etape9_Artisanat_V2 = ({
           payantes si vous le souhaitez.
         </p>
       </div>
+
+      {/* I4 — Jauge XP sticky */}
+      <JaugeXP xpDisponible={xpDisponible} />
+
+      {/* W1 — Introduction d'étape */}
+      <IntroEtape
+        storageKey="hv-e9-intro-replie"
+        titre="Comment fonctionne cette étape ?"
+      >
+        <IntroEtapeItem n={1}>
+          L'Artisanat regroupe vos métiers en <strong>onglets</strong>, selon vos
+          compétences : Alchimie, Pièges, et — en consultation — Forge / Joaillerie.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          <strong>Alchimie</strong> et <strong>Pièges</strong> : cochez vos recettes
+          et pièges. Ils sont <strong>gratuits</strong> selon vos quotas (par niveau),
+          sinon <strong>payants en XP</strong> — remboursés si retirés.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          Les <strong>pièges</strong> montent par <strong>paliers</strong> : achetez le
+          niveau précédent avant de débloquer le suivant.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={4}>
+          <strong>Forge</strong> et <strong>Joaillerie</strong> sont en{" "}
+          <strong>consultation seule</strong> : la liste de ce que vous pouvez
+          fabriquer, sans achat ici.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={5}>
+          Touchez un <strong>symbole de coût</strong> pour savoir s'il est gratuit
+          (quota) ou payant en XP.
+        </IntroEtapeItem>
+        {modeCampagne && (
+          <IntroEtapeItem n={6}>
+            Un acquis <strong>joué en GN</strong> est scellé{" "}
+            <strong className="text-gold">🔒</strong> ; un ajout récent{" "}
+            <strong className="text-emerald-400">＋</strong> reste annulable
+            (XP remboursés).
+          </IntroEtapeItem>
+        )}
+      </IntroEtape>
 
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList
@@ -687,7 +872,15 @@ const Etape9_Artisanat_V2 = ({
                   Alchimie — niveau {niveauAlchimie}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <LegendeArtisanat
+                  storageKey="hv-e9-legende-alchimie-replie"
+                  entrees={legAlch}
+                />
+                <Astuce
+                  storageKey="hv-e9-astuce-alchimie-vue"
+                  texte="Touchez une recette pour lire sa fiche complète. La pastille indique si elle est gratuite (quota) ou payante en XP."
+                />
                 {loadingRecettes || loadingPersoRecettes ? (
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -716,6 +909,7 @@ const Etape9_Artisanat_V2 = ({
                       estRecetteAcquise(modeCampagne, photo, recetteId)
                     }
                     modeCampagne={modeCampagne}
+                    montrerAide={montrerAide}
                   />
                 )}
               </CardContent>
@@ -777,6 +971,14 @@ const Etape9_Artisanat_V2 = ({
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                <LegendeArtisanat
+                  storageKey="hv-e9-legende-pieges-replie"
+                  entrees={legP}
+                />
+                <Astuce
+                  storageKey="hv-e9-astuce-pieges-vue"
+                  texte="Chaque famille de pièges monte par paliers. La pastille de coût indique gratuit (quota) ou payant en XP ; un palier verrouillé attend l'achat du niveau précédent."
+                />
                 {loadingPiegesCatalogue || loadingPersoPieges ? (
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -815,6 +1017,18 @@ const Etape9_Artisanat_V2 = ({
                             </Badge>
                           )}
                         </div>
+
+                        {(() => {
+                          const glance =
+                            niveaux.find((p) => p.niveau === maxAcquis)?.effets ??
+                            niveaux[0]?.effets ??
+                            null;
+                          return glance ? (
+                            <p className="text-xs leading-snug text-muted-foreground">
+                              {glance}
+                            </p>
+                          ) : null;
+                        })()}
 
                         {/* Cases à cocher par niveau (grisage séquentiel) */}
                         <div className="space-y-2">
@@ -886,20 +1100,15 @@ const Etape9_Artisanat_V2 = ({
                                       {!scelle && acquis && modeCampagne && (
                                         <LabelAjoutAnnulable />
                                       )}
-                                      {acquis && ligneAcquise?.est_gratuit ? (
-                                        <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
-                                          Acquis gratuitement
-                                        </Badge>
-                                      ) : (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs"
-                                        >
-                                          {seraGratuit && !acquis
-                                            ? "Gratuit"
-                                            : `${cout} XP`}
-                                        </Badge>
-                                      )}
+                                      <PastilleCout
+                                        gratuit={
+                                          acquis
+                                            ? !!ligneAcquise?.est_gratuit
+                                            : seraGratuit
+                                        }
+                                        xp={cout}
+                                        onAide={montrerAide}
+                                      />
                                     </div>
                                     {niveauPrecedentRequis && !acquis && (
                                       <p className="flex items-center gap-1 text-muted-foreground">
@@ -1240,6 +1449,9 @@ const Etape9_Artisanat_V2 = ({
           </TabsContent>
         )}
       </Tabs>
+
+      {/* L2 — Bulle d'aide au tap (sticky bottom) */}
+      <TapBulle aide={aide} onClose={fermerAide} />
 
       {/* Modale de confirmation cascade — décochage d'un palier de piège */}
       <Dialog
