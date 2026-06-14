@@ -43,6 +43,17 @@ type PersonnageAssemblageRow =
   Database["public"]["Tables"]["personnage_assemblages"]["Row"];
 type QuotasRow = Database["public"]["Views"]["vue_artisanat_quotas"]["Row"];
 
+/** Strip du préfixe « Assemblage de/du/… » (redondant dans l'étape « Assemblage
+ * de Runes ») + capitalise l'initiale. La base garde le nom canonique du manuel
+ * (RÉVISION-FIDÉLITÉ s188). */
+const nomCourtAssemblage = (nom: string | null): string => {
+  if (!nom) return "";
+  const c = nom
+    .replace(/^Assemblage\s+(?:de\s+la\s+|de\s+l['']|des\s+|du\s+|de\s+|d[''])/i, "")
+    .trim();
+  return c ? c.charAt(0).toUpperCase() + c.slice(1) : nom;
+};
+
 interface Etape8Props {
   personnageId: string;
   /**
@@ -448,14 +459,14 @@ const Etape8_Assemblages_V2 = ({
               texte="Touchez un assemblage pour lire sa fiche. La pastille indique s'il est gratuit (quota) ou payant en XP."
             />
 
-            <div className="space-y-2 px-3 pb-3 pt-2">
+            <div className="pb-1">
               {loadingAssemblages || loadingPersoAssemblages ? (
-                <div className="flex items-center text-sm text-muted-foreground">
+                <div className="flex items-center px-3 py-2.5 text-sm text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Chargement des assemblages…
                 </div>
               ) : (assemblages ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="px-3 py-2.5 text-sm text-muted-foreground">
                   Aucun assemblage disponible.
                 </p>
               ) : (
@@ -482,14 +493,14 @@ const Etape8_Assemblages_V2 = ({
                   return (
                     <div
                       key={assemblage.id}
-                      className={`overflow-hidden rounded-lg border transition-colors ${
+                      className={`border-t border-border transition-colors ${
                         scelle
-                          ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                          ? "border-l-4 border-l-gold bg-gold/15"
                           : estAcquis
                             ? modeCampagne
-                              ? "border-emerald-600/40 bg-emerald-600/10"
-                              : "border-primary/50 bg-primary/5"
-                            : "border-border"
+                              ? "border-l-[3px] border-l-emerald-600/60 bg-emerald-600/10"
+                              : "bg-primary/5"
+                            : ""
                       }`}
                     >
                       {/* Ligne de repli (toujours visible) */}
@@ -501,7 +512,7 @@ const Etape8_Assemblages_V2 = ({
                           className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
                         />
                         <strong className="min-w-0 flex-1 truncate font-heading text-sm text-primary">
-                          {assemblage.nom}
+                          {nomCourtAssemblage(assemblage.nom)}
                         </strong>
                         <PastilleCout
                           gratuit={pastilleGratuit}
