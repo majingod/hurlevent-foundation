@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Lock, Info } from "lucide-react";
+import { Loader2, Info, AlertTriangle } from "lucide-react";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -21,21 +21,54 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@/components/ui/radio-group";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
+import SectionCard from "@/components/createur/aide/SectionCard";
+import { BadgeFige, BadgeModifiable } from "@/components/createur/aide/BadgesCampagne";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 // =========================================================================
-// CONSTANTES DE CALCUL XP/NIVEAU
-// Valeurs par défaut conventionnelles du manuel. NOTE : ces défauts ne sont
-// pas stockés en base aujourd'hui (evenements.xp_recompense est nullable sans
-// défaut). Le bloc récapitulatif ci-dessous est donc un ESTIMATIF indicatif —
-// l'XP réel est attribué par un animateur via attribuer_xp_evenement.
-// Dette technique : si l'animateur surcharge l'XP d'un événement, l'estimatif
-// sera désynchronisé. À terme, sourcer ces valeurs depuis la DB.
+// CONSTANTES DE CALCUL XP/NIVEAU — RATTRAPAGE (pré-plateforme)
+// Valeurs fixes du manuel pour les présences faites AVANT que la plateforme
+// ne suive les inscriptions/confirmations. Ce ne sont PAS des estimatifs et
+// elles ne sont PAS attribuées par un animateur : elles fixent l'XP et le
+// niveau de DÉPART du personnage. Section temporaire (cf. dette
+// RETIRER-SECTION-RATTRAPAGE-XP) : à retirer / passer admin-only une fois que
+// plus aucun joueur n'a de présences pré-plateforme.
 // =========================================================================
 const XP_GN_REGULIER = 15;
 const XP_MINI_GN = 15;
 const XP_OUVERTURE_TERRAIN = 10;
 const NIVEAU_BASE = 1;
+
+// --- Affordance du mode campagne, au niveau du champ (Lot A, s185) ---
+// Figé = champ verrouillé (assombri + badge gris). Modifiable = champ encore
+// éditable (pleine luminosité + badge). Pas d'or (= scellé) ni d'émeraude
+// (= ajout annulable) ici, pour ne pas heurter le langage visuel campagne.
+const champClass = (modeCampagne: boolean, editable: boolean) => {
+  if (!modeCampagne) return "bg-white/5 border-white/10";
+  return editable
+    ? "bg-white/[0.06] border-white/20"
+    : "bg-white/[0.02] border-white/[0.06] opacity-[0.45] pointer-events-none";
+};
+
+const FieldLabel = ({
+  htmlFor,
+  modeCampagne,
+  editable,
+  children,
+}: {
+  htmlFor?: string;
+  modeCampagne: boolean;
+  editable: boolean;
+  children: ReactNode;
+}) => (
+  <div className="flex items-center justify-between gap-2">
+    <Label htmlFor={htmlFor} className="text-base text-gold">
+      {children}
+    </Label>
+    {modeCampagne && (editable ? <BadgeModifiable /> : <BadgeFige />)}
+  </div>
+);
 
 interface Etape1Form {
   nom: string;
@@ -244,252 +277,296 @@ const Etape1_V2 = ({
     toast.success("Identité enregistrée.");
     onSuccess();
   };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      <div className="space-y-2">
-        <h2 className="font-heading text-2xl text-gold">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* En-tête — pas de JaugeXP : l'étape 1 ne dépense aucun XP (le solde
+          n'existe qu'après le choix de la race à l'étape 2). */}
+      <div>
+        <h2 className="font-heading text-xl font-semibold text-gold">
           Identité &amp; expérience
         </h2>
-        <p className="text-sm text-white/50">
-          Présente ton personnage et indique ton expérience de jeu.
+        <p className="mt-1 text-sm text-white/50">
+          Présente ton personnage et déclare ton expérience de jeu.
         </p>
       </div>
 
       {modeCampagne && (
         <p className="flex items-start gap-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          L'identité de ton personnage est figée. Son histoire, elle, continue de
-          s'écrire.
+          L'identité de ton personnage est figée. Son historique et son âme, eux,
+          continuent de s'écrire.
         </p>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="nom" className="flex items-center gap-1.5 text-base text-gold">
-          {modeCampagne && <Lock className="h-3.5 w-3.5" />}
-          Nom du personnage
-        </Label>
-        <Input
-          id="nom"
-          {...register("nom", { required: !modeCampagne })}
-          readOnly={modeCampagne}
-          placeholder="Ex : Valerius l'Ancien"
-          className={`bg-white/5 border-white/10 ${
-            modeCampagne ? "opacity-60 pointer-events-none" : ""
-          }`}
-        />
-        {errors.nom && (
-          <p className="text-xs text-red-400">Le nom est requis.</p>
-        )}
-      </div>
+      {/* W1 — Introduction d'étape */}
+      <IntroEtape
+        storageKey="hv-e1-intro-replie"
+        titre="Comment fonctionne cette étape ?"
+      >
+        <IntroEtapeItem n={1}>
+          <strong>Présente ton personnage.</strong> Son nom, son histoire et son
+          âme. Le <strong>nom se fixe dès ta première présence</strong> en jeu ;
+          l'histoire et l'âme restent <strong>modifiables plus tard</strong>.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          <strong>Croyance.</strong> C'est avant tout du <strong>RP</strong>. La
+          compétence <strong>Grande Messe</strong> ne donne ses bonus qu'aux
+          fidèles du <strong>même dieu</strong>. Pour un <strong>prêtre</strong>,
+          la religion fixe aussi ses <strong>domaines proscrits</strong>{" "}
+          (interdits par son dieu).
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          <strong>Rattrapage d'expérience.</strong> La plateforme suit désormais
+          tes présences automatiquement. Déclare ici les GN, mini-GN et
+          ouvertures faits <strong>avant la plateforme</strong> : ils fixent ton{" "}
+          <strong>XP et ton niveau de départ</strong>.
+        </IntroEtapeItem>
+      </IntroEtape>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="space-y-2">
-          <Label htmlFor="gn" className="flex items-center gap-1.5 text-sm text-white/70">
-            {modeCampagne && <Lock className="h-3 w-3" />}
-            GN réguliers complétés{" "}
-            <span className="text-white/40">(+15 XP et +1 niveau par GN)</span>
-          </Label>
+      {/* ===== SECTION A — Identité RP ===== */}
+      <SectionCard titre="Identité RP" sousTitre="Qui est ton personnage">
+        {/* Nom */}
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="nom" modeCampagne={modeCampagne} editable={false}>
+            Nom du personnage
+          </FieldLabel>
           <Input
-            id="gn"
-            type="number"
-            min={0}
+            id="nom"
+            {...register("nom", { required: !modeCampagne })}
             readOnly={modeCampagne}
-            {...register("gn_completes", {
-              valueAsNumber: true,
-              min: 0,
-              setValueAs: (v) => {
-                const n = Number(v);
-                if (Number.isNaN(n) || n < 0) return 0;
-                return Math.floor(n);
-              },
-            })}
-            className={`bg-white/5 border-white/10 ${
-              modeCampagne ? "opacity-60 pointer-events-none" : ""
-            }`}
+            placeholder="Ex : Valerius l'Ancien"
+            className={champClass(modeCampagne, false)}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="mini" className="flex items-center gap-1.5 text-sm text-white/70">
-            {modeCampagne && <Lock className="h-3 w-3" />}
-            Mini-GN complétés{" "}
-            <span className="text-white/40">(+15 XP par mini-GN)</span>
-          </Label>
-          <Input
-            id="mini"
-            type="number"
-            min={0}
-            readOnly={modeCampagne}
-            {...register("mini_gn_completes", {
-              valueAsNumber: true,
-              min: 0,
-              setValueAs: (v) => {
-                const n = Number(v);
-                if (Number.isNaN(n) || n < 0) return 0;
-                return Math.floor(n);
-              },
-            })}
-            className={`bg-white/5 border-white/10 ${
-              modeCampagne ? "opacity-60 pointer-events-none" : ""
-            }`}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="ouv" className="flex items-center gap-1.5 text-sm text-white/70">
-            {modeCampagne && <Lock className="h-3 w-3" />}
-            Ouvertures de terrain{" "}
-            <span className="text-white/40">(+10 XP par ouverture)</span>
-          </Label>
-          <Input
-            id="ouv"
-            type="number"
-            min={0}
-            readOnly={modeCampagne}
-            {...register("ouvertures_terrain", {
-              valueAsNumber: true,
-              min: 0,
-              setValueAs: (v) => {
-                const n = Number(v);
-                if (Number.isNaN(n) || n < 0) return 0;
-                return Math.floor(n);
-              },
-            })}
-            className={`bg-white/5 border-white/10 ${
-              modeCampagne ? "opacity-60 pointer-events-none" : ""
-            }`}
-          />
-        </div>
-      </div>
-
-      {/* Bloc récapitulatif XP/niveau — estimatif temps réel */}
-      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 space-y-1.5 text-sm">
-        <p className="text-white/70">
-          Niveau actuel :{" "}
-          <strong className="text-gold">{niveauActuel}</strong>{" "}
-          <span className="text-white/40">
-            ({NIVEAU_BASE} niveau de base + {gnCompletes} GN régulier
-            {gnCompletes > 1 ? "s" : ""})
-          </span>
-        </p>
-        <p className="text-white/70">
-          XP de GN : <strong className="text-green-400">+{xpGn}</strong>
-        </p>
-        <p className="text-white/70">
-          XP de mini-GN :{" "}
-          <strong className="text-green-400">+{xpMiniGn}</strong>
-        </p>
-        <p className="text-white/70">
-          XP d'ouvertures :{" "}
-          <strong className="text-green-400">+{xpOuvertures}</strong>
-        </p>
-        <p className="text-xs italic text-white/40 pt-1">
-          XP total : sera calculé à l'étape suivante après le choix de la race.
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        <Label className="flex items-center gap-1.5 text-base text-gold">
-          {modeCampagne && <Lock className="h-3.5 w-3.5" />}
-          Ton personnage est-il croyant ?
-        </Label>
-        <Controller
-          control={control}
-          name="est_croyant"
-          render={({ field }) => (
-            <RadioGroup
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={modeCampagne}
-              className={`flex gap-6 ${modeCampagne ? "opacity-60" : ""}`}
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem id="croyant-oui" value="oui" />
-                <Label htmlFor="croyant-oui">Oui</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem id="croyant-non" value="non" />
-                <Label htmlFor="croyant-non">Non</Label>
-              </div>
-            </RadioGroup>
+          {!modeCampagne && (
+            <p className="flex items-center gap-1.5 text-[11.5px] text-[hsl(38_80%_60%)]">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              Le nom se fixe à ta première présence en jeu.
+            </p>
           )}
-        />
-      </div>
+          {errors.nom && (
+            <p className="text-xs text-red-400">Le nom est requis.</p>
+          )}
+        </div>
 
-      {estCroyant === "oui" && (
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1.5 text-base text-gold">
-            {modeCampagne && <Lock className="h-3.5 w-3.5" />}
-            Religion
+        {/* Historique */}
+        <div className="mt-4 space-y-1.5">
+          <FieldLabel htmlFor="historique" modeCampagne={modeCampagne} editable>
+            Historique du personnage
+          </FieldLabel>
+          <Textarea
+            id="historique"
+            placeholder="Racontez l'histoire de votre personnage, ses origines, ses motivations, les événements qui l'ont marqué..."
+            {...register("historique")}
+            className={`min-h-[160px] resize-none ${champClass(modeCampagne, true)}`}
+          />
+          <p className="text-xs italic text-white/40">
+            Aucune limite de caractères. Modifiable plus tard.
+          </p>
+        </div>
+
+        {/* Âme */}
+        <div className="mt-4 space-y-1.5">
+          <FieldLabel htmlFor="ame_personnage" modeCampagne={modeCampagne} editable>
+            Âme du personnage
+          </FieldLabel>
+          <Textarea
+            id="ame_personnage"
+            placeholder="Décrivez la personnalité profonde, les valeurs, les traits de caractère, les motivations cachées de votre personnage..."
+            {...register("ame_personnage")}
+            className={`min-h-[160px] resize-none ${champClass(modeCampagne, true)}`}
+          />
+          <p className="text-xs italic text-white/40">
+            Aucune limite de caractères. Modifiable plus tard.
+          </p>
+        </div>
+      </SectionCard>
+
+      {/* ===== SECTION B — Croyance ===== */}
+      <SectionCard
+        titre="Croyance"
+        sousTitre="La foi de ton personnage"
+        badge={modeCampagne ? <BadgeFige /> : undefined}
+      >
+        <div className="space-y-3">
+          <Label className="text-base text-gold">
+            Ton personnage est-il croyant ?
           </Label>
           <Controller
             control={control}
-            name="religion_id"
+            name="est_croyant"
             render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange} disabled={modeCampagne}>
-                <SelectTrigger className={`bg-white/5 border-white/10 ${modeCampagne ? "opacity-60" : ""}`}>
-                  <SelectValue
-                    placeholder={
-                      loadingReligions
-                        ? "Chargement…"
-                        : "Choisis une religion"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {religions.map((r: any) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RadioGroup
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={modeCampagne}
+                className={`flex gap-6 ${modeCampagne ? "opacity-[0.45] pointer-events-none" : ""}`}
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem id="croyant-oui" value="oui" />
+                  <Label htmlFor="croyant-oui">Oui</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem id="croyant-non" value="non" />
+                  <Label htmlFor="croyant-non">Non</Label>
+                </div>
+              </RadioGroup>
             )}
           />
-          {(() => {
-            const relChoisie = religions.find((r: any) => r.id === watch("religion_id"));
-            if (!relChoisie) return null;
-            return (
-              <div className="rounded-lg border border-gold/20 bg-card p-4">
-                <ReligionDetails
-                  religion={relChoisie}
-                  isManuelOpen={religionManuelOpen}
-                  onToggleManuel={() => setReligionManuelOpen((v) => !v)}
-                />
-              </div>
-            );
-          })()}
         </div>
-      )}
 
-      <div className="space-y-2">
-        <Label htmlFor="historique" className="text-base text-gold">
-          Historique du personnage
-        </Label>
-        <Textarea
-          id="historique"
-          placeholder="Racontez l'histoire de votre personnage, ses origines, ses motivations, les événements qui l'ont marqué..."
-          {...register("historique")}
-          className="min-h-[160px] resize-none bg-white/5 border-white/10"
-        />
-        <p className="text-xs italic text-white/40">
-          Aucune limite de caractères. Modifiable plus tard.
-        </p>
-      </div>
+        {estCroyant === "oui" && (
+          <div className="mt-4 space-y-2">
+            <Label className="text-base text-gold">Religion</Label>
+            <Controller
+              control={control}
+              name="religion_id"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={modeCampagne}
+                >
+                  <SelectTrigger className={champClass(modeCampagne, false)}>
+                    <SelectValue
+                      placeholder={
+                        loadingReligions ? "Chargement…" : "Choisis une religion"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {religions.map((r: any) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {(() => {
+              const relChoisie = religions.find(
+                (r: any) => r.id === watch("religion_id")
+              );
+              if (!relChoisie) return null;
+              return (
+                <div className="rounded-lg border border-gold/20 bg-card p-4">
+                  <ReligionDetails
+                    religion={relChoisie}
+                    isManuelOpen={religionManuelOpen}
+                    onToggleManuel={() => setReligionManuelOpen((v) => !v)}
+                  />
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </SectionCard>
 
-      <div className="space-y-2">
-        <Label htmlFor="ame_personnage" className="text-base text-gold">
-          Âme du personnage
-        </Label>
-        <Textarea
-          id="ame_personnage"
-          placeholder="Décrivez la personnalité profonde, les valeurs, les traits de caractère, les motivations cachées de votre personnage..."
-          {...register("ame_personnage")}
-          className="min-h-[160px] resize-none bg-white/5 border-white/10"
-        />
-        <p className="text-xs italic text-white/40">
-          Aucune limite de caractères. Modifiable plus tard.
+      {/* ===== SECTION C — Rattrapage d'expérience ===== */}
+      <SectionCard
+        titre="Rattrapage d'expérience"
+        sousTitre="Tes présences faites avant la plateforme"
+        badge={modeCampagne ? <BadgeFige /> : undefined}
+      >
+        <p className="mb-3 text-[12.5px] leading-relaxed text-white/70">
+          La plateforme suit désormais tes présences. Déclare ici les événements
+          faits <strong className="text-foreground">avant</strong> : ils fixent
+          ton XP et ton niveau de départ.
         </p>
-      </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="gn" className="text-[11.5px] text-white/70">
+              GN réguliers{" "}
+              <span className="text-white/40">(+15 XP, +1 niv.)</span>
+            </Label>
+            <Input
+              id="gn"
+              type="number"
+              min={0}
+              readOnly={modeCampagne}
+              {...register("gn_completes", {
+                valueAsNumber: true,
+                min: 0,
+                setValueAs: (v) => {
+                  const n = Number(v);
+                  if (Number.isNaN(n) || n < 0) return 0;
+                  return Math.floor(n);
+                },
+              })}
+              className={champClass(modeCampagne, false)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="mini" className="text-[11.5px] text-white/70">
+              Mini-GN <span className="text-white/40">(+15 XP)</span>
+            </Label>
+            <Input
+              id="mini"
+              type="number"
+              min={0}
+              readOnly={modeCampagne}
+              {...register("mini_gn_completes", {
+                valueAsNumber: true,
+                min: 0,
+                setValueAs: (v) => {
+                  const n = Number(v);
+                  if (Number.isNaN(n) || n < 0) return 0;
+                  return Math.floor(n);
+                },
+              })}
+              className={champClass(modeCampagne, false)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ouv" className="text-[11.5px] text-white/70">
+              Ouvertures <span className="text-white/40">(+10 XP)</span>
+            </Label>
+            <Input
+              id="ouv"
+              type="number"
+              min={0}
+              readOnly={modeCampagne}
+              {...register("ouvertures_terrain", {
+                valueAsNumber: true,
+                min: 0,
+                setValueAs: (v) => {
+                  const n = Number(v);
+                  if (Number.isNaN(n) || n < 0) return 0;
+                  return Math.floor(n);
+                },
+              })}
+              className={champClass(modeCampagne, false)}
+            />
+          </div>
+        </div>
+
+        {/* Bloc récapitulatif niveau/XP de départ — temps réel */}
+        <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 space-y-1.5 text-sm">
+          <p className="text-white/70">
+            Niveau de départ :{" "}
+            <strong className="text-gold">{niveauActuel}</strong>{" "}
+            <span className="text-white/40">
+              ({NIVEAU_BASE} de base + {gnCompletes} GN
+              {gnCompletes > 1 ? "s" : ""})
+            </span>
+          </p>
+          <p className="text-white/70">
+            XP de GN : <strong className="text-green-400">+{xpGn}</strong>
+          </p>
+          <p className="text-white/70">
+            XP de mini-GN :{" "}
+            <strong className="text-green-400">+{xpMiniGn}</strong>
+          </p>
+          <p className="text-white/70">
+            XP d'ouvertures :{" "}
+            <strong className="text-green-400">+{xpOuvertures}</strong>
+          </p>
+          <p className="text-xs italic text-white/40 pt-1">
+            XP total : calculé à l'étape suivante, après le choix de la race.
+          </p>
+        </div>
+      </SectionCard>
 
       <div className="flex justify-end">
         <Button
