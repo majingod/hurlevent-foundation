@@ -47,6 +47,7 @@ interface NiveauInfo {
   niveau: number;
   cout_xp: number;
   description?: string;
+  description_courte?: string;
 }
 
 interface CompetenceWithNiveaux extends CompetenceRow {
@@ -167,6 +168,10 @@ function parseNiveaux(raw: Json | null): NiveauInfo[] {
         cout_xp: typeof obj.cout_xp === "number" ? obj.cout_xp : Number(obj.cout_xp ?? 0),
         description:
           typeof obj.description === "string" ? obj.description : undefined,
+        description_courte:
+          typeof obj.description_courte === "string"
+            ? obj.description_courte
+            : undefined,
       } as NiveauInfo;
     })
     .filter((n): n is NiveauInfo => n !== null)
@@ -2626,12 +2631,55 @@ const Etape5_Competences_V2 = ({
     }
 
     // ---- Cas normal : Créatures, Dépeçage, Cercle, Domaine ----
+    // PR-C3 : bloc « Ce que donnent les niveaux » (paliers GÉNÉRIQUES,
+    // option-indépendants) — déplié par défaut, repliable (pattern Set via
+    // optionsOuvertes/toggleOption). Lit la desc courte (description_courte)
+    // avec fallback verbatim. UNE fois par compétence. Criminelles est gérée
+    // plus haut (cas spécial) et n'atteint pas ce bloc.
+    const paliersKey = `paliers-${comp.id}`;
+    const paliersOuvert = optionsOuvertes[paliersKey] ?? true;
+    const paliersAMontrer = niveaux.filter(
+      (n) => n.description_courte || n.description,
+    );
     return (
       <div
         className={`space-y-2 ${
           compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
         }`}
       >
+        {paliersAMontrer.length > 0 && (
+          <div className="rounded-md border border-border/60 bg-background/40 text-xs">
+            <button
+              type="button"
+              onClick={() => toggleOption(paliersKey, paliersOuvert)}
+              className="flex w-full items-center gap-1 px-3 py-2 text-muted-foreground"
+            >
+              {paliersOuvert ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+              ℹ Ce que donnent les niveaux
+            </button>
+            {paliersOuvert && (
+              <div className="flex flex-col gap-1.5 px-3 pb-3">
+                {paliersAMontrer.map((niv) => (
+                  <div key={niv.niveau} className="flex gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="h-fit shrink-0 text-xs"
+                    >
+                      Niv. {niv.niveau}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      {niv.description_courte ?? niv.description}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {options.map((opt) => renderOptionAccordion(comp, opt, niveaux))}
         {options.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
