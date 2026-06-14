@@ -404,20 +404,17 @@ const Etape7_Prieres_V2 = ({
       nomActuel: string;
     }) => {
       const nomTrim = args.valeurs.nom.trim();
-      const params: Record<string, unknown> = {
+      // Nom envoyé seulement s'il change : DEFAULT NULL ⇒ COALESCE conserve l'actuel.
+      const params: Database["public"]["Functions"]["modifier_priere"]["Args"] = {
         p_personnage_priere_id: args.personnagePriereId,
         p_niveau_priere: args.valeurs.niveau,
         p_zone_choisie: args.valeurs.zone,
         p_portee_choisie: args.valeurs.portee,
         p_duree_choisie: args.valeurs.duree,
+        ...(nomTrim !== args.nomActuel ? { p_nom_personnalise: nomTrim } : {}),
       };
-      // Nom envoyé seulement s'il change : DEFAULT NULL ⇒ COALESCE conserve l'actuel.
-      if (nomTrim !== args.nomActuel) params.p_nom_personnalise = nomTrim;
 
-      const { data, error } = await (supabase as any).rpc(
-        "modifier_priere",
-        params,
-      );
+      const { data, error } = await supabase.rpc("modifier_priere", params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {

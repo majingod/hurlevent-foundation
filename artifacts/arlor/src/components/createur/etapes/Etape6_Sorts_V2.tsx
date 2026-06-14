@@ -355,20 +355,17 @@ const Etape6_Sorts_V2 = ({
       nomActuel: string;
     }) => {
       const nomTrim = args.valeurs.nom.trim();
-      const params: Record<string, unknown> = {
+      // Nom envoyé seulement s'il change : DEFAULT NULL ⇒ COALESCE conserve l'actuel.
+      const params: Database["public"]["Functions"]["modifier_sort"]["Args"] = {
         p_personnage_sort_id: args.personnageSortId,
         p_niveau_sort: args.valeurs.niveau,
         p_zone_choisie: args.valeurs.zone,
         p_portee_choisie: args.valeurs.portee,
         p_duree_choisie: args.valeurs.duree,
+        ...(nomTrim !== args.nomActuel ? { p_nom_personnalise: nomTrim } : {}),
       };
-      // Nom envoyé seulement s'il change : DEFAULT NULL ⇒ COALESCE conserve l'actuel.
-      if (nomTrim !== args.nomActuel) params.p_nom_personnalise = nomTrim;
 
-      const { data, error } = await (supabase as any).rpc(
-        "modifier_sort",
-        params,
-      );
+      const { data, error } = await supabase.rpc("modifier_sort", params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
