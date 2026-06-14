@@ -19,6 +19,9 @@ interface FiltreTypeMagieProps {
   total: number;
   filtre: string | null;
   onFiltre: (filtre: string | null) => void;
+  /** Liste des types reconnus. Défaut = types de magie. Permet de réutiliser
+   * le filtre pour l'alchimie (potion/poison). */
+  typesConnus?: { type: string; libelle: string; couleur: string }[];
 }
 
 const FiltreTypeMagie = ({
@@ -26,8 +29,9 @@ const FiltreTypeMagie = ({
   total,
   filtre,
   onFiltre,
+  typesConnus = TYPES_CONNUS,
 }: FiltreTypeMagieProps) => {
-  const presents = TYPES_CONNUS.filter((t) => (compteParType[t.type] ?? 0) > 0);
+  const presents = typesConnus.filter((t) => (compteParType[t.type] ?? 0) > 0);
   if (presents.length < 2) return null;
 
   return (

@@ -4,10 +4,15 @@
 
 export type TypeMagie = "effet" | "effet bénéfique" | "dégâts";
 
-const CONFIG: Record<TypeMagie, { libelle: string; couleur: string }> = {
+// Inclut aussi les types d'alchimie (potion/poison), aux mêmes couleurs que la
+// magie (potion = vert bénéfique, poison = rouge dégâts) — pastille de type
+// partagée sorts / prières / recettes.
+const CONFIG: Record<string, { libelle: string; couleur: string }> = {
   "effet bénéfique": { libelle: "Bénéfique", couleur: "hsl(142 55% 48%)" },
   effet: { libelle: "Effet", couleur: "hsl(210 75% 62%)" },
   "dégâts": { libelle: "Dégâts", couleur: "hsl(0 65% 55%)" },
+  potion: { libelle: "Potion", couleur: "hsl(142 55% 48%)" },
+  poison: { libelle: "Poison", couleur: "hsl(0 65% 55%)" },
 };
 
 // hsl(...) → hsl(... / a) : fond à 12 %, bordure à 35 %.

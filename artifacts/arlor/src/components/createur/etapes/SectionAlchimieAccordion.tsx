@@ -4,6 +4,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { PastilleCout } from "@/components/createur/artisanat/PastilleCout";
+import { PastilleType } from "@/components/shared/PastilleType";
+import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
 import type { Database } from "@/integrations/supabase/types";
 import {
   parseIngredientsRecette,
@@ -59,6 +61,13 @@ const NIVEAU_LABEL: Record<number, string> = {
   3: "Majeures",
 };
 
+/** Types de recettes d'alchimie pour le filtre partagé FiltreTypeMagie
+ * (mêmes couleurs que PastilleType : potion = vert, poison = rouge). */
+const TYPES_ALCHIMIE = [
+  { type: "potion", libelle: "Potions", couleur: "hsl(142 55% 48%)" },
+  { type: "poison", libelle: "Poisons", couleur: "hsl(0 65% 55%)" },
+];
+
 /** Bascule une valeur dans un Set (renvoie un nouveau Set). */
 function toggleSet<T>(set: Set<T>, val: T): Set<T> {
   const next = new Set(set);
@@ -72,7 +81,7 @@ function FicheRecette({ recette }: { recette: RecetteRow }) {
   const sections = parseRecetteVerbatim(recette.description_verbatim);
   if (sections) {
     return (
-      <div className="border-t border-border/60 px-3.5 py-2.5">
+      <div className="border-l-[3px] border-l-primary px-3.5 py-2.5">
         <RecetteSections data={sections} />
       </div>
     );
@@ -82,7 +91,7 @@ function FicheRecette({ recette }: { recette: RecetteRow }) {
     recette.ingredients,
   );
   return (
-    <div className="border-t border-border/60 px-3.5 py-2.5 text-xs">
+    <div className="border-l-[3px] border-l-primary px-3.5 py-2.5 text-xs">
       {recette.formule && (
         <p className="mb-2">
           <span className="font-semibold text-primary">Formule : </span>
@@ -143,17 +152,17 @@ export const SectionAlchimieAccordion = ({
   modeCampagne = false,
   montrerAide,
 }: SectionAlchimieAccordionProps) => {
-  // Par défaut : tout replié à l'arrivée sur l'étape (niveaux, types et
-  // fiches). Le joueur déplie à la demande.
+  // Par défaut : tout replié à l'arrivée sur l'étape (niveaux + fiches). Le
+  // filtre par type démarre à « Tous » (null) pour chaque niveau.
   const [niveauxOuverts, setNiveauxOuverts] = useState<Set<number>>(
-    () => new Set(),
-  );
-  const [groupesOuverts, setGroupesOuverts] = useState<Set<string>>(
     () => new Set(),
   );
   const [fichesOuvertes, setFichesOuvertes] = useState<Set<string>>(
     () => new Set(),
   );
+  const [filtreParNiveau, setFiltreParNiveau] = useState<
+    Record<number, string | null>
+  >({});
 
   const niveauxDisponibles = [1, 2, 3].filter((n) => n <= niveauAlchimie);
 
@@ -165,178 +174,158 @@ export const SectionAlchimieAccordion = ({
         );
         if (recettesNiveau.length === 0) return null;
 
-        const potions = recettesNiveau.filter((r) => r.type === "potion");
-        const poisons = recettesNiveau.filter((r) => r.type === "poison");
         const label = NIVEAU_LABEL[niveau] ?? `Niveau ${niveau}`;
         const quota = quotaParNiveau[niveau] ?? { total: 0, utilises: 0 };
+        const quotaRestant = Math.max(0, quota.total - quota.utilises);
         const niveauOuvert = niveauxOuverts.has(niveau);
+        const filtre = filtreParNiveau[niveau] ?? null;
 
-        const groupes: { cle: string; titre: string; recettes: RecetteRow[] }[] =
-          [
-            { cle: `${niveau}-potion`, titre: `Potions ${label}`, recettes: potions },
-            { cle: `${niveau}-poison`, titre: `Poisons ${label}`, recettes: poisons },
-          ].filter((g) => g.recettes.length > 0);
+        const compteParType: Record<string, number> = {
+          potion: recettesNiveau.filter((r) => r.type === "potion").length,
+          poison: recettesNiveau.filter((r) => r.type === "poison").length,
+        };
+        const recettesVisibles = filtre
+          ? recettesNiveau.filter((r) => r.type === filtre)
+          : recettesNiveau;
 
         return (
           <div
             key={niveau}
-            className="overflow-hidden rounded-2xl border border-border bg-[hsl(0_0%_5.5%)]"
+            className="overflow-hidden rounded-lg border bg-card"
           >
             <button
               type="button"
               onClick={() => setNiveauxOuverts((s) => toggleSet(s, niveau))}
-              className="flex w-full items-center gap-3 p-4 text-left"
+              className="flex w-full flex-wrap items-center gap-2 px-3.5 py-3 text-left"
             >
-              <span className="text-base text-primary">
-                {niveauOuvert ? "▾" : "▸"}
-              </span>
-              <h3 className="m-0 flex-1 font-heading text-lg uppercase tracking-wide text-foreground">
+              <ChevronRight
+                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${niveauOuvert ? "rotate-90" : ""}`}
+              />
+              <span className="flex-1 font-heading text-base font-semibold text-foreground">
                 Recettes {label}
-              </h3>
-              <span className="text-sm text-primary">
-                {quota.utilises} / {quota.total} gratuites
+              </span>
+              <span
+                className={`whitespace-nowrap rounded-full border px-2 py-px text-[10.5px] font-bold ${
+                  quotaRestant > 0
+                    ? "border-primary/50 text-primary"
+                    : "border-amber-400/50 text-amber-400"
+                }`}
+              >
+                {quota.utilises}/{quota.total} gratuites
               </span>
             </button>
 
             {niveauOuvert && (
-              <div className="flex flex-col gap-2.5 px-3.5 pb-4">
-                {groupes.map((groupe) => {
-                  const groupeOuvert = groupesOuverts.has(groupe.cle);
-                  return (
-                    <div
-                      key={groupe.cle}
-                      className="overflow-hidden rounded-xl border border-border bg-card"
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setGroupesOuverts((s) => toggleSet(s, groupe.cle))
-                        }
-                        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left"
+              <div>
+                <FiltreTypeMagie
+                  compteParType={compteParType}
+                  total={recettesNiveau.length}
+                  filtre={filtre}
+                  onFiltre={(f) =>
+                    setFiltreParNiveau((m) => ({ ...m, [niveau]: f }))
+                  }
+                  typesConnus={TYPES_ALCHIMIE}
+                />
+
+                <div className="pb-1">
+                  {recettesVisibles.map((recette) => {
+                    const acquise = recettesAcquisesParRecetteId.get(
+                      recette.id,
+                    );
+                    const estAcquise = !!acquise;
+                    const estGratuite = acquise?.est_gratuit ?? false;
+                    const quotaRestantNiveau = getQuotaRestantPourNiveau(
+                      recette.niveau_requis ?? 0,
+                    );
+                    const seraGratuite = !estAcquise && quotaRestantNiveau > 0;
+                    const gratuite = estAcquise ? estGratuite : seraGratuite;
+                    const xpInsuffisants =
+                      !seraGratuite &&
+                      !estAcquise &&
+                      coutSupplementaire > xpDisponible;
+                    const scellee = estRecetteScellee?.(recette.id) ?? false;
+                    const ficheOuverte = fichesOuvertes.has(recette.id);
+
+                    return (
+                      <div
+                        key={recette.id}
+                        className={`border-t border-border transition-colors ${
+                          scellee
+                            ? "border-l-4 border-l-gold bg-gold/15"
+                            : estAcquise
+                              ? modeCampagne
+                                ? "border-l-[3px] border-l-emerald-600/60 bg-emerald-600/10"
+                                : "bg-primary/5"
+                              : ""
+                        }`}
                       >
-                        <span className="text-sm text-primary">
-                          {groupeOuvert ? "▾" : "▸"}
-                        </span>
-                        <span className="flex-1 font-heading text-sm tracking-wide text-primary">
-                          {groupe.titre}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {groupe.recettes.length}
-                        </span>
-                      </button>
-
-                      {groupeOuvert && (
-                        <div className="flex flex-col gap-2 px-3 pb-3">
-                          {groupe.recettes.map((recette) => {
-                            const acquise = recettesAcquisesParRecetteId.get(
-                              recette.id,
-                            );
-                            const estAcquise = !!acquise;
-                            const estGratuite = acquise?.est_gratuit ?? false;
-                            const quotaRestant = getQuotaRestantPourNiveau(
-                              recette.niveau_requis ?? 0,
-                            );
-                            const seraGratuite = !estAcquise && quotaRestant > 0;
-                            const gratuite = estAcquise
-                              ? estGratuite
-                              : seraGratuite;
-                            const xpInsuffisants =
-                              !seraGratuite &&
-                              !estAcquise &&
-                              coutSupplementaire > xpDisponible;
-                            // PR-C2 : recette scellée par la photo de compo.
-                            const scellee =
-                              estRecetteScellee?.(recette.id) ?? false;
-                            const ficheOuverte = fichesOuvertes.has(recette.id);
-
-                            return (
-                              <div
-                                key={recette.id}
-                                className={`overflow-hidden rounded-[10px] border transition-colors ${
-                                  scellee
-                                    ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
-                                    : estAcquise
-                                      ? modeCampagne
-                                        ? "border-emerald-600/40 bg-emerald-600/10"
-                                        : "border-primary/50 bg-primary/5"
-                                      : "border-border bg-card"
-                                }`}
-                              >
-                                {/* Ligne de repli (toujours visible) */}
-                                <div
-                                  onClick={() =>
-                                    setFichesOuvertes((s) =>
-                                      toggleSet(s, recette.id),
-                                    )
-                                  }
-                                  className="flex cursor-pointer items-center gap-3 px-3.5 py-3"
-                                >
-                                  <ChevronRight
-                                    className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${ficheOuverte ? "rotate-90" : ""}`}
-                                  />
-                                  <strong className="min-w-0 flex-1 truncate text-[15px] font-bold text-foreground">
-                                    {recette.nom}
-                                  </strong>
-                                  <PastilleCout
-                                    gratuit={gratuite}
-                                    xp={coutSupplementaire}
-                                    onAide={montrerAide}
-                                  />
-                                  {scellee && <BadgeAcquis />}
-                                  {!scellee && estAcquise && modeCampagne && (
-                                    <LabelAjoutAnnulable />
-                                  )}
-                                  <label
-                                    onClick={(e) => e.stopPropagation()}
-                                    className={`flex shrink-0 items-center ${
-                                      xpInsuffisants ? "opacity-50" : ""
-                                    }`}
-                                    title={
-                                      xpInsuffisants
-                                        ? `XP insuffisants (manque ${
-                                            coutSupplementaire - xpDisponible
-                                          } XP)`
-                                        : undefined
-                                    }
-                                  >
-                                    <Checkbox
-                                      checked={estAcquise}
-                                      disabled={
-                                        mutationsPending ||
-                                        xpInsuffisants ||
-                                        scellee
-                                      }
-                                      onCheckedChange={() =>
-                                        onToggle(recette, acquise)
-                                      }
-                                      aria-label={`Sélectionner ${recette.nom ?? "la recette"}`}
-                                    />
-                                  </label>
-                                </div>
-
-                                {/* Glance (replié) — clic ouvre aussi la fiche */}
-                                {!ficheOuverte && recette.description && (
-                                  <p
-                                    onClick={() =>
-                                      setFichesOuvertes((s) =>
-                                        toggleSet(s, recette.id),
-                                      )
-                                    }
-                                    className="cursor-pointer px-3.5 pb-2.5 pl-[34px] text-xs leading-snug text-muted-foreground"
-                                  >
-                                    {recette.description}
-                                  </p>
-                                )}
-
-                                {ficheOuverte && <FicheRecette recette={recette} />}
-                              </div>
-                            );
-                          })}
+                        {/* Ligne de repli (toujours visible) */}
+                        <div
+                          onClick={() =>
+                            setFichesOuvertes((s) => toggleSet(s, recette.id))
+                          }
+                          className="flex cursor-pointer items-center gap-2 px-3 py-2.5"
+                        >
+                          <ChevronRight
+                            className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${ficheOuverte ? "rotate-90" : ""}`}
+                          />
+                          <strong className="min-w-0 flex-1 truncate font-heading text-sm text-primary">
+                            {recette.nom}
+                          </strong>
+                          <PastilleType type={recette.type} />
+                          <PastilleCout
+                            gratuit={gratuite}
+                            xp={coutSupplementaire}
+                            onAide={montrerAide}
+                          />
+                          {scellee && <BadgeAcquis />}
+                          {!scellee && estAcquise && modeCampagne && (
+                            <LabelAjoutAnnulable />
+                          )}
+                          <label
+                            onClick={(e) => e.stopPropagation()}
+                            className={`flex shrink-0 items-center ${xpInsuffisants ? "opacity-50" : ""}`}
+                            title={
+                              xpInsuffisants
+                                ? `XP insuffisants (manque ${coutSupplementaire - xpDisponible} XP)`
+                                : undefined
+                            }
+                          >
+                            <Checkbox
+                              checked={estAcquise}
+                              disabled={
+                                mutationsPending || xpInsuffisants || scellee
+                              }
+                              onCheckedChange={() => onToggle(recette, acquise)}
+                              aria-label={`Sélectionner ${recette.nom ?? "la recette"}`}
+                            />
+                          </label>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+
+                        {/* Glance (replié) — clic ouvre aussi la fiche */}
+                        {!ficheOuverte && recette.description && (
+                          <p
+                            onClick={() =>
+                              setFichesOuvertes((s) =>
+                                toggleSet(s, recette.id),
+                              )
+                            }
+                            className="cursor-pointer px-3 pb-2.5 pl-[34px] text-xs leading-snug text-muted-foreground"
+                          >
+                            {recette.description}
+                          </p>
+                        )}
+
+                        {ficheOuverte && <FicheRecette recette={recette} />}
+                      </div>
+                    );
+                  })}
+                  {recettesVisibles.length === 0 && (
+                    <p className="px-3 py-2.5 text-sm text-muted-foreground">
+                      Aucune recette de ce type à ce niveau.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
