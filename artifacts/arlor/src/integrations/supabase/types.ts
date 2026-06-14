@@ -22,6 +22,7 @@ export type Database = {
           cout_xp: number | null
           description: string | null
           description_longue: string | null
+          duree: string | null
           effet: string | null
           effet_maitrise: string | null
           est_actif: boolean | null
@@ -37,6 +38,7 @@ export type Database = {
           cout_xp?: number | null
           description?: string | null
           description_longue?: string | null
+          duree?: string | null
           effet?: string | null
           effet_maitrise?: string | null
           est_actif?: boolean | null
@@ -52,6 +54,7 @@ export type Database = {
           cout_xp?: number | null
           description?: string | null
           description_longue?: string | null
+          duree?: string | null
           effet?: string | null
           effet_maitrise?: string | null
           est_actif?: boolean | null
@@ -3328,6 +3331,7 @@ export type Database = {
           domaine: string
           duree: string | null
           duree_incantation: string | null
+          effet_instance: Json | null
           est_actif: boolean
           id: string
           niveau: number
@@ -3348,6 +3352,7 @@ export type Database = {
           domaine: string
           duree?: string | null
           duree_incantation?: string | null
+          effet_instance?: Json | null
           est_actif?: boolean
           id?: string
           niveau?: number
@@ -3368,6 +3373,7 @@ export type Database = {
           domaine?: string
           duree?: string | null
           duree_incantation?: string | null
+          effet_instance?: Json | null
           est_actif?: boolean
           id?: string
           niveau?: number
@@ -3828,6 +3834,7 @@ export type Database = {
           description_courte: string | null
           description_tronc: string | null
           duree: string | null
+          effet_instance: Json | null
           est_actif: boolean
           id: string
           niveau: number
@@ -3846,6 +3853,7 @@ export type Database = {
           description_courte?: string | null
           description_tronc?: string | null
           duree?: string | null
+          effet_instance?: Json | null
           est_actif?: boolean
           id?: string
           niveau?: number
@@ -3864,6 +3872,7 @@ export type Database = {
           description_courte?: string | null
           description_tronc?: string | null
           duree?: string | null
+          effet_instance?: Json | null
           est_actif?: boolean
           id?: string
           niveau?: number
@@ -3884,6 +3893,7 @@ export type Database = {
           est_actif: boolean | null
           id: string
           nom: string
+          texte_manuel: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3893,6 +3903,7 @@ export type Database = {
           est_actif?: boolean | null
           id?: string
           nom: string
+          texte_manuel?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3902,6 +3913,7 @@ export type Database = {
           est_actif?: boolean | null
           id?: string
           nom?: string
+          texte_manuel?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -3970,8 +3982,11 @@ export type Database = {
         Row: {
           cible: string | null
           cout_ps: number | null
+          cout_ps_maitrise: number | null
           description: string | null
+          duree: string | null
           effet: string | null
+          effet_maitrise: string | null
           id: string | null
           nom: string | null
           personnage_id: string | null
@@ -5617,18 +5632,23 @@ export type Database = {
       }
       vue_prieres_personnage: {
         Row: {
+          bonus_niveau: Json | null
           cout_xp_base: number | null
+          description_tronc: string | null
           domaine: string | null
           duree_choisie: string | null
           duree_incantation: string | null
           duree_incantation_calculee: number | null
+          effet_instance: Json | null
           id: string | null
           niveau_priere: number | null
           nom_personnalise: string | null
+          paliers: Json | null
           personnage_id: string | null
           portee_choisie: string | null
           priere_description: string | null
           priere_description_courte: string | null
+          type_priere: string | null
           zone_choisie: string | null
         }
         Relationships: [
@@ -5917,18 +5937,23 @@ export type Database = {
       }
       vue_sorts_personnage: {
         Row: {
+          bonus_niveau: Json | null
           cercle: string | null
           cout_xp_base: number | null
+          description_tronc: string | null
           duree_choisie: string | null
+          effet_instance: Json | null
           formule_magique: string | null
           id: string | null
           niveau_sort: number | null
           nom_personnalise: string | null
+          paliers: Json | null
           personnage_id: string | null
           portee_choisie: string | null
           sort_description: string | null
           sort_description_courte: string | null
           sort_nom_base: string | null
+          type_sort: string | null
           zone_choisie: string | null
         }
         Relationships: [
@@ -6081,6 +6106,7 @@ export type Database = {
           trait_description: string | null
           trait_id: string | null
           trait_nom: string | null
+          trait_texte_manuel: string | null
         }
         Relationships: [
           {
@@ -6293,6 +6319,9 @@ export type Database = {
         Args: { p_montant: number; p_personnage_id: string; p_raison?: string }
         Returns: Json
       }
+      cout_pts_duree: { Args: { p_duree: string }; Returns: number }
+      cout_pts_portee: { Args: { p_portee: string }; Returns: number }
+      cout_pts_zone: { Args: { p_zone: string }; Returns: number }
       crediter_banque_xp: {
         Args: {
           p_description?: string
@@ -6310,6 +6339,7 @@ export type Database = {
         Args: { p_profil_id?: string }
         Returns: Json
       }
+      derniere_photo_compo: { Args: { p_personnage_id: string }; Returns: Json }
       desacheter_assemblage: {
         Args: { p_personnage_assemblage_id: string }
         Returns: Json
@@ -6401,6 +6431,28 @@ export type Database = {
       }
       marquer_absent: { Args: { p_inscription_id: string }; Returns: Json }
       marquer_present: { Args: { p_inscription_id: string }; Returns: Json }
+      modifier_priere: {
+        Args: {
+          p_duree_choisie: string
+          p_niveau_priere: number
+          p_nom_personnalise?: string
+          p_personnage_priere_id: string
+          p_portee_choisie: string
+          p_zone_choisie: string
+        }
+        Returns: Json
+      }
+      modifier_sort: {
+        Args: {
+          p_duree_choisie: string
+          p_niveau_sort: number
+          p_nom_personnalise?: string
+          p_personnage_sort_id: string
+          p_portee_choisie: string
+          p_zone_choisie: string
+        }
+        Returns: Json
+      }
       nom_profil_principal: { Args: { p_acteur_id: string }; Returns: string }
       personnage_a_des_prieres: {
         Args: { p_personnage_id: string }

@@ -83,21 +83,17 @@ const Etape3_V2 = ({
     queryKey: ["v2-traits-par-race", raceId, sousType],
     enabled: !!raceId,
     queryFn: async () => {
-      // `trait_texte_manuel` n'est pas encore dans types.ts (dette
-      // RESYNC-TYPES-SUPABASE) → cast local pour ne pas faire échouer le
-      // typecheck sur le `.select()`. Le mapping ci-dessous reste en `any`.
-      let q = (supabase as any)
+      let q = supabase
         .from("vue_traits_par_race")
         .select("trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, cout_xp")
-        .eq("race_id", raceId!)
-        .order("trait_nom");
+        .eq("race_id", raceId!);
 
       if (sousType) {
         q = q.or(`sous_type.eq.${sousType},sous_type.is.null`);
       } else {
         q = q.is("sous_type", null);
       }
-      const { data, error } = await q;
+      const { data, error } = await q.order("trait_nom");
       if (error) throw error;
       return (data ?? []).map((t: any) => ({
         id: t.trait_id as string,
