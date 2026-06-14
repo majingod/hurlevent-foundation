@@ -29,6 +29,8 @@ import ReligionDetails from "@/components/shared/ReligionDetails";
 import ModaleChangementClasse, {
   type DChangementClasse,
 } from "@/components/createur/ModaleChangementClasse";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
+import SectionCard from "@/components/createur/aide/SectionCard";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 interface Etape4Form {
@@ -604,6 +606,25 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   return (
     <>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <IntroEtape
+        storageKey="hv-e4-intro-replie"
+        titre="Comment fonctionne le choix de classe ?"
+      >
+        <IntroEtapeItem n={1}>
+          Choisis la classe principale. Elle fixe tes{" "}
+          <span className="text-primary">PV et PS de départ</span> et t'offre
+          des compétences gratuites.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          Certaines compétences offertes demandent un{" "}
+          <span className="text-primary">choix</span> (une langue ancienne, une
+          religion).
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          Tu pourras toujours acheter d'autres compétences à l'étape suivante.
+        </IntroEtapeItem>
+      </IntroEtape>
+
       <div className="space-y-2">
         <h2 className="font-heading text-2xl text-gold">Choix de la classe</h2>
         <p className="text-sm text-white/50">
@@ -699,14 +720,11 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
       {/* Bloc Choix requis (conditionnel) */}
       {competencesAvecChoix.length > 0 && (
-        <div className="space-y-4 rounded-lg border border-gold/20 bg-gold/5 p-4">
-          <div className="space-y-1">
-            <h3 className="font-heading text-lg text-gold">Choix requis</h3>
-            <p className="text-xs text-white/60">
-              Cette classe vous attribue gratuitement des compétences.
-              Certaines nécessitent un choix.
-            </p>
-          </div>
+        <SectionCard
+          titre="Choix requis"
+          sousTitre="Cette classe t'attribue gratuitement des compétences. Certaines nécessitent un choix."
+        >
+          <div className="space-y-4">
 
           {competencesAvecChoix.map((c) => {
             if (c.type_choix === "langue_ancienne") {
@@ -806,7 +824,8 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
             return null;
           })}
-        </div>
+          </div>
+        </SectionCard>
       )}
 
       <div className="flex justify-between pt-2">

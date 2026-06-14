@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, BookOpen, Info, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  Info,
+  Loader2,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +25,8 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@/components/ui/radio-group";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
+import SectionCard from "@/components/createur/aide/SectionCard";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
@@ -33,6 +42,7 @@ interface Race {
   nom: string;
   nom_latin: string | null;
   description: string | null;
+  description_courte: string | null;
   xp_depart: number | null;
   image_url: string | null;
   emoji: string | null;
@@ -44,6 +54,9 @@ interface Race {
 
 const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
+  // Dépli « Voir le détail » du verbatim long. Une seule race affichée à la
+  // fois → un booléen suffit (pas de Set ici). Reset au changement de race.
+  const [detailRaceOuvert, setDetailRaceOuvert] = useState(false);
 
   const { control, handleSubmit, watch, reset } =
     useForm<Etape2Form>({
@@ -71,13 +84,18 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     return true;
   }, [raceId, estChimeride, sousTypeChimeride]);
 
+  // Replier le détail dès qu'on change de race sélectionnée.
+  useEffect(() => {
+    setDetailRaceOuvert(false);
+  }, [raceId]);
+
   const { data: races = [], isLoading } = useQuery({
     queryKey: ["v2-races"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("races")
         .select(
-          "id, nom, nom_latin, description, xp_depart, image_url, emoji, esperance_vie, exigences_costume, restrictions_classes, est_jouable"
+          "id, nom, nom_latin, description, description_courte, xp_depart, image_url, emoji, esperance_vie, exigences_costume, restrictions_classes, est_jouable"
         )
         .eq("est_actif", true)
         .eq("est_jouable", true)
@@ -170,6 +188,27 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <IntroEtape
+        storageKey="hv-e2-intro-replie"
+        titre="Comment fonctionne le choix de race ?"
+      >
+        <IntroEtapeItem n={1}>
+          Choisis la race de ton personnage. Chaque race fixe ton{" "}
+          <span className="text-primary">XP de départ</span> et peut imposer des
+          exigences de costume.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          Lis le résumé, puis ouvre{" "}
+          <span className="text-primary">« Voir le détail »</span> pour
+          l'histoire complète si tu veux en savoir plus.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          Certaines races spéciales demandent l'
+          <span className="text-primary">approbation de l'animation</span> — tu
+          peux continuer la fiche en attendant.
+        </IntroEtapeItem>
+      </IntroEtape>
+
       <div className="space-y-2">
         <h2 className="font-heading text-2xl text-gold">Choix de la race</h2>
         <p className="text-sm text-white/50">
@@ -203,100 +242,125 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         />
       </div>
 
-      {/* Carte de détails de la race sélectionnée */}
+      {/* Carte de détails de la race sélectionnée (SectionCard harmonisée) */}
       {raceSelectionnee && (
-        <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-5">
-          <div className="flex items-start gap-4">
-            {raceSelectionnee.image_url && (
-              <img
-                src={raceSelectionnee.image_url}
-                alt={raceSelectionnee.nom}
-                className="h-24 w-24 rounded-md border border-white/10 object-cover"
-              />
-            )}
-            <div className="flex-1 space-y-1">
-              <h3 className="flex items-center gap-2 font-heading text-xl text-gold">
-                {raceSelectionnee.emoji && (
-                  <span>{raceSelectionnee.emoji}</span>
+        <SectionCard titre="Détails de la race">
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
+              {raceSelectionnee.image_url && (
+                <img
+                  src={raceSelectionnee.image_url}
+                  alt={raceSelectionnee.nom}
+                  className="h-24 w-24 rounded-md border border-white/10 object-cover"
+                />
+              )}
+              <div className="flex-1 space-y-1">
+                <h3 className="flex items-center gap-2 font-heading text-xl text-gold">
+                  {raceSelectionnee.emoji && (
+                    <span>{raceSelectionnee.emoji}</span>
+                  )}
+                  <span>{raceSelectionnee.nom}</span>
+                </h3>
+                {raceSelectionnee.nom_latin && (
+                  <p className="text-xs italic text-white/50">
+                    {raceSelectionnee.nom_latin}
+                  </p>
                 )}
-                <span>{raceSelectionnee.nom}</span>
-              </h3>
-              {raceSelectionnee.nom_latin && (
-                <p className="text-xs italic text-white/50">
-                  {raceSelectionnee.nom_latin}
+                {raceSelectionnee.xp_depart != null && (
+                  <span className="inline-block rounded-full bg-gold/15 px-3 py-0.5 text-xs text-gold">
+                    XP de départ : {raceSelectionnee.xp_depart}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {(estChimeride || estNonRace) && (
+              <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  Race spéciale — nécessite l'approbation de l'équipe d'animation
+                  (voir plus bas).
                 </p>
-              )}
-              {raceSelectionnee.xp_depart != null && (
-                <span className="inline-block rounded-full bg-gold/15 px-3 py-0.5 text-xs text-gold">
-                  XP de départ : {raceSelectionnee.xp_depart}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {(estChimeride || estNonRace) && (
-            <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>
-                Race spéciale — nécessite l'approbation de l'équipe d'animation
-                (voir plus bas).
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.description && (
-            <div className="space-y-1">
-              <Label className="text-xs uppercase tracking-wide text-white/60">
-                Description
-              </Label>
-              <p className="whitespace-pre-wrap text-sm text-white/80">
-                {raceSelectionnee.description}
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.esperance_vie && (
-            <div className="space-y-1">
-              <Label className="text-xs uppercase tracking-wide text-white/60">
-                Espérance de vie
-              </Label>
-              <p className="text-sm text-white/80">
-                {raceSelectionnee.esperance_vie}
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.exigences_costume && (
-            <div className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-              <Label className="flex items-center gap-1 text-xs uppercase tracking-wide text-amber-300">
-                <AlertTriangle className="h-3 w-3" />
-                Exigences de costume
-              </Label>
-              <p className="whitespace-pre-wrap text-sm text-amber-100/90">
-                {raceSelectionnee.exigences_costume}
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.restrictions_classes &&
-            raceSelectionnee.restrictions_classes.length > 0 && (
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-wide text-white/60">
-                  Classes interdites
-                </Label>
-                <div className="flex flex-wrap gap-1">
-                  {raceSelectionnee.restrictions_classes.map((c) => (
-                    <span
-                      key={c}
-                      className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-200"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
               </div>
             )}
-        </div>
+
+            {/* Glance courte (toujours visible) + dépli du verbatim long */}
+            {(raceSelectionnee.description_courte ||
+              raceSelectionnee.description) && (
+              <div className="space-y-2">
+                <p className="whitespace-pre-line text-sm text-white/85">
+                  {raceSelectionnee.description_courte ??
+                    raceSelectionnee.description}
+                </p>
+                {raceSelectionnee.description && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setDetailRaceOuvert((o) => !o)}
+                      className="flex items-center gap-1.5 py-1 text-xs font-semibold text-gold"
+                    >
+                      {detailRaceOuvert ? (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      )}
+                      {detailRaceOuvert ? "Masquer le détail" : "Voir le détail"}
+                    </button>
+                    {detailRaceOuvert && (
+                      <div className="mt-1 border-l-2 border-l-gold/50 pl-3">
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-white/75">
+                          {raceSelectionnee.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {raceSelectionnee.esperance_vie && (
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-wide text-white/60">
+                  Espérance de vie
+                </Label>
+                <p className="text-sm text-white/80">
+                  {raceSelectionnee.esperance_vie}
+                </p>
+              </div>
+            )}
+
+            {raceSelectionnee.exigences_costume && (
+              <div className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                <Label className="flex items-center gap-1 text-xs uppercase tracking-wide text-amber-300">
+                  <AlertTriangle className="h-3 w-3" />
+                  Exigences de costume
+                </Label>
+                <p className="whitespace-pre-wrap text-sm text-amber-100/90">
+                  {raceSelectionnee.exigences_costume}
+                </p>
+              </div>
+            )}
+
+            {raceSelectionnee.restrictions_classes &&
+              raceSelectionnee.restrictions_classes.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase tracking-wide text-white/60">
+                    Classes interdites
+                  </Label>
+                  <div className="flex flex-wrap gap-1">
+                    {raceSelectionnee.restrictions_classes.map((c) => (
+                      <span
+                        key={c}
+                        className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-200"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+          </div>
+        </SectionCard>
       )}
 
       {estChimeride && (
