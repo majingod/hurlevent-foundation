@@ -643,6 +643,7 @@ const PersonnageNouveauV2 = () => {
           {etape === 3 && (
             <Etape3_V2
               personnageId={personnageId}
+              xpDisponible={xpDisponible}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
               onXpDeltaChange={setXpDeltaCourant}

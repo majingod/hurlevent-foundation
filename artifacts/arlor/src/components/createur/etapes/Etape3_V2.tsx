@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QueryState } from "@/components/ui/QueryState";
+import JaugeXP from "@/components/createur/aide/JaugeXP";
+import SectionCard from "@/components/createur/aide/SectionCard";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
+
+interface Etape3Props extends EtapeProps {
+  xpDisponible?: number;
+}
 
 interface TraitChoisi {
   trait_id: string;
@@ -20,14 +26,24 @@ interface TraitDispo {
   id: string;
   nom: string;
   description: string;
+  texte_manuel: string | null;
   cout_xp: number;
 }
 
-const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: EtapeProps) => {
+const Etape3_V2 = ({
+  personnageId,
+  onSuccess,
+  onPrevious,
+  onXpDeltaChange,
+  xpDisponible = 0,
+}: Etape3Props) => {
   const [submitting, setSubmitting] = useState(false);
   const [gratuits, setGratuits] = useState<Set<string>>(new Set());
   const [achetes, setAchetes] = useState<Set<string>>(new Set());
   const [chargementInit, setChargementInit] = useState(true);
+  // Détails déroulés (verbatim manuel). Set manuel — PAS de Radix Accordion à
+  // enfants interactifs (gotcha s152).
+  const [detailsOuverts, setDetailsOuverts] = useState<Set<string>>(new Set());
 
   // Charger l'état du personnage (race + sous-type + traits déjà choisis)
   const { data: perso } = useQuery({
@@ -67,9 +83,12 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
     queryKey: ["v2-traits-par-race", raceId, sousType],
     enabled: !!raceId,
     queryFn: async () => {
-      let q = supabase
+      // `trait_texte_manuel` n'est pas encore dans types.ts (dette
+      // RESYNC-TYPES-SUPABASE) → cast local pour ne pas faire échouer le
+      // typecheck sur le `.select()`. Le mapping ci-dessous reste en `any`.
+      let q = (supabase as any)
         .from("vue_traits_par_race")
-        .select("trait_id, sous_type, trait_nom, trait_description, cout_xp")
+        .select("trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, cout_xp")
         .eq("race_id", raceId!)
         .order("trait_nom");
 
@@ -84,6 +103,7 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
         id: t.trait_id as string,
         nom: t.trait_nom as string,
         description: t.trait_description as string,
+        texte_manuel: (t.trait_texte_manuel as string | null) ?? null,
         cout_xp: t.cout_xp as number,
       })) as TraitDispo[];
     },
@@ -105,8 +125,6 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
   }, [perso]);
 
   const quotaGratuits = race?.nb_traits_raciaux ?? 0;
-  // Sprint 5.5 Section 1 : true quand le quota de traits gratuits est rempli.
-  // Tant que false, les Checkbox "Acheter (X XP)" sont désactivées.
   const gratuitChoixComplet = gratuits.size >= quotaGratuits;
 
   const xpTraits = useMemo(() => {
@@ -127,9 +145,8 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
 
   const toggleGratuit = (id: string) => {
     if (gratuits.has(id)) {
-      // Décocher un gratuit : si des achats payants existent, le premier
-      // (FIFO) est automatiquement promu en gratuit, miroir du recalcul
-      // serveur dans sauvegarder_etape_3 (Option B validée session 34).
+      // Décocher un gratuit : promotion FIFO du premier payant (miroir du
+      // recalcul serveur dans sauvegarder_etape_3, Option B session 34).
       const premierPayant =
         achetes.size > 0
           ? (achetes.values().next().value as string)
@@ -152,7 +169,6 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
       return;
     }
 
-    // Cocher comme gratuit
     if (gratuits.size >= quotaGratuits) {
       toast.error(
         `Tu ne peux choisir que ${quotaGratuits} trait(s) gratuit(s).`
@@ -175,6 +191,32 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
       return;
     }
     setAchetes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Harmonisation s186 — checkbox UNIQUE par trait. Les `quotaGratuits` premiers
+  // cochés sont gratuits ; les suivants coûtent leur cout_xp. Aiguilleur : on ne
+  // change NI le calcul NI le payload, on réutilise toggleGratuit (avec sa
+  // promotion FIFO) et toggleAchete tels quels.
+  const toggleTrait = (id: string) => {
+    if (gratuits.has(id)) {
+      toggleGratuit(id);
+      return;
+    }
+    if (achetes.has(id)) {
+      toggleAchete(id);
+      return;
+    }
+    if (gratuits.size < quotaGratuits) toggleGratuit(id);
+    else toggleAchete(id);
+  };
+
+  const toggleDetail = (id: string) => {
+    setDetailsOuverts((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -238,6 +280,15 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
     onSuccess();
   };
 
+  const restantGratuit = quotaGratuits - gratuits.size;
+  const sousTitre = useMemo(
+    () =>
+      `${quotaGratuits} trait${quotaGratuits > 1 ? "s" : ""} gratuit${
+        quotaGratuits > 1 ? "s" : ""
+      } · chaque trait suivant coûte 10 XP`,
+    [quotaGratuits]
+  );
+
   if (!chargementInit && !raceId) {
     return (
       <div className="space-y-4">
@@ -262,85 +313,167 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
       isEmpty={(d) => Array.isArray(d) && d.length === 0}
     >
       {(traitsDispo) => (
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <h2 className="font-heading text-2xl text-gold">Traits raciaux</h2>
-            <p className="text-sm text-white/60">
-              Choisis {quotaGratuits} trait(s) gratuit(s). Tu peux en acheter
-              d'autres avec ton XP.
-            </p>
-            <div className="flex gap-4 text-sm">
+        <div className="space-y-5">
+          <JaugeXP xpDisponible={xpDisponible} />
+
+          <IntroEtape
+            storageKey="hv-e3-intro-replie"
+            titre="Comment fonctionne cette étape ?"
+          >
+            <IntroEtapeItem n={1}>
+              Ta race t'offre{" "}
+              <strong>
+                {quotaGratuits} trait{quotaGratuits > 1 ? "s" : ""} racial
+                {quotaGratuits > 1 ? "s" : ""} gratuit
+                {quotaGratuits > 1 ? "s" : ""}
+              </strong>{" "}
+              : coche celui que tu veux.
+            </IntroEtapeItem>
+            <IntroEtapeItem n={2}>
+              Tu peux en prendre d'autres pour <strong>10 XP</strong> chacun —
+              c'est optionnel.
+            </IntroEtapeItem>
+            <IntroEtapeItem n={3}>
+              « Voir le détail » affiche la description complète du manuel.
+            </IntroEtapeItem>
+          </IntroEtape>
+
+          <SectionCard
+            titre="Choisis tes traits"
+            sousTitre={sousTitre}
+            badge={
               <span
-                className={
-                  gratuits.size === quotaGratuits
-                    ? "text-green-400"
-                    : "text-amber-400"
-                }
+                className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+                  gratuitChoixComplet
+                    ? "border-green-500/40 bg-green-500/10 text-green-400"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                }`}
               >
-                Gratuits : {gratuits.size} / {quotaGratuits}
+                {gratuitChoixComplet ? "✓ " : ""}
+                {gratuits.size} / {quotaGratuits} gratuit
+                {quotaGratuits > 1 ? "s" : ""}
               </span>
+            }
+          >
+            <div className="grid grid-cols-1 gap-2.5">
+              {traitsDispo.map((t) => {
+                const estGratuit = gratuits.has(t.id);
+                const estAchete = achetes.has(t.id);
+                const selectionne = estGratuit || estAchete;
+                const detailOuvert = detailsOuverts.has(t.id);
+                const verbatim = t.texte_manuel ?? t.description;
+                return (
+                  <div
+                    key={t.id}
+                    className={`overflow-hidden rounded-lg border transition-colors ${
+                      selectionne
+                        ? "border-gold/50 bg-gold/5"
+                        : "border-white/10 bg-black/25"
+                    }`}
+                  >
+                    {/* Zone de sélection (clic = cocher/décocher) */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggleTrait(t.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleTrait(t.id);
+                        }
+                      }}
+                      className="flex cursor-pointer items-start gap-3 px-3 pb-2 pt-2.5"
+                    >
+                      <Checkbox
+                        checked={selectionne}
+                        onCheckedChange={() => toggleTrait(t.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-gold">
+                            {t.nom}
+                          </span>
+                          {selectionne ? (
+                            estGratuit ? (
+                              <span className="shrink-0 rounded-full border border-gold bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">
+                                ✦ Gratuit
+                              </span>
+                            ) : (
+                              <span className="shrink-0 rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400">
+                                − {t.cout_xp} XP
+                              </span>
+                            )
+                          ) : (
+                            <span className="shrink-0 text-[11px] text-white/40">
+                              {t.cout_xp} XP
+                            </span>
+                          )}
+                        </div>
+                        {/* Glance : description courte */}
+                        <p className="mt-1 text-[12.5px] leading-snug text-white/60">
+                          {t.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Affordance « Voir le détail » — contrôle distinct */}
+                    <button
+                      type="button"
+                      onClick={() => toggleDetail(t.id)}
+                      aria-expanded={detailOuvert}
+                      className={`mb-2 ml-11 flex items-center gap-1.5 rounded-md border border-gold/40 px-2 py-1 text-[11.5px] font-semibold text-gold transition-colors ${
+                        detailOuvert ? "bg-gold/10" : "bg-transparent hover:bg-gold/5"
+                      }`}
+                    >
+                      <ChevronRight
+                        className={`h-3.5 w-3.5 shrink-0 transition-transform ${
+                          detailOuvert ? "rotate-90" : ""
+                        }`}
+                      />
+                      {detailOuvert ? "Masquer le détail" : "Voir le détail"}
+                    </button>
+
+                    {/* Verbatim manuel déroulé */}
+                    {detailOuvert && (
+                      <div className="mb-3 ml-11 mr-3 rounded-md border-l-2 border-gold/50 bg-white/[0.03] px-3 py-2.5">
+                        <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
+                          {verbatim}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3.5 flex items-center justify-between text-sm">
               <span className="text-white/60">
-                Achetés : {achetes.size} ({xpTraits} XP)
+                {gratuits.size} gratuit · {achetes.size} acheté
+                {achetes.size > 1 ? "s" : ""}
+              </span>
+              <span
+                className={`font-bold ${
+                  xpTraits > 0 ? "text-amber-400" : "text-white/45"
+                }`}
+              >
+                Coût : {xpTraits} XP
               </span>
             </div>
+
             {!gratuitChoixComplet && (
-              <p className="text-xs text-amber-300">
-                💡 Tu dois choisir {quotaGratuits - gratuits.size} trait
-                {quotaGratuits - gratuits.size > 1 ? "s" : ""} gratuit
-                {quotaGratuits - gratuits.size > 1 ? "s" : ""} avant d'en
-                acheter d'autres.
+              <p className="mt-2 text-xs text-amber-300">
+                💡 Choisis{" "}
+                {restantGratuit > 1
+                  ? `tes ${restantGratuit} traits gratuits`
+                  : "ton trait gratuit"}{" "}
+                pour continuer.
               </p>
             )}
-          </div>
+          </SectionCard>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {traitsDispo.map((t) => {
-              const estGratuit = gratuits.has(t.id);
-              const estAchete = achetes.has(t.id);
-              const selectionne = estGratuit || estAchete;
-              return (
-                <Card
-                  key={t.id}
-                  className={`border-white/10 bg-black/30 transition-colors ${
-                    selectionne ? "border-gold/50 bg-gold/5" : ""
-                  }`}
-                >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base text-gold">
-                      <span>{t.nom}</span>
-                      <span className="text-xs text-white/50">{t.cout_xp} XP</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-white/70">{t.description}</p>
-                    <div className="flex flex-wrap gap-4">
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={estGratuit}
-                          onCheckedChange={() => toggleGratuit(t.id)}
-                        />
-                        Gratuit
-                      </label>
-                      <label
-                        className={`flex items-center gap-2 text-sm ${
-                          !gratuitChoixComplet && !estAchete ? "opacity-50" : ""
-                        }`}
-                      >
-                        <Checkbox
-                          checked={estAchete}
-                          disabled={!gratuitChoixComplet && !estAchete}
-                          onCheckedChange={() => toggleAchete(t.id)}
-                        />
-                        Acheter ({t.cout_xp} XP)
-                      </label>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          <div className="flex justify-between pt-2">
+          <div className="flex justify-between pt-1">
             <Button type="button" variant="outline" onClick={onPrevious}>
               Étape précédente
             </Button>
@@ -353,7 +486,6 @@ const Etape3_V2 = ({ personnageId, onSuccess, onPrevious, onXpDeltaChange }: Eta
               Suivant
             </Button>
           </div>
-
         </div>
       )}
     </QueryState>
