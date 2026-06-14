@@ -1031,7 +1031,7 @@ const Etape9_Artisanat_V2 = ({
                         })()}
 
                         {/* Cases à cocher par niveau (grisage séquentiel) */}
-                        <div className="space-y-2">
+                        <div>
                           {niveaux.map((palier) => {
                             const niv = palier.niveau ?? 0;
                             const acquis =
@@ -1060,12 +1060,12 @@ const Etape9_Artisanat_V2 = ({
                             return (
                               <div
                                 key={niv}
-                                className={`space-y-2 rounded border p-2 ${
+                                className={`space-y-2 border-t border-border p-2 ${
                                   scelle
-                                    ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                                    ? "border-l-4 border-l-gold bg-gold/15"
                                     : acquis && modeCampagne
-                                      ? "border-emerald-600/40 bg-emerald-600/10"
-                                      : "border-border"
+                                      ? "border-l-[3px] border-l-emerald-600/60 bg-emerald-600/10"
+                                      : ""
                                 } ${
                                   !scelle && niveauPrecedentRequis && !acquis
                                     ? "opacity-50"
