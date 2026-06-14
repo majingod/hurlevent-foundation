@@ -506,23 +506,25 @@ const Etape8_Assemblages_V2 = ({
                       {/* Ligne de repli (toujours visible) */}
                       <div
                         onClick={() => toggleRang(assemblage.id)}
-                        className="flex cursor-pointer items-center gap-2 px-3 py-2.5"
+                        className="flex cursor-pointer items-start gap-2 px-3 py-2.5"
                       >
                         <ChevronRight
-                          className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+                          className={`mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
                         />
-                        <strong className="min-w-0 flex-1 truncate font-heading text-sm text-primary">
-                          {nomCourtAssemblage(assemblage.nom)}
-                        </strong>
-                        <PastilleCout
-                          gratuit={pastilleGratuit}
-                          xp={COUT_ASSEMBLAGE_SUPPLEMENTAIRE}
-                          onAide={montrerAide}
-                        />
-                        {scelle && <BadgeAcquis />}
-                        {!scelle && estAcquis && modeCampagne && (
-                          <LabelAjoutAnnulable />
-                        )}
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                          <strong className="font-heading text-sm text-primary">
+                            {nomCourtAssemblage(assemblage.nom)}
+                          </strong>
+                          <PastilleCout
+                            gratuit={pastilleGratuit}
+                            xp={COUT_ASSEMBLAGE_SUPPLEMENTAIRE}
+                            onAide={montrerAide}
+                          />
+                          {scelle && <BadgeAcquis />}
+                          {!scelle && estAcquis && modeCampagne && (
+                            <LabelAjoutAnnulable />
+                          )}
+                        </div>
                         <label
                           onClick={(e) => e.stopPropagation()}
                           className={`flex shrink-0 items-center ${xpInsuffisants ? "opacity-50" : ""}`}

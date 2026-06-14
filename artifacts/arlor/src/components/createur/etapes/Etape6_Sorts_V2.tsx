@@ -139,11 +139,17 @@ const AIDE_TYPES: Record<string, { libelle: string; texte: string }> = {
 // Ordre canonique des types pour la légende.
 const ORDRE_TYPES = ["effet bénéfique", "effet", "dégâts"];
 
-const Chevron = ({ ouvert }: { ouvert: boolean }) => (
+const Chevron = ({
+  ouvert,
+  className = "",
+}: {
+  ouvert: boolean;
+  className?: string;
+}) => (
   <ChevronRight
     className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${
       ouvert ? "rotate-90" : ""
-    }`}
+    } ${className}`}
   />
 );
 
@@ -890,33 +896,35 @@ const Etape6_Sorts_V2 = ({
                         <div key={s.id} className="border-t">
                           <div
                             onClick={() => tapSort(s)}
-                            className={`flex cursor-pointer items-center gap-2 px-3 py-2.5 ${
+                            className={`flex cursor-pointer items-start gap-2 px-3 py-2.5 ${
                               selectionne ? "bg-primary/5" : ""
                             }`}
                           >
-                            <Chevron ouvert={selectionne} />
-                            <strong className="min-w-0 flex-1 truncate font-heading text-[13.5px] text-primary">
-                              {s.nom}
-                            </strong>
-                            {/* I9 : déjà possédé ×N */}
-                            {possede > 0 && (
-                              <span
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  montrerAide({
-                                    titre: `⧉ ×${possede}`,
-                                    texte: `Vous possédez déjà ${possede} version${possede > 1 ? "s" : ""} de ce sort (configurations différentes possibles). Retrouvez-les dans « Sorts déjà achetés ».`,
-                                  });
-                                }}
-                                className="cursor-pointer whitespace-nowrap rounded-full border border-gold/50 px-2 py-px text-[10px] font-bold text-gold"
-                              >
-                                ⧉ ×{possede}
-                              </span>
-                            )}
-                            {s.niveau > 1 && (
-                              <Badge variant="outline">Niv. {s.niveau}+</Badge>
-                            )}
-                            {pastilleAide(s.type_sort)}
+                            <Chevron ouvert={selectionne} className="mt-0.5" />
+                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                              <strong className="font-heading text-[13.5px] text-primary">
+                                {s.nom}
+                              </strong>
+                              {/* I9 : déjà possédé ×N */}
+                              {possede > 0 && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    montrerAide({
+                                      titre: `⧉ ×${possede}`,
+                                      texte: `Vous possédez déjà ${possede} version${possede > 1 ? "s" : ""} de ce sort (configurations différentes possibles). Retrouvez-les dans « Sorts déjà achetés ».`,
+                                    });
+                                  }}
+                                  className="cursor-pointer whitespace-nowrap rounded-full border border-gold/50 px-2 py-px text-[10px] font-bold text-gold"
+                                >
+                                  ⧉ ×{possede}
+                                </span>
+                              )}
+                              {s.niveau > 1 && (
+                                <Badge variant="outline">Niv. {s.niveau}+</Badge>
+                              )}
+                              {pastilleAide(s.type_sort)}
+                            </div>
                           </div>
 
                           {selectionne && (
@@ -1103,78 +1111,80 @@ const Etape6_Sorts_V2 = ({
                           >
                             <div
                               onClick={() => tapInstance(ps)}
-                              className={`flex cursor-pointer items-center gap-1.5 px-3 py-2.5 ${
+                              className={`flex cursor-pointer items-start gap-1.5 px-3 py-2.5 ${
                                 ouverte ? "bg-primary/5" : ""
                               }`}
                             >
-                              <Chevron ouvert={ouverte} />
-                              <strong className="min-w-0 flex-1 truncate font-heading text-[13.5px] text-primary">
-                                {nomActuel}
-                              </strong>
-                              <Badge variant="secondary">
-                                Niv. {ps.niveau_sort}
-                              </Badge>
-                              {pastilleAide(ps.sorts?.type_sort)}
-                              {/* I6 : indicateur de balayage pur — tap = aide L2 */}
-                              {auMax ? (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "MAX",
-                                      texte:
-                                        "Ce sort est au maximum : niveau, zone, portée et durée sont tous au plafond. Seul le nom peut encore changer.",
-                                    });
-                                  }}
-                                  className="cursor-pointer rounded-full border border-border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-muted-foreground"
-                                >
-                                  MAX
-                                </span>
-                              ) : (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "↑ Améliorable",
-                                      texte:
-                                        "Ce sort peut encore monter : au moins un réglage (niveau, zone, portée ou durée) n'est pas au plafond. Touchez-le pour l'améliorer.",
-                                    });
-                                  }}
-                                  className="cursor-pointer px-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
-                                >
-                                  ↑
-                                </span>
-                              )}
-                              {acquis && (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "🔒 Acquis (scellé)",
-                                      texte:
-                                        "Confirmé à un GN : impossible à supprimer ou à affaiblir. Vous pouvez seulement l'améliorer (jamais sous son plancher).",
-                                    });
-                                  }}
-                                  className="cursor-pointer text-xs"
-                                >
-                                  🔒
-                                </span>
-                              )}
-                              {ajout && (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "＋ Ajout annulable",
-                                      texte:
-                                        "Acheté dans la fenêtre courante (pas encore joué en GN) : modifiable et supprimable librement, XP remboursés.",
-                                    });
-                                  }}
-                                  className="cursor-pointer text-xs font-bold text-emerald-700 dark:text-emerald-400"
-                                >
-                                  ＋
-                                </span>
-                              )}
+                              <Chevron ouvert={ouverte} className="mt-0.5" />
+                              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                                <strong className="font-heading text-[13.5px] text-primary">
+                                  {nomActuel}
+                                </strong>
+                                <Badge variant="secondary">
+                                  Niv. {ps.niveau_sort}
+                                </Badge>
+                                {pastilleAide(ps.sorts?.type_sort)}
+                                {/* I6 : indicateur de balayage pur — tap = aide L2 */}
+                                {auMax ? (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "MAX",
+                                        texte:
+                                          "Ce sort est au maximum : niveau, zone, portée et durée sont tous au plafond. Seul le nom peut encore changer.",
+                                      });
+                                    }}
+                                    className="cursor-pointer rounded-full border border-border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-muted-foreground"
+                                  >
+                                    MAX
+                                  </span>
+                                ) : (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "↑ Améliorable",
+                                        texte:
+                                          "Ce sort peut encore monter : au moins un réglage (niveau, zone, portée ou durée) n'est pas au plafond. Touchez-le pour l'améliorer.",
+                                      });
+                                    }}
+                                    className="cursor-pointer px-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
+                                  >
+                                    ↑
+                                  </span>
+                                )}
+                                {acquis && (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "🔒 Acquis (scellé)",
+                                        texte:
+                                          "Confirmé à un GN : impossible à supprimer ou à affaiblir. Vous pouvez seulement l'améliorer (jamais sous son plancher).",
+                                      });
+                                    }}
+                                    className="cursor-pointer text-xs"
+                                  >
+                                    🔒
+                                  </span>
+                                )}
+                                {ajout && (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "＋ Ajout annulable",
+                                        texte:
+                                          "Acheté dans la fenêtre courante (pas encore joué en GN) : modifiable et supprimable librement, XP remboursés.",
+                                      });
+                                    }}
+                                    className="cursor-pointer text-xs font-bold text-emerald-700 dark:text-emerald-400"
+                                  >
+                                    ＋
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* M2 : bloc de MODIFICATION directe */}

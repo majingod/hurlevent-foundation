@@ -141,11 +141,17 @@ const AIDE_TYPES: Record<string, { libelle: string; texte: string }> = {
 // Ordre canonique des types pour la légende.
 const ORDRE_TYPES = ["effet bénéfique", "effet", "dégâts"];
 
-const Chevron = ({ ouvert }: { ouvert: boolean }) => (
+const Chevron = ({
+  ouvert,
+  className = "",
+}: {
+  ouvert: boolean;
+  className?: string;
+}) => (
   <ChevronRight
     className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${
       ouvert ? "rotate-90" : ""
-    }`}
+    } ${className}`}
   />
 );
 
@@ -951,33 +957,35 @@ const Etape7_Prieres_V2 = ({
                         <div key={p.id} className="border-t">
                           <div
                             onClick={() => tapPriere(p)}
-                            className={`flex cursor-pointer items-center gap-2 px-3 py-2.5 ${
+                            className={`flex cursor-pointer items-start gap-2 px-3 py-2.5 ${
                               selectionnee ? "bg-primary/5" : ""
                             }`}
                           >
-                            <Chevron ouvert={selectionnee} />
-                            <strong className="min-w-0 flex-1 truncate font-heading text-[13.5px] text-primary">
-                              {p.nom}
-                            </strong>
-                            {/* I9 : déjà possédé ×N */}
-                            {possede > 0 && (
-                              <span
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  montrerAide({
-                                    titre: `⧉ ×${possede}`,
-                                    texte: `Vous possédez déjà ${possede} version${possede > 1 ? "s" : ""} de cette prière (configurations différentes possibles). Retrouvez-les dans « Prières déjà achetées ».`,
-                                  });
-                                }}
-                                className="cursor-pointer whitespace-nowrap rounded-full border border-gold/50 px-2 py-px text-[10px] font-bold text-gold"
-                              >
-                                ⧉ ×{possede}
-                              </span>
-                            )}
-                            {p.niveau > 1 && (
-                              <Badge variant="outline">Niv. {p.niveau}+</Badge>
-                            )}
-                            {pastilleAide(p.type_priere)}
+                            <Chevron ouvert={selectionnee} className="mt-0.5" />
+                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                              <strong className="font-heading text-[13.5px] text-primary">
+                                {p.nom}
+                              </strong>
+                              {/* I9 : déjà possédé ×N */}
+                              {possede > 0 && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    montrerAide({
+                                      titre: `⧉ ×${possede}`,
+                                      texte: `Vous possédez déjà ${possede} version${possede > 1 ? "s" : ""} de cette prière (configurations différentes possibles). Retrouvez-les dans « Prières déjà achetées ».`,
+                                    });
+                                  }}
+                                  className="cursor-pointer whitespace-nowrap rounded-full border border-gold/50 px-2 py-px text-[10px] font-bold text-gold"
+                                >
+                                  ⧉ ×{possede}
+                                </span>
+                              )}
+                              {p.niveau > 1 && (
+                                <Badge variant="outline">Niv. {p.niveau}+</Badge>
+                              )}
+                              {pastilleAide(p.type_priere)}
+                            </div>
                           </div>
 
                           {selectionnee && (
@@ -1164,78 +1172,80 @@ const Etape7_Prieres_V2 = ({
                           >
                             <div
                               onClick={() => tapInstance(pp)}
-                              className={`flex cursor-pointer items-center gap-1.5 px-3 py-2.5 ${
+                              className={`flex cursor-pointer items-start gap-1.5 px-3 py-2.5 ${
                                 ouverte ? "bg-primary/5" : ""
                               }`}
                             >
-                              <Chevron ouvert={ouverte} />
-                              <strong className="min-w-0 flex-1 truncate font-heading text-[13.5px] text-primary">
-                                {nomActuel}
-                              </strong>
-                              <Badge variant="secondary">
-                                Niv. {pp.niveau_priere}
-                              </Badge>
-                              {pastilleAide(pp.prieres?.type_priere)}
-                              {/* I6 : indicateur de balayage pur — tap = aide L2 */}
-                              {auMax ? (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "MAX",
-                                      texte:
-                                        "Cette prière est au maximum : niveau, zone, portée et durée sont tous au plafond. Seul le nom peut encore changer.",
-                                    });
-                                  }}
-                                  className="cursor-pointer rounded-full border border-border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-muted-foreground"
-                                >
-                                  MAX
-                                </span>
-                              ) : (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "↑ Améliorable",
-                                      texte:
-                                        "Cette prière peut encore monter : au moins un réglage (niveau, zone, portée ou durée) n'est pas au plafond. Touchez-la pour l'améliorer.",
-                                    });
-                                  }}
-                                  className="cursor-pointer px-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
-                                >
-                                  ↑
-                                </span>
-                              )}
-                              {acquis && (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "🔒 Acquis (scellé)",
-                                      texte:
-                                        "Confirmée à un GN : impossible à supprimer ou à affaiblir. Vous pouvez seulement l'améliorer (jamais sous son plancher).",
-                                    });
-                                  }}
-                                  className="cursor-pointer text-xs"
-                                >
-                                  🔒
-                                </span>
-                              )}
-                              {ajout && (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    montrerAide({
-                                      titre: "＋ Ajout annulable",
-                                      texte:
-                                        "Achetée dans la fenêtre courante (pas encore jouée en GN) : modifiable et supprimable librement, XP remboursés.",
-                                    });
-                                  }}
-                                  className="cursor-pointer text-xs font-bold text-emerald-700 dark:text-emerald-400"
-                                >
-                                  ＋
-                                </span>
-                              )}
+                              <Chevron ouvert={ouverte} className="mt-0.5" />
+                              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                                <strong className="font-heading text-[13.5px] text-primary">
+                                  {nomActuel}
+                                </strong>
+                                <Badge variant="secondary">
+                                  Niv. {pp.niveau_priere}
+                                </Badge>
+                                {pastilleAide(pp.prieres?.type_priere)}
+                                {/* I6 : indicateur de balayage pur — tap = aide L2 */}
+                                {auMax ? (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "MAX",
+                                        texte:
+                                          "Cette prière est au maximum : niveau, zone, portée et durée sont tous au plafond. Seul le nom peut encore changer.",
+                                      });
+                                    }}
+                                    className="cursor-pointer rounded-full border border-border px-1.5 py-0.5 text-[9.5px] font-bold tracking-wide text-muted-foreground"
+                                  >
+                                    MAX
+                                  </span>
+                                ) : (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "↑ Améliorable",
+                                        texte:
+                                          "Cette prière peut encore monter : au moins un réglage (niveau, zone, portée ou durée) n'est pas au plafond. Touchez-la pour l'améliorer.",
+                                      });
+                                    }}
+                                    className="cursor-pointer px-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400"
+                                  >
+                                    ↑
+                                  </span>
+                                )}
+                                {acquis && (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "🔒 Acquis (scellé)",
+                                        texte:
+                                          "Confirmée à un GN : impossible à supprimer ou à affaiblir. Vous pouvez seulement l'améliorer (jamais sous son plancher).",
+                                      });
+                                    }}
+                                    className="cursor-pointer text-xs"
+                                  >
+                                    🔒
+                                  </span>
+                                )}
+                                {ajout && (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      montrerAide({
+                                        titre: "＋ Ajout annulable",
+                                        texte:
+                                          "Achetée dans la fenêtre courante (pas encore jouée en GN) : modifiable et supprimable librement, XP remboursés.",
+                                      });
+                                    }}
+                                    className="cursor-pointer text-xs font-bold text-emerald-700 dark:text-emerald-400"
+                                  >
+                                    ＋
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* M2 : bloc de MODIFICATION directe */}
