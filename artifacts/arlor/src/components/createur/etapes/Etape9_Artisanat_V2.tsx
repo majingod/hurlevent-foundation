@@ -879,7 +879,7 @@ const Etape9_Artisanat_V2 = ({
                 />
                 <Astuce
                   storageKey="hv-e9-astuce-alchimie-vue"
-                  texte="Touchez une recette pour lire sa fiche complète. La pastille indique si elle est gratuite (quota) ou payante en XP."
+                  texte="Touchez une recette pour lire sa fiche, ou filtrez par potions / poisons. La pastille indique si elle est gratuite (quota) ou payante en XP."
                 />
                 {loadingRecettes || loadingPersoRecettes ? (
                   <div className="flex items-center text-sm text-muted-foreground">
