@@ -47,11 +47,6 @@ export interface InscriptionController {
  * Événements et le tableau de bord (PR2 dashboard miroir, s193).
  * Présence ≠ inscription : l'admin valide la PRÉSENCE (present/absent) ;
  * l'inscription est enregistrée immédiatement (statut en_attente).
- *
- * NOTE (dette INVALIDATE-INSCRIPTIONS-KEY) : l'invalidation post-action utilise
- * ["mes-inscriptions", user.id] alors que la query est sur joueurId. Comportement
- * conservé À L'IDENTIQUE depuis Evenements.tsx (le realtime couvre déjà la bonne
- * clé). Correction hors scope de ce refactor.
  */
 export const useInscriptionEvenements = (): InscriptionController => {
   const { user } = useAuth();
@@ -167,14 +162,14 @@ export const useInscriptionEvenements = (): InscriptionController => {
     setSubmitting(false);
     if (error) {
       if (error.code === "23505") {
-        queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", joueurId] });
         setModalOpen(false);
       } else {
         toast.error("Erreur lors de l'inscription.");
       }
     } else {
       toast.success("Inscription envoyée ! En attente de confirmation.");
-      queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", joueurId] });
       queryClient.invalidateQueries({ queryKey: ["evenements-publies"] });
       setModalOpen(false);
     }
@@ -202,7 +197,7 @@ export const useInscriptionEvenements = (): InscriptionController => {
       toast.error("Erreur lors de la désinscription.");
     } else {
       toast.success("Désinscription effectuée.");
-      queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", joueurId] });
       queryClient.invalidateQueries({ queryKey: ["evenements-publies"] });
     }
     setDesinscrireEvent(null);
