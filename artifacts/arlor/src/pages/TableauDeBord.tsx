@@ -12,7 +12,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, User, Edit2, MoreVertical, ArrowRightLeft, ScrollText } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  User,
+  Edit2,
+  MoreVertical,
+  ArrowRightLeft,
+  ScrollText,
+  Wallet,
+  Coins,
+  TrendingUp,
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
@@ -39,8 +51,89 @@ interface PersonnageResume {
   race_nom: string;
   classe_nom: string;
   est_finalise: boolean;
+  gn_completes: number;
+  mini_gn_completes: number;
+  ouvertures_terrain: number;
 }
 
+// Libellé de progression d'un personnage (segments non nuls uniquement).
+const progressionLabel = (p: PersonnageResume): string => {
+  const segs: string[] = [];
+  if (p.gn_completes) segs.push(`${p.gn_completes} GN régulier${p.gn_completes > 1 ? "s" : ""}`);
+  if (p.mini_gn_completes) segs.push(`${p.mini_gn_completes} mini-GN`);
+  if (p.ouvertures_terrain) segs.push(`${p.ouvertures_terrain} ouverture${p.ouvertures_terrain > 1 ? "s" : ""}`);
+  return segs.length === 0 ? "N'a participé à aucun événement" : segs.join(" · ");
+};
+
+interface SoldeBanque {
+  solde: number | null;
+  total_gagne: number | null;
+  total_transfere: number | null;
+}
+
+// Banque XP au niveau du joueur (réserve commune). Affichage seul :
+// le versement vers un personnage se fait depuis sa fiche (BanqueXpCard).
+const CarteBanqueJoueur = ({ joueurId }: { joueurId: string }) => {
+  const { data: banque } = useQuery({
+    queryKey: ["banque-joueur", joueurId],
+    queryFn: async (): Promise<SoldeBanque> => {
+      const { data, error } = await supabase
+        .from("vue_banque_joueur")
+        .select("solde, total_gagne, total_transfere")
+        .eq("joueur_id", joueurId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? { solde: 0, total_gagne: 0, total_transfere: 0 };
+    },
+    enabled: !!joueurId,
+  });
+
+  const solde = banque?.solde ?? 0;
+  const aGagne = (banque?.total_gagne ?? 0) > 0;
+
+  return (
+    <Card className="border-white/10 bg-white/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-heading text-gold">
+          <Wallet className="h-4 w-4" />
+          Banque XP
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-baseline gap-2">
+          <span className="font-heading text-4xl leading-none text-gold">{solde}</span>
+          <span className="text-sm text-muted-foreground">XP à répartir</span>
+        </div>
+
+        {aGagne && (
+          <div className="flex gap-5 text-sm text-muted-foreground">
+            <span>
+              Total gagné{" "}
+              <span className="font-medium text-foreground">{banque?.total_gagne ?? 0}</span>
+            </span>
+            <span>
+              Transféré{" "}
+              <span className="font-medium text-foreground">{banque?.total_transfere ?? 0}</span>
+            </span>
+          </div>
+        )}
+
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Ta réserve d'XP commune. L'XP des <span className="text-white/80">mini-GN</span> et des{" "}
+          <span className="text-white/80">ouvertures de terrain</span> arrive ici ; tu la répartis
+          ensuite sur le personnage de ton choix depuis sa fiche. Les GN réguliers, eux, donnent l'XP
+          directement au personnage présent.
+        </p>
+
+        {solde > 0 && (
+          <p className="text-xs text-gold/80">
+            Ouvre la fiche d'un personnage pour répartir ton XP.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const TableauDeBord = () => {
   const { user } = useAuth();
@@ -52,7 +145,7 @@ const TableauDeBord = () => {
   const navigate = useNavigate();
 
   // DATA-FIRST : vue_personnages_joueur retourne directement race_nom / classe_nom
-  // Remplace la requête sur la table brute personnages qui affichait des UUIDs
+  // + les compteurs de progression (gn_completes / mini_gn_completes / ouvertures_terrain)
   const {
     data: personnages = [],
     isLoading,
@@ -144,6 +237,8 @@ const TableauDeBord = () => {
         </Link>
       </div>
 
+      {joueurId && <CarteBanqueJoueur joueurId={joueurId} />}
+
       {error && (
         <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="pt-6">
@@ -227,8 +322,46 @@ const TableauDeBord = () => {
                   <p><span className="text-white/60">Race :</span> {p.race_nom}</p>
                   <p><span className="text-white/60">Classe :</span> {p.classe_nom}</p>
                   <p><span className="text-white/60">Niveau :</span> {p.niveau}</p>
-                  <p><span className="text-white/60">XP dépensés :</span> {p.xp_depense} / {p.xp_total}</p>
                 </div>
+
+                {p.est_finalise ? (
+                  <>
+                    <div
+                      className={`mt-3 flex items-center justify-between rounded-lg border px-3 py-2 ${
+                        p.xp_total - p.xp_depense > 0
+                          ? "border-gold/35 bg-gold/10"
+                          : "border-white/10 bg-white/5"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Coins
+                          className={`h-4 w-4 ${
+                            p.xp_total - p.xp_depense > 0 ? "text-gold" : "text-muted-foreground"
+                          }`}
+                        />
+                        XP disponible
+                      </span>
+                      <span
+                        className={`font-heading text-lg ${
+                          p.xp_total - p.xp_depense > 0 ? "text-gold" : "text-muted-foreground"
+                        }`}
+                      >
+                        {p.xp_total - p.xp_depense}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground/70">
+                      {p.xp_depense} / {p.xp_total} XP dépensés
+                    </p>
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <TrendingUp className="h-3.5 w-3.5 shrink-0 text-gold" />
+                      <span>{progressionLabel(p)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    <span className="text-white/60">XP de départ :</span> {p.xp_total}
+                  </p>
+                )}
 
                 <div className="mt-6 flex flex-col gap-2">
                   {p.est_finalise && (
