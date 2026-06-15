@@ -45,6 +45,7 @@ import {
 } from "@/components/evenements/CarteEvenementJoueur";
 import { ModalesInscription } from "@/components/evenements/ModalesInscription";
 import { useInscriptionEvenements } from "@/hooks/useInscriptionEvenements";
+import CarteNotifications from "@/components/notifications/CarteNotifications";
 
 interface PersonnageResume {
   id: string;
@@ -310,6 +311,8 @@ const TableauDeBord = () => {
       {joueurId && <CarteBanqueJoueur joueurId={joueurId} />}
 
       <SectionProchainEvenement />
+
+      <CarteNotifications />
 
       {error && (
         <Card className="border-destructive/50 bg-destructive/10">
