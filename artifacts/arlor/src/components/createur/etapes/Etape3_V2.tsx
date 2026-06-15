@@ -132,12 +132,25 @@ const Etape3_V2 = ({
     return total;
   }, [achetes, traits]);
 
+  // XP des traits DÉJÀ persistés (présents dans perso.traits_raciaux_choisis,
+  // donc déjà comptés dans xp_depense côté serveur). Le delta remonté au parent
+  // doit représenter UNIQUEMENT le changement non sauvegardé, sinon ces traits
+  // sont comptés une 2e fois à la ré-entrée sur l'étape (double comptage s195).
+  const xpTraitsPersistes = useMemo(() => {
+    const choisis =
+      (perso?.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
+    return choisis.reduce(
+      (s, c) => s + (c.est_gratuit ? 0 : (c.xp_depense ?? 0)),
+      0,
+    );
+  }, [perso]);
+
   useEffect(() => {
-    onXpDeltaChange?.(xpTraits);
+    onXpDeltaChange?.(xpTraits - xpTraitsPersistes);
     return () => {
       onXpDeltaChange?.(0);
     };
-  }, [xpTraits, onXpDeltaChange]);
+  }, [xpTraits, xpTraitsPersistes, onXpDeltaChange]);
 
   const toggleGratuit = (id: string) => {
     if (gratuits.has(id)) {
