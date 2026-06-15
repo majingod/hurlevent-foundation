@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { useMenuNavigation } from "@/hooks/useMenuNavigation";
+import ClocheNotifications from "@/components/notifications/ClocheNotifications";
 import { Menu, Users, Settings, Crown } from "lucide-react";
 import {
   Sheet,
@@ -36,6 +37,7 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-2">
+          {user && <ClocheNotifications />}
           {user && profilActif && (
             <span
               className="flex items-center gap-1.5 rounded-full border px-2 py-1"
