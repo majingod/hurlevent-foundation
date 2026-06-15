@@ -6,7 +6,7 @@ import { useProfil } from "@/contexts/ProfilContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { CarteEvenementJoueur, type StatutInscription } from "@/components/evenements/CarteEvenementJoueur";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,6 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { CalendarDays, MapPin, Users, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 /* ---------- types ---------- */
@@ -38,6 +37,8 @@ interface Evenement {
   lieu: string | null;
   type_evenement: string | null;
   xp_recompense: number | null;
+  niveaux_recompense: number | null;
+  adresse_physique: string | null;
   max_participants: number | null;
   description: string | null;
   nb_inscrits: number;
@@ -53,36 +54,6 @@ interface Inscription {
   evenement_id: string | null;
   statut: string | null;
 }
-
-/* ---------- helpers ---------- */
-const formatDate = (d: string | null) => {
-  if (!d) return "";
-  return new Date(d).toLocaleDateString("fr-CA", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-};
-
-const typeBadge = (t: string | null) => {
-  switch (t) {
-    case "mini_gn":
-      return <Badge className="bg-blue-700 text-foreground hover:bg-blue-700">Mini GN</Badge>;
-    case "gn_regulier":
-      return <Badge className="bg-green-700 text-foreground hover:bg-green-700">GN Régulier</Badge>;
-    case "entretien_terrain":
-      return <Badge className="bg-primary text-primary-foreground hover:bg-primary">Entretien du Terrain</Badge>;
-    default:
-      return null;
-  }
-};
-
-const xpLabel = (ev: Evenement) => {
-  const xp = ev.xp_recompense ?? 0;
-  if (ev.type_evenement === "gn_regulier") return `${xp} XP + 1 niveau`;
-  return `${xp} XP`;
-};
 
 /* ---------- component ---------- */
 const Evenements = () => {
@@ -233,9 +204,6 @@ const Evenements = () => {
     setDesinscrireIds([]);
   };
 
-  const isComplet = (ev: Evenement) =>
-    ev.max_participants != null && ev.nb_inscrits >= ev.max_participants;
-
   return (
     <div className="container py-12">
       <h1 className="mb-8 font-heading text-3xl font-bold text-primary md:text-4xl">
@@ -249,71 +217,28 @@ const Evenements = () => {
       ) : (
         <div className="space-y-6">
           {evenements.map((ev) => {
-            const complet = isComplet(ev);
-            const mesInscriptions = inscriptions.filter((i) => i.evenement_id === ev.id);
-            const enAttente = mesInscriptions.filter((i) => i.statut === "en_attente");
-            const confirmee = mesInscriptions.some(
-              (i) => i.statut === "present" || i.statut === "absent"
-            );
+            const mes = inscriptions.filter((i) => i.evenement_id === ev.id);
+            const enAttenteIds = mes
+              .filter((i) => i.statut === "en_attente")
+              .map((i) => i.id);
+            const statut: StatutInscription = mes.some(
+              (i) => i.statut === "present",
+            )
+              ? "present"
+              : mes.some((i) => i.statut === "absent")
+                ? "absent"
+                : enAttenteIds.length > 0
+                  ? "inscrit"
+                  : "aucun";
 
             return (
-              <Card key={ev.id} className="border-primary/10">
-                <CardHeader className="pb-2">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {typeBadge(ev.type_evenement)}
-                    {complet && (
-                      <Badge variant="destructive">Complet</Badge>
-                    )}
-                  </div>
-                  <CardTitle className="font-heading text-xl">{ev.titre}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5">
-                      <CalendarDays className="h-4 w-4 text-primary/60" />
-                      {formatDate(ev.date_evenement)}
-                      {ev.date_fin && <> au {formatDate(ev.date_fin)}</>}
-                    </span>
-                    {ev.lieu && (
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="h-4 w-4 text-primary/60" /> {ev.lieu}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-primary/60" /> {xpLabel(ev)}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-4 w-4 text-primary/60" />
-                      {ev.nb_inscrits} / {ev.max_participants ?? "∞"} places
-                    </span>
-                  </div>
-
-                  {enAttente.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary">En attente de confirmation</Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => ouvrirDesinscription(ev, enAttente.map((i) => i.id))}
-                      >
-                        Se désinscrire
-                      </Button>
-                    </div>
-                  ) : confirmee ? (
-                    <Button disabled size="sm" variant="secondary">
-                      Inscription confirmée
-                    </Button>
-                  ) : complet ? (
-                    <Button disabled size="sm" variant="secondary">
-                      Complet
-                    </Button>
-                  ) : (
-                    <Button size="sm" onClick={() => openModal(ev)}>
-                      S'inscrire
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+              <CarteEvenementJoueur
+                key={ev.id}
+                ev={ev}
+                statut={statut}
+                onInscrire={openModal}
+                onDesinscrire={(e) => ouvrirDesinscription(e, enAttenteIds)}
+              />
             );
           })}
         </div>
