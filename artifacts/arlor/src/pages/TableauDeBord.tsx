@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  CalendarDays,
   Loader2,
   Plus,
   Trash2,
@@ -38,6 +39,12 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
+import {
+  CarteEvenementJoueur,
+  type EvenementPublie,
+} from "@/components/evenements/CarteEvenementJoueur";
+import { ModalesInscription } from "@/components/evenements/ModalesInscription";
+import { useInscriptionEvenements } from "@/hooks/useInscriptionEvenements";
 
 interface PersonnageResume {
   id: string;
@@ -132,6 +139,69 @@ const CarteBanqueJoueur = ({ joueurId }: { joueurId: string }) => {
         )}
       </CardContent>
     </Card>
+  );
+};
+
+const SectionProchainEvenement = () => {
+  const inscription = useInscriptionEvenements();
+
+  // Cache partagé avec la page Événements via la queryKey ["evenements-publies"].
+  const { data: evenements = [], isLoading } = useQuery({
+    queryKey: ["evenements-publies"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vue_evenements_publies")
+        .select("*");
+      if (error) throw error;
+      return (data ?? []) as EvenementPublie[];
+    },
+  });
+
+  // « Prochain » = le plus proche dont la date est à venir (calcul client-side
+  // pour réutiliser le cache complet partagé avec la page Événements).
+  const prochain = useMemo(() => {
+    const now = Date.now();
+    return (
+      evenements
+        .filter(
+          (e) =>
+            e.date_evenement &&
+            new Date(e.date_evenement).getTime() >= now,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.date_evenement!).getTime() -
+            new Date(b.date_evenement!).getTime(),
+        )[0] ?? null
+    );
+  }, [evenements]);
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-heading text-xl text-gold">Prochain événement</h2>
+      {isLoading ? (
+        <div className="flex h-24 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : prochain ? (
+        <CarteEvenementJoueur
+          ev={prochain}
+          statut={inscription.statutPour(prochain)}
+          onInscrire={inscription.ouvrirInscription}
+          onDesinscrire={(e) =>
+            inscription.ouvrirDesinscription(e, inscription.enAttenteIdsPour(e))
+          }
+        />
+      ) : (
+        <Card className="border-white/10 bg-white/5 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+            <CalendarDays className="mb-3 h-10 w-10 text-white/20" />
+            <p className="text-muted-foreground">Aucun événement à venir</p>
+          </CardContent>
+        </Card>
+      )}
+      <ModalesInscription ctrl={inscription} />
+    </div>
   );
 };
 
@@ -238,6 +308,8 @@ const TableauDeBord = () => {
       </div>
 
       {joueurId && <CarteBanqueJoueur joueurId={joueurId} />}
+
+      <SectionProchainEvenement />
 
       {error && (
         <Card className="border-destructive/50 bg-destructive/10">
