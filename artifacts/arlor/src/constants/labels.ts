@@ -8,7 +8,7 @@
 export const TYPE_EVENEMENT_LABELS: Record<string, string> = {
   mini_gn:           "Mini GN",
   gn_regulier:       "GN Régulier",
-  entretien_terrain: "Entretien du Terrain",
+  entretien_terrain: "Ouverture de terrain",
 };
 
 // --- Inscriptions événements ---
