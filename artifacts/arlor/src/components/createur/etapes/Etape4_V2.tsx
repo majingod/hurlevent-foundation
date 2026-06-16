@@ -48,6 +48,28 @@ interface CompetenceInfo {
   type_choix: string | null;
 }
 
+// Forme du `donnees` renvoye par changer_classe_personnage en dry_run (apercu).
+interface ApercuChangementClasse {
+  classe_avant: string;
+  classe_apres: string;
+  perdues: {
+    nom: string;
+    raison: string;
+    xp: number;
+    niveaux: { niv: number; xp: number; gratuit: boolean }[];
+  }[];
+  dormants: { type: string; nom: string; niveau: number; xp: number }[];
+  maitre_en_attente: { nom: string; niveau: number }[];
+  offertes: { nom: string; type: string; xp: number }[];
+  multi_choix: {
+    competence_id: string;
+    nom: string;
+    defaut?: string | null;
+    options: { choix_achat: string; label: string; xp: number }[];
+  }[];
+  xp_rembourse: number;
+}
+
 const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [religionManuelOpen, setReligionManuelOpen] = useState(false);
@@ -58,10 +80,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
   // --- Changement de classe (perso ayant déjà une classe) ---
   const [modaleOpen, setModaleOpen] = useState(false);
-  const [previewDonnees, setPreviewDonnees] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [previewDonnees, setPreviewDonnees] = useState<ApercuChangementClasse | null>(null);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [previewBusy, setPreviewBusy] = useState(false);
   const [pendingCtx, setPendingCtx] = useState<{
@@ -150,8 +169,8 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   );
 
   const competencesGratuites: CompetenceGratuite[] = useMemo(() => {
-    const raw = (classeSelectionnee as any)?.competences_gratuites;
-    return Array.isArray(raw) ? (raw as CompetenceGratuite[]) : [];
+    const raw = classeSelectionnee?.competences_gratuites;
+    return Array.isArray(raw) ? (raw as unknown as CompetenceGratuite[]) : [];
   }, [classeSelectionnee]);
 
   const tousLesCompetenceIds = useMemo(() => {
@@ -303,7 +322,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const callDryRun = async (
     classeId: string,
     choix: Record<string, string>
-  ): Promise<Record<string, unknown> | null> => {
+  ): Promise<ApercuChangementClasse | null> => {
     const { data, error } = await supabase.rpc("changer_classe_personnage", {
       p_personnage_id: personnageId,
       p_classe_id: classeId,
@@ -320,7 +339,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       toast.error(erreurs[0]?.message ?? "Aperçu refusé.");
       return null;
     }
-    return (payload.donnees as Record<string, unknown>) ?? null;
+    return (payload.donnees as ApercuChangementClasse) ?? null;
   };
 
   // Sauvegarde réelle (étape 4). Retourne true si succès.
@@ -395,7 +414,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   // Mapping donnees (dry_run) -> forme `d` de la modale
   const previewD = useMemo<DChangementClasse | null>(() => {
     if (!previewDonnees) return null;
-    const dn = previewDonnees as any;
+    const dn = previewDonnees;
     const toNom = dn.classe_apres as string;
     const fromNom = dn.classe_avant as string;
     const emoji = (nom: string) =>
@@ -497,7 +516,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     return {
       from: { n: fromNom, e: emoji(fromNom) },
       to: { n: toNom, e: emoji(toNom) },
-      perso: (perso as any)?.nom ?? "Personnage",
+      perso: perso?.nom ?? "Personnage",
       perdues,
       reduites,
       offertesRefund,

@@ -59,7 +59,7 @@ const DrawerRoleCompte = ({ compte, open, onOpenChange }: Props) => {
   const appliquer = async (r: Role) => {
     setBusy(true);
     try {
-      const { data, error } = await (supabase.rpc as any)(
+      const { data, error } = await supabase.rpc(
         "changer_role_compte",
         { p_compte_id: compte.id, p_role: r },
       );
