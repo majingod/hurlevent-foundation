@@ -705,11 +705,11 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
   const { data, isLoading } = useQuery({
     queryKey: ["inscriptions", eventId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("inscriptions_evenements")
+      const { data, error } = await supabase.from("inscriptions_evenements")
         .select(
           `id, statut, evenement_id, personnage_id, joueur_id,
            personnages(nom),
-           profiles(nom_affichage)`,
+           profils_joueur(nom)`,
         )
         .eq("evenement_id", eventId);
       if (error) throw error;
@@ -720,7 +720,7 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
         joueur_id: row.joueur_id,
         statut: row.statut,
         personnage_nom: row.personnages?.nom ?? null,
-        joueur_nom: row.profiles?.nom_affichage ?? null,
+        joueur_nom: row.profils_joueur?.nom ?? null,
       })) as Inscription[];
     },
   });
@@ -838,15 +838,15 @@ const PresenceTardiveDialog = ({ open, eventId, onClose }: PresenceTardiveDialog
   const { data: personnages, isLoading } = useQuery({
     queryKey: ["personnages-actifs-pour-presence"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("personnages")
-        .select("id, nom, profiles(nom_affichage)")
+      const { data, error } = await supabase.from("personnages")
+        .select("id, nom, profils_joueur(nom)")
         .eq("est_actif", true)
         .order("nom");
       if (error) throw error;
       return ((data ?? []) as any[]).map((p) => ({
         id: p.id,
         nom: p.nom,
-        joueur_nom: p.profiles?.nom_affichage ?? null,
+        joueur_nom: p.profils_joueur?.nom ?? null,
       })) as PersonnageOption[];
     },
     enabled: open,
