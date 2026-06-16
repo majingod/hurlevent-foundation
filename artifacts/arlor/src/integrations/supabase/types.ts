@@ -6494,10 +6494,6 @@ export type Database = {
         Args: { p_compte_id: string; p_role: string }
         Returns: Json
       }
-      changer_role_utilisateur: {
-        Args: { p_nouveau_role: string; p_user_id: string }
-        Returns: Json
-      }
       changer_statut_inscription: {
         Args: { p_inscription_id: string; p_nouveau_statut: string }
         Returns: Json
@@ -6770,10 +6766,6 @@ export type Database = {
       transferer_personnage: {
         Args: { p_personnage_id: string; p_profil_cible_id: string }
         Returns: Json
-      }
-      update_user_role: {
-        Args: { new_role: string; user_id: string }
-        Returns: undefined
       }
       valider_etape: {
         Args: { p_etape: number; p_personnage_id: string }
