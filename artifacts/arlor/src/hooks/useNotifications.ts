@@ -12,8 +12,8 @@ export interface Notif {
 }
 
 // Types dont l'audience est l'organisation (admin/animateur) :
-// masqués du tableau de bord JOUEUR. Étendre cette liste si d'autres
-// types admin apparaissent (cf. ADMIN-APPROBATION-RACES).
+// masqués du tableau de bord JOUEUR uniquement. Le staff les voit (et peut
+// cliquer dessus) — cf. notifNavigation. Étendre si d'autres types admin apparaissent.
 export const TYPES_MASQUES_JOUEUR = ["demande_race_nouvelle"];
 
 // Source unique des notifs joueur. Limite volontairement large : la cloche
@@ -21,20 +21,26 @@ export const TYPES_MASQUES_JOUEUR = ["demande_race_nouvelle"];
 const LIMITE = 30;
 
 export function useNotifications() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? null;
-  const cleQuery = ["notifications", userId] as const;
+  // Le staff voit les notifs d'organisation ; le joueur les a masquées.
+  // Rôle dans la clé → refetch automatique quand le rôle se résout.
+  const estStaff = role === "animateur" || role === "admin";
+  const cleQuery = ["notifications", userId, estStaff] as const;
 
   const query = useQuery({
     queryKey: cleQuery,
     enabled: !!userId,
     queryFn: async (): Promise<Notif[]> => {
-      const { data, error } = await supabase
+      let req = supabase
         .from("notifications")
         .select("id, message, type, lu, created_at, reference_id")
-        .eq("user_id", userId!)
-        .not("type", "in", `(${TYPES_MASQUES_JOUEUR.join(",")})`)
+        .eq("user_id", userId!);
+      if (!estStaff) {
+        req = req.not("type", "in", `(${TYPES_MASQUES_JOUEUR.join(",")})`);
+      }
+      const { data, error } = await req
         .order("created_at", { ascending: false })
         .limit(LIMITE);
       if (error) throw error;

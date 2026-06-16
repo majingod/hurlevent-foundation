@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -10,10 +11,11 @@ import { LigneNotif } from "./notifShared";
 
 export default function ClocheNotifications() {
   const { notifs, nbNonLus, lireUne, toutLire } = useNotifications();
+  const [open, setOpen] = useState(false);
   const apercu = notifs.slice(0, 5);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -51,13 +53,20 @@ export default function ClocheNotifications() {
         ) : (
           <div className="max-h-80 divide-y divide-white/5 overflow-y-auto">
             {apercu.map((n) => (
-              <LigneNotif key={n.id} notif={n} onLire={lireUne} compacte />
+              <LigneNotif
+                key={n.id}
+                notif={n}
+                onLire={lireUne}
+                compacte
+                onAvantNavigation={() => setOpen(false)}
+              />
             ))}
           </div>
         )}
 
         <Link
           to="/tableau-de-bord"
+          onClick={() => setOpen(false)}
           className="block border-t border-white/10 py-2.5 text-center text-xs text-gold hover:bg-white/5"
         >
           Voir toutes les notifications

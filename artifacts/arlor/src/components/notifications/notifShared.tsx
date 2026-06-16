@@ -1,5 +1,7 @@
-import { Coins, XCircle, type LucideIcon } from "lucide-react";
+import { Coins, XCircle, ChevronRight, type LucideIcon } from "lucide-react";
 import type { Notif } from "@/hooks/useNotifications";
+import { useAuth } from "@/contexts/AuthContext";
+import { estNavigable, useNaviguerNotif } from "./notifNavigation";
 
 interface MetaType {
   Icon: LucideIcon;
@@ -40,21 +42,38 @@ export function LigneNotif({
   notif,
   onLire,
   compacte = false,
+  onAvantNavigation,
 }: {
   notif: Notif;
   onLire: (id: string) => void;
   compacte?: boolean;
+  onAvantNavigation?: () => void;
 }) {
   const m = metaPour(notif.type);
   const { Icon } = m;
+  const { role } = useAuth();
+  const naviguer = useNaviguerNotif();
+  const navigable = estNavigable(notif, role);
+
+  const onClick = () => {
+    if (!notif.lu) onLire(notif.id);
+    if (navigable) {
+      onAvantNavigation?.();
+      void naviguer(notif);
+    }
+  };
+
+  const classes = [
+    "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors",
+    !notif.lu ? "bg-gold/5" : "",
+    navigable || !notif.lu ? "hover:bg-gold/10" : "",
+    navigable ? "cursor-pointer" : "cursor-default",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <button
-      type="button"
-      onClick={() => !notif.lu && onLire(notif.id)}
-      className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors ${
-        notif.lu ? "cursor-default" : "bg-gold/5 hover:bg-gold/10"
-      }`}
-    >
+    <button type="button" onClick={onClick} className={classes}>
       <span
         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.fondIcone}`}
       >
@@ -72,12 +91,12 @@ export function LigneNotif({
           {dateRelative(notif.created_at)}
         </span>
       </span>
-      {!notif.lu && (
-        <span
-          className="mt-1.5 block h-2 w-2 shrink-0 rounded-full bg-gold"
-          aria-label="Non lu"
-        />
-      )}
+      <span className="mt-1.5 flex shrink-0 items-center gap-1.5">
+        {!notif.lu && (
+          <span className="block h-2 w-2 rounded-full bg-gold" aria-label="Non lu" />
+        )}
+        {navigable && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+      </span>
     </button>
   );
 }
