@@ -62,6 +62,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { TYPE_EVENEMENT_LABELS } from "@/constants/labels";
 
 // ============================================================================
 // Types & helpers
@@ -103,12 +104,6 @@ interface PersonnageOption {
   nom: string | null;
   joueur_nom: string | null;
 }
-
-const TYPE_LABELS: Record<TypeEvenement, string> = {
-  gn_regulier: "GN régulier",
-  mini_gn: "Mini-GN",
-  entretien_terrain: "Ouverture de terrain",
-};
 
 const TYPE_DEFAULTS: Record<TypeEvenement, { xp: number; niveaux: number }> = {
   gn_regulier: { xp: 15, niveaux: 1 },
@@ -507,7 +502,7 @@ const EventCard = ({
   const [showPresenceTardive, setShowPresenceTardive] = useState(false);
 
   const typeKey = (evt.type_evenement as TypeEvenement) ?? "gn_regulier";
-  const typeLabel = TYPE_LABELS[typeKey] ?? evt.type_evenement ?? "—";
+  const typeLabel = TYPE_EVENEMENT_LABELS[typeKey] ?? evt.type_evenement ?? "—";
 
   const gpsHref = evt.adresse_physique
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.adresse_physique)}`
@@ -1121,9 +1116,9 @@ const EventFormDialog = ({ open, evenement, onClose, onSaved }: EventFormDialogP
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(TYPE_LABELS) as TypeEvenement[]).map((k) => (
+                {(Object.keys(TYPE_EVENEMENT_LABELS) as TypeEvenement[]).map((k) => (
                   <SelectItem key={k} value={k}>
-                    {TYPE_LABELS[k]}
+                    {TYPE_EVENEMENT_LABELS[k]}
                   </SelectItem>
                 ))}
               </SelectContent>
