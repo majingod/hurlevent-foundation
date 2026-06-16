@@ -708,7 +708,7 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
         )
         .eq("evenement_id", eventId);
       if (error) throw error;
-      return ((data ?? []) as any[]).map((row) => ({
+      return ((data ?? []) as Array<{ id: string; statut: string | null; evenement_id: string | null; personnage_id: string | null; joueur_id: string | null; personnages: { nom: string | null } | null; profils_joueur: { nom: string | null } | null }>).map((row) => ({
         id: row.id,
         evenement_id: row.evenement_id,
         personnage_id: row.personnage_id,
@@ -838,7 +838,7 @@ const PresenceTardiveDialog = ({ open, eventId, onClose }: PresenceTardiveDialog
         .eq("est_actif", true)
         .order("nom");
       if (error) throw error;
-      return ((data ?? []) as any[]).map((p) => ({
+      return ((data ?? []) as Array<{ id: string; nom: string | null; profils_joueur: { nom: string | null } | null }>).map((p) => ({
         id: p.id,
         nom: p.nom,
         joueur_nom: p.profils_joueur?.nom ?? null,

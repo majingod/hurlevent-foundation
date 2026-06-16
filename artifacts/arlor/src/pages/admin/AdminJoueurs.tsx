@@ -93,12 +93,13 @@ const AdminJoueurs = () => {
       if (pe.error) throw pe.error;
 
       const soldeParProfil = new Map<string, number>();
-      ((bq.data ?? []) as any[]).forEach((r) =>
-        soldeParProfil.set(r.joueur_id, r.solde ?? 0),
-      );
+      (bq.data ?? []).forEach((r) => {
+        if (r.joueur_id) soldeParProfil.set(r.joueur_id, r.solde ?? 0);
+      });
 
       const persosParProfil = new Map<string, PersoRow[]>();
-      ((pe.data ?? []) as any[]).forEach((r) => {
+      (pe.data ?? []).forEach((r) => {
+        if (!r.id || !r.joueur_id) return;
         const row: PersoRow = {
           id: r.id,
           nom: r.nom,
@@ -115,7 +116,7 @@ const AdminJoueurs = () => {
       });
 
       const profilsParCompte = new Map<string, ProfilRow[]>();
-      ((pj.data ?? []) as any[]).forEach((r) => {
+      (pj.data ?? []).forEach((r) => {
         const persos = (persosParProfil.get(r.id) ?? []).sort((a, b) =>
           (a.nom ?? "").localeCompare(b.nom ?? "", "fr"),
         );
@@ -130,7 +131,7 @@ const AdminJoueurs = () => {
         profilsParCompte.set(r.compte_id, arr);
       });
 
-      return ((pc.data ?? []) as any[])
+      return (pc.data ?? [])
         .map((c): CompteRow => {
           const profils = (profilsParCompte.get(c.id) ?? []).sort((a, b) =>
             a.nom.localeCompare(b.nom, "fr"),
