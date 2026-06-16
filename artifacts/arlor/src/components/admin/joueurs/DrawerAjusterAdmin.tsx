@@ -120,7 +120,7 @@ const DrawerAjusterAdmin = ({ cible, open, onOpenChange }: Props) => {
     if (!peutAppliquer) return;
     setBusy(true);
     try {
-      const rpc = supabase.rpc as any;
+      const rpc = (supabase.rpc as any).bind(supabase);
       let resp;
       if (cible.mode === "banque") {
         resp = await rpc("ajuster_banque_xp", {
