@@ -120,22 +120,21 @@ const DrawerAjusterAdmin = ({ cible, open, onOpenChange }: Props) => {
     if (!peutAppliquer) return;
     setBusy(true);
     try {
-      const rpc = (supabase.rpc as any).bind(supabase);
       let resp;
       if (cible.mode === "banque") {
-        resp = await rpc("ajuster_banque_xp", {
+        resp = await supabase.rpc("ajuster_banque_xp", {
           p_joueur_id: cible.profilId,
           p_montant: delta,
           p_description: raison.trim(),
         });
       } else if (onglet === "xp") {
-        resp = await rpc("corriger_xp_personnage", {
+        resp = await supabase.rpc("corriger_xp_personnage", {
           p_personnage_id: cible.persoId,
           p_montant: delta,
           p_raison: raison.trim(),
         });
       } else {
-        resp = await rpc("corriger_niveau_personnage", {
+        resp = await supabase.rpc("corriger_niveau_personnage", {
           p_personnage_id: cible.persoId,
           p_delta: delta,
           p_raison: raison.trim(),

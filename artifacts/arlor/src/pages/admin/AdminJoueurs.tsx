@@ -81,9 +81,11 @@ const AdminJoueurs = () => {
         supabase.from("profiles").select("id, nom_affichage, email, role"),
         supabase.from("profils_joueur").select("id, compte_id, nom"),
         supabase.from("vue_banque_joueur").select("joueur_id, solde"),
-        (supabase.from("vue_personnages_admin_complet") as any).select(
-          "id, nom, joueur_id, niveau, niveau_correction, xp_total, xp_depense, est_finalise, est_verrouille",
-        ),
+        supabase
+          .from("vue_personnages_admin_complet")
+          .select(
+            "id, nom, joueur_id, niveau, niveau_correction, xp_total, xp_depense, est_finalise, est_verrouille",
+          ),
       ]);
       if (pc.error) throw pc.error;
       if (pj.error) throw pj.error;
