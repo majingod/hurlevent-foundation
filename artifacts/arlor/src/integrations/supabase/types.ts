@@ -5816,6 +5816,7 @@ export type Database = {
           }
       sauvegarder_etape_2: {
         Args: {
+          p_brouillon?: boolean
           p_justification?: string
           p_personnage_id: string
           p_race_id: string
@@ -5824,7 +5825,11 @@ export type Database = {
         Returns: Json
       }
       sauvegarder_etape_3: {
-        Args: { p_personnage_id: string; p_traits_raciaux_choisis: Json }
+        Args: {
+          p_brouillon?: boolean
+          p_personnage_id: string
+          p_traits_raciaux_choisis: Json
+        }
         Returns: Json
       }
       sauvegarder_etape_4: {
