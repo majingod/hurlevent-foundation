@@ -5834,6 +5834,7 @@ export type Database = {
       }
       sauvegarder_etape_4: {
         Args: {
+          p_brouillon?: boolean
           p_choix_par_competence?: Json
           p_classe_id: string
           p_personnage_id: string

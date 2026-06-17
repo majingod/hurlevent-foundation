@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -97,6 +97,9 @@ const Etape2_V2 = ({
 
   // Init unique depuis le serveur (reprise etape_creation=2 ou 3).
   const initFait = useRef(false);
+
+  // PR4 persist-au-choix : timer de debounce pour l'autosave brouillon.
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const estChimeride = raceId === CHIMERIDE_ID;
   const estNonRace = raceId === NON_RACES_ID;
@@ -368,8 +371,64 @@ const Etape2_V2 = ({
     return true;
   }, [raceId, estChimeride, sousType, gratuits.size, quotaGratuits]);
 
+  // -- PR4 persist-au-choix : autosave brouillon (race + traits) ----------
+  // Persiste l'etat AU CLIC (p_brouillon=true) sans valider, avancer ni logger
+  // (contrat e2/e3). Debounce 900 ms (gabarit Etape1). Fire-and-forget.
+  const sauvegarderBrouillon = useCallback(() => {
+    if (!initFait.current) return;
+    if (!raceId) return; // rien a persister tant qu'aucune race n'est choisie
+    const sousTypePayload = estChimeride ? sousType : null;
+    supabase
+      .rpc("sauvegarder_etape_2", {
+        p_personnage_id: personnageId,
+        p_race_id: raceId,
+        p_sous_type_chimeride: sousTypePayload as unknown as string,
+        p_brouillon: true,
+      })
+      .then(() => {
+        // Traits seulement apres succes e2 (le perso a desormais sa race).
+        const payloadTraits: TraitChoisi[] = [
+          ...Array.from(gratuits).map((id) => ({
+            trait_id: id,
+            est_gratuit: true,
+            xp_depense: 0,
+          })),
+          ...Array.from(achetes).map((id) => {
+            const t = traits.find((x) => x.id === id);
+            return {
+              trait_id: id,
+              est_gratuit: false,
+              xp_depense: t?.cout_xp ?? 0,
+            };
+          }),
+        ];
+        supabase
+          .rpc("sauvegarder_etape_3", {
+            p_personnage_id: personnageId,
+            p_traits_raciaux_choisis: payloadTraits as unknown as never,
+            p_brouillon: true,
+          })
+          .then(
+            () => {},
+            () => {},
+          );
+      }, () => {});
+  }, [raceId, sousType, estChimeride, gratuits, achetes, traits, personnageId]);
+
+  // Declenche un autosave debounce a chaque changement de race / sous-type / traits.
+  useEffect(() => {
+    if (!initFait.current) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => sauvegarderBrouillon(), 900);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [raceId, sousType, gratuits, achetes, sauvegarderBrouillon]);
+
   // -- Soumission : sauvegarder_etape_2 PUIS sauvegarder_etape_3 -----------
   const onSubmit = async () => {
+    // Annule un autosave brouillon en attente : le « Suivant » fait foi.
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     if (!raceId) {
       toast.error("Choisis une race.");
       return;
