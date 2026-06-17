@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -104,6 +104,12 @@ const Etape1_V2 = ({
   const [gainSauvegarde, setGainSauvegarde] = useState(0);
   const [religionManuelOpen, setReligionManuelOpen] = useState(false);
 
+  // Autosave brouillon (anti-perte sur reload / SW autoUpdate) : ne pas
+  // déclencher avant le 1er chargement (reset), sinon on écraserait la DB
+  // avec les defaults vides du formulaire.
+  const pretAutosave = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -198,9 +204,58 @@ const Etape1_V2 = ({
           (data.mini_gn_completes ?? 0) * XP_MINI_GN +
           (data.ouvertures_terrain ?? 0) * XP_OUVERTURE_TERRAIN
       );
+      pretAutosave.current = true;
     };
     charger();
   }, [personnageId, reset]);
+
+  // Autosave brouillon : persiste les champs au fil de la saisie SANS valider
+  // ni avancer (p_brouillon=true). Débouncé → au pire on perd la dernière
+  // fraction de seconde de frappe. Erreurs de validation ignorées (silencieux).
+  const sauvegarderBrouillon = useCallback(() => {
+    if (!pretAutosave.current) return;
+    const v = watch();
+    const figees = modeCampagne ? valeursFigees.current : null;
+    const croyant = figees ? figees.est_croyant === true : v.est_croyant === "oui";
+    supabase
+      .rpc("sauvegarder_etape_1", {
+        p_personnage_id: personnageId,
+        p_nom: figees ? figees.nom : (v.nom ?? "").trim(),
+        p_gn_completes: figees ? figees.gn_completes : Number(v.gn_completes) || 0,
+        p_mini_gn_completes: figees
+          ? figees.mini_gn_completes
+          : Number(v.mini_gn_completes) || 0,
+        p_ouvertures_terrain: figees
+          ? figees.ouvertures_terrain
+          : Number(v.ouvertures_terrain) || 0,
+        p_est_croyant: croyant,
+        p_religion_id: (figees
+          ? figees.religion_id
+          : croyant
+          ? v.religion_id
+          : null) as unknown as string,
+        p_historique: v.historique ?? "",
+        p_ame_personnage: v.ame_personnage ?? "",
+        p_brouillon: true,
+      })
+      .then(
+        () => {},
+        () => {},
+      );
+  }, [watch, modeCampagne, personnageId]);
+
+  // Déclenche un autosave débouncé à chaque changement de champ.
+  useEffect(() => {
+    const sub = watch(() => {
+      if (!pretAutosave.current) return;
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = setTimeout(() => sauvegarderBrouillon(), 900);
+    });
+    return () => {
+      sub.unsubscribe();
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [watch, sauvegarderBrouillon]);
 
   const onSubmit = async (values: Etape1Form) => {
     // M3a PR-C1 : en campagne, l'identité (6 champs INV-4) est figée et provient
