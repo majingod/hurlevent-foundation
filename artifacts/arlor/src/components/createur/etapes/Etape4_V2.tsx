@@ -763,6 +763,24 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                       } else {
                         setClasseIdSelectionnee(c.id);
                         setClassesOuvertes((prev) => new Set(prev).add(c.id));
+                        // PR4 persist-au-choix : persiste classe_id en brouillon.
+                        // Garde !perso?.classe_id => 1er choix en creation
+                        // uniquement (evite la cascade changer_classe en
+                        // edition, ou perso.classe_id cache desync l'apercu).
+                        // Fire-and-forget : pas d'attente, pas d'avancement.
+                        if (!perso?.classe_id) {
+                          supabase
+                            .rpc("sauvegarder_etape_4", {
+                              p_personnage_id: personnageId,
+                              p_classe_id: c.id,
+                              p_choix_par_competence: null,
+                              p_brouillon: true,
+                            })
+                            .then(
+                              () => {},
+                              () => {},
+                            );
+                        }
                       }
                     }}
                     className="mt-0.5"
