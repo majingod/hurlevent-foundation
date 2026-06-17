@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { useMenuNavigation } from "@/hooks/useMenuNavigation";
 import ClocheNotifications from "@/components/notifications/ClocheNotifications";
+import { useAutresIdentitesNonLues } from "@/hooks/useNotifications";
 import { Menu, Users, Settings, Crown } from "lucide-react";
 import {
   Sheet,
@@ -16,6 +17,7 @@ import { useState } from "react";
 const Navbar = () => {
   const { user, role, signOut } = useAuth();
   const { profilActif, reinitialiserProfil } = useProfil();
+  const autresIdentitesNonLues = useAutresIdentitesNonLues();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { data: menuItems } = useMenuNavigation(role);
@@ -51,8 +53,15 @@ const Navbar = () => {
           )}
           <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <button aria-label="Menu" className="p-2">
+            <button aria-label="Menu" className="relative p-2">
               <Menu className="h-6 w-6 text-primary" />
+              {autresIdentitesNonLues && (
+                <span
+                  className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full"
+                  style={{ background: "#c9a84c", border: "2px solid #0a0a0a" }}
+                  aria-label="Une autre identité a des notifications non lues"
+                />
+              )}
             </button>
           </SheetTrigger>
           <SheetContent
@@ -105,6 +114,13 @@ const Navbar = () => {
                   style={{ borderColor: "#3a3320", background: "#1e1e1e", color: "#c9a84c" }}
                 >
                   <Users size={16} /> Changer de profil
+                  {autresIdentitesNonLues && (
+                    <span
+                      className="ml-auto h-2.5 w-2.5 rounded-full"
+                      style={{ background: "#c9a84c" }}
+                      aria-hidden
+                    />
+                  )}
                 </button>
                 <button
                   type="button"

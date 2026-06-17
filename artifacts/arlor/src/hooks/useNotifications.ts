@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
 
 export interface Notif {
   id: string;
@@ -22,12 +23,15 @@ const LIMITE = 30;
 
 export function useNotifications() {
   const { user, role } = useAuth();
+  const { profilActif } = useProfil();
   const queryClient = useQueryClient();
   const userId = user?.id ?? null;
+  const profilId = profilActif?.id ?? null;
   // Le staff voit les notifs d'organisation ; le joueur les a masquées.
-  // Rôle dans la clé → refetch automatique quand le rôle se résout.
+  // Rôle + profil actif dans la clé → refetch automatique au switch d'identité
+  // (et quand le rôle se résout).
   const estStaff = role === "animateur" || role === "admin";
-  const cleQuery = ["notifications", userId, estStaff] as const;
+  const cleQuery = ["notifications", userId, profilId, estStaff] as const;
 
   const query = useQuery({
     queryKey: cleQuery,
@@ -37,6 +41,11 @@ export function useNotifications() {
         .from("notifications")
         .select("id, message, type, lu, created_at, reference_id")
         .eq("user_id", userId!);
+      // Identité active : ses notifs (profil_id = actif) + les annonces de
+      // compte (profil_id IS NULL). Les notifs des autres identités sont exclues.
+      req = profilId
+        ? req.or(`profil_id.eq.${profilId},profil_id.is.null`)
+        : req.is("profil_id", null);
       if (!estStaff) {
         req = req.not("type", "in", `(${TYPES_MASQUES_JOUEUR.join(",")})`);
       }
@@ -67,13 +76,48 @@ export function useNotifications() {
     queryClient.setQueryData<Notif[]>(cleQuery, (old) =>
       (old ?? []).map((n) => ({ ...n, lu: true })),
     );
-    const { error } = await supabase
+    // Limité à l'identité active + compte-wide : ne JAMAIS marquer lu les notifs
+    // des autres identités (sinon la pastille cross-identité s'éteindrait à tort).
+    let req = supabase
       .from("notifications")
       .update({ lu: true })
       .eq("user_id", userId)
       .eq("lu", false);
+    req = profilId
+      ? req.or(`profil_id.eq.${profilId},profil_id.is.null`)
+      : req.is("profil_id", null);
+    const { error } = await req;
     if (error) queryClient.invalidateQueries({ queryKey: cleQuery });
   };
 
   return { notifs, nbNonLus, isLoading: query.isLoading, lireUne, toutLire };
+}
+
+// Pastille cross-identité : vrai s'il existe au moins une notif NON LUE rattachée
+// à une AUTRE identité du compte (profil_id non nul ≠ profil actif).
+// Requête légère (count head, aucune ligne ramenée).
+export function useAutresIdentitesNonLues(): boolean {
+  const { user } = useAuth();
+  const { profilActif } = useProfil();
+  const userId = user?.id ?? null;
+  const profilId = profilActif?.id ?? null;
+
+  const { data } = useQuery({
+    queryKey: ["notifs-autres-identites", userId, profilId],
+    enabled: !!userId,
+    queryFn: async (): Promise<boolean> => {
+      let req = supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId!)
+        .eq("lu", false)
+        .not("profil_id", "is", null);
+      if (profilId) req = req.neq("profil_id", profilId);
+      const { count, error } = await req;
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    },
+  });
+
+  return data ?? false;
 }
