@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Loader2, User, Fingerprint, Sparkles, Swords, Star, Wand2, Sun, Shapes,
+  Loader2, User, Fingerprint, Swords, Star, Wand2, Sun, Shapes,
   Hammer, ClipboardCheck, AlertTriangle, Coins, TrendingUp,
 } from "lucide-react";
 
@@ -18,7 +18,6 @@ import { useEtapesApplicables } from "@/components/createur/useEtapesApplicables
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
-import Etape3_V2 from "@/components/createur/etapes/Etape3_V2";
 import Etape4_V2 from "@/components/createur/etapes/Etape4_V2";
 import Etape5_Competences_V2 from "@/components/createur/etapes/Etape5_Competences_V2";
 import Etape6_Sorts_V2 from "@/components/createur/etapes/Etape6_Sorts_V2";
@@ -27,20 +26,33 @@ import Etape8_Assemblages_V2 from "@/components/createur/etapes/Etape8_Assemblag
 import Etape9_Artisanat_V2 from "@/components/createur/etapes/Etape9_Artisanat_V2";
 import Etape10_Recapitulatif_V2 from "@/components/createur/etapes/Etape10_Recapitulatif_V2";
 
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 10; // étapes DB (inchangées) — finalisé = etape_creation > 10
+const TOTAL_STEPS_UI = 9; // étapes affichées (fusion DB 2+3 → UI 2 « Race + Traits »)
 
-const ETAPES_DEF: EtapeDef[] = [
+// WIZARD-REFONTE-UX (PR2) — l'UI affiche 9 étapes ; la DB en garde 10.
+// Mapping (Option « fusion 2+3 ») : UI 1 = DB 1 · UI 2 = DB 2 (+ DB 3 absorbée)
+// · UI N>=3 = DB N+1. Seul l'affichage passe par ce mapping ; toute la
+// navigation (applicabilité, rattrapage) continue de raisonner en numéros DB.
+const ETAPES_UI: EtapeDef[] = [
   { n: 1, t: "Identité", Icon: User },
-  { n: 2, t: "Race", Icon: Fingerprint },
-  { n: 3, t: "Traits", Icon: Sparkles },
-  { n: 4, t: "Classe", Icon: Swords },
-  { n: 5, t: "Compétences", Icon: Star },
-  { n: 6, t: "Sorts", Icon: Wand2 },
-  { n: 7, t: "Prières", Icon: Sun },
-  { n: 8, t: "Assemblages", Icon: Shapes },
-  { n: 9, t: "Artisanat", Icon: Hammer },
-  { n: 10, t: "Récap", Icon: ClipboardCheck },
+  { n: 2, t: "Race + Traits", Icon: Fingerprint },
+  { n: 3, t: "Classe", Icon: Swords },
+  { n: 4, t: "Compétences", Icon: Star },
+  { n: 5, t: "Sorts", Icon: Wand2 },
+  { n: 6, t: "Prières", Icon: Sun },
+  { n: 7, t: "Assemblages", Icon: Shapes },
+  { n: 8, t: "Artisanat", Icon: Hammer },
+  { n: 9, t: "Récap", Icon: ClipboardCheck },
 ];
+
+// DB 3 (Traits) est fusionnée dans l'écran UI 2 : jamais une cible de
+// navigation autonome (ni affichée seule, ni rattrapée via avancer_etape —
+// sauvegarder_etape_3 l'avance déjà au « Suivant » de l'écran fusionné).
+const ETAPES_ABSORBEES = new Set<number>([3]);
+
+const uiToDb = (ui: number): number => (ui <= 2 ? ui : ui + 1);
+const dbToUi = (db: number): number =>
+  db <= 2 ? db : db === 3 ? 2 : db - 1;
 
 interface PersonnageRow {
   id: string;
@@ -256,11 +268,13 @@ const PersonnageNouveauV2 = () => {
 
   // NAV-2 — helpers de navigation : prochaine / précédente étape applicable.
   const prochaineApplicable = (n: number) => {
-    for (let m = n + 1; m <= TOTAL_STEPS; m += 1) if (applicable(m)) return m;
+    for (let m = n + 1; m <= TOTAL_STEPS; m += 1)
+      if (applicable(m) && !ETAPES_ABSORBEES.has(m)) return m;
     return TOTAL_STEPS;
   };
   const precedenteApplicable = (n: number) => {
-    for (let m = n - 1; m >= 1; m -= 1) if (applicable(m)) return m;
+    for (let m = n - 1; m >= 1; m -= 1)
+      if (applicable(m) && !ETAPES_ABSORBEES.has(m)) return m;
     return 1;
   };
 
@@ -357,7 +371,7 @@ const PersonnageNouveauV2 = () => {
   const xpDisponible = xpTotalAffiche - xpDepense - xpDeltaCourant;
 
   const progression = useMemo(
-    () => Math.round((etape / TOTAL_STEPS) * 100),
+    () => Math.round((dbToUi(etape) / TOTAL_STEPS_UI) * 100),
     [etape]
   );
 
@@ -406,7 +420,11 @@ const PersonnageNouveauV2 = () => {
       // applicables (sans Acquisition de Sort/Prière, sans runes).
       setEtape((e) => {
         let n = Math.min(e + 1, TOTAL_STEPS);
-        while (n < TOTAL_STEPS && (etapeVerrouillee(n) || !applicable(n))) n += 1;
+        while (
+          n < TOTAL_STEPS &&
+          (etapeVerrouillee(n) || !applicable(n) || ETAPES_ABSORBEES.has(n))
+        )
+          n += 1;
         return n;
       });
       return;
@@ -565,7 +583,7 @@ const PersonnageNouveauV2 = () => {
                 {modeCampagne ? "Évolution du personnage" : "Création de personnage"}
               </h1>
               <p className="text-sm text-white/50">
-                Étape {etape} / {TOTAL_STEPS}
+                Étape {dbToUi(etape)} / {TOTAL_STEPS_UI}
                 {personnage?.nom ? ` — ${personnage.nom}` : ""}
               </p>
             </div>
@@ -591,18 +609,22 @@ const PersonnageNouveauV2 = () => {
               complète puis retrait (pas de flash d'icônes qui disparaissent). */}
           {chargee ? (
             <StepperEtapes
-              etapes={ETAPES_DEF.filter((e) => applicable(e.n))}
-              courant={etape}
-              max={etapeMax}
-              onJump={sauterEtape}
-              verrouillees={modeCampagne ? ETAPES_VERROUILLEES_CAMPAGNE : []}
+              etapes={ETAPES_UI.filter((e) => applicable(uiToDb(e.n)))}
+              courant={dbToUi(etape)}
+              max={dbToUi(etapeMax)}
+              onJump={(ui) => sauterEtape(uiToDb(ui))}
+              verrouillees={
+                modeCampagne
+                  ? [...new Set(ETAPES_VERROUILLEES_CAMPAGNE.map(dbToUi))]
+                  : []
+              }
             />
           ) : (
             <div
               className="flex gap-2 overflow-x-auto px-1 pb-2"
               aria-hidden
             >
-              {ETAPES_DEF.map((e) => (
+              {ETAPES_UI.map((e) => (
                 <div
                   key={e.n}
                   className="flex w-16 shrink-0 flex-col items-center gap-1.5"
@@ -633,20 +655,14 @@ const PersonnageNouveauV2 = () => {
               modeCampagne={modeCampagne}
             />
           )}
-          {etape === 2 && (
+          {(etape === 2 || etape === 3) && (
             <Etape2_V2
-              personnageId={personnageId}
-              onSuccess={handleEtapeSuccess}
-              onPrevious={handlePrevious}
-            />
-          )}
-          {etape === 3 && (
-            <Etape3_V2
               personnageId={personnageId}
               xpDisponible={xpDisponible}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
               onXpDeltaChange={setXpDeltaCourant}
+              onXpGainChange={setXpGainCourant}
             />
           )}
           {etape === 4 && (
