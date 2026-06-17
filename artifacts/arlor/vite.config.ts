@@ -21,7 +21,7 @@ export default defineConfig({
     react(),
     runtimeErrorOverlay(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       includeAssets: [
         "favicon.ico",
         "favicon-32x32.png",
