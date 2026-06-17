@@ -249,13 +249,46 @@ const Etape1_V2 = ({
     const sub = watch(() => {
       if (!pretAutosave.current) return;
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-      autosaveTimer.current = setTimeout(() => sauvegarderBrouillon(), 900);
+      autosaveTimer.current = setTimeout(() => {
+        sauvegarderBrouillon();
+        autosaveTimer.current = null;
+      }, 900);
     });
     return () => {
       sub.unsubscribe();
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
   }, [watch, sauvegarderBrouillon]);
+
+  // Ref toujours à jour vers le dernier brouillon : la cleanup ci-dessous
+  // dispatche ainsi les VALEURS FRAÎCHES (closure non périmée).
+  const flushRef = useRef(sauvegarderBrouillon);
+  useEffect(() => {
+    flushRef.current = sauvegarderBrouillon;
+  }, [sauvegarderBrouillon]);
+
+  // Si un autosave est EN ATTENTE quand le joueur quitte l'étape (démontage SPA)
+  // ou met l'onglet en arrière-plan / le ferme (mobile), on dispatche le save
+  // tout de suite au lieu de l'annuler. Best-effort (fire-and-forget).
+  useEffect(() => {
+    const flushSiEnAttente = () => {
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+        flushRef.current();
+      }
+    };
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") flushSiEnAttente();
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    window.addEventListener("pagehide", flushSiEnAttente);
+    return () => {
+      document.removeEventListener("visibilitychange", onHidden);
+      window.removeEventListener("pagehide", flushSiEnAttente);
+      flushSiEnAttente();
+    };
+  }, []);
 
   const onSubmit = async (values: Etape1Form) => {
     // M3a PR-C1 : en campagne, l'identité (6 champs INV-4) est figée et provient
@@ -290,6 +323,12 @@ const Etape1_V2 = ({
       ? values.religion_id
       : null;
 
+    // Le « Suivant » fait foi : annule tout autosave brouillon en attente
+    // pour qu'il ne se dispatche pas par-dessus la vraie sauvegarde.
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
     setSubmitting(true);
     const { data, error } = await supabase.rpc("sauvegarder_etape_1", {
       p_personnage_id: personnageId,
