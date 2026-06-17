@@ -1302,6 +1302,7 @@ export type Database = {
           id: string
           lu: boolean | null
           message: string | null
+          profil_id: string | null
           reference_id: string | null
           statut: string
           type: string
@@ -1313,6 +1314,7 @@ export type Database = {
           id?: string
           lu?: boolean | null
           message?: string | null
+          profil_id?: string | null
           reference_id?: string | null
           statut?: string
           type?: string
@@ -1324,6 +1326,7 @@ export type Database = {
           id?: string
           lu?: boolean | null
           message?: string | null
+          profil_id?: string | null
           reference_id?: string | null
           statut?: string
           type?: string
@@ -1331,6 +1334,27 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_profil_id_fkey"
+            columns: ["profil_id"]
+            isOneToOne: false
+            referencedRelation: "profils_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_profil_id_fkey"
+            columns: ["profil_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_profil_id_fkey"
+            columns: ["profil_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
