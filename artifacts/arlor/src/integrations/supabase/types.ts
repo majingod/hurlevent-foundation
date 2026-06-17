@@ -1596,6 +1596,7 @@ export type Database = {
           niveau_acquis: number
           nom_maitre: string | null
           personnage_id: string
+          rabais_items: Json | null
           statut_maitre: string | null
           xp_depense: number
         }
@@ -1608,6 +1609,7 @@ export type Database = {
           niveau_acquis?: number
           nom_maitre?: string | null
           personnage_id: string
+          rabais_items?: Json | null
           statut_maitre?: string | null
           xp_depense?: number
         }
@@ -1620,6 +1622,7 @@ export type Database = {
           niveau_acquis?: number
           nom_maitre?: string | null
           personnage_id?: string
+          rabais_items?: Json | null
           statut_maitre?: string | null
           xp_depense?: number
         }
