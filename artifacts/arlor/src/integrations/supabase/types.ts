@@ -5618,14 +5618,17 @@ export type Database = {
         Returns: Json
       }
       desacheter_priere: {
-        Args: { p_personnage_priere_id: string }
+        Args: { p_dry_run?: boolean; p_personnage_priere_id: string }
         Returns: Json
       }
       desacheter_recette: {
         Args: { p_personnage_recette_id: string }
         Returns: Json
       }
-      desacheter_sort: { Args: { p_personnage_sort_id: string }; Returns: Json }
+      desacheter_sort: {
+        Args: { p_dry_run?: boolean; p_personnage_sort_id: string }
+        Returns: Json
+      }
       deverrouiller_personnage: {
         Args: { p_personnage_id: string }
         Returns: Json
@@ -5800,36 +5803,21 @@ export type Database = {
       }
       reouvrir_personnage: { Args: { p_personnage_id: string }; Returns: Json }
       role_du_profil: { Args: { _user_id: string }; Returns: string }
-      sauvegarder_etape_1:
-        | {
-            Args: {
-              p_ame_personnage?: string
-              p_est_croyant: boolean
-              p_gn_completes: number
-              p_historique?: string
-              p_mini_gn_completes: number
-              p_nom: string
-              p_ouvertures_terrain: number
-              p_personnage_id: string
-              p_religion_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_ame_personnage?: string
-              p_brouillon?: boolean
-              p_est_croyant: boolean
-              p_gn_completes: number
-              p_historique?: string
-              p_mini_gn_completes: number
-              p_nom: string
-              p_ouvertures_terrain: number
-              p_personnage_id: string
-              p_religion_id: string
-            }
-            Returns: Json
-          }
+      sauvegarder_etape_1: {
+        Args: {
+          p_ame_personnage?: string
+          p_brouillon?: boolean
+          p_est_croyant: boolean
+          p_gn_completes: number
+          p_historique?: string
+          p_mini_gn_completes: number
+          p_nom: string
+          p_ouvertures_terrain: number
+          p_personnage_id: string
+          p_religion_id: string
+        }
+        Returns: Json
+      }
       sauvegarder_etape_2: {
         Args: {
           p_brouillon?: boolean
