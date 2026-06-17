@@ -32,6 +32,15 @@ import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 // =========================================================================
 
 type CompetenceRow = Database["public"]["Tables"]["competences"]["Row"];
+type ApercuRabaisRow = {
+  choix: string;
+  niveau: number;
+  cout_base: number;
+  rabais: number;
+  cout_final: number;
+  nb: number;
+};
+
 type PersonnageCompetenceRow =
   Database["public"]["Tables"]["personnage_competences"]["Row"];
 type PersonnageRow = Database["public"]["Tables"]["personnages"]["Row"];
@@ -908,6 +917,33 @@ const Etape5_Competences_V2 = ({
     },
   });
 
+  // PR liv1b : aperçu GROUPÉ du rabais Acquisition Cercle/Domaine (un appel RPC
+  // par compétence cercle/domaine). Map clé `${comp.id}|${choix}|${niveau}` → ligne
+  // rabais. Ne contient QUE les rabais réels (nb>0) ; absence ⇒ prix de base.
+  const { data: rabaisMap } = useQuery({
+    queryKey: ["apercu-rabais-acquisition", personnageId],
+    enabled: !!personnageId && !!competences,
+    queryFn: async () => {
+      const cibles = (competences ?? []).filter(
+        (c) =>
+          c.type_achat === "multiple_avec_choix_par_niveau" &&
+          (c.type_choix === "cercle" || c.type_choix === "domaine"),
+      );
+      const map = new Map<string, ApercuRabaisRow>();
+      for (const comp of cibles) {
+        const { data, error } = await supabase.rpc(
+          "apercu_rabais_acquisition_competence",
+          { p_personnage_id: personnageId, p_competence_id: comp.id },
+        );
+        if (error) throw error;
+        for (const r of (data ?? []) as unknown as ApercuRabaisRow[]) {
+          map.set(`${comp.id}|${r.choix}|${r.niveau}`, r);
+        }
+      }
+      return map;
+    },
+  });
+
   // =======================================================================
   // DÉRIVÉES MEMOIZED
   // =======================================================================
@@ -1381,6 +1417,24 @@ const Etape5_Competences_V2 = ({
    * le 1er niveau avec choix est le niveau 2 (le niveau 1 est un savoir général
    * sans choix géré à part) => la cascade « niveau précédent requis » démarre à 3.
    */
+  // PR liv1b : coût effectif d'un niveau pour un cercle/domaine donné (prix réduit
+  // si rabais connu en map, sinon prix de base). Sert à l'affichage ET au calcul
+  // d'affordability (sinon la case se grise sur l'ancien prix plein).
+  const coutEffectif = (
+    comp: CompetenceWithNiveaux,
+    niv: NiveauInfo,
+    choix?: string,
+  ): number => {
+    if (
+      choix &&
+      (comp.type_choix === "cercle" || comp.type_choix === "domaine")
+    ) {
+      const r = rabaisMap?.get(`${comp.id}|${choix}|${niv.niveau}`);
+      if (r) return r.cout_final;
+    }
+    return niv.cout_xp;
+  };
+
   const niveauChoixState = (
     comp: CompetenceWithNiveaux,
     niv: NiveauInfo,
@@ -1403,8 +1457,9 @@ const Etape5_Competences_V2 = ({
     const prereqBloque =
       !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
     const compBloqueeClasse = classeBloque(comp);
+    const coutEff = coutEffectif(comp, niv, choixValue);
     const xpInsuffisants =
-      !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
+      !dejaAchete && coutEff > 0 && coutEff > xpDisponible;
     const acquis = estNiveauCompetenceAcquis(
       modeCampagne,
       photo,
@@ -2274,6 +2329,9 @@ const Etape5_Competences_V2 = ({
           <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
             {niveauxAMontrer.map((niv) => {
               const st = niveauChoixState(comp, niv, opt.value);
+              // PR liv1b : prix effectif (réduit si rabais) pour CE cercle/domaine.
+              const coutEff = coutEffectif(comp, niv, opt.value);
+              const aRabais = coutEff < niv.cout_xp;
               // PR-C2.2 : niveau acheté depuis la photo mais non scellé → ajout vert.
               const ajout = modeCampagne && st.dejaAchete && !st.acquis;
               return (
@@ -2293,7 +2351,7 @@ const Etape5_Competences_V2 = ({
                     disabled={st.disabled}
                     title={
                       st.xpInsuffisants
-                        ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
+                        ? `XP insuffisants (manque ${coutEff - xpDisponible} XP)`
                         : undefined
                     }
                     onCheckedChange={(checked) => {
@@ -2309,9 +2367,20 @@ const Etape5_Competences_V2 = ({
                     className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
                   >
                     <span>Niveau {niv.niveau}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {niv.cout_xp} XP
-                    </Badge>
+                    {aRabais ? (
+                      <span className="flex items-center gap-1">
+                        <span className="text-muted-foreground line-through">
+                          {niv.cout_xp} XP
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {coutEff} XP
+                        </Badge>
+                      </span>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        {niv.cout_xp} XP
+                      </Badge>
+                    )}
                     {st.acquis && <BadgeAcquis />}
                     {ajout && <LabelAjoutAnnulable />}
                     {st.estGratuit && (
@@ -2324,7 +2393,7 @@ const Etape5_Competences_V2 = ({
                         <Lock className="h-3 w-3" /> Niv. {niv.niveau - 1} requis
                       </span>
                     )}
-                    {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
+                    {st.xpInsuffisants && renderManqueXp(coutEff)}
                   </Label>
                 </div>
               );

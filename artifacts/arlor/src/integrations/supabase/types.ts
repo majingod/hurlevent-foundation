@@ -5499,6 +5499,19 @@ export type Database = {
         }
         Returns: Json
       }
+      apercu_rabais_acquisition: {
+        Args: {
+          p_choix_achat: string
+          p_competence_id: string
+          p_niveau: number
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
+      apercu_rabais_acquisition_competence: {
+        Args: { p_competence_id: string; p_personnage_id: string }
+        Returns: Json
+      }
       approuver_maitre_competence: {
         Args: { p_personnage_competence_id: string }
         Returns: Json
