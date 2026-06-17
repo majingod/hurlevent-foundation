@@ -195,11 +195,30 @@ const Etape7_Prieres_V2 = ({
   );
   // I7 : filtre par type, indépendant par domaine.
   const [filtres, setFiltres] = useState<Record<string, string | null>>({});
+  type RepriseRabais = {
+    competence: string;
+    niveau: number;
+    choix: string;
+    montant: number;
+  };
+  type ApercuDesachat = {
+    type: "sort" | "priere";
+    nom: string;
+    cercle?: string;
+    domaine?: string;
+    xp_rembourse: number;
+    reprises: RepriseRabais[];
+    reprise_totale: number;
+    net: number;
+    bloque: boolean;
+    message_action?: string;
+  };
   const [aSupprimer, setASupprimer] = useState<{
     personnage_priere_id: string;
     nom: string;
-    xp_depense: number;
+    apercu: ApercuDesachat;
   } | null>(null);
+  const [calculSuppression, setCalculSuppression] = useState(false);
   // L2 : bulle d'aide au tap sur un symbole.
   const { aide, montrer: montrerAide, fermer: fermerAide } = useTapBulle();
 
@@ -393,6 +412,38 @@ const Etape7_Prieres_V2 = ({
       onError?.(error);
     },
   });
+
+  // Aperçu (dry-run) avant suppression : calcule rabais repris + net,
+  // puis ouvre TOUJOURS la fenêtre de confirmation (contenu adaptatif).
+  const demanderSuppression = (pp: { id: string; nom: string }) => {
+    setCalculSuppression(true);
+    void (async () => {
+      let apercu: ApercuDesachat;
+      try {
+        const { data, error } = await supabase.rpc("desacheter_priere", {
+          p_personnage_priere_id: pp.id,
+          p_dry_run: true,
+        });
+        if (error) throw error;
+        const payload = (data ?? {}) as Record<string, any>;
+        const donnees = (payload.donnees ?? {}) as ApercuDesachat;
+        // bloqué => succes:false mais donnees.bloque:true (cas légitime).
+        if (payload.succes !== true && donnees?.bloque !== true) {
+          throw new Error(
+            (payload.erreurs?.[0]?.message as string | undefined) ??
+              "Impossible de calculer l'aperçu du retrait.",
+          );
+        }
+        apercu = donnees;
+      } catch (e) {
+        toast.error((e as Error).message);
+        return;
+      } finally {
+        setCalculSuppression(false);
+      }
+      setASupprimer({ personnage_priere_id: pp.id, nom: pp.nom, apercu });
+    })();
+  };
 
   // Modification M2 inline — RPC modifier_priere, nom envoyé seulement s'il
   // change, gestion d'erreur acquis_regression avec affichage du plancher,
@@ -1274,13 +1325,15 @@ const Etape7_Prieres_V2 = ({
                                       className="h-8 w-8"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setASupprimer({
-                                          personnage_priere_id: pp.id,
+                                        demanderSuppression({
+                                          id: pp.id,
                                           nom: nomActuel,
-                                          xp_depense: pp.xp_depense,
                                         });
                                       }}
-                                      disabled={desacheterMutation.isPending}
+                                      disabled={
+                                        desacheterMutation.isPending ||
+                                        calculSuppression
+                                      }
                                     >
                                       <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
@@ -1465,11 +1518,51 @@ const Etape7_Prieres_V2 = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer cette prière ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              La prière « {aSupprimer?.nom} » sera supprimée et vous récupérerez{" "}
-              <strong>{aSupprimer?.xp_depense ?? 0} XP</strong>. Cette action est
-              immédiate.
-            </AlertDialogDescription>
+            {aSupprimer && (
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  {aSupprimer.apercu.bloque ? (
+                    <p className="text-destructive">
+                      {aSupprimer.apercu.message_action}
+                    </p>
+                  ) : aSupprimer.apercu.reprise_totale === 0 ? (
+                    <p>
+                      La prière « {aSupprimer.nom} » sera supprimée et tu
+                      récupéreras{" "}
+                      <strong>+{aSupprimer.apercu.xp_rembourse} XP</strong>.
+                    </p>
+                  ) : (
+                    <>
+                      <p>
+                        Supprimer la prière « {aSupprimer.nom} » du Domaine «{" "}
+                        {aSupprimer.apercu.domaine} » va :
+                      </p>
+                      <ul className="list-disc space-y-1 pl-5">
+                        <li>
+                          te rendre son coût (+
+                          {aSupprimer.apercu.xp_rembourse} XP)
+                        </li>
+                        {aSupprimer.apercu.reprises.map((r, idx) => (
+                          <li key={idx}>
+                            reprendre le rabais qu'elle donnait sur{" "}
+                            {r.competence} niveau {r.niveau} pour le Domaine «{" "}
+                            {r.choix} » (−{r.montant} XP)
+                          </li>
+                        ))}
+                        <li className="font-medium">
+                          Résultat net : +{aSupprimer.apercu.net} XP
+                        </li>
+                      </ul>
+                    </>
+                  )}
+                  {!aSupprimer.apercu.bloque && (
+                    <p className="text-muted-foreground">
+                      ⚠️ Ce choix est définitif.
+                    </p>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={desacheterMutation.isPending}>
@@ -1477,9 +1570,12 @@ const Etape7_Prieres_V2 = ({
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={desacheterMutation.isPending}
+              disabled={
+                desacheterMutation.isPending ||
+                (aSupprimer?.apercu.bloque ?? false)
+              }
               onClick={() => {
-                if (aSupprimer) {
+                if (aSupprimer && !aSupprimer.apercu.bloque) {
                   desacheterMutation.mutate(aSupprimer.personnage_priere_id);
                 }
               }}
@@ -1487,7 +1583,7 @@ const Etape7_Prieres_V2 = ({
               {desacheterMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Supprimer
+              Confirmer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
