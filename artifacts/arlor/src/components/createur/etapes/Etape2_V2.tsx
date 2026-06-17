@@ -420,20 +420,55 @@ const Etape2_V2 = ({
       }, () => {});
   }, [raceId, sousType, estChimeride, gratuits, achetes, traits, personnageId]);
 
-  // Declenche un autosave debounce a chaque changement de race / sous-type / traits.
   useEffect(() => {
     if (!initFait.current) return;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = setTimeout(() => sauvegarderBrouillon(), 900);
+    autosaveTimer.current = setTimeout(() => {
+      sauvegarderBrouillon();
+      autosaveTimer.current = null;
+    }, 900);
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
   }, [raceId, sousType, gratuits, achetes, sauvegarderBrouillon]);
 
+  // Ref toujours à jour vers le dernier brouillon : la cleanup ci-dessous
+  // dispatche ainsi les VALEURS FRAÎCHES (closure non périmée).
+  const flushRef = useRef(sauvegarderBrouillon);
+  useEffect(() => {
+    flushRef.current = sauvegarderBrouillon;
+  }, [sauvegarderBrouillon]);
+
+  // Si un autosave est EN ATTENTE quand le joueur quitte l'étape (démontage SPA)
+  // ou met l'onglet en arrière-plan / le ferme (mobile), on dispatche le save
+  // tout de suite au lieu de l'annuler. Best-effort (fire-and-forget).
+  useEffect(() => {
+    const flushSiEnAttente = () => {
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+        flushRef.current();
+      }
+    };
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") flushSiEnAttente();
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    window.addEventListener("pagehide", flushSiEnAttente);
+    return () => {
+      document.removeEventListener("visibilitychange", onHidden);
+      window.removeEventListener("pagehide", flushSiEnAttente);
+      flushSiEnAttente();
+    };
+  }, []);
+
   // -- Soumission : sauvegarder_etape_2 PUIS sauvegarder_etape_3 -----------
   const onSubmit = async () => {
     // Annule un autosave brouillon en attente : le « Suivant » fait foi.
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
     if (!raceId) {
       toast.error("Choisis une race.");
       return;
