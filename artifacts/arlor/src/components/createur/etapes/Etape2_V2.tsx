@@ -147,6 +147,11 @@ const Etape2_V2 = ({
       if (error) throw error;
       return data;
     },
+    // PR4 fix : pas de cache entre deux visites de l'etape. Sinon, au retour via
+    // navigation SPA, l'init one-shot (initFait) fige la valeur perimee du cache
+    // et ignore le refetch frais → la race / les traits persistes n'apparaissent
+    // qu'apres un vrai reload. gcTime:0 jette le cache a la sortie => fetch frais.
+    gcTime: 0,
   });
 
   // Traits filtrés par la race SÉLECTIONNÉE (locale) + sous-type — vue dédiée.
