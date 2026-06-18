@@ -55,6 +55,14 @@ function detailChips(details: StaffRow["details"]): Chip[] {
     chips.push({ t: `+${d.xp_rembourse} XP`, tone: "gold" });
   if (typeof d.classe_avant === "string" && typeof d.classe_apres === "string")
     chips.push({ t: `${d.classe_avant} → ${d.classe_apres}`, tone: "neutre" });
+  if (typeof d.montant === "number") {
+    const pos = d.montant > 0;
+    chips.push({ t: `${pos ? "+" : "−"}${Math.abs(d.montant)} XP`, tone: pos ? "gold" : "bordeaux" });
+  }
+  if (typeof d.description === "string" && d.description.trim())
+    chips.push({ t: d.description, tone: "neutre" });
+  if (typeof d.solde_apres === "number")
+    chips.push({ t: `Solde : ${d.solde_apres}`, tone: "neutre" });
   return chips;
 }
 const CHIP_CLASS: Record<Chip["tone"], string> = {

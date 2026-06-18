@@ -31,6 +31,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
 import ModaleTransfertPersonnage from "@/components/personnage/ModaleTransfertPersonnage";
+import { HistoriqueBanque } from "@/components/personnage/sections/HistoriqueBanque";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -139,6 +140,11 @@ const CarteBanqueJoueur = ({ joueurId }: { joueurId: string }) => {
             Ouvre la fiche d'un personnage pour répartir ton XP.
           </p>
         )}
+
+        <div className="border-t border-white/10 pt-3">
+          <p className="text-xs font-medium text-muted-foreground">Mouvements récents</p>
+          <HistoriqueBanque joueurId={joueurId} />
+        </div>
       </CardContent>
     </Card>
   );
