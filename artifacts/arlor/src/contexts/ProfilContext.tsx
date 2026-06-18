@@ -30,6 +30,7 @@ interface ProfilContextType {
   ajouterProfil: (nom: string) => Promise<{ ok: boolean; message?: string }>;
   renommerProfil: (id: string, nom: string) => Promise<{ ok: boolean; message?: string }>;
   supprimerProfil: (id: string) => Promise<{ ok: boolean; message?: string }>;
+  definirPrincipal: (id: string) => Promise<{ ok: boolean; message?: string }>;
   reinitialiserProfil: (gestion?: boolean) => void;
   intentGestion: boolean;
 }
@@ -44,6 +45,7 @@ const ProfilContext = createContext<ProfilContextType>({
   ajouterProfil: async () => ({ ok: false }),
   renommerProfil: async () => ({ ok: false }),
   supprimerProfil: async () => ({ ok: false }),
+  definirPrincipal: async () => ({ ok: false }),
   reinitialiserProfil: () => {},
   intentGestion: false,
 });
@@ -210,6 +212,25 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
     [profils, user, chargerProfils],
   );
 
+  const definirPrincipal = useCallback(
+    async (id: string) => {
+      // Appel direct (ne jamais assigner supabase.rpc à une variable : détache `this`).
+      const { data, error } = await supabase.rpc("definir_profil_principal", {
+        p_profil_id: id,
+      });
+      if (error) return { ok: false, message: error.message };
+      const res = data as
+        | { succes?: boolean; erreurs?: { message?: string }[] }
+        | null;
+      if (!res?.succes) {
+        return { ok: false, message: res?.erreurs?.[0]?.message ?? "Échec." };
+      }
+      await chargerProfils();
+      return { ok: true };
+    },
+    [chargerProfils],
+  );
+
   const profilActif = profils.find((p) => p.id === profilActifId) ?? null;
   const joueurId = profilActif?.id ?? null;
 
@@ -225,6 +246,7 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
         ajouterProfil,
         renommerProfil,
         supprimerProfil,
+        definirPrincipal,
         reinitialiserProfil,
         intentGestion,
       }}
