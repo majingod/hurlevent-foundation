@@ -3,9 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
+import { useModeStaff } from "@/contexts/ModeStaffContext";
 import QuiJoue from "@/components/profil/QuiJoue";
 import Navbar from "@/components/Navbar";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -53,6 +54,16 @@ const queryClient = new QueryClient({
   }),
 });
 
+// Garde de route staff : redirige hors de /administration/* si le mode staff
+// n'est pas actif (compte non-staff, profil non-principal, ou interrupteur OFF).
+// Attend la résolution du rôle pour éviter un rebond au boot.
+const GardeStaff = () => {
+  const { roleLoading } = useAuth();
+  const { staffActif } = useModeStaff();
+  if (roleLoading) return null;
+  return staffActif ? <Outlet /> : <Navigate to="/tableau-de-bord" replace />;
+};
+
 const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Accueil />} />
@@ -95,6 +106,7 @@ const AppRoutes = () => (
       }
     />
 
+    <Route element={<GardeStaff />}>
     <Route
       path="/administration"
       element={<Navigate to="/administration/dashboard" replace />}
@@ -159,6 +171,7 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     />
+    </Route>
 
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>

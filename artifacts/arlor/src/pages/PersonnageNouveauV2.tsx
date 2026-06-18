@@ -7,7 +7,7 @@ import {
   Hammer, ClipboardCheck, AlertTriangle, Coins, TrendingUp,
 } from "lucide-react";
 
-import { supabase, setCanalAdmin } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
@@ -108,13 +108,9 @@ const PersonnageNouveauV2 = () => {
   // achat de la compétence en É5.
   const { chargee, applicable } = useEtapesApplicables(personnageId);
 
-  // AUDIT-ADMIN-MODE-ROLE : en admin mode, marquer le canal pour que les
-  // actions auditées soient taguées « admin » (visibles au feed staff),
-  // même sur son propre perso. Retiré au démontage / sortie d'admin mode.
-  useEffect(() => {
-    setCanalAdmin(modeAdmin);
-    return () => setCanalAdmin(false);
-  }, [modeAdmin]);
+  // AUDIT-ADMIN-MODE-ROLE : le canal admin (header x-hv-canal) est désormais
+  // piloté globalement par le mode staff (ModeStaffContext) — plus de header
+  // posé en doublon ici. `modeAdmin` reste utilisé pour la logique d'édition.
 
   // 1) Démarrage : soit reprise d'un personnage précis (?id=),
   //    soit création / récupération du brouillon unique.

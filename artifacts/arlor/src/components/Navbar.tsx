@@ -1,10 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
+import { useModeStaff } from "@/contexts/ModeStaffContext";
 import { useMenuNavigation } from "@/hooks/useMenuNavigation";
 import ClocheNotifications from "@/components/notifications/ClocheNotifications";
 import { useAutresIdentitesNonLues, useRealtimeNotifications } from "@/hooks/useNotifications";
-import { Menu, Users, Settings, Crown } from "lucide-react";
+import { Menu, Users, Settings, Crown, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -17,6 +18,7 @@ import { useState } from "react";
 const Navbar = () => {
   const { user, role, signOut } = useAuth();
   const { profilActif, reinitialiserProfil } = useProfil();
+  const { peutBasculer, staffActif, interrupteurOn, setInterrupteur } = useModeStaff();
   const autresIdentitesNonLues = useAutresIdentitesNonLues();
   useRealtimeNotifications();
   const navigate = useNavigate();
@@ -134,13 +136,57 @@ const Navbar = () => {
                 >
                   <Settings size={16} /> Gérer les profils
                 </button>
+
+                {peutBasculer && (
+                  <div
+                    className="mt-3 flex items-center gap-3 border-t pt-3"
+                    style={{ borderColor: "#2a2618" }}
+                  >
+                    <div className="flex-1">
+                      <div
+                        className="flex items-center gap-1.5 text-sm font-semibold"
+                        style={{ color: "#f0e6d2" }}
+                      >
+                        <Sparkles size={14} style={{ color: "#c9a84c" }} /> Mode animation
+                      </div>
+                      <div className="mt-0.5 text-[10.5px]" style={{ color: "#8a8a8a" }}>
+                        {staffActif
+                          ? "Activé — outils d'animation visibles."
+                          : "Désactivé — tu navigues comme un joueur."}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={interrupteurOn}
+                      aria-label="Mode animation"
+                      onClick={() => setInterrupteur(!interrupteurOn)}
+                      className="relative h-[26px] w-[46px] flex-shrink-0 rounded-full border transition-colors"
+                      style={{
+                        borderColor: interrupteurOn ? "#c9a84c" : "#3a3320",
+                        background: interrupteurOn ? "rgba(201,168,76,.18)" : "#0d0d0d",
+                      }}
+                    >
+                      <span
+                        className="absolute top-[2px] h-5 w-5 rounded-full transition-all"
+                        style={{
+                          left: interrupteurOn ? 22 : 2,
+                          background: interrupteurOn ? "#c9a84c" : "#6b6b6b",
+                        }}
+                      />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             <nav className="flex flex-1 flex-col gap-1 px-4">
-              {menuItems?.filter(item => item.afficher_navbar).map(item => (
-                <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
-              ))}
+              {menuItems
+                ?.filter(item => item.afficher_navbar)
+                .filter(item => staffActif || !item.url.startsWith("/administration"))
+                .map(item => (
+                  <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
+                ))}
 
               <div className="mt-auto pt-8 border-t border-border/30">
                 {user ? (
