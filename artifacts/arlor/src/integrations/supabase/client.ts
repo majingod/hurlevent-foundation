@@ -10,11 +10,20 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.
 // (visibles au feed staff) même sur le propre perso de l'admin.
 // Garde-fou côté serveur : sans effet si l'acteur n'est pas réellement admin.
 let canalAdmin = false;
-export const setCanalAdmin = (actif: boolean) => { canalAdmin = actif; };
+// Pilote le header x-hv-canal:admin. Désormais commandé par le mode staff global
+// (ModeStaffContext), plus par chaque page : un seul point de vérité.
+export const setModeStaff = (actif: boolean) => { canalAdmin = actif; };
+
+// Identité du profil actif, posée par ProfilContext à chaque changement.
+// Header x-hv-profil-actif sur TOUTES les requêtes : signal neutre, lu plus tard
+// par le back (Lot 2.3). Sans effet sur les droits tant que 2.3 n'est pas gravé.
+let profilActifId: string | null = null;
+export const setProfilActifHeader = (id: string | null) => { profilActifId = id; };
 
 const fetchAvecCanal: typeof fetch = (input, init = {}) => {
   const headers = new Headers(init.headers);
   if (canalAdmin) headers.set('x-hv-canal', 'admin');
+  if (profilActifId) headers.set('x-hv-profil-actif', profilActifId);
   return fetch(input, { ...init, headers });
 };
 

@@ -6,7 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, setProfilActifHeader } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface ProfilJoueur {
@@ -233,6 +233,11 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
 
   const profilActif = profils.find((p) => p.id === profilActifId) ?? null;
   const joueurId = profilActif?.id ?? null;
+
+  // Pose le header x-hv-profil-actif à chaque changement de profil actif.
+  useEffect(() => {
+    setProfilActifHeader(profilActif?.id ?? null);
+  }, [profilActif?.id]);
 
   return (
     <ProfilContext.Provider
