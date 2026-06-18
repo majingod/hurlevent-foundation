@@ -62,6 +62,7 @@ interface PersonnageResume {
   gn_completes: number;
   mini_gn_completes: number;
   ouvertures_terrain: number;
+  etat: string | null;
 }
 
 // Libellé de progression d'un personnage (segments non nuls uniquement).
@@ -375,11 +376,17 @@ const TableauDeBord = () => {
                       <DropdownMenuSeparator className="bg-white/10" />
                       <DropdownMenuItem
                         onClick={() => setPersonnageATransferer(p)}
+                        disabled={p.etat === "gele" || p.etat === "mort"}
                         className="cursor-pointer focus:bg-white/10"
                       >
                         <ArrowRightLeft className="mr-2 h-4 w-4" />
                         Transférer…
                       </DropdownMenuItem>
+                      {(p.etat === "gele" || p.etat === "mort") && (
+                        <div className="px-2 pb-1.5 text-xs text-white/40">
+                          {p.etat === "gele" ? "inscrit à un GN" : "personnage mort"}
+                        </div>
+                      )}
                       <DropdownMenuSeparator className="bg-white/10" />
                       <DropdownMenuItem
                         onClick={() => setPersonnageASupprimer(p)}

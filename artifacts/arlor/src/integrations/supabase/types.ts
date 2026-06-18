@@ -4929,6 +4929,7 @@ export type Database = {
           est_actif: boolean | null
           est_finalise: boolean | null
           etape_creation: number | null
+          etat: string | null
           gn_completes: number | null
           id: string | null
           joueur_id: string | null
