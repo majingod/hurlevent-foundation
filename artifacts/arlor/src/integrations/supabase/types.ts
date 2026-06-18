@@ -677,6 +677,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "historique_xp_banque_mouvement_id_fkey"
+            columns: ["banque_mouvement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_mouvements"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "historique_xp_competence_id_fkey"
             columns: ["competence_id"]
             isOneToOne: false
@@ -3753,6 +3760,173 @@ export type Database = {
         }
         Relationships: []
       }
+      vue_banque_mouvements: {
+        Row: {
+          acteur_id: string | null
+          acteur_nom: string | null
+          created_at: string | null
+          description: string | null
+          evenement_id: string | null
+          evenement_titre: string | null
+          evenement_type: string | null
+          id: string | null
+          joueur_id: string | null
+          libelle: string | null
+          montant: number | null
+          personnage_cible_id: string | null
+          personnage_cible_nom: string | null
+          type_mouvement: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_acteur_id_fkey"
+            columns: ["acteur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "evenements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_evenements_publies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_evenement_id_fkey"
+            columns: ["evenement_id"]
+            isOneToOne: false
+            referencedRelation: "vue_prochain_evenement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profils_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banque_xp_mouvements_personnage_cible_id_fkey"
+            columns: ["personnage_cible_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vue_cercles_disponibles: {
         Row: {
           cercle: string | null
@@ -5752,6 +5926,10 @@ export type Database = {
         Args: { p_personnage_id: string }
         Returns: boolean
       }
+      personnage_inapte_magie: {
+        Args: { p_personnage_id: string }
+        Returns: boolean
+      }
       peut_acheter_competence: {
         Args: {
           p_choix_achat?: string
@@ -5776,6 +5954,10 @@ export type Database = {
       }
       profils_du_compte: { Args: { c: string }; Returns: string[] }
       recalculer_ps_max: {
+        Args: { p_personnage_id: string }
+        Returns: undefined
+      }
+      recalculer_pv_max: {
         Args: { p_personnage_id: string }
         Returns: undefined
       }
@@ -5899,6 +6081,24 @@ export type Database = {
       valider_personnage_final: {
         Args: { p_personnage_id: string }
         Returns: Json
+      }
+      verifier_invariant_ps: {
+        Args: never
+        Returns: {
+          nom: string
+          personnage_id: string
+          ps_attendu: number
+          ps_stocke: number
+        }[]
+      }
+      verifier_invariant_pv: {
+        Args: never
+        Returns: {
+          nom: string
+          personnage_id: string
+          pv_attendu: number
+          pv_stocke: number
+        }[]
       }
       verifier_invariant_xp: {
         Args: never

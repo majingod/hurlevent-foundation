@@ -14,6 +14,7 @@ import DrawerAjusterAdmin, {
   type CibleAjuster,
 } from "@/components/admin/joueurs/DrawerAjusterAdmin";
 import DrawerRoleCompte from "@/components/admin/joueurs/DrawerRoleCompte";
+import { HistoriqueBanque } from "@/components/personnage/sections/HistoriqueBanque";
 
 type Role = "joueur" | "animateur" | "admin";
 
@@ -360,6 +361,10 @@ const AdminJoueurs = () => {
                               >
                                 Ajuster
                               </button>
+                            </div>
+
+                            <div className="border-t border-border px-3 py-2.5">
+                              <HistoriqueBanque joueurId={p.id} vueAdmin />
                             </div>
 
                             {p.persos.map((pe) => {
