@@ -921,8 +921,8 @@ const Etape5_Competences_V2 = ({
   // par compétence cercle/domaine). Map clé `${comp.id}|${choix}|${niveau}` → ligne
   // rabais. Ne contient QUE les rabais réels (nb>0) ; absence ⇒ prix de base.
   const { data: rabaisMap } = useQuery({
-    queryKey: ["apercu-rabais-acquisition", personnageId],
-    enabled: !!personnageId && !!competences,
+    queryKey: ["apercu-rabais-acquisition", personnageId, personnage?.updated_at],
+    enabled: !!personnageId && !!competences && !!personnage,
     queryFn: async () => {
       const cibles = (competences ?? []).filter(
         (c) =>
