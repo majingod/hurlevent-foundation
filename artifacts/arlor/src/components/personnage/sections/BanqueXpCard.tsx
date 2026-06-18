@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { HistoriqueBanque } from "./HistoriqueBanque";
 
 interface BanqueXpCardProps {
   joueurId: string;
@@ -114,6 +115,8 @@ export const BanqueXpCard = ({
             <p className="font-medium text-foreground">{banque?.total_transfere ?? 0}</p>
           </div>
         </div>
+
+        <HistoriqueBanque joueurId={joueurId} />
 
         {isOwner && (
           <Button
