@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -120,4 +121,42 @@ export function useAutresIdentitesNonLues(): boolean {
   });
 
   return data ?? false;
+}
+
+// Temps réel : invalide la cloche, la carte et la pastille dès qu'une notif du
+// compte change (INSERT/UPDATE/DELETE). À monter UNE SEULE fois (Navbar).
+// Filtre realtime sur user_id = compte ; la RLS « Lecture notifications » reste
+// la barrière (chaque client ne reçoit que les notifs de son compte).
+export function useRealtimeNotifications(): void {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? null;
+
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            predicate: (q) =>
+              Array.isArray(q.queryKey) &&
+              (q.queryKey[0] === "notifications" ||
+                q.queryKey[0] === "notifs-autres-identites"),
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
 }

@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { useMenuNavigation } from "@/hooks/useMenuNavigation";
 import ClocheNotifications from "@/components/notifications/ClocheNotifications";
-import { useAutresIdentitesNonLues } from "@/hooks/useNotifications";
+import { useAutresIdentitesNonLues, useRealtimeNotifications } from "@/hooks/useNotifications";
 import { Menu, Users, Settings, Crown } from "lucide-react";
 import {
   Sheet,
@@ -18,6 +18,7 @@ const Navbar = () => {
   const { user, role, signOut } = useAuth();
   const { profilActif, reinitialiserProfil } = useProfil();
   const autresIdentitesNonLues = useAutresIdentitesNonLues();
+  useRealtimeNotifications();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { data: menuItems } = useMenuNavigation(role);
