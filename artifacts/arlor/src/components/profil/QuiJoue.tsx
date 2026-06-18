@@ -88,7 +88,7 @@ const miniBtn = (couleur: string): CSSProperties => ({
 });
 
 export default function QuiJoue() {
-  const { profils, switchProfil, ajouterProfil, renommerProfil, supprimerProfil, intentGestion } =
+  const { profils, switchProfil, ajouterProfil, renommerProfil, supprimerProfil, definirPrincipal, intentGestion } =
     useProfil();
   const navigate = useNavigate();
   const [gestion, setGestion] = useState(intentGestion);
@@ -140,6 +140,19 @@ export default function QuiJoue() {
     const r = await supprimerProfil(p.id);
     setBusy(false);
     if (!r.ok) toast.error(r.message ?? "Échec de la suppression.");
+  };
+
+  const definirCommePrincipal = async (p: ProfilJoueur) => {
+    setBusy(true);
+    const r = await definirPrincipal(p.id);
+    setBusy(false);
+    if (!r.ok) {
+      toast.error(r.message ?? "Échec.");
+      return;
+    }
+    toast.success(
+      `« ${p.nom} » est maintenant ton profil principal. Si ton compte a un rôle staff, ce profil portera désormais tes accès.`,
+    );
   };
 
   return (
@@ -273,6 +286,16 @@ export default function QuiJoue() {
                       >
                         <Pencil size={15} />
                       </button>
+                      {!p.est_principal && (
+                        <button
+                          style={miniBtn(T.or)}
+                          onClick={() => definirCommePrincipal(p)}
+                          disabled={busy}
+                          aria-label="Définir comme profil principal"
+                        >
+                          <Crown size={15} />
+                        </button>
+                      )}
                       {!p.est_principal && (
                         <button
                           style={{
