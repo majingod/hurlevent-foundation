@@ -4873,6 +4873,24 @@ export type Database = {
         }
         Relationships: []
       }
+      vue_notifications_staff: {
+        Row: {
+          a_traiter: boolean | null
+          created_at: string | null
+          demande_statut: string | null
+          id: string | null
+          lu: boolean | null
+          message: string | null
+          profil_id: string | null
+          reference_id: string | null
+          traite_le: string | null
+          traite_par_id: string | null
+          traite_par_nom: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       vue_personnage_creation_complet: {
         Row: {
           a_forge_legendaire: boolean | null

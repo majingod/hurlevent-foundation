@@ -57,16 +57,48 @@ function BadgePortee({ notif, nomProfil }: { notif: Notif; nomProfil?: string })
   );
 }
 
+// Badge d'état de traitement (cloche staff) : « À traiter » tant que la demande
+// est en attente, sinon « Traité par <nom> » (approuvée ou refusée).
+function BadgeTraitement({
+  traitement,
+}: {
+  traitement: { aTraiter: boolean; nom: string | null };
+}) {
+  if (traitement.aTraiter) {
+    return (
+      <span
+        className="rounded-full border px-1.5 py-px text-[10px] font-semibold"
+        style={{
+          borderColor: "rgba(230,184,85,.35)",
+          background: "rgba(230,184,85,.1)",
+          color: "#e6b855",
+        }}
+      >
+        ⏳ À traiter
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-px text-[10px] font-semibold text-muted-foreground">
+      ✓ Traité{traitement.nom ? ` par ${traitement.nom}` : ""}
+    </span>
+  );
+}
+
 export function LigneNotif({
   notif,
   onLire,
   compacte = false,
   onAvantNavigation,
+  masquerPortee = false,
+  traitement,
 }: {
   notif: Notif;
-  onLire: (id: string) => void;
+  onLire?: (id: string) => void;
   compacte?: boolean;
   onAvantNavigation?: () => void;
+  masquerPortee?: boolean;
+  traitement?: { aTraiter: boolean; nom: string | null } | null;
 }) {
   const m = metaPour(notif.type);
   const { Icon } = m;
@@ -76,7 +108,7 @@ export function LigneNotif({
   const navigable = estNavigable(notif, role);
 
   const onClick = () => {
-    if (!notif.lu) onLire(notif.id);
+    if (!notif.lu) onLire?.(notif.id);
     if (navigable) {
       onAvantNavigation?.();
       void naviguer(notif);
@@ -108,7 +140,13 @@ export function LigneNotif({
           {notif.message}
         </span>
         <span className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <BadgePortee notif={notif} nomProfil={profilActif?.nom} />
+          {traitement ? (
+            <BadgeTraitement traitement={traitement} />
+          ) : (
+            !masquerPortee && (
+              <BadgePortee notif={notif} nomProfil={profilActif?.nom} />
+            )
+          )}
           {dateRelative(notif.created_at)}
         </span>
       </span>
