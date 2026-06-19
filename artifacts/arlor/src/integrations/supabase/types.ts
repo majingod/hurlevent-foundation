@@ -5790,9 +5790,6 @@ export type Database = {
         Returns: Json
       }
       approuver_race_demande: { Args: { p_demande_id: string }; Returns: Json }
-      archiver_compte: { Args: { p_compte_id: string }; Returns: Json }
-      archiver_personnage: { Args: { p_personnage_id: string }; Returns: Json }
-      archiver_profil: { Args: { p_profil_id: string }; Returns: Json }
       assembler_prerequis_labels: {
         Args: { p_competence_id: string }
         Returns: Json
@@ -5809,6 +5806,9 @@ export type Database = {
         Args: { p_etape_courante: number; p_personnage_id: string }
         Returns: Json
       }
+      bloquer_compte: { Args: { p_compte_id: string }; Returns: Json }
+      bloquer_personnage: { Args: { p_personnage_id: string }; Returns: Json }
+      bloquer_profil: { Args: { p_profil_id: string }; Returns: Json }
       calculer_cout_xp_magie: {
         Args: {
           p_cout_xp_base: number
@@ -5890,6 +5890,9 @@ export type Database = {
         Args: { p_message: string; p_reference_id?: string; p_type: string }
         Returns: number
       }
+      debloquer_compte: { Args: { p_compte_id: string }; Returns: Json }
+      debloquer_personnage: { Args: { p_personnage_id: string }; Returns: Json }
+      debloquer_profil: { Args: { p_profil_id: string }; Returns: Json }
       definir_profil_principal: { Args: { p_profil_id: string }; Returns: Json }
       demarrer_creation_personnage: {
         Args: { p_profil_id?: string }
@@ -5920,12 +5923,6 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_personnage_sort_id: string }
         Returns: Json
       }
-      desarchiver_compte: { Args: { p_compte_id: string }; Returns: Json }
-      desarchiver_personnage: {
-        Args: { p_personnage_id: string }
-        Returns: Json
-      }
-      desarchiver_profil: { Args: { p_profil_id: string }; Returns: Json }
       deverrouiller_personnage: {
         Args: { p_personnage_id: string }
         Returns: Json
