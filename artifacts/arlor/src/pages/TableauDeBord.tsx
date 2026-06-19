@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +64,9 @@ interface PersonnageResume {
   mini_gn_completes: number;
   ouvertures_terrain: number;
   etat: string | null;
+  evenement_inscrit_titre: string | null;
+  evenement_inscrit_date: string | null;
+  dans_fenetre_gel: boolean | null;
 }
 
 // Libellé de progression d'un personnage (segments non nuls uniquement).
@@ -73,6 +76,63 @@ const progressionLabel = (p: PersonnageResume): string => {
   if (p.mini_gn_completes) segs.push(`${p.mini_gn_completes} mini-GN`);
   if (p.ouvertures_terrain) segs.push(`${p.ouvertures_terrain} ouverture${p.ouvertures_terrain > 1 ? "s" : ""}`);
   return segs.length === 0 ? "N'a participé à aucun événement" : segs.join(" · ");
+};
+
+// ASSOUPLIR-GEL : compte à rebours avant le gel (24 h avant l'événement inscrit).
+const CompteARebours = ({
+  titre,
+  dateEvenement,
+  dansFenetre,
+}: {
+  titre: string;
+  dateEvenement: string | null;
+  dansFenetre: boolean | null;
+}) => {
+  const seuil = dateEvenement
+    ? new Date(dateEvenement).getTime() - 24 * 3600 * 1000
+    : null;
+  const [restant, setRestant] = useState<number>(() =>
+    seuil ? seuil - Date.now() : 0
+  );
+  useEffect(() => {
+    if (!seuil || dansFenetre) return;
+    const id = setInterval(() => setRestant(seuil - Date.now()), 30000);
+    setRestant(seuil - Date.now());
+    return () => clearInterval(id);
+  }, [seuil, dansFenetre]);
+
+  if (dansFenetre) {
+    return (
+      <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/[0.07] px-3 py-2">
+        <p className="flex items-center gap-1.5 text-[12px] font-semibold text-red-300">
+          🔒 Personnage bloqué
+        </p>
+        <p className="mt-1 text-[11.5px] text-white/70">
+          Modifications fermées jusqu'à la confirmation des présences —{" "}
+          <span className="font-semibold text-gold">{titre}</span>
+        </p>
+      </div>
+    );
+  }
+
+  const total = Math.max(0, restant);
+  const j = Math.floor(total / 86400000);
+  const h = Math.floor((total % 86400000) / 3600000);
+  const m = Math.floor((total % 3600000) / 60000);
+  return (
+    <div className="mb-3 rounded-lg border border-amber-500/28 bg-amber-500/[0.07] px-3 py-2">
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold text-amber-300">
+        ⏳ Blocage des modifications dans
+      </p>
+      <p className="mt-0.5 text-[18px] font-bold tabular-nums tracking-wide text-foreground">
+        {j} j {h} h {m} min
+      </p>
+      <p className="mt-1 text-[11.5px] text-white/60">
+        Puis verrouillé jusqu'à la confirmation des présences —{" "}
+        <span className="font-semibold text-gold">{titre}</span>
+      </p>
+    </div>
+  );
 };
 
 interface SoldeBanque {
@@ -406,6 +466,13 @@ const TableauDeBord = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {p.evenement_inscrit_titre && (
+                  <CompteARebours
+                    titre={p.evenement_inscrit_titre}
+                    dateEvenement={p.evenement_inscrit_date}
+                    dansFenetre={p.dans_fenetre_gel}
+                  />
+                )}
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p><span className="text-white/60">Race :</span> {p.race_nom}</p>
                   <p><span className="text-white/60">Classe :</span> {p.classe_nom}</p>

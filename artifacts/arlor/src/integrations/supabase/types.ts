@@ -5118,10 +5118,13 @@ export type Database = {
         Row: {
           classe_nom: string | null
           created_at: string | null
+          dans_fenetre_gel: boolean | null
           est_actif: boolean | null
           est_finalise: boolean | null
           etape_creation: number | null
           etat: string | null
+          evenement_inscrit_date: string | null
+          evenement_inscrit_titre: string | null
           gn_completes: number | null
           id: string | null
           joueur_id: string | null

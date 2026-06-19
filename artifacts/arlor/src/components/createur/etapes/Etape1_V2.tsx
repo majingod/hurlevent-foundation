@@ -86,7 +86,10 @@ const Etape1_V2 = ({
   onSuccess,
   onXpGainChange,
   modeCampagne = false,
-}: EtapeProps & { modeCampagne?: boolean }) => {
+  rattrapageFige = false,
+}: EtapeProps & { modeCampagne?: boolean; rattrapageFige?: boolean }) => {
+  // Compteurs de rattrapage figés en campagne OU dès qu'inscrit à un événement.
+  const compteursFiges = modeCampagne || rattrapageFige;
   const [submitting, setSubmitting] = useState(false);
   // M3a PR-C1 : valeurs d'identité figées en campagne (INV-4). On capture les
   // valeurs DB d'origine au chargement pour les renvoyer telles quelles au RPC,
@@ -216,17 +219,18 @@ const Etape1_V2 = ({
     if (!pretAutosave.current) return;
     const v = watch();
     const figees = modeCampagne ? valeursFigees.current : null;
+    const cFiges = compteursFiges ? valeursFigees.current : null;
     const croyant = figees ? figees.est_croyant === true : v.est_croyant === "oui";
     supabase
       .rpc("sauvegarder_etape_1", {
         p_personnage_id: personnageId,
         p_nom: figees ? figees.nom : (v.nom ?? "").trim(),
-        p_gn_completes: figees ? figees.gn_completes : Number(v.gn_completes) || 0,
-        p_mini_gn_completes: figees
-          ? figees.mini_gn_completes
+        p_gn_completes: cFiges ? cFiges.gn_completes : Number(v.gn_completes) || 0,
+        p_mini_gn_completes: cFiges
+          ? cFiges.mini_gn_completes
           : Number(v.mini_gn_completes) || 0,
-        p_ouvertures_terrain: figees
-          ? figees.ouvertures_terrain
+        p_ouvertures_terrain: cFiges
+          ? cFiges.ouvertures_terrain
           : Number(v.ouvertures_terrain) || 0,
         p_est_croyant: croyant,
         p_religion_id: (figees
@@ -242,7 +246,7 @@ const Etape1_V2 = ({
         () => {},
         () => {},
       );
-  }, [watch, modeCampagne, personnageId]);
+  }, [watch, modeCampagne, compteursFiges, personnageId]);
 
   // Déclenche un autosave débouncé à chaque changement de champ.
   useEffect(() => {
@@ -313,9 +317,10 @@ const Etape1_V2 = ({
     }
 
     const nom = figees ? figees.nom : values.nom.trim();
-    const gnCompletes = figees ? figees.gn_completes : Number(values.gn_completes) || 0;
-    const miniGnCompletesV = figees ? figees.mini_gn_completes : Number(values.mini_gn_completes) || 0;
-    const ouverturesV = figees ? figees.ouvertures_terrain : Number(values.ouvertures_terrain) || 0;
+    const cFiges = compteursFiges ? valeursFigees.current : null;
+    const gnCompletes = cFiges ? cFiges.gn_completes : Number(values.gn_completes) || 0;
+    const miniGnCompletesV = cFiges ? cFiges.mini_gn_completes : Number(values.mini_gn_completes) || 0;
+    const ouverturesV = cFiges ? cFiges.ouvertures_terrain : Number(values.ouvertures_terrain) || 0;
     const croyant = figees ? figees.est_croyant === true : values.est_croyant === "oui";
     const religionId = figees
       ? figees.religion_id
@@ -560,13 +565,23 @@ const Etape1_V2 = ({
       <SectionCard
         titre="Rattrapage d'expérience"
         sousTitre="Tes présences faites avant la plateforme"
-        badge={modeCampagne ? <BadgeFige /> : undefined}
+        badge={compteursFiges ? <BadgeFige /> : undefined}
       >
         <p className="mb-3 text-[12.5px] leading-relaxed text-white/70">
           La plateforme suit désormais tes présences. Déclare ici les événements
           faits <strong className="text-foreground">avant</strong> : ils fixent
           ton XP et ton niveau de départ.
         </p>
+
+        {rattrapageFige && !modeCampagne && (
+          <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2 text-[11.5px] text-amber-300">
+            <span className="mt-px shrink-0">ⓘ</span>
+            <span>
+              Ces compteurs sont figés tant que tu es inscrit à un événement.
+              Désinscris-toi pour les modifier de nouveau.
+            </span>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
@@ -578,7 +593,7 @@ const Etape1_V2 = ({
               id="gn"
               type="number"
               min={0}
-              readOnly={modeCampagne}
+              readOnly={compteursFiges}
               {...register("gn_completes", {
                 valueAsNumber: true,
                 min: 0,
@@ -588,7 +603,7 @@ const Etape1_V2 = ({
                   return Math.floor(n);
                 },
               })}
-              className={champClass(modeCampagne, false)}
+              className={champClass(compteursFiges, false)}
             />
           </div>
           <div className="space-y-1.5">
@@ -599,7 +614,7 @@ const Etape1_V2 = ({
               id="mini"
               type="number"
               min={0}
-              readOnly={modeCampagne}
+              readOnly={compteursFiges}
               {...register("mini_gn_completes", {
                 valueAsNumber: true,
                 min: 0,
@@ -609,7 +624,7 @@ const Etape1_V2 = ({
                   return Math.floor(n);
                 },
               })}
-              className={champClass(modeCampagne, false)}
+              className={champClass(compteursFiges, false)}
             />
           </div>
           <div className="space-y-1.5">
@@ -620,7 +635,7 @@ const Etape1_V2 = ({
               id="ouv"
               type="number"
               min={0}
-              readOnly={modeCampagne}
+              readOnly={compteursFiges}
               {...register("ouvertures_terrain", {
                 valueAsNumber: true,
                 min: 0,
@@ -630,7 +645,7 @@ const Etape1_V2 = ({
                   return Math.floor(n);
                 },
               })}
-              className={champClass(modeCampagne, false)}
+              className={champClass(compteursFiges, false)}
             />
           </div>
         </div>
