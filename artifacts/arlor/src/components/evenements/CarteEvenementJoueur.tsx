@@ -105,6 +105,10 @@ export const CarteEvenementJoueur = ({
 
   const niveaux = ev.niveaux_recompense ?? 0;
 
+  const dansFenetreGel =
+    !!ev.date_evenement &&
+    new Date(ev.date_evenement).getTime() - 24 * 3600 * 1000 <= Date.now();
+
   return (
     <Card className="border-primary/10">
       <CardHeader className="pb-2">
@@ -188,13 +192,19 @@ export const CarteEvenementJoueur = ({
           {statut === "inscrit" ? (
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Inscrit</Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onDesinscrire?.(ev)}
-              >
-                Se désinscrire
-              </Button>
+              {dansFenetreGel ? (
+                <span className="text-[12px] italic text-muted-foreground">
+                  🔒 Verrouillé jusqu'à la confirmation des présences
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onDesinscrire?.(ev)}
+                >
+                  Se désinscrire
+                </Button>
+              )}
             </div>
           ) : statut === "present" ? (
             <Badge className="bg-green-700 text-foreground hover:bg-green-700">

@@ -204,6 +204,7 @@ const PersonnageNouveauV2 = () => {
   // navigation vers le wizard) ; on lit l'état via .etat.
   const { data: etatEditionData, isPending: etatPending } = useQuery<{
     etat: string | null;
+    rattrapage_editable: boolean | null;
   } | null>({
     queryKey: ["etat-edition", personnageId],
     enabled: !!personnageId,
@@ -212,7 +213,10 @@ const PersonnageNouveauV2 = () => {
         p_personnage_id: personnageId!,
       });
       if (error) throw error;
-      return (data ?? null) as { etat: string | null } | null;
+      return (data ?? null) as {
+        etat: string | null;
+        rattrapage_editable: boolean | null;
+      } | null;
     },
   });
   const etatEdition = etatEditionData?.etat ?? null;
@@ -220,6 +224,11 @@ const PersonnageNouveauV2 = () => {
   // M3a PR-C1 : mode évolution de campagne — détecté par l'ÉTAT en base,
   // jamais par un paramètre d'URL (non truquable). Le mode admin prime.
   const modeCampagne = !modeAdmin && etatEdition === "campagne";
+
+  // ASSOUPLIR-GEL : compteurs de rattrapage figés dès qu'inscrit à un événement
+  // à venir (rattrapage_editable=false), indépendamment du mode campagne.
+  const rattrapageFige =
+    !modeAdmin && etatEditionData?.rattrapage_editable === false;
 
   // ÉDITION-ADMIN-WIZARD : sortie propre de l'éditeur admin (retour fiche).
   const terminerEditionAdmin = () => {
@@ -649,6 +658,7 @@ const PersonnageNouveauV2 = () => {
               onSuccess={handleEtapeSuccess}
               onXpGainChange={setXpGainCourant}
               modeCampagne={modeCampagne}
+              rattrapageFige={rattrapageFige}
             />
           )}
           {(etape === 2 || etape === 3) && (
