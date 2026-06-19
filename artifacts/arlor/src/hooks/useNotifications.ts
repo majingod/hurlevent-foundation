@@ -14,26 +14,27 @@ export interface Notif {
   profil_id: string | null;
 }
 
-// Types dont l'audience est l'organisation (admin/animateur) :
-// masqués du tableau de bord JOUEUR uniquement. Le staff les voit (et peut
-// cliquer dessus) — cf. notifNavigation. Étendre si d'autres types admin apparaissent.
-export const TYPES_MASQUES_JOUEUR = ["demande_race_nouvelle"];
+// Types dont l'audience est l'organisation (admin/animateur).
+// Source UNIQUE : exclut ces notifs de la cloche JOUEUR (pour TOUT le monde,
+// staff inclus) ET alimente la cloche STAFF dédiée. Étendre ici au besoin.
+export const TYPES_STAFF: string[] = ["demande_race_nouvelle"];
+
+// Alias historique : la cloche/carte joueur masque exactement les types staff.
+export const TYPES_MASQUES_JOUEUR = TYPES_STAFF;
 
 // Source unique des notifs joueur. Limite volontairement large : la cloche
 // et la carte tranchent localement (slice). Compteur exact jusqu'à cette limite.
 const LIMITE = 30;
 
 export function useNotifications() {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const { profilActif } = useProfil();
   const queryClient = useQueryClient();
   const userId = user?.id ?? null;
   const profilId = profilActif?.id ?? null;
-  // Le staff voit les notifs d'organisation ; le joueur les a masquées.
-  // Rôle + profil actif dans la clé → refetch automatique au switch d'identité
-  // (et quand le rôle se résout).
-  const estStaff = role === "animateur" || role === "admin";
-  const cleQuery = ["notifications", userId, profilId, estStaff] as const;
+  // Profil actif dans la clé → refetch automatique au switch d'identité.
+  // Les types staff ont leur propre cloche : exclus en dur ci-dessous.
+  const cleQuery = ["notifications", userId, profilId] as const;
 
   const query = useQuery({
     queryKey: cleQuery,
@@ -48,9 +49,9 @@ export function useNotifications() {
       req = profilId
         ? req.or(`profil_id.eq.${profilId},profil_id.is.null`)
         : req.is("profil_id", null);
-      if (!estStaff) {
-        req = req.not("type", "in", `(${TYPES_MASQUES_JOUEUR.join(",")})`);
-      }
+      // Anti-doublon : les types staff vivent dans la cloche Organisation.
+      // Exclus TOUJOURS de la cloche joueur, y compris pour le staff.
+      req = req.not("type", "in", `(${TYPES_STAFF.join(",")})`);
       const { data, error } = await req
         .order("created_at", { ascending: false })
         .limit(LIMITE);
@@ -93,6 +94,46 @@ export function useNotifications() {
   };
 
   return { notifs, nbNonLus, isLoading: query.isLoading, lireUne, toutLire };
+}
+
+export interface NotifStaff extends Notif {
+  demande_statut: string | null;
+  traite_par_nom: string | null;
+  traite_le: string | null;
+  a_traiter: boolean;
+}
+
+// Source de la cloche STAFF « Organisation ». Lit la vue enrichie
+// (vue_notifications_staff) : état de traitement de la demande + nom du
+// traitant. Compteur = nombre de demandes encore À TRAITER (a_traiter),
+// PAS les non-lus. Lecture seule : aucune notion lu/non-lu côté staff.
+// Invalidée par le realtime à chaque nouvelle notif staff fan-out.
+export function useNotificationsStaff() {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+
+  const query = useQuery({
+    queryKey: ["notifications-staff", userId] as const,
+    enabled: !!userId,
+    queryFn: async (): Promise<NotifStaff[]> => {
+      const { data, error } = await supabase
+        .from("vue_notifications_staff")
+        .select(
+          "id, message, type, lu, created_at, reference_id, profil_id, demande_statut, traite_par_nom, traite_le, a_traiter",
+        )
+        .eq("user_id", userId!)
+        .in("type", TYPES_STAFF)
+        .order("created_at", { ascending: false })
+        .limit(LIMITE);
+      if (error) throw error;
+      return (data ?? []) as NotifStaff[];
+    },
+  });
+
+  const notifs = query.data ?? [];
+  const nbATraiter = notifs.filter((n) => n.a_traiter).length;
+
+  return { notifs, nbATraiter, isLoading: query.isLoading };
 }
 
 // Pastille cross-identité : vrai s'il existe au moins une notif NON LUE rattachée
@@ -150,6 +191,7 @@ export function useRealtimeNotifications(): void {
             predicate: (q) =>
               Array.isArray(q.queryKey) &&
               (q.queryKey[0] === "notifications" ||
+                q.queryKey[0] === "notifications-staff" ||
                 q.queryKey[0] === "notifs-autres-identites"),
           });
         },

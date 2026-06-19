@@ -4,6 +4,7 @@ import { useProfil } from "@/contexts/ProfilContext";
 import { useModeStaff } from "@/contexts/ModeStaffContext";
 import { useMenuNavigation } from "@/hooks/useMenuNavigation";
 import ClocheNotifications from "@/components/notifications/ClocheNotifications";
+import ClocheNotificationsStaff from "@/components/notifications/ClocheNotificationsStaff";
 import { useAutresIdentitesNonLues, useRealtimeNotifications } from "@/hooks/useNotifications";
 import { Menu, Users, Settings, Crown, Sparkles } from "lucide-react";
 import {
@@ -43,6 +44,7 @@ const Navbar = () => {
 
         <div className="flex items-center gap-2">
           {user && <ClocheNotifications />}
+          {user && <ClocheNotificationsStaff />}
           {user && profilActif && (
             <span
               className="flex items-center gap-1.5 rounded-full border px-2 py-1"
