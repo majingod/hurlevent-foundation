@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Crown, Archive, ArchiveRestore, Skull } from "lucide-react";
 import { ecrireStockage, lireStockage } from "@/components/createur/aide/stockageLocal";
 
-// L1 — Légende statique « ℹ Comprendre les symboles » (style LegendeDynamique) :
-// états des personnages + rôles du compte. Repli mémorisé en localStorage.
+// L1 — Légende statique « ℹ Comprendre les symboles » : états des personnages,
+// profil principal, archivage, rôles du compte et pastilles compteurs.
+// Repli mémorisé en localStorage (ouverte à la 1re visite).
 
 const STORAGE_KEY = "hv-admin-joueurs-legende";
 
@@ -92,6 +93,56 @@ const LegendeJoueursAdmin = () => {
               </>
             }
           />
+          <Ligne
+            symbole={<Skull className="h-3.5 w-3.5 shrink-0 text-[hsl(348_55%_45%)]" />}
+            texte={
+              <>
+                <b className="text-[hsl(348_55%_55%)]">Mort</b> — personnage décédé
+                en jeu.
+              </>
+            }
+          />
+
+          <SousTitre>Profil</SousTitre>
+          <Ligne
+            symbole={<Crown className="h-3.5 w-3.5 shrink-0 text-primary" />}
+            texte={
+              <>
+                <b className="text-primary">Principal</b> — le profil qui porte le
+                rôle staff du compte.
+              </>
+            }
+          />
+
+          <SousTitre>Archivage</SousTitre>
+          <Ligne
+            auto
+            symbole={
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-muted-foreground/50 bg-muted-foreground/10 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Archive className="h-2.5 w-2.5" /> Archivé
+              </span>
+            }
+            texte="Élément retiré (réversible). Un perso archivé reste visible au joueur, en lecture seule."
+          />
+          <Ligne
+            symbole={<Archive className="h-4 w-4 shrink-0 text-muted-foreground" />}
+            texte={
+              <>
+                <b className="text-foreground">Archiver</b> — retirer un compte,
+                profil ou personnage. Descend en cascade.
+              </>
+            }
+          />
+          <Ligne
+            symbole={<ArchiveRestore className="h-4 w-4 shrink-0 text-primary" />}
+            texte={
+              <>
+                <b className="text-primary">Réactiver</b> — remettre l'élément
+                actif.
+              </>
+            }
+          />
+
           <SousTitre>Rôles du compte</SousTitre>
           <Ligne
             auto
@@ -107,6 +158,18 @@ const LegendeJoueursAdmin = () => {
             auto
             symbole={<Badge cls="border-primary/50 text-primary">Admin</Badge>}
             texte="Tous les droits, dont la gestion des rôles."
+          />
+
+          <SousTitre>Pastilles (compteurs)</SousTitre>
+          <Ligne
+            auto
+            symbole={<Badge cls="border-primary/40 text-primary">5</Badge>}
+            texte="Exemple : le chiffre (ici 5) indique le nombre de profils du compte."
+          />
+          <Ligne
+            auto
+            symbole={<Badge cls="border-primary/25 text-foreground">3</Badge>}
+            texte="Exemple : le chiffre (ici 3) indique le nombre de personnages (du compte ou du profil)."
           />
         </div>
       )}
