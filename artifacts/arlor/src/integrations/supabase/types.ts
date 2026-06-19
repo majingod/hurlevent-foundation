@@ -3165,6 +3165,7 @@ export type Database = {
           avatar_url: string | null
           compte_id: string
           cree_le: string
+          est_actif: boolean
           est_principal: boolean
           id: string
           nom: string
@@ -3173,6 +3174,7 @@ export type Database = {
           avatar_url?: string | null
           compte_id: string
           cree_le?: string
+          est_actif?: boolean
           est_principal?: boolean
           id?: string
           nom: string
@@ -3181,6 +3183,7 @@ export type Database = {
           avatar_url?: string | null
           compte_id?: string
           cree_le?: string
+          est_actif?: boolean
           est_principal?: boolean
           id?: string
           nom?: string
@@ -4889,7 +4892,57 @@ export type Database = {
           type: string | null
           user_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_profil_id_fkey"
+            columns: ["profil_id"]
+            isOneToOne: false
+            referencedRelation: "profils_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_profil_id_fkey"
+            columns: ["profil_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_profil_id_fkey"
+            columns: ["profil_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["traite_par_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_races_demandes_approuve_par_fkey"
+            columns: ["traite_par_id"]
+            isOneToOne: false
+            referencedRelation: "vue_joueurs_complete"
+            referencedColumns: ["joueur_id"]
+          },
+        ]
       }
       vue_personnage_creation_complet: {
         Row: {
@@ -5737,7 +5790,9 @@ export type Database = {
         Returns: Json
       }
       approuver_race_demande: { Args: { p_demande_id: string }; Returns: Json }
+      archiver_compte: { Args: { p_compte_id: string }; Returns: Json }
       archiver_personnage: { Args: { p_personnage_id: string }; Returns: Json }
+      archiver_profil: { Args: { p_profil_id: string }; Returns: Json }
       assembler_prerequis_labels: {
         Args: { p_competence_id: string }
         Returns: Json
@@ -5820,6 +5875,22 @@ export type Database = {
         Args: { p_background: string; p_personnage_id: string }
         Returns: Json
       }
+      creer_notification: {
+        Args: {
+          p_compte_id?: string
+          p_message: string
+          p_profil_id?: string
+          p_reference_id?: string
+          p_statut?: string
+          p_type?: string
+        }
+        Returns: string
+      }
+      creer_notification_staff: {
+        Args: { p_message: string; p_reference_id?: string; p_type: string }
+        Returns: number
+      }
+      definir_profil_principal: { Args: { p_profil_id: string }; Returns: Json }
       demarrer_creation_personnage: {
         Args: { p_profil_id?: string }
         Returns: Json
@@ -5849,6 +5920,12 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_personnage_sort_id: string }
         Returns: Json
       }
+      desarchiver_compte: { Args: { p_compte_id: string }; Returns: Json }
+      desarchiver_personnage: {
+        Args: { p_personnage_id: string }
+        Returns: Json
+      }
+      desarchiver_profil: { Args: { p_profil_id: string }; Returns: Json }
       deverrouiller_personnage: {
         Args: { p_personnage_id: string }
         Returns: Json
@@ -5908,6 +5985,7 @@ export type Database = {
       }
       marquer_absent: { Args: { p_inscription_id: string }; Returns: Json }
       marquer_present: { Args: { p_inscription_id: string }; Returns: Json }
+      mode_staff_serveur_actif: { Args: never; Returns: boolean }
       modifier_priere: {
         Args: {
           p_duree_choisie: string
@@ -5974,6 +6052,7 @@ export type Database = {
         Returns: boolean
       }
       profils_du_compte: { Args: { c: string }; Returns: string[] }
+      purger_notifications_anciennes: { Args: never; Returns: number }
       recalculer_ps_max: {
         Args: { p_personnage_id: string }
         Returns: undefined
