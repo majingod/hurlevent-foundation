@@ -11,6 +11,7 @@ export interface Notif {
   lu: boolean;
   created_at: string;
   reference_id: string | null;
+  profil_id: string | null;
 }
 
 // Types dont l'audience est l'organisation (admin/animateur) :
@@ -40,7 +41,7 @@ export function useNotifications() {
     queryFn: async (): Promise<Notif[]> => {
       let req = supabase
         .from("notifications")
-        .select("id, message, type, lu, created_at, reference_id")
+        .select("id, message, type, lu, created_at, reference_id, profil_id")
         .eq("user_id", userId!);
       // Identité active : ses notifs (profil_id = actif) + les annonces de
       // compte (profil_id IS NULL). Les notifs des autres identités sont exclues.

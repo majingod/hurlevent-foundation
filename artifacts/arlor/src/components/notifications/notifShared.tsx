@@ -1,6 +1,7 @@
 import { Coins, XCircle, ChevronRight, type LucideIcon } from "lucide-react";
 import type { Notif } from "@/hooks/useNotifications";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
 import { estNavigable, useNaviguerNotif } from "./notifNavigation";
 
 interface MetaType {
@@ -38,6 +39,24 @@ export function dateRelative(iso: string): string {
   return d.toLocaleDateString("fr-CA", { day: "numeric", month: "short" });
 }
 
+// Badge de portée (Option B) : « Compte » pour une annonce compte-wide
+// (profil_id NULL), sinon le nom du profil actif (la notif lui appartient,
+// garanti par le filtre de useNotifications).
+function BadgePortee({ notif, nomProfil }: { notif: Notif; nomProfil?: string }) {
+  if (notif.profil_id === null) {
+    return (
+      <span className="rounded-full border border-gold/30 bg-gold/10 px-1.5 py-px text-[10px] font-semibold text-gold">
+        Compte
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-px text-[10px] font-semibold text-muted-foreground">
+      {nomProfil ?? "Profil"}
+    </span>
+  );
+}
+
 export function LigneNotif({
   notif,
   onLire,
@@ -52,6 +71,7 @@ export function LigneNotif({
   const m = metaPour(notif.type);
   const { Icon } = m;
   const { role } = useAuth();
+  const { profilActif } = useProfil();
   const naviguer = useNaviguerNotif();
   const navigable = estNavigable(notif, role);
 
@@ -87,7 +107,8 @@ export function LigneNotif({
         >
           {notif.message}
         </span>
-        <span className="mt-1 block text-[11px] text-muted-foreground">
+        <span className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <BadgePortee notif={notif} nomProfil={profilActif?.nom} />
           {dateRelative(notif.created_at)}
         </span>
       </span>
