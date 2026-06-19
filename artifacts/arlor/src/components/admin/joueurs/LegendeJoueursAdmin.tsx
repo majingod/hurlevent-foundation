@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ChevronRight, Crown, Archive, ArchiveRestore, Skull } from "lucide-react";
+import { ChevronRight, Crown, Ban, ShieldCheck, Skull } from "lucide-react";
 import { ecrireStockage, lireStockage } from "@/components/createur/aide/stockageLocal";
 
 // L1 — Légende statique « ℹ Comprendre les symboles » : états des personnages,
-// profil principal, archivage, rôles du compte et pastilles compteurs.
+// profil principal, blocage, rôles du compte et pastilles compteurs.
 // Repli mémorisé en localStorage (ouverte à la 1re visite).
 
 const STORAGE_KEY = "hv-admin-joueurs-legende";
@@ -114,31 +114,31 @@ const LegendeJoueursAdmin = () => {
             }
           />
 
-          <SousTitre>Archivage</SousTitre>
+          <SousTitre>Blocage</SousTitre>
           <Ligne
             auto
             symbole={
               <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-muted-foreground/50 bg-muted-foreground/10 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <Archive className="h-2.5 w-2.5" /> Archivé
+                <Ban className="h-2.5 w-2.5" /> Bloqué
               </span>
             }
-            texte="Élément retiré (réversible). Un perso archivé reste visible au joueur, en lecture seule."
+            texte="Élément bloqué par le staff (réversible). Un perso bloqué reste visible au joueur, en lecture seule."
           />
           <Ligne
-            symbole={<Archive className="h-4 w-4 shrink-0 text-muted-foreground" />}
+            symbole={<Ban className="h-4 w-4 shrink-0 text-muted-foreground" />}
             texte={
               <>
-                <b className="text-foreground">Archiver</b> — retirer un compte,
-                profil ou personnage. Descend en cascade.
+                <b className="text-foreground">Bloquer</b> — interdire l'usage d'un
+                compte, profil ou personnage. Descend en cascade.
               </>
             }
           />
           <Ligne
-            symbole={<ArchiveRestore className="h-4 w-4 shrink-0 text-primary" />}
+            symbole={<ShieldCheck className="h-4 w-4 shrink-0 text-primary" />}
             texte={
               <>
-                <b className="text-primary">Réactiver</b> — remettre l'élément
-                actif.
+                <b className="text-primary">Débloquer</b> — rendre l'élément de nouveau
+                utilisable.
               </>
             }
           />

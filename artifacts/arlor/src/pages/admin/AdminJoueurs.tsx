@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import {
   ChevronRight,
   Crown,
-  Archive,
-  ArchiveRestore,
+  Ban,
+  ShieldCheck,
   Skull,
 } from "lucide-react";
 
@@ -105,14 +105,14 @@ const Pastille = ({
 );
 
 // Badge « Archivé » — n'apparaît que pour un élément retiré (l'actif est silencieux).
-const ArchiveBadge = () => (
+const BlocBadge = () => (
   <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-muted-foreground/50 bg-muted-foreground/10 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-    <Archive className="h-2.5 w-2.5" /> Archivé
+    <Ban className="h-2.5 w-2.5" /> Bloqué
   </span>
 );
 
 // Bouton icône Archiver / Réactiver.
-const BoutonArchive = ({
+const BoutonBloquer = ({
   archived,
   disabled,
   onClick,
@@ -123,12 +123,12 @@ const BoutonArchive = ({
   onClick: () => void;
   title?: string;
 }) => {
-  const Icon = archived ? ArchiveRestore : Archive;
+  const Icon = archived ? ShieldCheck : Ban;
   return (
     <button
       type="button"
       disabled={disabled}
-      title={title ?? (archived ? "Réactiver" : "Archiver")}
+      title={title ?? (archived ? "Débloquer" : "Bloquer")}
       onClick={(e) => {
         e.stopPropagation();
         if (!disabled) onClick();
@@ -291,7 +291,7 @@ const AdminJoueurs = () => {
     });
 
   // ── Archivage (RPC prod, retour standard pour compte/profil, {succes,raison} pour perso) ──
-  const lancerArchivage = async (
+  const lancerBlocage = async (
     fn: string,
     paramNom: string,
     id: string,
@@ -300,7 +300,7 @@ const AdminJoueurs = () => {
   ) => {
     try {
       const { data, error } = await supabase.rpc(
-        fn as "archiver_personnage",
+        fn as "bloquer_personnage",
         { [paramNom]: id } as { p_personnage_id: string },
       );
       if (error) throw error;
@@ -324,43 +324,43 @@ const AdminJoueurs = () => {
     }
   };
 
-  const confirmCompte = (c: CompteRow) =>
+  const confCompte = (c: CompteRow) =>
     setConfirmer(
       c.isActive
         ? {
             danger: true,
-            titre: `Archiver le compte « ${c.nom} » ?`,
-            description: `⚠️ Le joueur ne pourra plus se connecter (connexion bloquée). Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront aussi archivés.`,
+            titre: `Bloquer le compte « ${c.nom} » ?`,
+            description: `⚠️ Le joueur ne pourra plus se connecter (connexion bloquée). Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront aussi bloqués.`,
             action: () =>
-              lancerArchivage("archiver_compte", "p_compte_id", c.id, "Compte archivé.", false),
+              lancerBlocage("bloquer_compte", "p_compte_id", c.id, "Compte bloqué.", false),
           }
         : {
             danger: false,
-            titre: `Réactiver le compte « ${c.nom} » ?`,
-            description: `Le joueur pourra de nouveau se connecter. Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront réactivés.`,
+            titre: `Débloquer le compte « ${c.nom} » ?`,
+            description: `Le joueur pourra de nouveau se connecter. Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront débloqués.`,
             action: () =>
-              lancerArchivage("desarchiver_compte", "p_compte_id", c.id, "Compte réactivé.", false),
+              lancerBlocage("desbloquer_compte", "p_compte_id", c.id, "Compte débloqué.", false),
           },
     );
-  const confirmProfil = (p: ProfilRow) =>
+  const confProfil = (p: ProfilRow) =>
     setConfirmer(
       p.estActif
         ? {
             danger: true,
-            titre: `Archiver le profil « ${p.nom} » ?`,
-            description: `Ses ${p.persos.length} personnage(s) seront aussi archivés. Le compte reste actif.`,
+            titre: `Bloquer le profil « ${p.nom} » ?`,
+            description: `Ses ${p.persos.length} personnage(s) seront aussi bloqués. Le compte reste actif.`,
             action: () =>
-              lancerArchivage("archiver_profil", "p_profil_id", p.id, "Profil archivé.", false),
+              lancerBlocage("bloquer_profil", "p_profil_id", p.id, "Profil bloqué.", false),
           }
         : {
             danger: false,
-            titre: `Réactiver le profil « ${p.nom} » ?`,
-            description: `Ses ${p.persos.length} personnage(s) seront réactivés.`,
+            titre: `Débloquer le profil « ${p.nom} » ?`,
+            description: `Ses ${p.persos.length} personnage(s) seront débloqués.`,
             action: () =>
-              lancerArchivage("desarchiver_profil", "p_profil_id", p.id, "Profil réactivé.", false),
+              lancerBlocage("desbloquer_profil", "p_profil_id", p.id, "Profil débloqué.", false),
           },
     );
-  const confirmPerso = (pe: PersoRow) =>
+  const confPerso = (pe: PersoRow) =>
     setConfirmer(
       pe.estActif
         ? {
@@ -369,24 +369,24 @@ const AdminJoueurs = () => {
             description:
               "Le personnage passera en lecture seule côté joueur (visible, non modifiable, non supprimable).",
             action: () =>
-              lancerArchivage(
-                "archiver_personnage",
+              lancerBlocage(
+                "bloquer_personnage",
                 "p_personnage_id",
                 pe.id,
-                "Personnage archivé.",
+                "Personnage bloqué.",
                 true,
               ),
           }
         : {
             danger: false,
-            titre: `Réactiver « ${pe.nom ?? "Sans nom"} » ?`,
+            titre: `Débloquer « ${pe.nom ?? "Sans nom"} » ?`,
             description: "Le personnage redeviendra modifiable par le joueur.",
             action: () =>
-              lancerArchivage(
-                "desarchiver_personnage",
+              lancerBlocage(
+                "desbloquer_personnage",
                 "p_personnage_id",
                 pe.id,
-                "Personnage réactivé.",
+                "Personnage débloqué.",
                 true,
               ),
           },
@@ -470,9 +470,9 @@ const AdminJoueurs = () => {
           <b>verrouillé</b>. Un niveau corrigé est signalé par ✎.
         </IntroEtapeItem>
         <IntroEtapeItem n={6}>
-          Les icônes <b>Archiver</b> / <b>Réactiver</b> retirent ou réactivent un
-          compte, un profil ou un personnage. Archiver un compte <b>bloque sa
-          connexion</b>. L'archivage descend en <b>cascade</b> (compte → profils
+          Les icônes <b>Bloquer</b> / <b>Débloquer</b> retirent ou réactivent un
+          compte, un profil ou un personnage. Bloquer un compte <b>bloque sa
+          connexion</b>. Le blocage descend en <b>cascade</b> (compte → profils
           → personnages) et reste <b>réversible</b>.
         </IntroEtapeItem>
       </IntroEtape>
@@ -513,7 +513,7 @@ const AdminJoueurs = () => {
                         >
                           {c.nom}
                         </span>
-                        {!c.isActive && <ArchiveBadge />}
+                        {!c.isActive && <BlocBadge />}
                         {estAdmin ? (
                           <button
                             type="button"
@@ -542,9 +542,9 @@ const AdminJoueurs = () => {
                       <Pastille tone="gold">{c.profils.length} prof.</Pastille>
                       <Pastille>{c.nbPersos} pers.</Pastille>
                     </div>
-                    <BoutonArchive
+                    <BoutonBloquer
                       archived={!c.isActive}
-                      onClick={() => confirmCompte(c)}
+                      onClick={() => confCompte(c)}
                     />
                     <ChevronRight
                       className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${ouvert ? "rotate-90" : ""}`}
@@ -586,7 +586,7 @@ const AdminJoueurs = () => {
                                     profil de jeu
                                   </span>
                                   <Pastille>{p.persos.length} pers.</Pastille>
-                                  {!p.estActif && <ArchiveBadge />}
+                                  {!p.estActif && <BlocBadge />}
                                 </div>
                                 <div
                                   className={`mt-0.5 text-xs ${neg ? "" : "text-muted-foreground"}`}
@@ -610,13 +610,13 @@ const AdminJoueurs = () => {
                               >
                                 Ajuster
                               </button>
-                              <BoutonArchive
+                              <BoutonBloquer
                                 archived={!p.estActif}
                                 disabled={!c.isActive}
                                 title={
-                                  !c.isActive ? "Réactiver le compte d'abord" : undefined
+                                  !c.isActive ? "Débloquer le compte d'abord" : undefined
                                 }
-                                onClick={() => confirmProfil(p)}
+                                onClick={() => confProfil(p)}
                               />
                               <ChevronRight
                                 className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${pOuvert ? "rotate-90" : ""}`}
@@ -656,7 +656,7 @@ const AdminJoueurs = () => {
                                         >
                                           {pe.nom ?? "Sans nom"}
                                         </span>
-                                        {!pe.estActif && <ArchiveBadge />}
+                                        {!pe.estActif && <BlocBadge />}
                                       </div>
                                       <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-2 pl-[15px]">
                                         <span className="text-xs tabular-nums">
@@ -702,15 +702,15 @@ const AdminJoueurs = () => {
                                           >
                                             Ajuster Niv./Xp
                                           </button>
-                                          <BoutonArchive
+                                          <BoutonBloquer
                                             archived={!pe.estActif}
                                             disabled={persoArchDisabled}
                                             title={
                                               persoArchDisabled
-                                                ? "Réactiver le profil/compte d'abord"
+                                                ? "Débloquer le profil/compte d'abord"
                                                 : undefined
                                             }
-                                            onClick={() => confirmPerso(pe)}
+                                            onClick={() => confPerso(pe)}
                                           />
                                         </div>
                                       </div>

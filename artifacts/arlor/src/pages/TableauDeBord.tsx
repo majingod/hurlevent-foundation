@@ -25,6 +25,8 @@ import {
   Wallet,
   Coins,
   TrendingUp,
+  Ban,
+  Lock,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -405,12 +407,16 @@ const TableauDeBord = () => {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {personnages.map((p) => (
-            <Card key={p.id} className="group overflow-hidden border-white/10 bg-white/5 transition-all hover:border-gold/30">
+            <Card key={p.id} className={`group overflow-hidden border-white/10 bg-white/5 transition-all hover:border-gold/30 ${p.etat === "bloque" ? "opacity-70" : ""}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
                     <CardTitle className="text-2xl font-heading text-gold">{p.nom}</CardTitle>
-                    {p.est_finalise ? (
+                    {p.etat === "bloque" ? (
+                      <Badge variant="outline" className="gap-1 border-white/25 bg-white/10 text-white/60">
+                        <Ban className="h-3 w-3" /> Bloqué · lecture seule
+                      </Badge>
+                    ) : p.est_finalise ? (
                       <Badge className="border border-green-600/30 bg-green-600/20 text-green-400">
                         Finalisé
                       </Badge>
@@ -442,25 +448,35 @@ const TableauDeBord = () => {
                       <DropdownMenuSeparator className="bg-white/10" />
                       <DropdownMenuItem
                         onClick={() => setPersonnageATransferer(p)}
-                        disabled={p.etat === "gele" || p.etat === "mort"}
+                        disabled={p.etat === "gele" || p.etat === "mort" || p.etat === "bloque"}
                         className="cursor-pointer focus:bg-white/10"
                       >
                         <ArrowRightLeft className="mr-2 h-4 w-4" />
                         Transférer…
                       </DropdownMenuItem>
-                      {(p.etat === "gele" || p.etat === "mort") && (
+                      {(p.etat === "gele" || p.etat === "mort" || p.etat === "bloque") && (
                         <div className="px-2 pb-1.5 text-xs text-white/40">
-                          {p.etat === "gele" ? "inscrit à un GN" : "personnage mort"}
+                          {p.etat === "gele"
+                            ? "inscrit à un GN"
+                            : p.etat === "mort"
+                              ? "personnage mort"
+                              : "personnage bloqué"}
                         </div>
                       )}
                       <DropdownMenuSeparator className="bg-white/10" />
                       <DropdownMenuItem
                         onClick={() => setPersonnageASupprimer(p)}
+                        disabled={p.etat === "bloque"}
                         className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Supprimer
                       </DropdownMenuItem>
+                      {p.etat === "bloque" && (
+                        <div className="px-2 pb-1.5 text-xs text-white/40">
+                          bloqué — contactez un animateur
+                        </div>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -524,15 +540,16 @@ const TableauDeBord = () => {
                       <Button variant="outline" size="sm" className="w-full border-white/20 hover:bg-white/5">
                         <User className="mr-2 h-4 w-4" />
                         Voir la fiche
+                        {p.etat === "bloque" && <Lock className="ml-2 h-3.5 w-3.5 text-white/40" />}
                       </Button>
                     </Link>
                   )}
 
-                  {p.est_finalise && (
+                  {p.est_finalise && p.etat !== "bloque" && (
                     <BoutonRemodeler personnageId={p.id} compact />
                   )}
 
-                  {!p.est_finalise && (
+                  {!p.est_finalise && p.etat !== "bloque" && (
                     <Link
                       to={`/personnage/nouveau?id=${p.id}&etape=${(p.etape_creation ?? 0) >= 11 ? 11 : Math.max(1, (p.etape_creation ?? 0) + 1)}`}
                       className="w-full"
@@ -542,6 +559,13 @@ const TableauDeBord = () => {
                         Continuer la création
                       </Button>
                     </Link>
+                  )}
+
+                  {p.etat === "bloque" && (
+                    <p className="flex items-center gap-1.5 text-xs text-white/40">
+                      <Lock className="h-3 w-3" />
+                      Personnage bloqué par le staff — consultable, non modifiable.
+                    </p>
                   )}
                 </div>
               </CardContent>
