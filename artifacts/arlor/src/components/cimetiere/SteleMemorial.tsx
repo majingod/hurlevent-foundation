@@ -1,9 +1,16 @@
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  lignerEpithetes,
+  genererPhrase,
+  grouperParNature,
+  type SteleDetails,
+} from "@/lib/cimetiereNarratif";
 
 interface TraitRacial {
   id?: string;
@@ -23,6 +30,9 @@ interface SteleSnapshot {
   historique?: string | null;
   ame_personnage?: string | null;
   traits_raciaux_choisis?: TraitRacial[] | null;
+  gn_completes?: number | null;
+  ouvertures_terrain?: number | null;
+  details?: SteleDetails | null;
   [key: string]: unknown;
 }
 
@@ -38,6 +48,14 @@ export interface SteleMemorialData {
   snapshot: SteleSnapshot | null;
 }
 
+const NATURE_EMOJI: Record<string, string> = {
+  Combat: "⚔️",
+  Magie: "✨",
+  Foi: "🙏",
+  Artisanat: "🔨",
+  Savoirs: "📜",
+};
+
 function StatChip({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="rounded-lg border border-border bg-muted/40 py-2">
@@ -51,6 +69,51 @@ function StatChip({ label, value }: { label: string; value: unknown }) {
   );
 }
 
+function SectionNature({
+  nature,
+  items,
+}: {
+  nature: string;
+  items: { nom: string; niveau?: number | null; spe?: boolean }[];
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className="border-t border-border pt-3 mt-3">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <span>{NATURE_EMOJI[nature] ?? "•"}</span>
+        <span className="font-heading text-sm uppercase tracking-wide text-primary">
+          {nature}
+        </span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {open ? "▾" : "▸"}
+        </span>
+      </button>
+      {open ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {items.map((it, i) => (
+            <span
+              key={`${it.nom}-${i}`}
+              className={
+                "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs " +
+                (it.spe
+                  ? "border-primary/50 bg-primary/10 text-primary font-medium"
+                  : "border-border bg-muted text-foreground")
+              }
+            >
+              {it.spe ? <span className="text-[0.6rem]">★</span> : null}
+              {it.nom}
+              {it.niveau != null ? ` · ${it.niveau}` : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function SteleMemorial({
   stele,
   onClose,
@@ -60,9 +123,13 @@ export default function SteleMemorial({
 }) {
   const open = stele !== null;
   const s: SteleSnapshot = stele?.snapshot ?? {};
+  const details = (s.details ?? {}) as SteleDetails;
   const traits = Array.isArray(s.traits_raciaux_choisis)
     ? s.traits_raciaux_choisis
     : [];
+  const epithetes = lignerEpithetes(details, 4);
+  const phrase = genererPhrase(details, s.gn_completes ?? null);
+  const sections = grouperParNature(details);
   const dateMort = stele?.date_mort
     ? new Date(stele.date_mort).toLocaleDateString("fr-CA", {
         year: "numeric",
@@ -80,9 +147,16 @@ export default function SteleMemorial({
     >
       <DialogContent className="max-w-lg max-h-[88vh] overflow-y-auto bg-card border-primary/30">
         <DialogHeader>
-          <DialogTitle className="font-heading text-2xl text-primary flex items-center gap-2">
-            {s.race_emoji ? <span>{s.race_emoji}</span> : null}
-            {stele?.nom}
+          <DialogTitle className="font-heading text-2xl text-primary flex flex-col items-center gap-1">
+            <span className="flex items-center gap-2">
+              {s.race_emoji ? <span>{s.race_emoji}</span> : null}
+              {stele?.nom}
+            </span>
+            {epithetes.length > 0 ? (
+              <span className="text-xs font-normal italic text-muted-foreground">
+                {epithetes.join("  ·  ")}
+              </span>
+            ) : null}
           </DialogTitle>
         </DialogHeader>
 
@@ -91,6 +165,39 @@ export default function SteleMemorial({
           <p className="text-center italic text-muted-foreground border-y border-primary/20 py-3 px-2 leading-relaxed">
             « {stele.epitaphe} »
           </p>
+        ) : null}
+
+        {/* Biographie auto (phrase template) */}
+        {phrase ? (
+          <p className="text-sm text-muted-foreground leading-relaxed bg-muted/50 border-l-2 border-primary/60 rounded-r-md px-3 py-2.5">
+            {phrase}
+          </p>
+        ) : null}
+
+        {/* Parcours */}
+        {(s.gn_completes ?? 0) > 0 || (s.ouvertures_terrain ?? 0) > 0 ? (
+          <div className="flex justify-center gap-6 py-1">
+            {(s.gn_completes ?? 0) > 0 ? (
+              <div className="text-center">
+                <div className="font-heading text-xl text-primary">
+                  {s.gn_completes}
+                </div>
+                <div className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">
+                  Rassemblements vécus
+                </div>
+              </div>
+            ) : null}
+            {(s.ouvertures_terrain ?? 0) > 0 ? (
+              <div className="text-center">
+                <div className="font-heading text-xl text-primary">
+                  {s.ouvertures_terrain}
+                </div>
+                <div className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">
+                  Ouvertures de terrain
+                </div>
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         {/* Méta : race / classe / niveau */}
@@ -122,7 +229,7 @@ export default function SteleMemorial({
 
         {/* Son histoire */}
         {s.historique || s.ame_personnage ? (
-          <section className="space-y-2">
+          <section className="space-y-2 border-t border-border pt-3 mt-3">
             <h3 className="font-heading text-sm text-primary uppercase tracking-wide">
               Son histoire
             </h3>
@@ -139,9 +246,14 @@ export default function SteleMemorial({
           </section>
         ) : null}
 
+        {/* Savoir-faire par nature */}
+        {sections.map((sec) => (
+          <SectionNature key={sec.nature} nature={sec.nature} items={sec.items} />
+        ))}
+
         {/* Origines (traits raciaux) */}
         {traits.length > 0 ? (
-          <section className="space-y-2">
+          <section className="space-y-2 border-t border-border pt-3 mt-3">
             <h3 className="font-heading text-sm text-primary uppercase tracking-wide">
               Origines
             </h3>
