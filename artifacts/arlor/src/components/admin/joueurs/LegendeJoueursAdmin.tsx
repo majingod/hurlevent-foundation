@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Crown, Ban, ShieldCheck, Skull } from "lucide-react";
+import { ChevronRight, Crown, Ban, ShieldCheck, Skull, Trash2 } from "lucide-react";
 import { ecrireStockage, lireStockage } from "@/components/createur/aide/stockageLocal";
 
 // L1 — Légende statique « ℹ Comprendre les symboles » : états des personnages,
@@ -142,6 +142,15 @@ const LegendeJoueursAdmin = () => {
               </>
             }
           />
+          <Ligne
+            symbole={<Trash2 className="h-4 w-4 shrink-0 text-[hsl(0_70%_62%)]" />}
+            texte={
+              <>
+                <b className="text-[hsl(0_70%_62%)]">Purger</b> — supprimer
+                définitivement un élément déjà bloqué. Irréversible.
+              </>
+            }
+          />
 
           <SousTitre>Rôles du compte</SousTitre>
           <Ligne
@@ -163,13 +172,13 @@ const LegendeJoueursAdmin = () => {
           <SousTitre>Pastilles (compteurs)</SousTitre>
           <Ligne
             auto
-            symbole={<Badge cls="border-primary/40 text-primary">5</Badge>}
-            texte="Exemple : le chiffre (ici 5) indique le nombre de profils du compte."
+            symbole={<Badge cls="border-primary/40 text-primary">5 prof.</Badge>}
+            texte="Pastille DORÉE — nombre de profils du compte (ici 5)."
           />
           <Ligne
             auto
-            symbole={<Badge cls="border-primary/25 text-foreground">3</Badge>}
-            texte="Exemple : le chiffre (ici 3) indique le nombre de personnages (du compte ou du profil)."
+            symbole={<Badge cls="border-primary/25 text-foreground">3 pers.</Badge>}
+            texte="Pastille NEUTRE — nombre de personnages, du compte ou du profil (ici 3)."
           />
         </div>
       )}
