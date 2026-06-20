@@ -354,6 +354,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cimetiere: {
+        Row: {
+          classe: string | null
+          created_at: string
+          cree_par: string | null
+          date_mort: string
+          epitaphe: string | null
+          id: string
+          joueur_nom: string | null
+          niveau: number | null
+          nom: string
+          personnage_id_origine: string | null
+          race: string
+          snapshot: Json
+        }
+        Insert: {
+          classe?: string | null
+          created_at?: string
+          cree_par?: string | null
+          date_mort?: string
+          epitaphe?: string | null
+          id?: string
+          joueur_nom?: string | null
+          niveau?: number | null
+          nom: string
+          personnage_id_origine?: string | null
+          race: string
+          snapshot: Json
+        }
+        Update: {
+          classe?: string | null
+          created_at?: string
+          cree_par?: string | null
+          date_mort?: string
+          epitaphe?: string | null
+          id?: string
+          joueur_nom?: string | null
+          niveau?: number | null
+          nom?: string
+          personnage_id_origine?: string | null
+          race?: string
+          snapshot?: Json
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           competences_gratuites: Json | null
@@ -1915,6 +1960,127 @@ export type Database = {
           },
           {
             foreignKeyName: "personnage_compo_photos_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnage_morts_demandes: {
+        Row: {
+          approuve_par: string | null
+          created_at: string
+          date_approbation: string | null
+          epitaphe: string | null
+          id: string
+          personnage_id: string
+          raison_refus: string | null
+          statut: string
+          updated_at: string
+        }
+        Insert: {
+          approuve_par?: string | null
+          created_at?: string
+          date_approbation?: string | null
+          epitaphe?: string | null
+          id?: string
+          personnage_id: string
+          raison_refus?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Update: {
+          approuve_par?: string | null
+          created_at?: string
+          date_approbation?: string | null
+          epitaphe?: string | null
+          id?: string
+          personnage_id?: string
+          raison_refus?: string | null
+          statut?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
             columns: ["personnage_id"]
             isOneToOne: false
             referencedRelation: "vue_xp_personnage"
@@ -4023,6 +4189,48 @@ export type Database = {
           },
         ]
       }
+      vue_cimetiere: {
+        Row: {
+          classe: string | null
+          created_at: string | null
+          date_mort: string | null
+          epitaphe: string | null
+          id: string | null
+          joueur_nom: string | null
+          niveau: number | null
+          nom: string | null
+          personnage_id_origine: string | null
+          race: string | null
+          snapshot: Json | null
+        }
+        Insert: {
+          classe?: string | null
+          created_at?: string | null
+          date_mort?: string | null
+          epitaphe?: string | null
+          id?: string | null
+          joueur_nom?: string | null
+          niveau?: number | null
+          nom?: string | null
+          personnage_id_origine?: string | null
+          race?: string | null
+          snapshot?: Json | null
+        }
+        Update: {
+          classe?: string | null
+          created_at?: string | null
+          date_mort?: string | null
+          epitaphe?: string | null
+          id?: string | null
+          joueur_nom?: string | null
+          niveau?: number | null
+          nom?: string | null
+          personnage_id_origine?: string | null
+          race?: string | null
+          snapshot?: Json | null
+        }
+        Relationships: []
+      }
       vue_competences_encyclopedie: {
         Row: {
           categorie: string | null
@@ -4206,6 +4414,127 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vue_xp_personnage"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      vue_demandes_morts_attente: {
+        Row: {
+          classe_nom: string | null
+          created_at: string | null
+          epitaphe: string | null
+          id: string | null
+          joueur_id: string | null
+          niveau: number | null
+          personnage_id: string | null
+          personnage_nom: string | null
+          race_nom: string | null
+          statut: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "personnages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_artisanat_quotas"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_fiche_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_creation_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnage_etat"
+            referencedColumns: ["personnage_id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_admin_complet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_personnages_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_tableau_de_bord"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnage_morts_demandes_personnage_id_fkey"
+            columns: ["personnage_id"]
+            isOneToOne: false
+            referencedRelation: "vue_xp_personnage"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "profils_joueur"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_banque_joueur"
+            referencedColumns: ["joueur_id"]
+          },
+          {
+            foreignKeyName: "personnages_joueur_id_fkey"
+            columns: ["joueur_id"]
+            isOneToOne: false
+            referencedRelation: "vue_inscriptions_par_evenement"
+            referencedColumns: ["joueur_id"]
           },
         ]
       }
@@ -5705,6 +6034,14 @@ export type Database = {
       }
     }
     Functions: {
+      _figer_stele: {
+        Args: {
+          p_cree_par: string
+          p_epitaphe: string
+          p_personnage_id: string
+        }
+        Returns: string
+      }
       _purger_compte_interne: {
         Args: { p_compte_id: string }
         Returns: undefined
@@ -5802,6 +6139,10 @@ export type Database = {
         Args: { p_personnage_competence_id: string }
         Returns: Json
       }
+      approuver_mort_demande: {
+        Args: { p_demande_id: string; p_epitaphe_finale?: string }
+        Returns: Json
+      }
       approuver_race_demande: { Args: { p_demande_id: string }; Returns: Json }
       assembler_prerequis_labels: {
         Args: { p_competence_id: string }
@@ -5884,6 +6225,10 @@ export type Database = {
         }
         Returns: Json
       }
+      creer_demande_mort: {
+        Args: { p_epitaphe: string; p_personnage_id: string }
+        Returns: Json
+      }
       creer_demande_race: {
         Args: { p_background: string; p_personnage_id: string }
         Returns: Json
@@ -5902,6 +6247,10 @@ export type Database = {
       creer_notification_staff: {
         Args: { p_message: string; p_reference_id?: string; p_type: string }
         Returns: number
+      }
+      creer_stele_directe: {
+        Args: { p_epitaphe?: string; p_personnage_id: string }
+        Returns: Json
       }
       debloquer_compte: { Args: { p_compte_id: string }; Returns: Json }
       debloquer_personnage: { Args: { p_personnage_id: string }; Returns: Json }
@@ -6018,6 +6367,15 @@ export type Database = {
         }
         Returns: Json
       }
+      modifier_stele: {
+        Args: {
+          p_cimetiere_id: string
+          p_date_mort?: string
+          p_epitaphe?: string
+          p_joueur_nom?: string
+        }
+        Returns: Json
+      }
       nom_profil_principal: { Args: { p_acteur_id: string }; Returns: string }
       personnage_a_des_prieres: {
         Args: { p_personnage_id: string }
@@ -6117,6 +6475,10 @@ export type Database = {
         Args: { p_personnage_competence_id: string; p_raison?: string }
         Returns: Json
       }
+      refuser_mort_demande: {
+        Args: { p_demande_id: string; p_raison?: string }
+        Returns: Json
+      }
       refuser_race_demande: {
         Args: { p_demande_id: string; p_raison: string }
         Returns: Json
@@ -6165,6 +6527,7 @@ export type Database = {
         }
         Returns: Json
       }
+      supprimer_stele: { Args: { p_cimetiere_id: string }; Returns: Json }
       transferer_banque_vers_personnage: {
         Args: { p_montant: number; p_personnage_cible_id: string }
         Returns: Json
