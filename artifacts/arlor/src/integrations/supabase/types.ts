@@ -5705,6 +5705,18 @@ export type Database = {
       }
     }
     Functions: {
+      _purger_compte_interne: {
+        Args: { p_compte_id: string }
+        Returns: undefined
+      }
+      _purger_personnage_interne: {
+        Args: { p_personnage_id: string }
+        Returns: undefined
+      }
+      _purger_profil_interne: {
+        Args: { p_profil_id: string }
+        Returns: undefined
+      }
       acheter_assemblage: {
         Args: { p_assemblage_id: string; p_personnage_id: string }
         Returns: Json
@@ -5772,6 +5784,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apercu_purge: { Args: { p_id: string; p_type: string }; Returns: Json }
       apercu_rabais_acquisition: {
         Args: {
           p_choix_achat: string
@@ -6049,7 +6062,10 @@ export type Database = {
         Returns: boolean
       }
       profils_du_compte: { Args: { c: string }; Returns: string[] }
+      purger_compte: { Args: { p_compte_id: string }; Returns: Json }
       purger_notifications_anciennes: { Args: never; Returns: number }
+      purger_personnage: { Args: { p_personnage_id: string }; Returns: Json }
+      purger_profil: { Args: { p_profil_id: string }; Returns: Json }
       recalculer_ps_max: {
         Args: { p_personnage_id: string }
         Returns: undefined
