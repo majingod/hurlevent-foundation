@@ -651,6 +651,13 @@ const AdminJoueurs = () => {
           connexion</b>. Le blocage descend en <b>cascade</b> (compte → profils
           → personnages) et reste <b>réversible</b>.
         </IntroEtapeItem>
+        <IntroEtapeItem n={7}>
+          L'icône <b>corbeille</b> (Purger, admin uniquement) n'apparaît que sur
+          un élément <b>déjà bloqué</b>. Elle <b>supprime définitivement</b> un
+          personnage, un profil ou un compte — action <b>irréversible</b>. Purger
+          un compte efface ses données mais <b>conserve la connexion bloquée</b>
+          (le login ne peut pas être réutilisé).
+        </IntroEtapeItem>
       </IntroEtape>
 
       <LegendeJoueursAdmin />
