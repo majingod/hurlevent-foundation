@@ -105,31 +105,31 @@ const Pastille = ({
   </span>
 );
 
-// Badge « Archivé » — n'apparaît que pour un élément retiré (l'actif est silencieux).
+// Badge « Bloqué » — n'apparaît que pour un élément retiré (l'actif est silencieux).
 const BlocBadge = () => (
   <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-muted-foreground/50 bg-muted-foreground/10 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
     <Ban className="h-2.5 w-2.5" /> Bloqué
   </span>
 );
 
-// Bouton icône Archiver / Réactiver.
+// Bouton icône Bloquer / Débloquer.
 const BoutonBloquer = ({
-  archived,
+  bloque,
   disabled,
   onClick,
   title,
 }: {
-  archived: boolean;
+  bloque: boolean;
   disabled?: boolean;
   onClick: () => void;
   title?: string;
 }) => {
-  const Icon = archived ? ShieldCheck : Ban;
+  const Icon = bloque ? ShieldCheck : Ban;
   return (
     <button
       type="button"
       disabled={disabled}
-      title={title ?? (archived ? "Débloquer" : "Bloquer")}
+      title={title ?? (bloque ? "Débloquer" : "Bloquer")}
       onClick={(e) => {
         e.stopPropagation();
         if (!disabled) onClick();
@@ -137,7 +137,7 @@ const BoutonBloquer = ({
       className={`inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border transition-colors ${
         disabled
           ? "cursor-not-allowed border-border text-muted-foreground/40"
-          : archived
+          : bloque
             ? "border-primary/60 bg-primary/10 text-primary"
             : "border-border text-muted-foreground hover:text-foreground"
       }`}
@@ -395,7 +395,7 @@ const AdminJoueurs = () => {
       return n;
     });
 
-  // ── Archivage (RPC prod, retour standard pour compte/profil, {succes,raison} pour perso) ──
+  // ── Blocage (RPC prod, retour standard pour compte/profil, {succes,raison} pour perso) ──
   const lancerBlocage = async (
     fn: string,
     paramNom: string,
@@ -470,7 +470,7 @@ const AdminJoueurs = () => {
       pe.estActif
         ? {
             danger: true,
-            titre: `Archiver « ${pe.nom ?? "Sans nom"} » ?`,
+            titre: `Bloquer « ${pe.nom ?? "Sans nom"} » ?`,
             description:
               "Le personnage passera en lecture seule côté joueur (visible, non modifiable, non supprimable).",
             action: () =>
@@ -718,15 +718,17 @@ const AdminJoueurs = () => {
                       <Pastille tone="gold">{c.profils.length} prof.</Pastille>
                       <Pastille>{c.nbPersos} pers.</Pastille>
                     </div>
-                    <BoutonBloquer
-                      archived={!c.isActive}
-                      onClick={() => confCompte(c)}
-                    />
-                    {estAdmin && !c.isActive && (
-                      <BoutonPurger
-                        onClick={() => ouvrirPurge("compte", c.id, c.nom)}
+                    <span className="inline-flex items-center gap-2">
+                      <BoutonBloquer
+                        bloque={!c.isActive}
+                        onClick={() => confCompte(c)}
                       />
-                    )}
+                      {estAdmin && !c.isActive && (
+                        <BoutonPurger
+                          onClick={() => ouvrirPurge("compte", c.id, c.nom)}
+                        />
+                      )}
+                    </span>
                     <ChevronRight
                       className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${ouvert ? "rotate-90" : ""}`}
                     />
@@ -791,19 +793,21 @@ const AdminJoueurs = () => {
                               >
                                 Ajuster
                               </button>
-                              <BoutonBloquer
-                                archived={!p.estActif}
-                                disabled={!c.isActive}
-                                title={
-                                  !c.isActive ? "Débloquer le compte d'abord" : undefined
-                                }
-                                onClick={() => confProfil(p)}
-                              />
-                              {estAdmin && !p.estActif && (
-                                <BoutonPurger
-                                  onClick={() => ouvrirPurge("profil", p.id, p.nom)}
+                              <span className="inline-flex items-center gap-2">
+                                <BoutonBloquer
+                                  bloque={!p.estActif}
+                                  disabled={!c.isActive}
+                                  title={
+                                    !c.isActive ? "Débloquer le compte d'abord" : undefined
+                                  }
+                                  onClick={() => confProfil(p)}
                                 />
-                              )}
+                                {estAdmin && !p.estActif && (
+                                  <BoutonPurger
+                                    onClick={() => ouvrirPurge("profil", p.id, p.nom)}
+                                  />
+                                )}
+                              </span>
                               <ChevronRight
                                 className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${pOuvert ? "rotate-90" : ""}`}
                               />
@@ -888,27 +892,29 @@ const AdminJoueurs = () => {
                                           >
                                             Ajuster Niv./Xp
                                           </button>
-                                          <BoutonBloquer
-                                            archived={!pe.estActif}
-                                            disabled={persoArchDisabled}
-                                            title={
-                                              persoArchDisabled
-                                                ? "Débloquer le profil/compte d'abord"
-                                                : undefined
-                                            }
-                                            onClick={() => confPerso(pe)}
-                                          />
-                                          {estAdmin && !pe.estActif && (
-                                            <BoutonPurger
-                                              onClick={() =>
-                                                ouvrirPurge(
-                                                  "personnage",
-                                                  pe.id,
-                                                  pe.nom ?? "Sans nom",
-                                                )
+                                          <span className="inline-flex items-center gap-2">
+                                            <BoutonBloquer
+                                              bloque={!pe.estActif}
+                                              disabled={persoArchDisabled}
+                                              title={
+                                                persoArchDisabled
+                                                  ? "Débloquer le profil/compte d'abord"
+                                                  : undefined
                                               }
+                                              onClick={() => confPerso(pe)}
                                             />
-                                          )}
+                                            {estAdmin && !pe.estActif && (
+                                              <BoutonPurger
+                                                onClick={() =>
+                                                  ouvrirPurge(
+                                                    "personnage",
+                                                    pe.id,
+                                                    pe.nom ?? "Sans nom",
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                          </span>
                                         </div>
                                       </div>
                                     </div>
