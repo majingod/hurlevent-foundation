@@ -27,6 +27,7 @@ import TableauDeBord from "@/pages/TableauDeBord";
 import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 import PersonnageJournal from "@/pages/PersonnageJournal";
+import Cimetiere from "@/pages/Cimetiere";
 
 // Pages administration
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -36,6 +37,7 @@ import AdminEvenements from "@/pages/admin/AdminEvenements";
 import AdminApprobations from "@/pages/admin/AdminApprobations";
 import AdminJournal from "@/pages/admin/AdminJournal";
 import AdminDonnees from "@/pages/admin/AdminDonnees";
+import AdminCimetiere from "@/pages/admin/AdminCimetiere";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -106,6 +108,15 @@ const AppRoutes = () => (
       }
     />
 
+    <Route
+      path="/cimetiere"
+      element={
+        <ProtectedRoute>
+          <Cimetiere />
+        </ProtectedRoute>
+      }
+    />
+
     <Route element={<GardeStaff />}>
     <Route
       path="/administration"
@@ -156,6 +167,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute requiredRole="animateur">
           <AdminJournal />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/administration/cimetiere"
+      element={
+        <ProtectedRoute requiredRole="animateur">
+          <AdminCimetiere />
         </ProtectedRoute>
       }
     />
