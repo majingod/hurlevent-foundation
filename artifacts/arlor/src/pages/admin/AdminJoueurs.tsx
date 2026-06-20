@@ -8,6 +8,7 @@ import {
   Ban,
   ShieldCheck,
   Skull,
+  Trash2,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -146,6 +147,101 @@ const BoutonBloquer = ({
   );
 };
 
+// Bouton icône Purger (suppression définitive). Visible seulement sur objet bloqué + admin.
+const BoutonPurger = ({
+  onClick,
+  title,
+}: {
+  onClick: () => void;
+  title?: string;
+}) => (
+  <button
+    type="button"
+    title={title ?? "Purger définitivement"}
+    onClick={(e) => {
+      e.stopPropagation();
+      onClick();
+    }}
+    className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border border-destructive/70 bg-destructive/10 text-[hsl(0_70%_62%)] transition-colors hover:bg-destructive/20"
+  >
+    <Trash2 className="h-[15px] w-[15px]" />
+  </button>
+);
+
+type PurgeType = "compte" | "profil" | "personnage";
+interface ApercuPurge {
+  type: PurgeType;
+  cible_nom?: string;
+  est_bloque: boolean;
+  login_conserve?: boolean;
+  profils?: { nom: string }[];
+  persos?: { nom: string; profil?: string }[];
+  nb_persos?: number;
+  nb_banque?: number;
+  nb_inscriptions?: number;
+  nb_notifs?: number;
+  nb_events_detaches?: number;
+}
+
+const titrePurge = (type: PurgeType, nom: string) =>
+  type === "personnage"
+    ? `Purger définitivement « ${nom} » ?`
+    : `Purger définitivement ${type === "compte" ? "le compte" : "le profil"} « ${nom} » ?`;
+
+const LignePurge = ({ k, v }: { k: string; v: number }) => (
+  <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-[13px] last:border-b-0">
+    <span className="text-muted-foreground">{k}</span>
+    <span className="font-semibold tabular-nums">{v}</span>
+  </div>
+);
+
+const ApercuPurgeRecap = ({ apercu: a }: { apercu: ApercuPurge }) => (
+  <div className="my-1 overflow-hidden rounded-xl border border-border">
+    {a.profils && a.profils.length > 0 && (
+      <div className="border-b border-border px-3 py-2 text-[13px]">
+        <div className="mb-1 text-muted-foreground">{a.profils.length} profil(s)</div>
+        <ul className="list-disc pl-4">
+          {a.profils.map((p, i) => (
+            <li key={i}>{p.nom}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {a.persos && a.persos.length > 0 && (
+      <div className="border-b border-border px-3 py-2 text-[13px]">
+        <div className="mb-1 text-muted-foreground">{a.persos.length} personnage(s)</div>
+        <ul className="list-disc pl-4">
+          {a.persos.map((p, i) => (
+            <li key={i}>
+              {p.nom}
+              {p.profil && (
+                <span className="text-[11px] text-muted-foreground"> ({p.profil})</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {typeof a.nb_banque === "number" && (
+      <LignePurge k="Mouvements de banque d'XP" v={a.nb_banque} />
+    )}
+    {typeof a.nb_inscriptions === "number" && (
+      <LignePurge k="Inscriptions à des événements" v={a.nb_inscriptions} />
+    )}
+    {typeof a.nb_notifs === "number" && <LignePurge k="Notifications" v={a.nb_notifs} />}
+    {typeof a.nb_events_detaches === "number" && (
+      <LignePurge k="Événements créés (détachés)" v={a.nb_events_detaches} />
+    )}
+    {a.login_conserve && (
+      <div className="bg-muted/50 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+        🔐 La connexion (e-mail) est{" "}
+        <b className="text-[hsl(43_51%_65%)]">conservée</b> : l'adresse reste prise,
+        aucun retour possible.
+      </div>
+    )}
+  </div>
+);
+
 interface RpcStandard {
   succes?: boolean;
   erreurs?: { message?: string }[];
@@ -173,6 +269,15 @@ const AdminJoueurs = () => {
     description: string;
     danger: boolean;
     action: () => void;
+  } | null>(null);
+  const [purge, setPurge] = useState<{
+    type: PurgeType;
+    id: string;
+    nom: string;
+    apercu: ApercuPurge;
+    etape: 1 | 2;
+    okCompris: boolean;
+    enCours: boolean;
   } | null>(null);
 
   const { data: comptes, isLoading } = useQuery({
@@ -392,6 +497,77 @@ const AdminJoueurs = () => {
           },
     );
 
+  // ── Purge définitive (objet déjà bloqué, admin strict ; RPC retour standard) ──
+  const ouvrirPurge = async (type: PurgeType, id: string, nom: string) => {
+    try {
+      const { data, error } = await supabase.rpc("apercu_purge", {
+        p_type: type,
+        p_id: id,
+      });
+      if (error) throw error;
+      const ret = (data ?? {}) as {
+        succes?: boolean;
+        erreurs?: { message?: string }[];
+        donnees?: ApercuPurge | null;
+      };
+      if (ret.succes !== true || !ret.donnees) {
+        toast.error(ret.erreurs?.[0]?.message ?? "Aperçu impossible.");
+        return;
+      }
+      setPurge({
+        type,
+        id,
+        nom,
+        apercu: ret.donnees,
+        etape: 1,
+        okCompris: false,
+        enCours: false,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur réseau.");
+    }
+  };
+
+  const confirmerPurge = async () => {
+    if (!purge) return;
+    const fnParType: Record<PurgeType, string> = {
+      compte: "purger_compte",
+      profil: "purger_profil",
+      personnage: "purger_personnage",
+    };
+    const paramParType: Record<PurgeType, string> = {
+      compte: "p_compte_id",
+      profil: "p_profil_id",
+      personnage: "p_personnage_id",
+    };
+    setPurge((p) => (p ? { ...p, enCours: true } : p));
+    try {
+      const { data, error } = await supabase.rpc(
+        fnParType[purge.type] as "purger_compte",
+        { [paramParType[purge.type]]: purge.id } as { p_compte_id: string },
+      );
+      if (error) throw error;
+      const ret = (data ?? {}) as RpcStandard;
+      if (ret.succes !== true) {
+        toast.error(ret.erreurs?.[0]?.message ?? "Purge refusée.");
+        setPurge((p) => (p ? { ...p, enCours: false } : p));
+        return;
+      }
+      setPurge(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin-joueurs"] });
+      const lbl =
+        purge.type === "compte"
+          ? "Compte"
+          : purge.type === "profil"
+            ? "Profil"
+            : "Personnage";
+      toast.success(`${lbl} purgé définitivement.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur réseau.");
+      setPurge((p) => (p ? { ...p, enCours: false } : p));
+    }
+  };
+
   const cibleAjuster: CibleAjuster | null = useMemo(() => {
     if (!ajusterCle || !comptes) return null;
     for (const c of comptes) {
@@ -546,6 +722,11 @@ const AdminJoueurs = () => {
                       archived={!c.isActive}
                       onClick={() => confCompte(c)}
                     />
+                    {estAdmin && !c.isActive && (
+                      <BoutonPurger
+                        onClick={() => ouvrirPurge("compte", c.id, c.nom)}
+                      />
+                    )}
                     <ChevronRight
                       className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${ouvert ? "rotate-90" : ""}`}
                     />
@@ -618,6 +799,11 @@ const AdminJoueurs = () => {
                                 }
                                 onClick={() => confProfil(p)}
                               />
+                              {estAdmin && !p.estActif && (
+                                <BoutonPurger
+                                  onClick={() => ouvrirPurge("profil", p.id, p.nom)}
+                                />
+                              )}
                               <ChevronRight
                                 className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${pOuvert ? "rotate-90" : ""}`}
                               />
@@ -712,6 +898,17 @@ const AdminJoueurs = () => {
                                             }
                                             onClick={() => confPerso(pe)}
                                           />
+                                          {estAdmin && !pe.estActif && (
+                                            <BoutonPurger
+                                              onClick={() =>
+                                                ouvrirPurge(
+                                                  "personnage",
+                                                  pe.id,
+                                                  pe.nom ?? "Sans nom",
+                                                )
+                                              }
+                                            />
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -774,6 +971,89 @@ const AdminJoueurs = () => {
               Confirmer
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={purge !== null}
+        onOpenChange={(o) => {
+          if (!o) setPurge(null);
+        }}
+      >
+        <AlertDialogContent>
+          {purge && purge.etape === 1 ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-heading">
+                  {titrePurge(purge.type, purge.nom)}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="leading-relaxed">
+                  Tout le contenu de jeu ci-dessous sera effacé sans retour.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <ApercuPurgeRecap apercu={purge.apercu} />
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPurge((p) => (p ? { ...p, etape: 2 } : p));
+                  }}
+                >
+                  Continuer →
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : purge ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-heading">
+                  {titrePurge(purge.type, purge.nom)}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="leading-relaxed">
+                  Cette suppression est définitive et irréversible.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border px-3 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={purge.okCompris}
+                  onChange={(e) =>
+                    setPurge((p) =>
+                      p ? { ...p, okCompris: e.target.checked } : p,
+                    )
+                  }
+                  className="mt-0.5 h-4 w-4 accent-[hsl(var(--destructive))]"
+                />
+                <span>
+                  Je comprends que cette suppression est{" "}
+                  <b>définitive et irréversible</b>.
+                </span>
+              </label>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPurge((p) =>
+                      p ? { ...p, etape: 1, okCompris: false } : p,
+                    );
+                  }}
+                >
+                  ← Retour
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={!purge.okCompris || purge.enCours}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    confirmerPurge();
+                  }}
+                >
+                  {purge.enCours ? "Purge…" : "Purger définitivement"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : null}
         </AlertDialogContent>
       </AlertDialog>
     </AdminLayout>
