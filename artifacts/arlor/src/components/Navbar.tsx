@@ -24,7 +24,12 @@ const Navbar = () => {
   useRealtimeNotifications();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const { data: menuItems } = useMenuNavigation(role);
+  const { data: menuItems, sections } = useMenuNavigation(role);
+
+  const menuVisibles = (menuItems ?? [])
+    .filter((item) => item.afficher_navbar)
+    .filter((item) => staffActif || !item.url.startsWith("/administration"));
+  const menuSansSection = menuVisibles.filter((item) => item.section === null);
 
   const handleSignOut = async () => {
     setOpen(false);
@@ -71,14 +76,16 @@ const Navbar = () => {
           </SheetTrigger>
           <SheetContent
             side="right"
-            className="w-72 border-l bg-[#0a0a0a] p-0"
+            className="flex w-72 flex-col border-l bg-[#0a0a0a] p-0"
             style={{ borderColor: "#c9a84c" }}
           >
-            <SheetHeader className="px-6 pt-6 pb-4">
+            <SheetHeader className="shrink-0 px-6 pt-6 pb-4">
               <SheetTitle className="font-heading text-xl font-bold" style={{ color: "#c9a84c" }}>
                 Hurlevent
               </SheetTitle>
             </SheetHeader>
+
+            <div className="flex-1 overflow-y-auto pb-2">
 
             {user && profilActif && (
               <div
@@ -182,29 +189,48 @@ const Navbar = () => {
               </div>
             )}
 
-            <nav className="flex flex-1 flex-col gap-1 px-4">
-              {menuItems
-                ?.filter(item => item.afficher_navbar)
-                .filter(item => staffActif || !item.url.startsWith("/administration"))
-                .map(item => (
-                  <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
-                ))}
-
-              <div className="mt-auto pt-8 border-t border-border/30">
-                {user ? (
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="w-full rounded-md px-4 py-2 text-left text-sm font-medium transition-colors hover:bg-muted/20 active:bg-muted/40"
-                    style={{ color: "#d9534f" }}
-                  >
-                    Déconnexion
-                  </button>
-                ) : (
-                  <NavItem to="/connexion" label="Connexion" onClick={close} />
-                )}
-              </div>
+            <nav className="flex flex-col gap-1 px-4">
+              {menuSansSection.map((item) => (
+                <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} boxed />
+              ))}
             </nav>
+
+            {(sections ?? []).map((sec) => {
+              const its = menuVisibles.filter((item) => item.section === sec.slug);
+              if (its.length === 0) return null;
+              return (
+                <div key={sec.slug}>
+                  <div
+                    className="px-[14px] pb-1 pt-4 text-[9.5px] font-bold uppercase tracking-[1.4px]"
+                    style={{ color: sec.est_staff ? "#c98a8a" : "#8a7333" }}
+                  >
+                    {sec.libelle}
+                  </div>
+                  <nav className="flex flex-col gap-1 px-4">
+                    {its.map((item) => (
+                      <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
+                    ))}
+                  </nav>
+                </div>
+              );
+            })}
+
+            </div>
+
+            <div className="shrink-0 border-t border-border/30">
+              {user ? (
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full px-4 py-3.5 text-left text-sm font-semibold transition-colors hover:bg-muted/20 active:bg-muted/40"
+                  style={{ color: "#d9534f" }}
+                >
+                  Déconnexion
+                </button>
+              ) : (
+                <NavItem to="/connexion" label="Connexion" onClick={close} />
+              )}
+            </div>
           </SheetContent>
         </Sheet>
         </div>
@@ -213,11 +239,24 @@ const Navbar = () => {
   );
 };
 
-const NavItem = ({ to, label, onClick }: { to: string; label: string; onClick: () => void }) => (
+const NavItem = ({
+  to,
+  label,
+  onClick,
+  boxed = false,
+}: {
+  to: string;
+  label: string;
+  onClick: () => void;
+  boxed?: boolean;
+}) => (
   <Link
     to={to}
     onClick={onClick}
-    className="rounded-md px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/20 hover:text-primary"
+    className={`rounded-md px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/20 hover:text-primary${
+      boxed ? " border" : ""
+    }`}
+    style={boxed ? { borderColor: "#232323" } : undefined}
   >
     {label}
   </Link>
