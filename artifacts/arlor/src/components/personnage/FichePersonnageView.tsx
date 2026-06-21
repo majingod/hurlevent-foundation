@@ -287,6 +287,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     etat: string;
     raison: string;
     evenement_bloquant_id: string | null;
+    demande_mort_epitaphe: string | null;
   } | null>({
     queryKey: ["etat-edition", personnageId],
     enabled: mode === "route" && !!personnageId,
@@ -299,6 +300,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         etat: string;
         raison: string;
         evenement_bloquant_id: string | null;
+        demande_mort_epitaphe: string | null;
       } | null;
     },
   });
@@ -319,25 +321,10 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     },
   });
 
-  // CIMETIÈRE PR2 — admissibilité « Demander la mort » (joueur propriétaire, fiche route).
-  // (a) Demande déjà en attente ? RLS : le propriétaire lit ses propres demandes.
-  const { data: demandeMortAttente } = useQuery({
-    queryKey: ["demande-mort-attente", personnageId],
-    enabled: mode === "route" && !!personnageId,
-    gcTime: 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_morts_demandes")
-        .select("id, epitaphe, created_at")
-        .eq("personnage_id", personnageId!)
-        .eq("statut", "en_attente")
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  // CIMETIÈRE — l'état « demande en attente » provient de etat_edition (etat='mort_en_attente').
+  // La stèle vit dans `cimetiere` (statut en_attente), cachée du public.
 
-  // (b) A vécu au moins un événement (statut 'present') ? Condition d'admissibilité.
+  // A vécu au moins un événement (statut 'present') ? Condition d'admissibilité.
   const { data: aVecuEvenement } = useQuery({
     queryKey: ["a-vecu-evenement", personnageId],
     enabled: mode === "route" && !!personnageId,
@@ -417,7 +404,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
       toast.success(res.message ?? "Demande envoyée. Le staff va l'examiner.");
       setEpitapheMort("");
       setMortConfirmee(false);
-      await queryClient.invalidateQueries({ queryKey: ["demande-mort-attente", personnageId] });
+      await queryClient.invalidateQueries({ queryKey: ["etat-edition", personnageId] });
     } catch (err: any) {
       console.error(err);
       toast.error("Erreur lors de l'envoi de la demande.");
@@ -854,7 +841,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
       {mode === "route" && isOwner && etatEdition?.etat !== "mort" && (
         <>
-          {demandeMortAttente ? (
+          {etatEdition?.etat === "mort_en_attente" ? (
             <div className="rounded-xl border border-gold/35 bg-card p-4 flex gap-3 items-start">
               <span className="text-xl mt-0.5">⏳</span>
               <div className="min-w-0">
@@ -862,9 +849,9 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                 <p className="mt-1.5 text-sm text-foreground/90">
                   Un animateur examinera bientôt ta demande pour <b>{fiche.nom}</b>. Tu seras notifié de la décision.
                 </p>
-                {demandeMortAttente.epitaphe && (
+                {etatEdition?.demande_mort_epitaphe && (
                   <p className="mt-2.5 border-l-2 border-gold pl-3 text-sm italic text-muted-foreground">
-                    « {demandeMortAttente.epitaphe} »
+                    « {etatEdition.demande_mort_epitaphe} »
                   </p>
                 )}
               </div>
