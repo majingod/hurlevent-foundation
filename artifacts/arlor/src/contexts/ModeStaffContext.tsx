@@ -31,8 +31,8 @@ const ModeStaffContext = createContext<ModeStaffContextType>({
 
 export const useModeStaff = () => useContext(ModeStaffContext);
 
-// Persistance par compte (comme le profil actif) : un reload garde l'état ;
-// une nouvelle session repart OFF.
+// Persistance par compte (comme le profil actif), via localStorage :
+// l'état du toggle est restauré même après déconnexion / nouvelle session.
 const cleStorage = (compteId: string) => `hv_mode_staff:${compteId}`;
 
 export const ModeStaffProvider = ({ children }: { children: ReactNode }) => {
@@ -50,15 +50,15 @@ export const ModeStaffProvider = ({ children }: { children: ReactNode }) => {
       setInterrupteurOn(false);
       return;
     }
-    const stocke = sessionStorage.getItem(cleStorage(user.id));
+    const stocke = localStorage.getItem(cleStorage(user.id));
     setInterrupteurOn(stocke === "1");
   }, [user]);
 
   const setInterrupteur = useCallback(
     (on: boolean) => {
       if (user) {
-        if (on) sessionStorage.setItem(cleStorage(user.id), "1");
-        else sessionStorage.removeItem(cleStorage(user.id));
+        if (on) localStorage.setItem(cleStorage(user.id), "1");
+        else localStorage.removeItem(cleStorage(user.id));
       }
       setInterrupteurOn(on);
     },

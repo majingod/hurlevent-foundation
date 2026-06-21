@@ -1319,6 +1319,7 @@ export type Database = {
           libelle: string
           ordre: number
           roles_autorises: string[] | null
+          section: string | null
           updated_at: string | null
           url: string
         }
@@ -1331,6 +1332,7 @@ export type Database = {
           libelle: string
           ordre?: number
           roles_autorises?: string[] | null
+          section?: string | null
           updated_at?: string | null
           url: string
         }
@@ -1343,10 +1345,19 @@ export type Database = {
           libelle?: string
           ordre?: number
           roles_autorises?: string[] | null
+          section?: string | null
           updated_at?: string | null
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "menu_navigation_section_fkey"
+            columns: ["section"]
+            isOneToOne: false
+            referencedRelation: "sections_menu"
+            referencedColumns: ["slug"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -3642,6 +3653,27 @@ export type Database = {
           ordre?: number
           updated_at?: string | null
           url_key?: string
+        }
+        Relationships: []
+      }
+      sections_menu: {
+        Row: {
+          est_staff: boolean
+          libelle: string
+          ordre: number
+          slug: string
+        }
+        Insert: {
+          est_staff?: boolean
+          libelle: string
+          ordre: number
+          slug: string
+        }
+        Update: {
+          est_staff?: boolean
+          libelle?: string
+          ordre?: number
+          slug?: string
         }
         Relationships: []
       }

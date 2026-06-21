@@ -4,23 +4,32 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type MenuNavigation = Database["public"]["Tables"]["menu_navigation"]["Row"];
+export type SectionMenu = Database["public"]["Tables"]["sections_menu"]["Row"];
 
 export function useMenuNavigation(role: string | null | undefined) {
   const [rawData, setRawData] = useState<MenuNavigation[] | null>(null);
+  const [sections, setSections] = useState<SectionMenu[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<PostgrestError | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("menu_navigation")
-        .select("*")
-        .eq("est_actif", true)
-        .order("ordre", { ascending: true });
+      const [menuRes, sectionsRes] = await Promise.all([
+        supabase
+          .from("menu_navigation")
+          .select("*")
+          .eq("est_actif", true)
+          .order("ordre", { ascending: true }),
+        supabase
+          .from("sections_menu")
+          .select("*")
+          .order("ordre", { ascending: true }),
+      ]);
       if (cancelled) return;
-      if (error) setError(error);
-      else setRawData(data);
+      if (menuRes.error) setError(menuRes.error);
+      else setRawData(menuRes.data);
+      if (!sectionsRes.error) setSections(sectionsRes.data);
       setLoading(false);
     })();
     return () => {
@@ -37,5 +46,5 @@ export function useMenuNavigation(role: string | null | undefined) {
     );
   }, [rawData, role]);
 
-  return { data, loading, error };
+  return { data, sections, loading, error };
 }
