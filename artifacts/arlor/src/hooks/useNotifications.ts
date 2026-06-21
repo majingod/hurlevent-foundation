@@ -17,7 +17,7 @@ export interface Notif {
 // Types dont l'audience est l'organisation (admin/animateur).
 // Source UNIQUE : exclut ces notifs de la cloche JOUEUR (pour TOUT le monde,
 // staff inclus) ET alimente la cloche STAFF dédiée. Étendre ici au besoin.
-export const TYPES_STAFF: string[] = ["demande_race_nouvelle"];
+export const TYPES_STAFF: string[] = ["demande_race_nouvelle", "demande_mort_nouvelle"];
 
 // Alias historique : la cloche/carte joueur masque exactement les types staff.
 export const TYPES_MASQUES_JOUEUR = TYPES_STAFF;

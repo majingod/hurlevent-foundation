@@ -1,4 +1,4 @@
-import { Coins, XCircle, ChevronRight, type LucideIcon } from "lucide-react";
+import { Coins, XCircle, Skull, ChevronRight, type LucideIcon } from "lucide-react";
 import type { Notif } from "@/hooks/useNotifications";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
@@ -19,6 +19,21 @@ const META_DEFAUT: MetaType = {
 const META_PAR_TYPE: Record<string, MetaType> = {
   info: META_DEFAUT,
   race_refusee: {
+    Icon: XCircle,
+    couleurIcone: "text-destructive",
+    fondIcone: "bg-destructive/10",
+  },
+  demande_mort_nouvelle: {
+    Icon: Skull,
+    couleurIcone: "text-red-400",
+    fondIcone: "bg-red-950/40",
+  },
+  mort_approuvee: {
+    Icon: Skull,
+    couleurIcone: "text-red-400",
+    fondIcone: "bg-red-950/40",
+  },
+  mort_refusee: {
     Icon: XCircle,
     couleurIcone: "text-destructive",
     fondIcone: "bg-destructive/10",

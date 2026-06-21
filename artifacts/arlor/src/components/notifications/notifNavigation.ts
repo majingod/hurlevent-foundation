@@ -18,6 +18,11 @@ const TYPES_RACE = new Set(["race_approuvee", "race_refusee"]);
 export function estNavigable(notif: Notif, role: string | null): boolean {
   if (TYPES_RACE.has(notif.type)) return true;
   if (notif.type === "demande_race_nouvelle") return STAFF.has(role ?? "");
+  // Cimetière : demande de mort (staff) navigable ; mort approuvée (joueur) -> cimetière ;
+  // mort refusée -> non-cliquable (le message porte déjà la raison).
+  if (notif.type === "demande_mort_nouvelle") return STAFF.has(role ?? "");
+  if (notif.type === "mort_approuvee") return true;
+  if (notif.type === "mort_refusee") return false;
   if (notif.type === "banque") return true;
   // Convention : toute autre notif portant un reference_id pointe vers un perso.
   return notif.reference_id != null;
@@ -36,6 +41,18 @@ export function useNaviguerNotif() {
       // 1. Demande de race (organisation) → écran d'approbations
       if (notif.type === "demande_race_nouvelle") {
         if (STAFF.has(role ?? "")) navigate("/administration/approbations");
+        return;
+      }
+
+      // 1b. Demande de mort (organisation) -> écran de traitement du cimetière
+      if (notif.type === "demande_mort_nouvelle") {
+        if (STAFF.has(role ?? "")) navigate("/administration/cimetiere?seg=demandes");
+        return;
+      }
+
+      // 1c. Mort approuvée (joueur) -> le Cimetière des Héros (la stèle y est listée)
+      if (notif.type === "mort_approuvee") {
+        navigate("/cimetiere");
         return;
       }
 
