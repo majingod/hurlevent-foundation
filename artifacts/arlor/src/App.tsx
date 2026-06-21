@@ -21,6 +21,9 @@ import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
 import Connexion from "@/pages/Connexion";
 import Telechargements from "@/pages/Telechargements";
+import Apropos from "@/pages/Apropos";
+import Confidentialite from "@/pages/Confidentialite";
+import Faq from "@/pages/Faq";
 
 // Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
@@ -73,6 +76,9 @@ const AppRoutes = () => (
     <Route path="/encyclopedie" element={<Encyclopedie />} />
     <Route path="/evenements" element={<Evenements />} />
     <Route path="/telechargements" element={<Telechargements />} />
+    <Route path="/apropos" element={<Apropos />} />
+    <Route path="/confidentialite" element={<Confidentialite />} />
+    <Route path="/faq" element={<Faq />} />
     <Route path="/connexion" element={<Connexion />} />
 
     <Route
