@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Crown, Pencil, Trash2, Plus, Settings, ArrowLeft, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useProfil, type ProfilJoueur } from "@/contexts/ProfilContext";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import FluxSuppressionCimetiere from "@/components/suppression/FluxSuppressionCimetiere";
 
 // Tokens Hurlevent (écran plein écran autonome -> styles inline, indépendant du layout).
 const T = {
@@ -88,7 +90,7 @@ const miniBtn = (couleur: string): CSSProperties => ({
 });
 
 export default function QuiJoue() {
-  const { profils, switchProfil, ajouterProfil, renommerProfil, supprimerProfil, definirPrincipal, intentGestion } =
+  const { profils, switchProfil, ajouterProfil, renommerProfil, apresSuppressionProfil, definirPrincipal, intentGestion } =
     useProfil();
   const navigate = useNavigate();
   const [gestion, setGestion] = useState(intentGestion);
@@ -96,6 +98,7 @@ export default function QuiJoue() {
   const [ajout, setAjout] = useState(false);
   const [valeur, setValeur] = useState("");
   const [busy, setBusy] = useState(false);
+  const [profilASupprimer, setProfilASupprimer] = useState<ProfilJoueur | null>(null);
 
   const reset = () => {
     setEditionId(null);
@@ -131,15 +134,12 @@ export default function QuiJoue() {
     reset();
   };
 
-  const lancerSuppression = async (p: ProfilJoueur) => {
-    if (p.nb_personnages > 0) {
-      toast.error("Ce profil a des personnages : supprimez-les d'abord.");
-      return;
-    }
-    setBusy(true);
-    const r = await supprimerProfil(p.id);
-    setBusy(false);
-    if (!r.ok) toast.error(r.message ?? "Échec de la suppression.");
+  const lancerSuppression = (p: ProfilJoueur) => {
+    // La garde « supprimez d'abord les personnages » est retirée : le flux Cimetière
+    // (RPC `creer_steles_et_supprimer`) supprime les personnages en cascade.
+    // Le profil principal reste protégé (bouton masqué + backstop RPC PROFIL_PRINCIPAL).
+    if (p.est_principal) return;
+    setProfilASupprimer(p);
   };
 
   const definirCommePrincipal = async (p: ProfilJoueur) => {
@@ -471,6 +471,30 @@ export default function QuiJoue() {
           </button>
         </div>
       </div>
+
+      <Dialog
+        open={!!profilASupprimer}
+        onOpenChange={(o) => {
+          if (!o) setProfilASupprimer(null);
+        }}
+      >
+        <DialogContent className="max-w-lg border-border bg-card">
+          <DialogTitle className="sr-only">Supprimer le profil</DialogTitle>
+          {profilASupprimer && (
+            <FluxSuppressionCimetiere
+              cible="profil"
+              idCible={profilASupprimer.id}
+              titre={`Supprimer le profil « ${profilASupprimer.nom} »`}
+              onAnnuler={() => setProfilASupprimer(null)}
+              onSuccess={async () => {
+                const id = profilASupprimer.id;
+                setProfilASupprimer(null);
+                await apresSuppressionProfil(id);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

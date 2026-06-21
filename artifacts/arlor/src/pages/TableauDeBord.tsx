@@ -1,17 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import FluxSuppressionCimetiere from "@/components/suppression/FluxSuppressionCimetiere";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   CalendarDays,
   Loader2,
@@ -41,7 +35,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "@/hooks/use-toast";
 import {
   CarteEvenementJoueur,
   type EvenementPublie,
@@ -280,7 +273,6 @@ const TableauDeBord = () => {
   const { joueurId, rechargerProfils } = useProfil();
   const queryClient = useQueryClient();
   const [personnageASupprimer, setPersonnageASupprimer] = useState<PersonnageResume | null>(null);
-  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
   const [personnageATransferer, setPersonnageATransferer] = useState<PersonnageResume | null>(null);
   const navigate = useNavigate();
 
@@ -304,54 +296,13 @@ const TableauDeBord = () => {
     enabled: !!joueurId,
   });
 
-  const supprimerPersonnage = async () => {
-    if (!personnageASupprimer) return;
-
-    try {
-      setSuppressionEnCours(true);
-      const { data: deleted, error: deleteError } = await supabase
-        .from("personnages")
-        .delete()
-        .eq("id", personnageASupprimer.id)
-        .select("id");
-
-      // FK inscriptions_evenements (NO ACTION) : un perso inscrit a un evenement
-      // ne peut pas etre supprime tant qu'il est inscrit.
-      if (deleteError) {
-        if (deleteError.code === "23503") {
-          throw new Error(
-            "Ce personnage est inscrit à un événement. Désinscris-toi d'abord, puis réessaie."
-          );
-        }
-        throw deleteError;
-      }
-
-      // Garde-fou : si 0 ligne supprimee, ne jamais afficher un faux succes.
-      if (!deleted || deleted.length === 0) {
-        throw new Error(
-          "La suppression n'a pas pu être effectuée. Réessaie, ou contacte un animateur si le problème persiste."
-        );
-      }
-
-      queryClient.invalidateQueries({
-        predicate: (q) =>
-          Array.isArray(q.queryKey) && q.queryKey[0] === "mes-personnages",
-      });
-      void rechargerProfils();
-      toast({
-        title: "Personnage supprimé",
-        description: `Le personnage «${personnageASupprimer.nom}» a été supprimé.`,
-      });
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur lors de la suppression",
-        description: err.message,
-      });
-    } finally {
-      setSuppressionEnCours(false);
-      setPersonnageASupprimer(null);
-    }
+  const onSuppressionPersonnageReussie = () => {
+    queryClient.invalidateQueries({
+      predicate: (q) =>
+        Array.isArray(q.queryKey) && q.queryKey[0] === "mes-personnages",
+    });
+    void rechargerProfils();
+    setPersonnageASupprimer(null);
   };
 
   if (isLoading) {
@@ -575,23 +526,17 @@ const TableauDeBord = () => {
       )}
 
       <Dialog open={!!personnageASupprimer} onOpenChange={(open) => { if (!open) setPersonnageASupprimer(null); }}>
-        <DialogContent className="border-white/10 bg-slate-900">
-          <DialogHeader>
-            <DialogTitle className="text-gold font-heading">Supprimer le personnage</DialogTitle>
-            <DialogDescription className="text-white/70">
-              Êtes-vous sûr de vouloir supprimer le personnage «{personnageASupprimer?.nom}» ?
-              Cette action est irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPersonnageASupprimer(null)} disabled={suppressionEnCours}>
-              Annuler
-            </Button>
-            <Button variant="destructive" onClick={supprimerPersonnage} disabled={suppressionEnCours}>
-              {suppressionEnCours && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Supprimer définitivement
-            </Button>
-          </DialogFooter>
+        <DialogContent className="max-w-lg border-border bg-card">
+          <DialogTitle className="sr-only">Supprimer le personnage</DialogTitle>
+          {personnageASupprimer && (
+            <FluxSuppressionCimetiere
+              cible="personnage"
+              idCible={personnageASupprimer.id}
+              titre={`Supprimer ${personnageASupprimer.nom}`}
+              onAnnuler={() => setPersonnageASupprimer(null)}
+              onSuccess={onSuppressionPersonnageReussie}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

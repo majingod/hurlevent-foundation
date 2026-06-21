@@ -31,6 +31,7 @@ import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 import PersonnageJournal from "@/pages/PersonnageJournal";
 import Cimetiere from "@/pages/Cimetiere";
+import Compte from "@/pages/Compte";
 
 // Pages administration
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -119,6 +120,15 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <Cimetiere />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/compte"
+      element={
+        <ProtectedRoute>
+          <Compte />
         </ProtectedRoute>
       }
     />
