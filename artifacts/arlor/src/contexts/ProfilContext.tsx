@@ -29,7 +29,8 @@ interface ProfilContextType {
   rechargerProfils: () => Promise<void>;
   ajouterProfil: (nom: string) => Promise<{ ok: boolean; message?: string }>;
   renommerProfil: (id: string, nom: string) => Promise<{ ok: boolean; message?: string }>;
-  supprimerProfil: (id: string) => Promise<{ ok: boolean; message?: string }>;
+  /** Nettoyage local après suppression d'un profil par le flux Cimetière (RPC). */
+  apresSuppressionProfil: (id: string) => Promise<void>;
   definirPrincipal: (id: string) => Promise<{ ok: boolean; message?: string }>;
   reinitialiserProfil: (gestion?: boolean) => void;
   intentGestion: boolean;
@@ -44,7 +45,7 @@ const ProfilContext = createContext<ProfilContextType>({
   rechargerProfils: async () => {},
   ajouterProfil: async () => ({ ok: false }),
   renommerProfil: async () => ({ ok: false }),
-  supprimerProfil: async () => ({ ok: false }),
+  apresSuppressionProfil: async () => {},
   definirPrincipal: async () => ({ ok: false }),
   reinitialiserProfil: () => {},
   intentGestion: false,
@@ -186,19 +187,11 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
     [chargerProfils],
   );
 
-  const supprimerProfil = useCallback(
+  // La suppression elle-même passe désormais par le flux Cimetière
+  // (`creer_steles_et_supprimer`, RPC atomique avec cascade). Ici on ne fait que
+  // le nettoyage local de la session après un succès.
+  const apresSuppressionProfil = useCallback(
     async (id: string) => {
-      const cible = profils.find((p) => p.id === id);
-      if (!cible) return { ok: false, message: "Profil introuvable." };
-      if (cible.est_principal)
-        return { ok: false, message: "Le profil principal ne peut pas être supprimé." };
-      if (cible.nb_personnages > 0)
-        return {
-          ok: false,
-          message: "Ce profil a des personnages : supprimez-les d'abord.",
-        };
-      const { error } = await supabase.from("profils_joueur").delete().eq("id", id);
-      if (error) return { ok: false, message: error.message };
       if (user) {
         const stocke = sessionStorage.getItem(cleStorage(user.id));
         if (stocke === id) {
@@ -207,9 +200,8 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       await chargerProfils();
-      return { ok: true };
     },
-    [profils, user, chargerProfils],
+    [user, chargerProfils],
   );
 
   const definirPrincipal = useCallback(
@@ -250,7 +242,7 @@ export const ProfilProvider = ({ children }: { children: ReactNode }) => {
         rechargerProfils,
         ajouterProfil,
         renommerProfil,
-        supprimerProfil,
+        apresSuppressionProfil,
         definirPrincipal,
         reinitialiserProfil,
         intentGestion,

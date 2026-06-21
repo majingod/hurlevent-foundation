@@ -5972,6 +5972,10 @@ export type Database = {
         Args: { p_competence_id: string; p_personnage_id: string }
         Returns: Json
       }
+      apercu_suppression: {
+        Args: { p_cible: string; p_id_cible: string }
+        Returns: Json
+      }
       approuver_maitre_competence: {
         Args: { p_personnage_competence_id: string }
         Returns: Json
@@ -6087,6 +6091,10 @@ export type Database = {
       }
       creer_stele_directe: {
         Args: { p_epitaphe?: string; p_personnage_id: string }
+        Returns: Json
+      }
+      creer_steles_et_supprimer: {
+        Args: { p_cible: string; p_demandes?: Json; p_id_cible: string }
         Returns: Json
       }
       debloquer_compte: { Args: { p_compte_id: string }; Returns: Json }
