@@ -10,6 +10,7 @@ import {
   MonitorDown,
   BookOpen,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 
 /**
@@ -27,9 +28,6 @@ interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
-
-// Fichier à déposer plus tard dans artifacts/arlor/public/ (comme les icônes).
-const PDF_URL = "/manuel-hurlevent-2026.pdf";
 
 function detecterPlateforme(): Plateforme {
   if (typeof navigator === "undefined") return "desktop";
@@ -185,17 +183,18 @@ export default function Telechargements() {
             Manuel des règles 2026
           </CardTitle>
           <p className="pt-2 text-sm text-muted-foreground">
-            Le manuel complet en PDF, à lire hors-ligne ou à imprimer.
+            Le manuel complet des règles est hébergé sur le site officiel du GN.
           </p>
         </CardHeader>
         <CardContent>
           <a
-            href={PDF_URL}
-            download
+            href="https://gnhurlevent.my.canva.site/notre-document"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-transparent px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
           >
-            <Download className="h-[18px] w-[18px]" />
-            Télécharger le PDF
+            <ExternalLink className="h-[18px] w-[18px]" />
+            Consulter sur le site officiel
           </a>
         </CardContent>
       </Card>
