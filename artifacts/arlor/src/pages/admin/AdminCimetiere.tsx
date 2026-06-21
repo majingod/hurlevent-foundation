@@ -125,7 +125,7 @@ const AdminCimetiere = () => {
     setBusyId(id);
     try {
       const { data, error } = await supabase.rpc("approuver_mort_demande", {
-        p_demande_id: id,
+        p_stele_id: id,
         p_epitaphe_finale: epitapheFinale.trim() || undefined,
       });
       if (error) throw error;
@@ -148,7 +148,7 @@ const AdminCimetiere = () => {
     setBusyId(id);
     try {
       const { data, error } = await supabase.rpc("refuser_mort_demande", {
-        p_demande_id: id,
+        p_stele_id: id,
         p_raison: refuseRaison.trim(),
       });
       if (error) throw error;
