@@ -319,6 +319,39 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     },
   });
 
+  // CIMETIÈRE PR2 — admissibilité « Demander la mort » (joueur propriétaire, fiche route).
+  // (a) Demande déjà en attente ? RLS : le propriétaire lit ses propres demandes.
+  const { data: demandeMortAttente } = useQuery({
+    queryKey: ["demande-mort-attente", personnageId],
+    enabled: mode === "route" && !!personnageId,
+    gcTime: 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personnage_morts_demandes")
+        .select("id, epitaphe, created_at")
+        .eq("personnage_id", personnageId!)
+        .eq("statut", "en_attente")
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // (b) A vécu au moins un événement (statut 'present') ? Condition d'admissibilité.
+  const { data: aVecuEvenement } = useQuery({
+    queryKey: ["a-vecu-evenement", personnageId],
+    enabled: mode === "route" && !!personnageId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("inscriptions_evenements")
+        .select("id", { count: "exact", head: true })
+        .eq("personnage_id", personnageId!)
+        .eq("statut", "present");
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    },
+  });
+
   const competencesGroupees = useMemo(() => {
     // Grouping par competence_id (PR2 v39).
     // Conserve les rows pour permettre un rendu spécifique selon type_achat :
@@ -362,6 +395,36 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   // propriétaire ; l'admin passe par l'éditeur complet (wizard ?admin=1).
   const peutEditer = isOwner;
   const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
+
+  // CIMETIÈRE PR2 — état local du formulaire « Demander la mort ».
+  const [epitapheMort, setEpitapheMort] = useState("");
+  const [mortConfirmee, setMortConfirmee] = useState(false);
+  const [envoiMort, setEnvoiMort] = useState(false);
+  const handleDemanderMort = async () => {
+    if (!fiche || !mortConfirmee) return;
+    setEnvoiMort(true);
+    try {
+      const { data, error } = await supabase.rpc("creer_demande_mort", {
+        p_personnage_id: fiche.id,
+        p_epitaphe: epitapheMort.trim() || null,
+      });
+      if (error) throw error;
+      const res = data as { succes: boolean; erreur?: string; message?: string };
+      if (!res?.succes) {
+        toast.error(res?.erreur ?? "Impossible d'envoyer la demande.");
+        return;
+      }
+      toast.success(res.message ?? "Demande envoyée. Le staff va l'examiner.");
+      setEpitapheMort("");
+      setMortConfirmee(false);
+      await queryClient.invalidateQueries({ queryKey: ["demande-mort-attente", personnageId] });
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erreur lors de l'envoi de la demande.");
+    } finally {
+      setEnvoiMort(false);
+    }
+  };
 
   const traits = Array.isArray(fiche?.traits_raciaux_choisis)
     ? (fiche.traits_raciaux_choisis as unknown as Trait[])
@@ -788,6 +851,89 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           </TabsContent>
         )}
       </Tabs>
+
+      {mode === "route" && isOwner && etatEdition?.etat !== "mort" && (
+        <>
+          {demandeMortAttente ? (
+            <div className="rounded-xl border border-gold/35 bg-card p-4 flex gap-3 items-start">
+              <span className="text-xl mt-0.5">⏳</span>
+              <div className="min-w-0">
+                <p className="font-heading font-bold text-gold">Demande de mort en attente</p>
+                <p className="mt-1.5 text-sm text-foreground/90">
+                  Un animateur examinera bientôt ta demande pour <b>{fiche.nom}</b>. Tu seras notifié de la décision.
+                </p>
+                {demandeMortAttente.epitaphe && (
+                  <p className="mt-2.5 border-l-2 border-gold pl-3 text-sm italic text-muted-foreground">
+                    « {demandeMortAttente.epitaphe} »
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : !aVecuEvenement ? (
+            <div className="rounded-xl border border-border bg-card p-4 flex gap-3 items-start opacity-90">
+              <Skull className="h-5 w-5 shrink-0 mt-0.5 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="font-heading font-bold text-muted-foreground">Faire mourir ce personnage</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Tu pourras demander la mort de ce personnage <b>après avoir vécu au moins un événement</b> (GN).
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-red-800/50 bg-card overflow-hidden">
+              <div className="border-b border-border px-4 py-3 flex items-center gap-2">
+                <Skull className="h-5 w-5 shrink-0 text-red-400" />
+                <h3 className="font-heading font-bold text-red-300">Faire mourir ce personnage</h3>
+              </div>
+              <div className="px-4 py-4 space-y-4">
+                <p className="text-sm text-foreground/90 leading-relaxed">
+                  Demander que <b>{fiche.nom}</b> rejoigne le <b>Cimetière des Héros</b>. Un animateur examinera ta
+                  demande ; une fois approuvée, la fiche devient <b>définitivement en lecture seule</b> et une stèle
+                  commémorative est créée.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Épitaphe (facultatif) — quelques mots gravés sur la stèle
+                  </label>
+                  <Textarea
+                    value={epitapheMort}
+                    onChange={(e) => setEpitapheMort(e.target.value.slice(0, 280))}
+                    placeholder="« Tombé en défendant le pont de Glaceval… »"
+                    rows={3}
+                  />
+                  <p className="text-[11px] text-muted-foreground text-right">{epitapheMort.length}/280</p>
+                </div>
+                <div className="flex gap-2.5 items-start rounded-lg border border-red-800/50 bg-red-950/25 px-3 py-2.5">
+                  <span className="text-red-300 mt-0.5">⚠️</span>
+                  <p className="text-xs text-foreground/90 leading-snug">
+                    Action <b>définitive</b>. Le personnage ne pourra plus gagner d'XP, ni être modifié, ni revenir en jeu.
+                  </p>
+                </div>
+                <label className="flex gap-2.5 items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={mortConfirmee}
+                    onChange={(e) => setMortConfirmee(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-red-700"
+                  />
+                  <span className="text-sm text-foreground/90">
+                    Je comprends que cette demande est <b>définitive</b>.
+                  </span>
+                </label>
+                <Button
+                  variant="destructive"
+                  disabled={!mortConfirmee || envoiMort}
+                  onClick={handleDemanderMort}
+                  className="gap-2"
+                >
+                  <Skull className="h-4 w-4" />
+                  {envoiMort ? "Envoi…" : "Demander la mort"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {mode === 'route' && (
         <FicheImprimable
