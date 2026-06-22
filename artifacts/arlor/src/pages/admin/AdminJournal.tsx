@@ -30,6 +30,9 @@ const LABELS: Record<string, string> = {
   reouvrir_personnage: "Réouverture du personnage",
   changer_classe_personnage: "Changement de classe",
   creer_demande_race: "Demande de race",
+  bloquer: "Blocage",
+  desbloquer: "Déblocage",
+  purger: "Purge définitive",
 };
 const labelOf = (a: string | null) => (a && LABELS[a]) || a || "Action";
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", animateur: "Animateur" };
@@ -163,7 +166,7 @@ export default function AdminJournal() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-primary/10 bg-card/50">
-          <table className="w-full border-collapse min-w-[560px]">
+          <table className="w-full border-collapse min-w-[680px]">
             <thead>
               <tr className="text-left">
                 <th className="px-3 py-3 text-[0.7rem] uppercase tracking-wide text-gold font-semibold whitespace-nowrap">Date</th>
@@ -171,6 +174,7 @@ export default function AdminJournal() {
                 <th className="px-3 py-3 text-[0.7rem] uppercase tracking-wide text-gold font-semibold">Action</th>
                 <th className="px-3 py-3 text-[0.7rem] uppercase tracking-wide text-gold font-semibold">Cible</th>
                 <th className="px-3 py-3 text-[0.7rem] uppercase tracking-wide text-gold font-semibold">Détails</th>
+                <th className="px-3 py-3 text-[0.7rem] uppercase tracking-wide text-gold font-semibold">Raison</th>
               </tr>
             </thead>
             <tbody>
@@ -203,6 +207,13 @@ export default function AdminJournal() {
                             </span>
                           ))}
                         </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-sm text-foreground max-w-[200px]">
+                      {e.raison ? (
+                        e.raison
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                   </tr>
