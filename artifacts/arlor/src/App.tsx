@@ -24,6 +24,7 @@ import Telechargements from "@/pages/Telechargements";
 import Apropos from "@/pages/Apropos";
 import Confidentialite from "@/pages/Confidentialite";
 import Faq from "@/pages/Faq";
+import MisesAJour from "@/pages/MisesAJour";
 
 // Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
@@ -80,6 +81,7 @@ const AppRoutes = () => (
     <Route path="/apropos" element={<Apropos />} />
     <Route path="/confidentialite" element={<Confidentialite />} />
     <Route path="/faq" element={<Faq />} />
+    <Route path="/mises-a-jour" element={<MisesAJour />} />
     <Route path="/connexion" element={<Connexion />} />
 
     <Route
