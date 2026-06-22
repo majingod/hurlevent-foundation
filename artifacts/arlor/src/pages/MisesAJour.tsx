@@ -24,7 +24,7 @@ const JALONS: Jalon[] = [
   // ===== En cours =====
   {
     statut: "en_cours",
-    titre: "Page « Mises à jour »",
+    titre: "Page « Nouveautés »",
     description:
       "La page que tu lis : un espace de transparence sur l'évolution de la plateforme.",
   },
@@ -241,7 +241,7 @@ export default function MisesAJour() {
   return (
     <div className="container py-8 max-w-2xl">
       <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-3">
-        Mises à jour
+        Nouveautés
       </h1>
       <p className="text-muted-foreground leading-relaxed mb-6">
         Ce que l'on a livré, ce qui avance, et ce qui s'en vient sur la plateforme.
