@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
+import { useModeManuel } from "@/hooks/useModeManuel";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,7 @@ import RaceCard from "@/components/encyclopedie/RaceCard";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
-import { FicheMoteur, type ModeManuel, type ChampSchema } from "@/components/shared/FicheMoteur";
+import { FicheMoteur, type ChampSchema } from "@/components/shared/FicheMoteur";
 import { BlocPaliers } from "@/components/createur/DescriptionDepliable";
 import PastilleType from "@/components/shared/PastilleType";
 import type { BonusNiveau, PalierSort } from "@/utils/calculsMagie";
@@ -598,7 +599,7 @@ const ClassesSection = ({
   competences: Competence[];
 }) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [mode, setMode] = useState<ModeManuel>("integral");
+  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
   const competencesParId: Record<string, string> = Object.fromEntries(
     competences.map((c) => [c.id, c.nom ?? ""])
   );
