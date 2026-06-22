@@ -23,6 +23,7 @@ import RaceCard from "@/components/encyclopedie/RaceCard";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
+import { FicheMoteur, type ModeManuel, type ChampSchema } from "@/components/shared/FicheMoteur";
 import { BlocPaliers } from "@/components/createur/DescriptionDepliable";
 import PastilleType from "@/components/shared/PastilleType";
 import type { BonusNiveau, PalierSort } from "@/utils/calculsMagie";
@@ -46,6 +47,7 @@ interface Classe {
   nom: string | null;
   emoji: string | null;
   description: string | null;
+  resume_condense: string | null;
   pv_depart: number | null;
   ps_depart: number | null;
   competences_gratuites: Json | null;
@@ -201,6 +203,7 @@ const Encyclopedie = () => {
   const [races, setRaces] = useState<Race[]>([]);
   const [traits, setTraits] = useState<TraitRacial[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
+  const [schemaClasse, setSchemaClasse] = useState<ChampSchema[]>([]);
   const [competences, setCompetences] = useState<Competence[]>([]);
   const [sorts, setSorts] = useState<Sort[]>([]);
   const [prieres, setPrieres] = useState<Priere[]>([]);
@@ -230,7 +233,7 @@ const Encyclopedie = () => {
       ] = await Promise.all([
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
         supabase.from("traits_raciaux").select(`id, nom, description, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
-        supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
+        supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, resume_condense, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
         supabase.from("vue_competences_encyclopedie").select("*").eq("est_actif", true).order("categorie").order("nom"),
         supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
         supabase.from("prieres").select("*").eq("est_actif", true).order("domaine").order("niveau").order("nom"),
@@ -261,6 +264,12 @@ const Encyclopedie = () => {
       setCreatures(bestRes.data ?? []);
       setLoreEntries(loreRes.data ?? []);
       setPieges(piegesRes.data ?? []);
+      const schemaClasseRes = await supabase
+        .from("fiches_schemas")
+        .select("champs")
+        .eq("categorie", "classe")
+        .maybeSingle();
+      setSchemaClasse((schemaClasseRes.data?.champs as ChampSchema[]) ?? []);
       setLoading(false);
     };
     fetchAll();
@@ -341,7 +350,7 @@ const Encyclopedie = () => {
         {active === "recherche" && <RechercheSection onSelectResult={handleSelectResult} />}
         {active === "races" && <RacesSection races={races} searchQuery={search} />}
         {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} />}
-        {active === "classes" && <ClassesSection classes={classes} searchQuery={search} />}
+        {active === "classes" && <ClassesSection classes={classes} searchQuery={search} schema={schemaClasse} competences={competences} />}
         {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
         {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} />}
         {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} />}
@@ -577,12 +586,26 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
   );
 };
 
-const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQuery: string }) => {
+const ClassesSection = ({
+  classes,
+  searchQuery,
+  schema,
+  competences,
+}: {
+  classes: Classe[];
+  searchQuery: string;
+  schema: ChampSchema[];
+  competences: Competence[];
+}) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useState<ModeManuel>("integral");
+  const competencesParId: Record<string, string> = Object.fromEntries(
+    competences.map((c) => [c.id, c.nom ?? ""])
+  );
   const filtered = filterByText(classes, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
 
   const toggle = (id: string) => {
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -593,20 +616,25 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Classes de Destéa</h2>
-      {filtered.length === 0 ? <NoResults /> : (
+      <ManuelGlobalSwitch
+        allOpen={mode === "integral"}
+        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+        title="Texte du manuel"
+        subtitle="Intégral (verbatim du manuel) ou abrégé"
+      />
+      {filtered.length === 0 ? (
+        <NoResults />
+      ) : (
         <div className="grid gap-6">
           {filtered.map((c) => {
             const isOpen = expanded.has(c.id);
-            const comps: any[] = Array.isArray(c.competences_gratuites)
-              ? c.competences_gratuites
-              : JSON.parse((c.competences_gratuites as string) ?? "[]");
             return (
               <div
                 key={c.id}
                 className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
                 onClick={() => toggle(c.id)}
               >
-                {/* Header — always visible */}
+                {/* Header — densité carte (moteur) */}
                 <div className="px-6 py-5">
                   <div className="flex items-start gap-4">
                     <div className="text-5xl flex-shrink-0 leading-none">{c.emoji}</div>
@@ -618,61 +646,33 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
                           className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                         />
                       </div>
-                      <div className="flex gap-5 text-sm mt-2 text-foreground/80">
-                        <span>❤️ {c.pv_depart ?? "—"} PV</span>
-                        <span>✨ {c.ps_depart ?? "—"} PS</span>
+                      <div className="mt-3">
+                        <FicheMoteur
+                          schema={schema}
+                          entite={c as Record<string, any>}
+                          densite="carte"
+                          mode={mode}
+                          competencesParId={competencesParId}
+                        />
                       </div>
-                      {comps.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-xs font-semibold mb-2 tracking-wider" style={{ color: "#c9a84c", fontVariant: "small-caps" }}>
-                            ⭐ COMPÉTENCES GRATUITES
-                          </p>
-                          <div className="space-y-1">
-                            {comps.map((comp, i) => (
-                              <div key={i} className="flex items-center gap-2 text-sm text-foreground/80">
-                                <span className="flex-shrink-0">⭐</span>
-                                <span>{String(comp)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Accordion body */}
+                {/* Body — densité encyclo (moteur) */}
                 <div
                   className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{ maxHeight: isOpen ? "1200px" : "0", opacity: isOpen ? 1 : 0 }}
+                  style={{ maxHeight: isOpen ? "2000px" : "0", opacity: isOpen ? 1 : 0 }}
                 >
-                  {c.description && (
-                    <div className="px-6 pb-4 border-t border-gold/30 pt-4">
-                      <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">{c.description}</p>
-                    </div>
-                  )}
-                  {comps.length > 0 && (
-                    <div className="px-6 pb-5">
-                      <p
-                        className="text-xs font-semibold mb-3 tracking-wider"
-                        style={{ color: "#c9a84c", fontVariant: "small-caps" }}
-                      >
-                        ⭐ COMPÉTENCES GRATUITES
-                      </p>
-                      <div className="space-y-2">
-                        {comps.map((comp, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-3 rounded-md border border-gold/30 px-4 py-3"
-                            style={{ background: "rgba(201,168,76,0.06)" }}
-                          >
-                            <span className="flex-shrink-0">⭐</span>
-                            <span className="text-sm text-foreground/90">{String(comp)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <div className="px-6 pb-5 border-t border-gold/30 pt-4">
+                    <FicheMoteur
+                      schema={schema}
+                      entite={c as Record<string, any>}
+                      densite="encyclo"
+                      mode={mode}
+                      competencesParId={competencesParId}
+                    />
+                  </div>
                 </div>
 
                 {/* Footer */}
