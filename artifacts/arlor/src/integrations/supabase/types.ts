@@ -5013,6 +5013,7 @@ export type Database = {
           created_at: string | null
           details: Json | null
           id: string | null
+          raison: string | null
         }
         Insert: {
           acteur_id?: string | null
@@ -5025,6 +5026,7 @@ export type Database = {
           created_at?: string | null
           details?: Json | null
           id?: string | null
+          raison?: never
         }
         Update: {
           acteur_id?: string | null
@@ -5037,6 +5039,7 @@ export type Database = {
           created_at?: string | null
           details?: Json | null
           id?: string | null
+          raison?: never
         }
         Relationships: []
       }
@@ -6001,9 +6004,18 @@ export type Database = {
         Args: { p_etape_courante: number; p_personnage_id: string }
         Returns: Json
       }
-      bloquer_compte: { Args: { p_compte_id: string }; Returns: Json }
-      bloquer_personnage: { Args: { p_personnage_id: string }; Returns: Json }
-      bloquer_profil: { Args: { p_profil_id: string }; Returns: Json }
+      bloquer_compte: {
+        Args: { p_compte_id: string; p_raison?: string }
+        Returns: Json
+      }
+      bloquer_personnage: {
+        Args: { p_personnage_id: string; p_raison?: string }
+        Returns: Json
+      }
+      bloquer_profil: {
+        Args: { p_profil_id: string; p_raison?: string }
+        Returns: Json
+      }
       calculer_cout_xp_magie: {
         Args: {
           p_cout_xp_base: number
@@ -6265,10 +6277,19 @@ export type Database = {
         Returns: boolean
       }
       profils_du_compte: { Args: { c: string }; Returns: string[] }
-      purger_compte: { Args: { p_compte_id: string }; Returns: Json }
+      purger_compte: {
+        Args: { p_compte_id: string; p_raison?: string }
+        Returns: Json
+      }
       purger_notifications_anciennes: { Args: never; Returns: number }
-      purger_personnage: { Args: { p_personnage_id: string }; Returns: Json }
-      purger_profil: { Args: { p_profil_id: string }; Returns: Json }
+      purger_personnage: {
+        Args: { p_personnage_id: string; p_raison?: string }
+        Returns: Json
+      }
+      purger_profil: {
+        Args: { p_profil_id: string; p_raison?: string }
+        Returns: Json
+      }
       recalculer_ps_max: {
         Args: { p_personnage_id: string }
         Returns: undefined

@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 type Role = "joueur" | "animateur" | "admin";
 
@@ -268,8 +269,10 @@ const AdminJoueurs = () => {
     titre: string;
     description: string;
     danger: boolean;
-    action: () => void;
+    requireMotif?: boolean;
+    action: (raison?: string) => void;
   } | null>(null);
+  const [motif, setMotif] = useState("");
   const [purge, setPurge] = useState<{
     type: PurgeType;
     id: string;
@@ -278,6 +281,7 @@ const AdminJoueurs = () => {
     etape: 1 | 2;
     okCompris: boolean;
     enCours: boolean;
+    raison: string;
   } | null>(null);
 
   const { data: comptes, isLoading } = useQuery({
@@ -402,11 +406,15 @@ const AdminJoueurs = () => {
     id: string,
     libelleSucces: string,
     perso: boolean,
+    raison?: string,
   ) => {
     try {
       const { data, error } = await supabase.rpc(
         fn as "bloquer_personnage",
-        { [paramNom]: id } as { p_personnage_id: string },
+        {
+          [paramNom]: id,
+          ...(raison !== undefined ? { p_raison: raison } : {}),
+        } as { p_personnage_id: string },
       );
       if (error) throw error;
       if (perso) {
@@ -434,10 +442,11 @@ const AdminJoueurs = () => {
       c.isActive
         ? {
             danger: true,
+            requireMotif: true,
             titre: `Bloquer le compte « ${c.nom} » ?`,
             description: `⚠️ Le joueur ne pourra plus se connecter (connexion bloquée). Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront aussi bloqués.`,
-            action: () =>
-              lancerBlocage("bloquer_compte", "p_compte_id", c.id, "Compte bloqué.", false),
+            action: (raison) =>
+              lancerBlocage("bloquer_compte", "p_compte_id", c.id, "Compte bloqué.", false, raison),
           }
         : {
             danger: false,
@@ -452,10 +461,11 @@ const AdminJoueurs = () => {
       p.estActif
         ? {
             danger: true,
+            requireMotif: true,
             titre: `Bloquer le profil « ${p.nom} » ?`,
             description: `Ses ${p.persos.length} personnage(s) seront aussi bloqués. Le compte reste actif.`,
-            action: () =>
-              lancerBlocage("bloquer_profil", "p_profil_id", p.id, "Profil bloqué.", false),
+            action: (raison) =>
+              lancerBlocage("bloquer_profil", "p_profil_id", p.id, "Profil bloqué.", false, raison),
           }
         : {
             danger: false,
@@ -470,16 +480,18 @@ const AdminJoueurs = () => {
       pe.estActif
         ? {
             danger: true,
+            requireMotif: true,
             titre: `Bloquer « ${pe.nom ?? "Sans nom"} » ?`,
             description:
               "Le personnage passera en lecture seule côté joueur (visible, non modifiable, non supprimable).",
-            action: () =>
+            action: (raison) =>
               lancerBlocage(
                 "bloquer_personnage",
                 "p_personnage_id",
                 pe.id,
                 "Personnage bloqué.",
                 true,
+                raison,
               ),
           }
         : {
@@ -522,6 +534,7 @@ const AdminJoueurs = () => {
         etape: 1,
         okCompris: false,
         enCours: false,
+        raison: "",
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur réseau.");
@@ -544,7 +557,9 @@ const AdminJoueurs = () => {
     try {
       const { data, error } = await supabase.rpc(
         fnParType[purge.type] as "purger_compte",
-        { [paramParType[purge.type]]: purge.id } as { p_compte_id: string },
+        { [paramParType[purge.type]]: purge.id, p_raison: purge.raison } as {
+          p_compte_id: string;
+        },
       );
       if (error) throw error;
       const ret = (data ?? {}) as RpcStandard;
@@ -959,7 +974,10 @@ const AdminJoueurs = () => {
       <AlertDialog
         open={confirmer !== null}
         onOpenChange={(o) => {
-          if (!o) setConfirmer(null);
+          if (!o) {
+            setConfirmer(null);
+            setMotif("");
+          }
         }}
       >
         <AlertDialogContent>
@@ -971,6 +989,23 @@ const AdminJoueurs = () => {
               {confirmer?.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmer?.requireMotif && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Raison du blocage{" "}
+                <span className="text-muted-foreground">(obligatoire)</span>
+              </label>
+              <Textarea
+                value={motif}
+                onChange={(e) => setMotif(e.target.value)}
+                placeholder="Ex. Comportement abusif signalé le 20 juin"
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                Minimum 5 caractères. Le déblocage, lui, n’en demande pas.
+              </p>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
@@ -979,7 +1014,8 @@ const AdminJoueurs = () => {
                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   : undefined
               }
-              onClick={() => confirmer?.action()}
+              disabled={confirmer?.requireMotif && motif.trim().length < 5}
+              onClick={() => confirmer?.action(motif)}
             >
               Confirmer
             </AlertDialogAction>
@@ -1027,6 +1063,21 @@ const AdminJoueurs = () => {
                   Cette suppression est définitive et irréversible.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">
+                  Raison de la purge{" "}
+                  <span className="text-muted-foreground">(obligatoire)</span>
+                </label>
+                <Textarea
+                  value={purge.raison}
+                  onChange={(e) =>
+                    setPurge((p) => (p ? { ...p, raison: e.target.value } : p))
+                  }
+                  placeholder="Ex. Demande RGPD du joueur, dossier #42"
+                  rows={2}
+                />
+                <p className="text-xs text-muted-foreground">Minimum 5 caractères.</p>
+              </div>
               <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border px-3 py-3 text-sm">
                 <input
                   type="checkbox"
@@ -1055,7 +1106,11 @@ const AdminJoueurs = () => {
                   ← Retour
                 </AlertDialogCancel>
                 <AlertDialogAction
-                  disabled={!purge.okCompris || purge.enCours}
+                  disabled={
+                    !purge.okCompris ||
+                    purge.enCours ||
+                    purge.raison.trim().length < 5
+                  }
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={(e) => {
                     e.preventDefault();
