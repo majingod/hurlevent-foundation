@@ -453,7 +453,7 @@ const AdminJoueurs = () => {
             titre: `Débloquer le compte « ${c.nom} » ?`,
             description: `Le joueur pourra de nouveau se connecter. Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront débloqués.`,
             action: () =>
-              lancerBlocage("desbloquer_compte", "p_compte_id", c.id, "Compte débloqué.", false),
+              lancerBlocage("debloquer_compte", "p_compte_id", c.id, "Compte débloqué.", false),
           },
     );
   const confProfil = (p: ProfilRow) =>
@@ -472,7 +472,7 @@ const AdminJoueurs = () => {
             titre: `Débloquer le profil « ${p.nom} » ?`,
             description: `Ses ${p.persos.length} personnage(s) seront débloqués.`,
             action: () =>
-              lancerBlocage("desbloquer_profil", "p_profil_id", p.id, "Profil débloqué.", false),
+              lancerBlocage("debloquer_profil", "p_profil_id", p.id, "Profil débloqué.", false),
           },
     );
   const confPerso = (pe: PersoRow) =>
@@ -500,7 +500,7 @@ const AdminJoueurs = () => {
             description: "Le personnage redeviendra modifiable par le joueur.",
             action: () =>
               lancerBlocage(
-                "desbloquer_personnage",
+                "debloquer_personnage",
                 "p_personnage_id",
                 pe.id,
                 "Personnage débloqué.",
