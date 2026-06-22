@@ -24,7 +24,9 @@ export function calculerCoutPS(coutXp: number): number {
 }
 
 // --- Calcul du coût XP total d'un sort ou d'une prière ---
-// Formule : (cout_zone + cout_portee + cout_duree + niveau) × cout_xp_base
+// Formule : CEIL((cout_zone + cout_portee + cout_duree + niveau) × cout_xp_base)
+// ⚠️ MIROIR EXACT de la fonction SQL public.calculer_cout_xp_magie (CEIL) :
+// avec un coût de base 0.5 ou 1.5, la DB arrondit à l'entier supérieur.
 export function calculerCoutXP(
   zoneChoisie: string,
   porteeChoisie: string,
@@ -35,7 +37,7 @@ export function calculerCoutXP(
   const coutZone   = COUT_ZONE[zoneChoisie]                              ?? 0;
   const coutPortee = PORTEES.find(p => p.label === porteeChoisie)?.cout  ?? 0;
   const coutDuree  = DUREES.find(d => d.label === dureeChoisie)?.cout    ?? 0;
-  return (coutZone + coutPortee + coutDuree + niveau) * coutXpBase;
+  return Math.ceil((coutZone + coutPortee + coutDuree + niveau) * coutXpBase);
 }
 
 // --- Coût XP maximum autorisé pour un personnage ---
@@ -83,4 +85,138 @@ export function getNoteZone(zoneEffet: string): string | null {
 // --- Vérification si la zone ne permet qu'un seul choix (pré-sélection automatique) ---
 export function isZoneUnique(zoneEffet: string): boolean {
   return ["Personnelle", "1 cible", "1 cible (mort)", "1 cible (objet)"].includes(zoneEffet);
+}
+
+// ============================================================
+// PALIERS / TRONC / BONUS PAR NIVEAU — colonnes dérivées (PR #361)
+// Colonnes jsonb sorts/prieres castées via ces interfaces locales :
+// on ne régénère pas les types Supabase pour ces champs.
+// ============================================================
+
+export interface PalierSort {
+  niveau: number;
+  libelle: string;
+  texte: string;
+}
+
+export interface BonusNiveauFormule {
+  variable: "duree" | "cibles" | "rayon" | "questions";
+  seuil: number;       // 0 = chaque niveau
+  increment: number;
+  unite: string;       // "minute" | "cible" | "pied" | "question"
+  gratuit: boolean;
+  condition: string | null;
+}
+
+export interface BonusNiveau {
+  texte: string;
+  formule: BonusNiveauFormule | null;
+}
+
+/** n unités bonus au niveau donné ; null si formule absente ou n ≤ 0. */
+export const calculerBonusNiveau = (
+  bonus: BonusNiveau | null | undefined,
+  niveau: number,
+): { n: number; unite: string; gratuit: boolean } | null => {
+  const f = bonus?.formule;
+  if (!f) return null;
+  const n = (f.seuil === 0 ? niveau : Math.max(0, niveau - f.seuil)) * f.increment;
+  return n > 0 ? { n, unite: f.unite, gratuit: f.gratuit } : null;
+};
+
+// ============================================================
+// EFFETS CALCULÉS — moteur template + vars (PR-1, s162)
+// Affiche le résultat final d'un sort/prière (nombres calculés selon le niveau
+// de l'instance) à la place de la prose « moitié du niveau arrondi sup. ».
+// Fonctions PURES, sans React (réutilisées par É6/É7 plus tard).
+// ============================================================
+
+export interface VarEffet {
+  fois?: number;
+  div?: number;
+  arrondi?: "sup" | "inf" | "aucun";
+  plus?: number;
+  min?: number;
+  max?: number;
+}
+
+export interface EffetInstance {
+  template: string;
+  vars?: Record<string, VarEffet>;
+  paliers_mode?: "remplace" | "cumule";
+}
+
+/** Segment de texte rendu : `fort` = mis en évidence (or, issu de `**…**`). */
+export interface SegmentEffet {
+  texte: string;
+  fort: boolean;
+}
+
+/**
+ * Valeur calculée d'une var, dans l'ordre :
+ *   x = niveau × (fois ?? 1) → x = x / (div ?? 1) → arrondi
+ *   → x = x + (plus ?? 0) → clamp [min, max] si fournis.
+ */
+export function calculerVarEffet(v: VarEffet, niveau: number): number {
+  let x = niveau * (v.fois ?? 1);
+  x = x / (v.div ?? 1);
+  const arrondi = v.arrondi ?? "sup";
+  if (arrondi === "sup") x = Math.ceil(x);
+  else if (arrondi === "inf") x = Math.floor(x);
+  x = x + (v.plus ?? 0);
+  if (v.min != null) x = Math.max(v.min, x);
+  if (v.max != null) x = Math.min(v.max, x);
+  return x;
+}
+
+/**
+ * Rend un `effet_instance` en segments prêts à afficher, ou `null` (→ fallback
+ * vers l'affichage description/paliers actuel).
+ *
+ * Substitutions dans l'ordre : `{paliers}`, `{palier}`, `{niveau}`, puis chaque
+ * `{nomvar}` / `{s:nomvar}` des `vars`. Palier actif = dernier palier (trié
+ * croissant) dont `niveau <= niveau`. Texte final trimé vide → `null`.
+ */
+export function rendreEffetInstance(
+  effet: EffetInstance | null | undefined,
+  paliers: PalierSort[] | null | undefined,
+  niveau: number,
+): SegmentEffet[] | null {
+  if (!effet?.template) return null;
+
+  const tries = (paliers ?? []).slice().sort((a, b) => a.niveau - b.niveau);
+  const atteints = tries.filter((p) => p.niveau <= niveau);
+  const palierActif = atteints.length ? atteints[atteints.length - 1] : null;
+
+  // Remplacement de toutes les occurrences d'un token littéral.
+  const sub = (s: string, token: string, valeur: string) => s.split(token).join(valeur);
+
+  let texte = effet.template;
+
+  const textePaliers =
+    effet.paliers_mode === "cumule" && atteints.length
+      ? " " + atteints.map((p) => p.texte).join(" ")
+      : "";
+  texte = sub(texte, "{paliers}", textePaliers);
+  texte = sub(texte, "{palier}", palierActif?.texte ?? "");
+  texte = sub(texte, "{niveau}", String(niveau));
+
+  for (const [nom, v] of Object.entries(effet.vars ?? {})) {
+    const valeur = calculerVarEffet(v, niveau);
+    texte = sub(texte, `{s:${nom}}`, valeur > 1 ? "s" : "");
+    texte = sub(texte, `{${nom}}`, String(valeur));
+  }
+
+  const texteFinal = texte.trim();
+  if (!texteFinal) return null;
+
+  // Parse des segments `**…**` → fort sur les portions internes (index impair).
+  const segments: SegmentEffet[] = [];
+  texteFinal.split("**").forEach((part, i) => {
+    if (part === "") return;
+    segments.push({ texte: part, fort: i % 2 === 1 });
+  });
+
+  if (segments.length === 0) return null;
+  return segments;
 }
