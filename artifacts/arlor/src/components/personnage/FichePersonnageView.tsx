@@ -393,7 +393,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     try {
       const { data, error } = await supabase.rpc("creer_demande_mort", {
         p_personnage_id: fiche.id,
-        p_epitaphe: epitapheMort.trim() || null,
+        p_epitaphe: epitapheMort.trim(),
       });
       if (error) throw error;
       const res = data as { succes: boolean; erreur?: string; message?: string };
