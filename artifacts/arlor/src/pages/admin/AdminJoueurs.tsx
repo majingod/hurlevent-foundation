@@ -557,7 +557,7 @@ const AdminJoueurs = () => {
     try {
       const { data, error } = await supabase.rpc(
         fnParType[purge.type] as "purger_compte",
-        { [paramParType[purge.type]]: purge.id, p_raison: purge.raison } as {
+        { [paramParType[purge.type]]: purge.id, p_raison: purge.raison } as unknown as {
           p_compte_id: string;
         },
       );
