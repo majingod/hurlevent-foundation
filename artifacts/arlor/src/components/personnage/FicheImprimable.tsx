@@ -1,4 +1,5 @@
-import { calculerCoutPS, calculerCoutXP } from "@/utils/calculsMagie";
+import { calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
+import type { PalierSort, EffetInstance } from "@/utils/calculsMagie";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { resoudreChoixAffichage } from "./sections/helpers";
@@ -140,6 +141,38 @@ export const FicheImprimable = ({
     return d ? <div className="fp-row fp-desc">{d}</div> : null;
   };
 
+  const palierActifRow = (paliers: PalierSort[] | null | undefined, niveau: number) => {
+    if (!paliers || paliers.length === 0) return null;
+    const atteints = paliers.filter((p) => p.niveau <= niveau);
+    if (atteints.length === 0) return null;
+    const actif = atteints[atteints.length - 1];
+    return (
+      <div className="fp-row">
+        <strong>Effet ({actif.libelle}) :</strong> {actif.texte}
+      </div>
+    );
+  };
+
+  // Effets calculés (s162) : si l'instance a un effet_instance rendu, ligne
+  // statique « Effets : … » (rendu print sobre, sans pastille ni encadré) ;
+  // sinon repli sur palierActifRow (comportement actuel).
+  const effetRow = (
+    effet: EffetInstance | null | undefined,
+    paliers: PalierSort[] | null | undefined,
+    niveau: number,
+  ) => {
+    const segments = rendreEffetInstance(effet, paliers, niveau);
+    if (!segments) return null;
+    return (
+      <div className="fp-row">
+        <strong>Effets :</strong>{" "}
+        {segments.map((seg, i) =>
+          seg.fort ? <strong key={i}>{seg.texte}</strong> : <span key={i}>{seg.texte}</span>,
+        )}
+      </div>
+    );
+  };
+
   // Pastille XP : 0 ou absent => "Gratuit" (zéro ambiguïté, convention compétences).
   const xpBadge = (v: number | null | undefined) =>
     v == null || Number(v) === 0 ? "Gratuit" : `${v} XP`;
@@ -255,6 +288,7 @@ export const FicheImprimable = ({
         {s.duree_choisie && <div className="fp-row"><span className="fp-k">Durée :</span> {s.duree_choisie}</div>}
         <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
         {descRow(s.sort_description_courte, s.sort_description)}
+        {effetRow(s.effet_instance, s.paliers, s.niveau_sort) ?? palierActifRow(s.paliers, s.niveau_sort)}
       </div>
     );
   };
@@ -284,6 +318,7 @@ export const FicheImprimable = ({
           <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
         )}
         {descRow(p.priere_description_courte, p.priere_description)}
+        {effetRow(p.effet_instance, p.paliers, p.niveau_priere) ?? palierActifRow(p.paliers, p.niveau_priere)}
       </div>
     );
   };
@@ -479,10 +514,14 @@ export const FicheImprimable = ({
                 </div>
                 {a.cible && <div className="fp-row"><span className="fp-k">Cible :</span> {a.cible}</div>}
                 {a.cout_ps != null && <div className="fp-row"><span className="fp-k">Coût :</span> {a.cout_ps} PS</div>}
+                {a.duree && <div className="fp-row"><span className="fp-k">Durée :</span> {a.duree}</div>}
                 {a.runes_requises && a.runes_requises.length > 0 && (
                   <div className="fp-row"><span className="fp-k">Runes :</span> {a.runes_requises.join(" · ")}</div>
                 )}
                 {a.effet && <div className="fp-row"><span className="fp-k">Effet :</span> {a.effet}</div>}
+                {a.effet_maitrise && (
+                  <div className="fp-row"><span className="fp-k">⭐ Maîtrise :</span> {a.cout_ps_maitrise != null ? `${a.effet_maitrise} (${a.cout_ps_maitrise} PS)` : a.effet_maitrise}</div>
+                )}
                 {descRow(a.description, a.texte_manuel)}
               </div>
             ))}

@@ -1,72 +1,123 @@
 import { useEffect, useMemo, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import ReligionDetails from "@/components/shared/ReligionDetails";
+import ModaleChangementClasse, {
+  type DChangementClasse,
+} from "@/components/createur/ModaleChangementClasse";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
-
-interface Etape4Form {
-  classe_id: string;
-}
 
 interface CompetenceGratuite {
   niveau: number;
   competence_id: string;
 }
 
+interface NiveauInfo {
+  niveau: number;
+  cout_xp: number;
+  description?: string;
+}
+
 interface CompetenceInfo {
   id: string;
   nom: string;
   type_choix: string | null;
+  type_achat: string | null;
+  niveaux_parsed: NiveauInfo[];
+}
+
+// Forme du `donnees` renvoye par changer_classe_personnage en dry_run (apercu).
+interface ApercuChangementClasse {
+  classe_avant: string;
+  classe_apres: string;
+  perdues: {
+    nom: string;
+    raison: string;
+    xp: number;
+    niveaux: { niv: number; xp: number; gratuit: boolean }[];
+  }[];
+  dormants: { type: string; nom: string; niveau: number; xp: number }[];
+  maitre_en_attente: { nom: string; niveau: number }[];
+  offertes: { nom: string; type: string; xp: number }[];
+  multi_choix: {
+    competence_id: string;
+    nom: string;
+    defaut?: string | null;
+    options: { choix_achat: string; label: string; xp: number }[];
+  }[];
+  xp_rembourse: number;
 }
 
 const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
-  const [religionManuelOpen, setReligionManuelOpen] = useState(false);
+  const [classeIdSelectionnee, setClasseIdSelectionnee] = useState<string>("");
+  const [classesOuvertes, setClassesOuvertes] = useState<Set<string>>(new Set());
+  const [manuelClasses, setManuelClasses] = useState<Set<string>>(new Set());
+  const [detailsComp, setDetailsComp] = useState<Set<string>>(new Set());
+  const [fichesReligion, setFichesReligion] = useState<Set<string>>(new Set());
+  const [manuelReligion, setManuelReligion] = useState<Set<string>>(new Set());
+  const [legendeOuverte, setLegendeOuverte] = useState(false);
   const [choixParCompetence, setChoixParCompetence] = useState<
     Record<string, string>
   >({});
   const [devenirCroyant, setDevenirCroyant] = useState(true);
 
-  const { control, handleSubmit, reset, watch } = useForm<Etape4Form>({
-    defaultValues: { classe_id: "" },
-  });
+  // --- Changement de classe (perso ayant déjà une classe) ---
+  const [modaleOpen, setModaleOpen] = useState(false);
+  const [previewDonnees, setPreviewDonnees] = useState<ApercuChangementClasse | null>(null);
+  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [pendingCtx, setPendingCtx] = useState<{
+    classeId: string;
+    choixFinaux: Record<string, string>;
+    religionChoisie: string | null;
+    religionInitiale: string | null;
+  } | null>(null);
 
-  const classeIdSelectionnee = watch("classe_id");
+  // Pattern Set manuel (gotcha s152 : Radix Accordion a enfants interactifs proscrit).
+  const toggleSet = (
+    setter: (updater: (prev: Set<string>) => Set<string>) => void,
+    key: string
+  ) =>
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const { data: perso } = useQuery({
     queryKey: ["v2-perso-classe", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("personnages")
-        .select("classe_id, race_id, religion_id, est_croyant")
+        .select("classe_id, race_id, religion_id, est_croyant, nom")
         .eq("id", personnageId)
         .single();
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: compNamesActuelles = [] } = useQuery({
+    queryKey: ["v2-comp-names-actuelles", personnageId],
+    enabled: !!perso?.classe_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personnage_competences")
+        .select("competences(nom)")
+        .eq("personnage_id", personnageId);
+      if (error) throw error;
+      const noms = (data ?? [])
+        .map((r: any) => r.competences?.nom)
+        .filter(Boolean) as string[];
+      return Array.from(new Set(noms));
     },
   });
 
@@ -76,7 +127,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       const { data, error } = await supabase
         .from("classes")
         .select(
-          "id, nom, description, emoji, role_combat, pv_depart, ps_depart, competences_gratuites"
+          "id, nom, description, description_courte, emoji, role_combat, pv_depart, ps_depart, competences_gratuites"
         )
         .eq("est_actif", true)
         .order("nom");
@@ -114,8 +165,8 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   );
 
   const competencesGratuites: CompetenceGratuite[] = useMemo(() => {
-    const raw = (classeSelectionnee as any)?.competences_gratuites;
-    return Array.isArray(raw) ? (raw as CompetenceGratuite[]) : [];
+    const raw = classeSelectionnee?.competences_gratuites;
+    return Array.isArray(raw) ? (raw as unknown as CompetenceGratuite[]) : [];
   }, [classeSelectionnee]);
 
   const tousLesCompetenceIds = useMemo(() => {
@@ -140,10 +191,16 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("competences")
-        .select("id, nom, type_choix")
+        .select("id, nom, type_choix, type_achat, niveaux")
         .in("id", tousLesCompetenceIds);
       if (error) throw error;
-      return (data ?? []) as CompetenceInfo[];
+      return (data ?? []).map((c: any) => ({
+        id: c.id as string,
+        nom: c.nom as string,
+        type_choix: (c.type_choix ?? null) as string | null,
+        type_achat: (c.type_achat ?? null) as string | null,
+        niveaux_parsed: parseNiveaux(c.niveaux),
+      })) as CompetenceInfo[];
     },
   });
 
@@ -234,8 +291,12 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   }, [dejaCroyant, perso?.religion_id, competencesAvecChoix]);
 
   useEffect(() => {
-    if (perso?.classe_id) reset({ classe_id: perso.classe_id });
-  }, [perso, reset]);
+    if (perso?.classe_id) {
+      const cid = perso.classe_id;
+      setClasseIdSelectionnee(cid);
+      setClassesOuvertes((prev) => new Set(prev).add(cid));
+    }
+  }, [perso]);
 
   // Validité formulaire pour griser le bouton Suivant.
   // Reproduit la logique de onSubmit (les toast.error restent en backup
@@ -263,24 +324,233 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     devenirCroyant,
   ]);
 
-  const onSubmit = async (values: Etape4Form) => {
-    if (!values.classe_id) {
+  // Appel dry_run -> donnees (ou null si erreur, toast affiché)
+  const callDryRun = async (
+    classeId: string,
+    choix: Record<string, string>
+  ): Promise<ApercuChangementClasse | null> => {
+    const { data, error } = await supabase.rpc("changer_classe_personnage", {
+      p_personnage_id: personnageId,
+      p_classe_id: classeId,
+      p_choix_par_competence: choix,
+      p_dry_run: true,
+    });
+    if (error) {
+      toast.error(`Erreur aperçu : ${error.message}`);
+      return null;
+    }
+    const payload = (data ?? {}) as Record<string, unknown>;
+    if (payload.succes === false) {
+      const erreurs = (payload.erreurs as Array<any>) ?? [];
+      toast.error(erreurs[0]?.message ?? "Aperçu refusé.");
+      return null;
+    }
+    return (payload.donnees as ApercuChangementClasse) ?? null;
+  };
+
+  // Sauvegarde réelle (étape 4). Retourne true si succès.
+  const executerSauvegarde = async (
+    classeId: string,
+    choixComplets: Record<string, string>,
+    religionChoisie: string | null,
+    religionInitiale: string | null
+  ): Promise<boolean> => {
+    const { data, error } = await supabase.rpc("sauvegarder_etape_4", {
+      p_personnage_id: personnageId,
+      p_classe_id: classeId,
+      p_choix_par_competence: choixComplets,
+    });
+    if (error) {
+      console.error("[V2 Etape4] RPC error:", error);
+      toast.error(`Erreur : ${error.message}`);
+      return false;
+    }
+    const payload = (data ?? {}) as Record<string, unknown>;
+    if (payload.succes === false) {
+      const erreurs = (payload.erreurs as Array<any>) ?? [];
+      const code = erreurs[0]?.code ?? "erreur";
+      const message = erreurs[0]?.message ?? "Sauvegarde refusée.";
+      toast.error(`[${code}] ${message}`);
+      return false;
+    }
+    toast.success("Classe enregistrée.");
+    if (dejaCroyant && religionChoisie && religionChoisie !== religionInitiale) {
+      const nomReligion = (religions as Array<{ id: string; nom: string }>).find(
+        (r) => r.id === religionChoisie
+      )?.nom;
+      if (nomReligion) {
+        toast.info(
+          `Religion mise à jour : tu es maintenant croyant de ${nomReligion}`
+        );
+      }
+    }
+    return true;
+  };
+
+  // Changement de sélection multi-choix -> re-appel dry_run (total XP live)
+  const onSelectInstance = async (competenceId: string, choixAchat: string) => {
+    const next = { ...selections, [competenceId]: choixAchat };
+    setSelections(next);
+    if (!pendingCtx) return;
+    setPreviewBusy(true);
+    const donnees = await callDryRun(pendingCtx.classeId, {
+      ...pendingCtx.choixFinaux,
+      ...next,
+    });
+    setPreviewBusy(false);
+    if (donnees) setPreviewDonnees(donnees);
+  };
+
+  const onConfirmChangement = async () => {
+    if (!pendingCtx) return;
+    setPreviewBusy(true);
+    const ok = await executerSauvegarde(
+      pendingCtx.classeId,
+      { ...pendingCtx.choixFinaux, ...selections },
+      pendingCtx.religionChoisie,
+      pendingCtx.religionInitiale
+    );
+    setPreviewBusy(false);
+    if (ok) {
+      setModaleOpen(false);
+      onSuccess();
+    }
+  };
+
+  // Mapping donnees (dry_run) -> forme `d` de la modale
+  const previewD = useMemo<DChangementClasse | null>(() => {
+    if (!previewDonnees) return null;
+    const dn = previewDonnees;
+    const toNom = dn.classe_apres as string;
+    const fromNom = dn.classe_avant as string;
+    const emoji = (nom: string) =>
+      (classes.find((c: any) => c.nom === nom)?.emoji as string) ?? "•";
+    const whyPerdue = (raison: string) =>
+      raison === "class_locked"
+        ? "Réservée à une autre classe — retrait entier"
+        : raison === "gratuite_obsolete"
+        ? `Gratuite de l'ancienne classe — non offerte par ${toNom}`
+        : "Retirée en cascade (un prérequis a été perdu)";
+
+    const perdues: DChangementClasse["perdues"] = [];
+    const reduites: DChangementClasse["reduites"] = [];
+    ((dn.perdues as Array<any>) ?? []).forEach((p) => {
+      const niveaux = (p.niveaux as Array<any>) ?? [];
+      if (p.raison === "over_cap") {
+        const maxNiv = niveaux.reduce((m, l) => Math.max(m, l.niv), 0);
+        reduites.push({
+          nom: p.nom,
+          from: maxNiv,
+          to: 2,
+          why: "Hors-classe : plafond niveau 2 — le(s) niveau(x) au-dessus sont retirés",
+          xp: p.xp,
+        });
+      } else if (niveaux.length > 1) {
+        perdues.push({
+          nom: p.nom,
+          cascade: true,
+          why: whyPerdue(p.raison),
+          levels: niveaux.map((l) => ({
+            niv: l.niv,
+            gratuit: !!l.gratuit,
+            xp: l.xp,
+          })),
+        });
+      } else {
+        const l = niveaux[0] ?? { niv: 1, xp: p.xp, gratuit: p.xp === 0 };
+        perdues.push({
+          nom: p.nom,
+          niv: l.niv,
+          xp: p.xp,
+          gratuit: !!l.gratuit,
+          why: whyPerdue(p.raison),
+        });
+      }
+    });
+
+    const multiNames = new Set(
+      ((dn.multi_choix as Array<any>) ?? []).map((m) => m.nom)
+    );
+    const offertes = (dn.offertes as Array<any>) ?? [];
+    const offertesRefund = offertes
+      .filter((o) => o.type === "d6_refund" && !multiNames.has(o.nom))
+      .map((o) => ({
+        nom: o.nom,
+        niv: 1,
+        why: `Déjà payée — offerte par ${toNom} → remboursée et rendue gratuite`,
+        xp: o.xp,
+      }));
+    const nouvelles = offertes
+      .filter((o) => o.type === "ajout")
+      .map((o) => ({ nom: o.nom, niv: 1 }));
+    const multiChoix = ((dn.multi_choix as Array<any>) ?? []).map((m) => ({
+      competence_id: m.competence_id,
+      nom: m.nom,
+      why: `Offerte par ${toNom} (1 instance gratuite). Tu en as ${
+        (m.options as Array<any>).length
+      } payées — choisis laquelle devient gratuite ; les autres restent payées.`,
+      options: ((m.options as Array<any>) ?? []).map((o) => ({
+        id: o.choix_achat,
+        label: o.label,
+        xp: o.xp,
+      })),
+    }));
+
+    const dormItems = ((dn.dormants as Array<any>) ?? []).map((sd) => ({
+      nom: sd.nom,
+      niv: sd.niveau ?? 0,
+    }));
+    const dormXp = ((dn.dormants as Array<any>) ?? []).reduce(
+      (a, sd) => a + (sd.xp ?? 0),
+      0
+    );
+    const maitre = ((dn.maitre_en_attente as Array<any>) ?? []).map((m) => ({
+      nom: m.nom,
+      niv: m.niveau,
+      why: "Niveau hors-classe → l'approbation d'un maître devient requise",
+    }));
+
+    const touched = new Set<string>();
+    ((dn.perdues as Array<any>) ?? []).forEach((p) => touched.add(p.nom));
+    ((dn.maitre_en_attente as Array<any>) ?? []).forEach((m) =>
+      touched.add(m.nom)
+    );
+    offertes.forEach((o) => touched.add(o.nom));
+    ((dn.multi_choix as Array<any>) ?? []).forEach((m) => touched.add(m.nom));
+    const inchangees = compNamesActuelles.filter((n) => !touched.has(n));
+
+    return {
+      from: { n: fromNom, e: emoji(fromNom) },
+      to: { n: toNom, e: emoji(toNom) },
+      perso: perso?.nom ?? "Personnage",
+      perdues,
+      reduites,
+      offertesRefund,
+      multiChoix,
+      dormants: {
+        items: dormItems,
+        xp: dormXp,
+        why: "Leur niveau dépasse l'accès restant.",
+      },
+      maitre,
+      nouvelles,
+      inchangees,
+      xpRembourse: dn.xp_rembourse ?? 0,
+    };
+  }, [previewDonnees, classes, compNamesActuelles, perso]);
+
+  const onSubmit = async () => {
+    if (!classeIdSelectionnee) {
       toast.error("Choisis une classe.");
       return;
     }
 
     // Valider les choix obligatoires, avec fallback automatique pour religion
     // si le personnage est déjà croyant (sa religion étape 1 est utilisée).
-    // Ce fallback couvre le cas où l'utilisateur clique « Suivant » avant que
-    // le useEffect de pré-remplissage n'ait eu le temps de hydrater le state.
     const choixEffectif: Record<string, string> = { ...choixParCompetence };
     for (const c of competencesAvecChoix) {
       if (!choixEffectif[c.id]) {
-        if (
-          c.type_choix === "religion" &&
-          dejaCroyant &&
-          perso?.religion_id
-        ) {
+        if (c.type_choix === "religion" && dejaCroyant && perso?.religion_id) {
           choixEffectif[c.id] = perso.religion_id;
           continue;
         }
@@ -303,281 +573,620 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       return;
     }
 
-    setSubmitting(true);
-
-    // Construire un objet de choix propre (utilise le fallback religion ci-dessus)
     const choixFinaux: Record<string, string> = {};
     for (const c of competencesAvecChoix) {
-      if (choixEffectif[c.id]) {
-        choixFinaux[c.id] = choixEffectif[c.id];
-      }
+      if (choixEffectif[c.id]) choixFinaux[c.id] = choixEffectif[c.id];
     }
 
     const religionChoisie = compReligion ? choixFinaux[compReligion.id] : null;
     const religionInitiale = perso?.religion_id ?? null;
 
-    const { data, error } = await supabase.rpc("sauvegarder_etape_4", {
-      p_personnage_id: personnageId,
-      p_classe_id: values.classe_id,
-      p_choix_par_competence: choixFinaux,
-    });
-    setSubmitting(false);
+    // Changement de classe (le perso a déjà une classe différente).
+    const estChangementClasse =
+      !!perso?.classe_id && classeIdSelectionnee !== perso.classe_id;
 
-    if (error) {
-      console.error("[V2 Etape4] RPC error:", error);
-      toast.error(`Erreur : ${error.message}`);
-      return;
-    }
-    const payload = (data ?? {}) as Record<string, unknown>;
-    if (payload.succes === false) {
-      const erreurs = (payload.erreurs as Array<any>) ?? [];
-      const code = erreurs[0]?.code ?? "erreur";
-      const message = erreurs[0]?.message ?? "Sauvegarde refusée.";
-      toast.error(`[${code}] ${message}`);
-      return;
-    }
+    if (estChangementClasse) {
+      setSubmitting(true);
+      const donnees = await callDryRun(classeIdSelectionnee, choixFinaux);
+      setSubmitting(false);
+      if (!donnees) return;
 
-    toast.success("Classe enregistrée.");
+      // Seuil figé (s213) — piloté par le RÉSULTAT du dry_run, pas par un
+      // prédicat structurel : la modale ne s'ouvre QUE si le changement a une
+      // conséquence réelle = XP remboursé, compétence ACHETÉE perdue, ou
+      // sort/prière mis en dormance. Sinon → changement silencieux.
+      const perteAchetee = (donnees.perdues ?? []).some((p) =>
+        (p.niveaux ?? []).some((n) => n.gratuit === false)
+      );
+      const dormance = (donnees.dormants ?? []).length > 0;
+      const declencheModale =
+        (donnees.xp_rembourse ?? 0) > 0 || perteAchetee || dormance;
 
-    if (
-      dejaCroyant &&
-      religionChoisie &&
-      religionChoisie !== religionInitiale
-    ) {
-      const nomReligion = (religions as Array<{ id: string; nom: string }>)
-        .find((r) => r.id === religionChoisie)?.nom;
-      if (nomReligion) {
-        toast.info(
-          `Religion mise à jour : tu es maintenant croyant de ${nomReligion}`
-        );
+      if (declencheModale) {
+        const sel: Record<string, string> = {};
+        ((donnees.multi_choix as Array<any>) ?? []).forEach((m) => {
+          if (m?.competence_id && m?.defaut) sel[m.competence_id] = m.defaut;
+        });
+        setSelections(sel);
+        setPendingCtx({
+          classeId: classeIdSelectionnee,
+          choixFinaux,
+          religionChoisie,
+          religionInitiale,
+        });
+        setPreviewDonnees(donnees);
+        setModaleOpen(true);
+        return;
       }
+
+      // Changement sans conséquence → sauvegarde silencieuse directe.
+      setSubmitting(true);
+      const okSilencieux = await executerSauvegarde(
+        classeIdSelectionnee,
+        choixFinaux,
+        religionChoisie,
+        religionInitiale
+      );
+      setSubmitting(false);
+      if (okSilencieux) onSuccess();
+      return;
     }
 
-    onSuccess();
+    // Première sélection (ou classe identique) → sauvegarde directe.
+    setSubmitting(true);
+    const ok = await executerSauvegarde(
+      classeIdSelectionnee,
+      choixFinaux,
+      religionChoisie,
+      religionInitiale
+    );
+    setSubmitting(false);
+    if (ok) onSuccess();
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="font-heading text-2xl text-gold">Choix de la classe</h2>
-        <p className="text-sm text-white/50">
-          Sélectionne la classe principale de ton personnage.
-        </p>
+    <>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+        className="space-y-6"
+      >
+        <IntroEtape
+          storageKey="hv-e4-intro-replie"
+          titre="Comment fonctionne le choix de classe ?"
+        >
+          <IntroEtapeItem n={1}>
+            Coche ta classe principale. Elle fixe tes{" "}
+            <span className="text-primary">PV et PS de départ</span> et t'offre
+            des compétences gratuites (niveau 1).
+          </IntroEtapeItem>
+          <IntroEtapeItem n={2}>
+            Certaines compétences offertes demandent un{" "}
+            <span className="text-primary">choix</span> (une langue ancienne, une
+            religion) : coche ton option.
+          </IntroEtapeItem>
+          <IntroEtapeItem n={3}>
+            « Détails » montre ce que fait chaque compétence. Tu pourras en
+            acheter d'autres à l'étape Compétences.
+          </IntroEtapeItem>
+        </IntroEtape>
+
+        {/* Légende repliable — symboles adaptés au contexte classe */}
+        <div className="rounded-xl border border-white/10 bg-black/25">
+          <button
+            type="button"
+            onClick={() => setLegendeOuverte((o) => !o)}
+            aria-expanded={legendeOuverte}
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-semibold text-white/70"
+          >
+            {legendeOuverte ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+            ℹ Comprendre les symboles
+          </button>
+          {legendeOuverte && (
+            <div className="space-y-2 px-3 pb-3 text-xs">
+              <div className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 rounded border border-green-600/30 bg-green-600/20 px-2 py-0.5 text-[11px] font-medium text-green-400">
+                  Acquis gratuitement
+                </span>
+                <span className="text-white/60">
+                  Compétence offerte par ta classe — niveau 1 inclus, sans coût.
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-[10px] text-white/60">
+                  Niveau 1
+                </span>
+                <span className="text-white/60">
+                  Seul le niveau 1 est offert ; les niveaux supérieurs s'achètent
+                  à l'étape Compétences.
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 text-[11px] text-amber-400">
+                  ● choix requis
+                </span>
+                <span className="text-white/60">
+                  Cette compétence demande un choix (langue ancienne ou religion).
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="flex-shrink-0 rounded-full border border-gold/60 bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-gold">
+                  ✦ Ton choix
+                </span>
+                <span className="text-white/60">
+                  Ton choix gratuit — en sélectionner un autre annule le précédent.
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="font-heading text-2xl text-gold">Choisis ta classe</h2>
+          <p className="text-sm text-white/50">
+            PV / PS de départ + compétences gratuites de la classe.
+          </p>
+        </div>
+
+        {isLoading && (
+          <p className="text-white/50">Chargement des classes…</p>
+        )}
+
+        <div className="space-y-2.5">
+          {classesAffichees.map((c: any) => {
+            const selectionne = classeIdSelectionnee === c.id;
+            const ouverte = classesOuvertes.has(c.id);
+            const manuelOuvert = manuelClasses.has(c.id);
+            const gratuites = competencesParClasseId[c.id] ?? [];
+            return (
+              <div
+                key={c.id}
+                className={`overflow-hidden rounded-xl border transition-colors ${
+                  selectionne
+                    ? "border-gold/50 bg-gold/[0.06]"
+                    : "border-white/10 bg-black/25"
+                }`}
+              >
+                {/* En-tête : case (sélectionne) + zone (ouvre/ferme) */}
+                <div className="flex items-start gap-3 p-3">
+                  <Checkbox
+                    checked={selectionne}
+                    onCheckedChange={() => {
+                      if (selectionne) {
+                        setClasseIdSelectionnee("");
+                      } else {
+                        setClasseIdSelectionnee(c.id);
+                        setClassesOuvertes((prev) => new Set(prev).add(c.id));
+                        // PR4 persist-au-choix : persiste classe_id en brouillon.
+                        // Garde !perso?.classe_id => 1er choix en creation
+                        // uniquement (evite la cascade changer_classe en
+                        // edition, ou perso.classe_id cache desync l'apercu).
+                        // Fire-and-forget : pas d'attente, pas d'avancement.
+                        if (!perso?.classe_id) {
+                          supabase
+                            .rpc("sauvegarder_etape_4", {
+                              p_personnage_id: personnageId,
+                              p_classe_id: c.id,
+                              p_choix_par_competence: null,
+                              p_brouillon: true,
+                            })
+                            .then(
+                              () => {},
+                              () => {},
+                            );
+                        }
+                      }
+                    }}
+                    className="mt-0.5"
+                    aria-label={`Choisir la classe ${c.nom}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSet(setClassesOuvertes, c.id)}
+                    aria-expanded={ouverte}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2 font-semibold text-gold">
+                        {c.emoji ? <span>{c.emoji}</span> : null}
+                        {c.nom}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[11px] text-white/70">
+                          PV {c.pv_depart ?? "?"} · PS {c.ps_depart ?? "?"}
+                        </span>
+                        <ChevronRight
+                          className={`h-4 w-4 flex-shrink-0 text-gold transition-transform ${
+                            ouverte ? "rotate-90" : ""
+                          }`}
+                        />
+                      </span>
+                    </div>
+                    {gratuites.length > 0 && (
+                      <div className="mt-1.5 text-[11.5px] text-white/55">
+                        <span className="font-semibold text-green-400">
+                          Compétences gratuites :{" "}
+                        </span>
+                        {gratuites.map((g) => g.nom).join(" · ")}
+                      </div>
+                    )}
+                  </button>
+                </div>
+
+                {ouverte && (
+                  <div className="space-y-3 px-3 pb-3 pl-12">
+                    {c.description_courte && (
+                      <p className="text-sm leading-relaxed text-white/75">
+                        {c.description_courte}
+                      </p>
+                    )}
+                    {c.description && (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => toggleSet(setManuelClasses, c.id)}
+                          aria-expanded={manuelOuvert}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold"
+                        >
+                          <BookOpen className="h-3.5 w-3.5" /> Texte du manuel
+                          <ChevronRight
+                            className={`h-3.5 w-3.5 transition-transform ${
+                              manuelOuvert ? "rotate-90" : ""
+                            }`}
+                          />
+                        </button>
+                        {manuelOuvert && (
+                          <div className="mt-2 border-l-2 border-gold/50 pl-3">
+                            <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/75">
+                              {c.description}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {gratuites.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="font-heading text-sm text-gold">
+                          Compétences gratuites
+                        </div>
+                        {gratuites.map((comp) => (
+                          <CompetenceGratuiteEtape5
+                            key={comp.id}
+                            comp={comp}
+                            estClasseSelectionnee={selectionne}
+                            choisi={choixParCompetence[comp.id] ?? null}
+                            detailsOuvert={detailsComp.has(`${c.id}:${comp.id}`)}
+                            onToggleDetails={() =>
+                              toggleSet(setDetailsComp, `${c.id}:${comp.id}`)
+                            }
+                            religions={religions as any[]}
+                            languesAnciennes={languesAnciennes as any[]}
+                            onChoisir={(valeur) =>
+                              setChoixParCompetence((prev) => ({
+                                ...prev,
+                                [comp.id]: valeur,
+                              }))
+                            }
+                            estFicheOuverte={(rid) =>
+                              fichesReligion.has(`${comp.id}:${rid}`)
+                            }
+                            onToggleFiche={(rid) =>
+                              toggleSet(setFichesReligion, `${comp.id}:${rid}`)
+                            }
+                            estManuelOuvert={(rid) =>
+                              manuelReligion.has(`${comp.id}:${rid}`)
+                            }
+                            onToggleManuel={(rid) =>
+                              toggleSet(setManuelReligion, `${comp.id}:${rid}`)
+                            }
+                            dejaCroyant={dejaCroyant}
+                            devenirCroyant={devenirCroyant}
+                            onDevenirCroyant={setDevenirCroyant}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Avertissement changement de classe (perso ayant déjà une classe) */}
+        {!!perso?.classe_id &&
+          classeIdSelectionnee &&
+          classeIdSelectionnee !== perso.classe_id && (
+            <div className="rounded-lg border border-bordeaux/60 bg-bordeaux/15 p-3 text-[12.5px] leading-relaxed text-white/80">
+              ⚠️ <strong>Changement de classe.</strong> Au « Suivant », si ce
+              changement retire des compétences achetées, rembourse des XP ou met
+              des sorts/prières en sommeil, un aperçu s'affiche{" "}
+              <strong>avant</strong> toute sauvegarde.
+            </div>
+          )}
+
+        <div className="flex justify-between pt-2">
+          <Button type="button" variant="outline" onClick={onPrevious}>
+            Étape précédente
+          </Button>
+          <Button
+            type="submit"
+            disabled={submitting || !isValid}
+            className="bg-gold text-black hover:bg-gold/90"
+          >
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Suivant
+          </Button>
+        </div>
+      </form>
+      {modaleOpen && previewD && (
+        <ModaleChangementClasse
+          d={previewD}
+          selections={selections}
+          busy={previewBusy}
+          onSelect={onSelectInstance}
+          onConfirm={onConfirmChangement}
+          onCancel={() => {
+            if (!previewBusy) {
+              setModaleOpen(false);
+              setPreviewDonnees(null);
+            }
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+// =========================================================================
+// HELPERS / SOUS-COMPOSANTS
+// =========================================================================
+
+// Parse la colonne competences.niveaux (JSONB) — même forme qu'à l'étape 5.
+function parseNiveaux(raw: unknown): NiveauInfo[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+      const obj = entry as Record<string, unknown>;
+      return {
+        niveau: typeof obj.niveau === "number" ? obj.niveau : Number(obj.niveau ?? 1),
+        cout_xp: typeof obj.cout_xp === "number" ? obj.cout_xp : Number(obj.cout_xp ?? 0),
+        description:
+          typeof obj.description === "string" ? obj.description : undefined,
+      } as NiveauInfo;
+    })
+    .filter((n): n is NiveauInfo => n !== null)
+    .sort((a, b) => a.niveau - b.niveau);
+}
+
+interface CompGratuiteProps {
+  comp: CompetenceInfo;
+  estClasseSelectionnee: boolean;
+  choisi: string | null;
+  detailsOuvert: boolean;
+  onToggleDetails: () => void;
+  religions: any[];
+  languesAnciennes: any[];
+  onChoisir: (valeur: string) => void;
+  estFicheOuverte: (religionId: string) => boolean;
+  onToggleFiche: (religionId: string) => void;
+  estManuelOuvert: (religionId: string) => boolean;
+  onToggleManuel: (religionId: string) => void;
+  dejaCroyant: boolean;
+  devenirCroyant: boolean;
+  onDevenirCroyant: (v: boolean) => void;
+}
+
+// Compétence gratuite rendue « façon étape 5 » : pastille « Acquis gratuitement »
+// + Niveau 1, Détails (niveau 1 offert + paliers 2-3 en LECTURE SEULE), et choix
+// radio-like (langue / religion) réutilisant ReligionDetails.
+function CompetenceGratuiteEtape5({
+  comp,
+  estClasseSelectionnee,
+  choisi,
+  detailsOuvert,
+  onToggleDetails,
+  religions,
+  languesAnciennes,
+  onChoisir,
+  estFicheOuverte,
+  onToggleFiche,
+  estManuelOuvert,
+  onToggleManuel,
+  dejaCroyant,
+  devenirCroyant,
+  onDevenirCroyant,
+}: CompGratuiteProps) {
+  const estReligion = comp.type_choix === "religion";
+  const estLangue = comp.type_choix === "langue_ancienne";
+  const aChoix = estReligion || estLangue;
+  const niveaux = comp.niveaux_parsed ?? [];
+  const niv1 = niveaux[0];
+  const suivants = niveaux.slice(1);
+
+  const options: { id: string; nom: string }[] = estReligion
+    ? religions.map((r) => ({ id: r.id as string, nom: r.nom as string }))
+    : estLangue
+    ? languesAnciennes.map((l) => ({ id: l.id as string, nom: l.nom as string }))
+    : [];
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-gold/40">
+      {/* En-tête façon étape 5 (pastille adaptée au contexte classe) */}
+      <div className="flex flex-wrap items-center gap-2 border-l-4 border-gold bg-gold/[0.12] px-3 py-2">
+        <span className="flex h-[18px] w-[18px] items-center justify-center rounded bg-gold text-[12px] font-black text-black">
+          ✓
+        </span>
+        <strong className="text-[13px] text-foreground">{comp.nom}</strong>
+        <span className="rounded-full border border-white/20 px-2 py-0.5 text-[10px] text-white/55">
+          Niveau 1
+        </span>
+        <span className="rounded border border-green-600/30 bg-green-600/20 px-2 py-0.5 text-[11px] font-medium text-green-400">
+          Acquis gratuitement
+        </span>
+        <button
+          type="button"
+          onClick={onToggleDetails}
+          aria-expanded={detailsOuvert}
+          className="ml-auto text-[11.5px] font-semibold text-gold"
+        >
+          {detailsOuvert ? "Masquer ▾" : "Détails ▸"}
+        </button>
       </div>
 
-      <Controller
-        control={control}
-        name="classe_id"
-        render={({ field }) => (
-          <RadioGroup
-            value={field.value}
-            onValueChange={field.onChange}
-            className="grid grid-cols-1 gap-3 md:grid-cols-2"
-          >
-            {isLoading && (
-              <p className="text-white/50">Chargement des classes…</p>
-            )}
-            {classesAffichees.map((c: any) => {
-              const selectionne = field.value === c.id;
-              return (
-                <Label
-                  key={c.id}
-                  htmlFor={`classe-${c.id}`}
-                  className="cursor-pointer"
-                >
-                  <Card
-                    className={`border-white/10 bg-black/30 transition-colors ${
-                      selectionne ? "border-gold/60 bg-gold/5" : ""
-                    }`}
-                  >
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center justify-between text-base text-gold">
-                        <span className="flex items-center gap-2">
-                          <RadioGroupItem
-                            id={`classe-${c.id}`}
-                            value={c.id}
-                          />
-                          {c.emoji ? <span>{c.emoji}</span> : null}
-                          {c.nom}
-                        </span>
-                        {c.role_combat && (
-                          <span className="text-xs text-white/50">
-                            {c.role_combat}
-                          </span>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {c.description && (
-                        <p className="whitespace-pre-wrap text-sm text-white/70">
-                          {c.description}
-                        </p>
-                      )}
-                      <p className="text-xs text-white/50">
-                        PV {c.pv_depart ?? "?"} · PS {c.ps_depart ?? "?"}
-                      </p>
-                      {competencesParClasseId[c.id]?.length > 0 && (
-                        <div className="pt-1 text-xs text-white/60">
-                          <p className="mb-1 font-semibold text-white/70">
-                            Compétences gratuites :
-                          </p>
-                          <ul className="space-y-0.5">
-                            {competencesParClasseId[c.id].map((comp) => (
-                              <li key={comp.id}>
-                                • {comp.nom}
-                                {comp.type_choix === "langue_ancienne" && (
-                                  <span className="italic text-white/40">
-                                    {" "}
-                                    (au choix : langue ancienne)
-                                  </span>
-                                )}
-                                {comp.type_choix === "religion" && (
-                                  <span className="italic text-white/40">
-                                    {" "}
-                                    (au choix : religion)
-                                  </span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Label>
-              );
-            })}
-          </RadioGroup>
-        )}
-      />
-
-      {/* Bloc Choix requis (conditionnel) */}
-      {competencesAvecChoix.length > 0 && (
-        <div className="space-y-4 rounded-lg border border-gold/20 bg-gold/5 p-4">
-          <div className="space-y-1">
-            <h3 className="font-heading text-lg text-gold">Choix requis</h3>
-            <p className="text-xs text-white/60">
-              Cette classe vous attribue gratuitement des compétences.
-              Certaines nécessitent un choix.
-            </p>
-          </div>
-
-          {competencesAvecChoix.map((c) => {
-            if (c.type_choix === "langue_ancienne") {
-              return (
-                <div key={c.id} className="space-y-2">
-                  <Label className="text-sm text-gold">
-                    {c.nom} — langue ancienne
-                  </Label>
-                  <Select
-                    value={choixParCompetence[c.id] ?? ""}
-                    onValueChange={(v) =>
-                      setChoixParCompetence((prev) => ({
-                        ...prev,
-                        [c.id]: v,
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="bg-white/5 border-white/10">
-                      <SelectValue placeholder="Choisis une langue ancienne" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languesAnciennes.map((l: any) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.nom}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            }
-
-            if (c.type_choix === "religion") {
-              // Affichage : si le perso est déjà croyant et qu'aucun choix
-              // explicite n'a été fait, pré-afficher sa religion (sans modifier
-              // le state — le fallback dans onSubmit garantit la validation).
-              const religionChoisieIdEffective =
-                choixParCompetence[c.id] ||
-                (dejaCroyant && perso?.religion_id ? perso.religion_id : "");
-              const religionChoisie = religionChoisieIdEffective
-                ? (religions as Array<any>).find(
-                    (r) => r.id === religionChoisieIdEffective
-                  )
-                : null;
-              return (
-                <div key={c.id} className="space-y-3">
-                  <Label className="text-sm text-gold">
-                    {c.nom} — religion
-                  </Label>
-                  <Select
-                    value={religionChoisieIdEffective}
-                    onValueChange={(v) =>
-                      setChoixParCompetence((prev) => ({
-                        ...prev,
-                        [c.id]: v,
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="bg-white/5 border-white/10">
-                      <SelectValue placeholder="Choisis une religion" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {religions.map((r: any) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.nom}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {religionChoisie && (
-                    <div className="rounded-lg border border-gold/20 bg-card p-4">
-                      <ReligionDetails
-                        religion={religionChoisie}
-                        isManuelOpen={religionManuelOpen}
-                        onToggleManuel={() => setReligionManuelOpen((v) => !v)}
-                      />
-                    </div>
-                  )}
-                  {!dejaCroyant && (
-                    <label className="flex items-start gap-2 text-xs text-white/70">
-                      <Checkbox
-                        checked={devenirCroyant}
-                        onCheckedChange={(v) =>
-                          setDevenirCroyant(v === true)
-                        }
-                        className="mt-0.5"
-                      />
-                      <span>
-                        Mon personnage devient croyant de cette religion
-                        (modifie aussi son statut de croyance).
-                      </span>
-                    </label>
-                  )}
-                </div>
-              );
-            }
-
-            return null;
-          })}
+      {detailsOuvert && niv1 && (
+        <div className="space-y-2 border-t border-white/[0.07] px-3 py-2.5">
+          {/* niveau 1 (offert) */}
+          <p className="text-[12px] leading-relaxed text-white/75">
+            {niv1.description}
+          </p>
+          {/* paliers suivants — LECTURE SEULE (achat à l'étape Compétences) */}
+          {suivants.length > 0 && (
+            <div className="rounded-lg border border-gold/20 bg-gold/5 p-3">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gold">
+                Ce que donnent les niveaux suivants
+              </div>
+              <div className="space-y-1.5">
+                {suivants.map((nv) => (
+                  <div key={nv.niveau} className="flex gap-2">
+                    <span className="h-fit flex-shrink-0 rounded border border-white/15 px-1.5 py-0.5 text-[10px] font-bold text-white/50">
+                      Niv. {nv.niveau} · {nv.cout_xp} XP
+                    </span>
+                    <span className="text-[11.5px] leading-snug text-white/65">
+                      {nv.description}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[10.5px] italic text-white/45">
+                Achetables plus tard à l'étape Compétences.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="flex justify-between pt-2">
-        <Button type="button" variant="outline" onClick={onPrevious}>
-          Étape précédente
-        </Button>
-        <Button
-          type="submit"
-          disabled={submitting || !isValid}
-          className="bg-gold text-black hover:bg-gold/90"
-        >
-          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Suivant
-        </Button>
-      </div>
-    </form>
+      {aChoix && (
+        <div className="border-t border-white/[0.08] px-3 py-2.5">
+          {!estClasseSelectionnee ? (
+            <p className="text-[11.5px] text-white/55">
+              <span className="text-gold">✦</span> Choix de{" "}
+              {estReligion ? "religion" : "langue ancienne"} à effectuer une fois
+              cette classe sélectionnée.
+            </p>
+          ) : (
+          <>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[11.5px] font-semibold text-gold">
+              {estReligion
+                ? "Choisis ta religion"
+                : "Choisis ta langue ancienne"}
+            </span>
+            {!choisi && (
+              <span className="text-[10.5px] text-amber-400">● choix requis</span>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {options.map((o) => {
+              const on = choisi === o.id;
+              const religionObj = estReligion
+                ? religions.find((r) => r.id === o.id)
+                : undefined;
+              const ficheOuverte = estReligion && estFicheOuverte(o.id);
+              return (
+                <div
+                  key={o.id}
+                  className={`overflow-hidden rounded-lg border ${
+                    on
+                      ? "border-gold bg-gold/[0.08]"
+                      : "border-white/10 bg-black/20"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5 px-2.5 py-2">
+                    <Checkbox
+                      checked={on}
+                      onCheckedChange={() => onChoisir(o.id)}
+                      className="mt-0.5"
+                      aria-label={`Choisir ${o.nom}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="cursor-pointer text-[13px] font-bold text-foreground"
+                          onClick={() => onChoisir(o.id)}
+                        >
+                          {o.nom}
+                        </span>
+                        {on ? (
+                          <span className="flex-shrink-0 rounded-full border border-gold/60 bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-gold">
+                            ✦ Ta {estReligion ? "religion" : "langue"} (gratuit)
+                          </span>
+                        ) : estReligion ? (
+                          <button
+                            type="button"
+                            onClick={() => onToggleFiche(o.id)}
+                            className="flex-shrink-0 whitespace-nowrap text-[11.5px] font-semibold text-white/60"
+                          >
+                            {ficheOuverte ? "Masquer ▾" : "Détails ▸"}
+                          </button>
+                        ) : null}
+                      </div>
+                      {on && estReligion && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleFiche(o.id)}
+                          className="mt-1 text-[11.5px] font-semibold text-gold"
+                        >
+                          {ficheOuverte ? "Masquer la fiche ▾" : "Voir la fiche ▸"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {estReligion && ficheOuverte && religionObj && (
+                    <div className="border-t border-white/[0.08] px-3 py-2.5">
+                      <ReligionDetails
+                        religion={religionObj}
+                        isManuelOpen={estManuelOuvert(o.id)}
+                        onToggleManuel={() => onToggleManuel(o.id)}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {choisi && (
+            <p className="mt-2 text-[11px] text-green-400">
+              ✓ Choix enregistré — en sélectionner un autre annule celui-ci.
+            </p>
+          )}
+          {estReligion && !dejaCroyant && (
+            <label className="mt-2 flex items-start gap-2 text-[11.5px] text-white/70">
+              <Checkbox
+                checked={devenirCroyant}
+                onCheckedChange={(v) => onDevenirCroyant(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Mon personnage devient croyant de cette religion (modifie aussi
+                son statut de croyance).
+              </span>
+            </label>
+          )}
+          </>
+          )}
+        </div>
+      )}
+    </div>
   );
-};
+}
 
 export default Etape4_V2;

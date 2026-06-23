@@ -62,6 +62,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { TYPE_EVENEMENT_LABELS } from "@/constants/labels";
 
 // ============================================================================
 // Types & helpers
@@ -69,7 +70,7 @@ import {
 
 type StatutInscription = "inscrit" | "present" | "absent" | "en_attente";
 
-type TypeEvenement = "gn_regulier" | "mini_gn" | "ouverture_terrain";
+type TypeEvenement = "gn_regulier" | "mini_gn" | "entretien_terrain";
 
 interface Evenement {
   id: string;
@@ -104,16 +105,10 @@ interface PersonnageOption {
   joueur_nom: string | null;
 }
 
-const TYPE_LABELS: Record<TypeEvenement, string> = {
-  gn_regulier: "GN régulier",
-  mini_gn: "Mini-GN",
-  ouverture_terrain: "Ouverture de terrain",
-};
-
 const TYPE_DEFAULTS: Record<TypeEvenement, { xp: number; niveaux: number }> = {
   gn_regulier: { xp: 15, niveaux: 1 },
   mini_gn: { xp: 15, niveaux: 0 },
-  ouverture_terrain: { xp: 10, niveaux: 0 },
+  entretien_terrain: { xp: 10, niveaux: 0 },
 };
 
 const STATUT_LABELS: Record<string, string> = {
@@ -371,9 +366,20 @@ const AdminEvenements = () => {
                 Cette action est <strong>irréversible</strong>.
               </span>
               <span className="block">
-                L'XP ({eventToClose?.xp_recompense ?? 0}) et les niveaux (
-                {eventToClose?.niveaux_recompense ?? 0}) seront distribués à
-                tous les participants marqués <strong>présents</strong>.
+                {eventToClose?.type_evenement === "mini_gn" ? (
+                  <>
+                    L'XP ({eventToClose?.xp_recompense ?? 0}) sera versé en{" "}
+                    <strong>banque de profil</strong> des participants marqués{" "}
+                    <strong>présents</strong> (utilisable sur n'importe quel
+                    personnage).
+                  </>
+                ) : (
+                  <>
+                    L'XP ({eventToClose?.xp_recompense ?? 0}) et les niveaux (
+                    {eventToClose?.niveaux_recompense ?? 0}) seront distribués
+                    aux participants marqués <strong>présents</strong>.
+                  </>
+                )}
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -496,7 +502,7 @@ const EventCard = ({
   const [showPresenceTardive, setShowPresenceTardive] = useState(false);
 
   const typeKey = (evt.type_evenement as TypeEvenement) ?? "gn_regulier";
-  const typeLabel = TYPE_LABELS[typeKey] ?? evt.type_evenement ?? "—";
+  const typeLabel = TYPE_EVENEMENT_LABELS[typeKey] ?? evt.type_evenement ?? "—";
 
   const gpsHref = evt.adresse_physique
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.adresse_physique)}`
@@ -698,18 +704,18 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
         .select(
           `id, statut, evenement_id, personnage_id, joueur_id,
            personnages(nom),
-           profiles(nom_affichage)`,
+           profils_joueur(nom)`,
         )
         .eq("evenement_id", eventId);
       if (error) throw error;
-      return ((data ?? []) as any[]).map((row) => ({
+      return ((data ?? []) as Array<{ id: string; statut: string | null; evenement_id: string | null; personnage_id: string | null; joueur_id: string | null; personnages: { nom: string | null } | null; profils_joueur: { nom: string | null } | null }>).map((row) => ({
         id: row.id,
         evenement_id: row.evenement_id,
         personnage_id: row.personnage_id,
         joueur_id: row.joueur_id,
         statut: row.statut,
         personnage_nom: row.personnages?.nom ?? null,
-        joueur_nom: row.profiles?.nom_affichage ?? null,
+        joueur_nom: row.profils_joueur?.nom ?? null,
       })) as Inscription[];
     },
   });
@@ -828,14 +834,14 @@ const PresenceTardiveDialog = ({ open, eventId, onClose }: PresenceTardiveDialog
     queryKey: ["personnages-actifs-pour-presence"],
     queryFn: async () => {
       const { data, error } = await supabase.from("personnages")
-        .select("id, nom, profiles(nom_affichage)")
+        .select("id, nom, profils_joueur(nom)")
         .eq("est_actif", true)
         .order("nom");
       if (error) throw error;
-      return ((data ?? []) as any[]).map((p) => ({
+      return ((data ?? []) as Array<{ id: string; nom: string | null; profils_joueur: { nom: string | null } | null }>).map((p) => ({
         id: p.id,
         nom: p.nom,
-        joueur_nom: p.profiles?.nom_affichage ?? null,
+        joueur_nom: p.profils_joueur?.nom ?? null,
       })) as PersonnageOption[];
     },
     enabled: open,
@@ -1110,9 +1116,9 @@ const EventFormDialog = ({ open, evenement, onClose, onSaved }: EventFormDialogP
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(TYPE_LABELS) as TypeEvenement[]).map((k) => (
+                {(Object.keys(TYPE_EVENEMENT_LABELS) as TypeEvenement[]).map((k) => (
                   <SelectItem key={k} value={k}>
-                    {TYPE_LABELS[k]}
+                    {TYPE_EVENEMENT_LABELS[k]}
                   </SelectItem>
                 ))}
               </SelectContent>

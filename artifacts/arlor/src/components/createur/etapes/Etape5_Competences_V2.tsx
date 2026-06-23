@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ReligionDetails from "@/components/shared/ReligionDetails";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
+import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
+import { estNiveauCompetenceAcquis } from "@/lib/acquisCampagne";
 import {
   Dialog,
   DialogContent,
@@ -18,12 +22,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChevronDown, ChevronRight, Loader2, Lock, Minus, Plus } from "lucide-react";
+import JaugeXP from "@/components/createur/aide/JaugeXP";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
+import Astuce from "@/components/createur/aide/Astuce";
+import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 
 // =========================================================================
 // TYPES
 // =========================================================================
 
 type CompetenceRow = Database["public"]["Tables"]["competences"]["Row"];
+type ApercuRabaisRow = {
+  choix: string;
+  niveau: number;
+  cout_base: number;
+  rabais: number;
+  cout_final: number;
+  nb: number;
+};
+
 type PersonnageCompetenceRow =
   Database["public"]["Tables"]["personnage_competences"]["Row"];
 type PersonnageRow = Database["public"]["Tables"]["personnages"]["Row"];
@@ -39,6 +56,7 @@ interface NiveauInfo {
   niveau: number;
   cout_xp: number;
   description?: string;
+  description_courte?: string;
 }
 
 interface CompetenceWithNiveaux extends CompetenceRow {
@@ -85,6 +103,11 @@ interface Etape5Props {
   onError?: (error: Error) => void;
   onPrevious?: () => void;
   onXpDeltaChange?: (delta: number) => void;
+  /**
+   * Mode campagne (évolution) : verrouille visuellement les désachats d'acquis
+   * (PR-C2). Miroir d'INV-3 backend, qui reste l'autorité.
+   */
+  modeCampagne?: boolean;
 }
 
 // =========================================================================
@@ -125,7 +148,7 @@ const CLASSE_LABELS: Record<string, string> = {
   pretre: "Classe Prêtre ⚜️",
 };
 
-/** Catégories qui correspondent à une classe jouable (pour BlocClasses). */
+/** Catégories qui correspondent à une classe jouable (pour PastilleAccesCompacte). */
 const CLASSES_JOUABLES = ["guerrier", "voleur", "mage", "pretre"] as const;
 
 // type_achat qui cascade en DB (suppression ascendante des niveaux >= N)
@@ -154,6 +177,10 @@ function parseNiveaux(raw: Json | null): NiveauInfo[] {
         cout_xp: typeof obj.cout_xp === "number" ? obj.cout_xp : Number(obj.cout_xp ?? 0),
         description:
           typeof obj.description === "string" ? obj.description : undefined,
+        description_courte:
+          typeof obj.description_courte === "string"
+            ? obj.description_courte
+            : undefined,
       } as NiveauInfo;
     })
     .filter((n): n is NiveauInfo => n !== null)
@@ -257,71 +284,57 @@ function MessageBlocage({
  *
  * - Cas non couvert (fallback) : ne rien afficher
  */
-function BlocClasses({
+/**
+ * Pastille d'accès COMPACTE (PR-C2, Option B) : remplace la ligne « Classes »
+ * complète dans l'en-tête replié. N'apparaît que pour les cas NON triviaux —
+ * « Max niveau 2 » (autre classe, plafonnée) ou « Réservée » (classe exclue).
+ * Tappable → bulle L2 (AIDE_SYMBOLES_E5). Générale / propre classe / classe
+ * autorisée d'une réservée → rien (aucune contrainte à signaler).
+ */
+function PastilleAccesCompacte({
   comp,
   classeJoueur,
-  normalizeCategorieFn,
+  onTap,
 }: {
   comp: CompetenceWithNiveaux;
   classeJoueur: string;
-  normalizeCategorieFn: (cat: string | null) => string;
+  onTap: (aide: { titre: string; texte: string }) => void;
 }) {
-  const cat = normalizeCategorieFn(comp.categorie);
+  const cat = normalizeCategorie(comp.categorie);
   const isGenerale = comp.est_general || cat === "generale";
+  if (isGenerale) return null;
 
-  const sectionLabel = (
-    <span className="flex items-center gap-1 text-xs text-foreground/70">
-      <span aria-hidden>🛡️</span> Classes :
-    </span>
-  );
-
-  // Cas 1 : compétence générale (accessible à toutes les classes)
-  if (isGenerale) {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sectionLabel}
-        <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
-      </div>
-    );
-  }
-
-  // Cas 2 : classes_requises set (strictement réservée)
+  let acces: { cle: "max2" | "reservee"; label: string } | null = null;
   if (comp.classes_requises && comp.classes_requises.length > 0) {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sectionLabel}
-        {comp.classes_requises.map((c) => (
-          <PastilleStatus
-            key={c}
-            status={c === classeJoueur ? "acquis" : "manquant"}
-          >
-            {CLASSE_LABELS[c] ?? c}
-          </PastilleStatus>
-        ))}
-      </div>
-    );
+    if (!comp.classes_requises.includes(classeJoueur)) {
+      acces = { cle: "reservee", label: "Réservée" };
+    }
+  } else if ((CLASSES_JOUABLES as readonly string[]).includes(cat)) {
+    if (cat !== classeJoueur && comp.niveaux_parsed.some((n) => n.niveau > 2)) {
+      acces = { cle: "max2", label: "Max niveau 2" };
+    }
   }
+  if (!acces) return null;
 
-  // Cas 3 : classes_requises NULL + catégorie de classe (accessible hors classe max 2)
-  // La pastille de limite n'est affichée que si le joueur est HORS de cette classe
-  // (pour sa propre classe, il n'y a pas de limite de niveau).
-  if ((CLASSES_JOUABLES as readonly string[]).includes(cat)) {
-    const joueurMatch = cat === classeJoueur;
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sectionLabel}
-        <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
-        {!joueurMatch && comp.niveaux_parsed.some((n) => n.niveau > 2) && (
-          <PastilleStatus status="restriction">
-            Accessible max niveau 2 sauf pour {CLASSE_LABELS[cat] ?? cat}
-          </PastilleStatus>
-        )}
-      </div>
-    );
-  }
+  const styles =
+    acces.cle === "max2"
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+      : "border-red-500/40 bg-red-500/10 text-red-300";
+  const marker = acces.cle === "max2" ? "⚠" : "✗";
 
-  // Fallback : pas d'info de classe à afficher
-  return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onTap(AIDE_SYMBOLES_E5[acces.cle]);
+      }}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${styles}`}
+    >
+      <span aria-hidden>{marker}</span>
+      {acces.label}
+    </button>
+  );
 }
 
 // =========================================================================
@@ -446,12 +459,84 @@ function BadgePrereqCliquable({
  * Légende repliable des pastilles de statut, sous la barre de filtres.
  * Repliée par défaut (état + toggle gérés par le parent).
  */
+/**
+ * Source UNIQUE des explications des symboles É5 (PR-C2). Lue par la légende L1
+ * (LegendePastilles) ET par les bulles d'aide L2 (tap inline) — pas de divergence
+ * possible. Clés disponible/maitrisee/prereq/bloque = StatutCompetence ;
+ * toutes/max2/maitre/reservee = accès par classe.
+ */
+const AIDE_SYMBOLES_E5: Record<string, { titre: string; texte: string }> = {
+  disponible: {
+    titre: "Disponible",
+    texte: "Achetable maintenant : le prochain niveau est disponible.",
+  },
+  maitrisee: {
+    titre: "Maîtrisée",
+    texte: "Tous les niveaux de cette compétence sont acquis.",
+  },
+  prereq: {
+    titre: "Prérequis manquant",
+    texte:
+      "Une autre compétence est requise d'abord — touchez le badge ↗ pour y aller.",
+  },
+  bloque: {
+    titre: "Bloquée",
+    texte:
+      "Réservée à une autre classe, ou verrou mutuel avec une compétence déjà prise.",
+  },
+  toutes: {
+    titre: "Toutes les Classes",
+    texte: "Compétence générale : accessible à toutes les classes.",
+  },
+  max2: {
+    titre: "Max niveau 2",
+    texte:
+      "Compétence d'une autre classe : vous pouvez l'apprendre, mais plafonnée au niveau 2.",
+  },
+  maitre: {
+    titre: "Maître Requis",
+    texte:
+      "Ce niveau s'apprend auprès d'un maître en jeu (animateur ou joueur ayant le niveau 3). L'achat est soumis à validation.",
+  },
+  reservee: {
+    titre: "Réservée",
+    texte: "Unique à une classe précise : inaccessible à la vôtre.",
+  },
+};
+
+const LegendeSousTitre = ({ children }: { children: ReactNode }) => (
+  <p className="mt-1 text-[10.5px] font-bold uppercase tracking-wide text-muted-foreground">
+    {children}
+  </p>
+);
+
+const LegendeLigne = ({
+  symbole,
+  texte,
+}: {
+  symbole: ReactNode;
+  texte: ReactNode;
+}) => (
+  <div className="flex items-start gap-2">
+    <span className="flex shrink-0">{symbole}</span>
+    <span className="text-muted-foreground">{texte}</span>
+  </div>
+);
+
+/**
+ * L1 — Légende harmonisée « ℹ Comprendre les symboles » (HARMONISATION Lot C).
+ * Ouverte par défaut (état géré par le parent), groupée. Le groupe scellé/vert
+ * n'apparaît qu'en mode campagne (seule dynamique pertinente en É5 : tout joueur
+ * voit toutes les catégories, donc statuts/accès sont toujours atteignables).
+ */
 function LegendePastilles({
   ouvert,
   onToggle,
+  modeCampagne,
 }: {
   ouvert: boolean;
   onToggle: () => void;
+  modeCampagne: boolean;
 }) {
   return (
     <div className="rounded-md border border-border/60 bg-background/40 text-xs">
@@ -465,26 +550,84 @@ function LegendePastilles({
         ) : (
           <ChevronRight className="h-3 w-3" />
         )}
-        Légende des statuts
+        ℹ Comprendre les symboles
       </button>
       {ouvert && (
-        <div className="flex flex-col gap-1.5 px-3 pb-3">
-          <PastilleStatutCompetence statut="disponible" />
-          <span className="text-muted-foreground">
-            Achetable maintenant (prochain niveau disponible).
-          </span>
-          <PastilleStatutCompetence statut="maitrisee" />
-          <span className="text-muted-foreground">
-            Tous les niveaux acquis.
-          </span>
-          <PastilleStatutCompetence statut="prereq" />
-          <span className="text-muted-foreground">
-            Une autre compétence est requise — touchez le badge ⚠ pour y aller.
-          </span>
-          <PastilleStatutCompetence statut="bloque" />
-          <span className="text-muted-foreground">
-            Réservée à une autre classe (ou verrou mutuel).
-          </span>
+        <div className="flex flex-col gap-2 px-3 pb-3">
+          <LegendeSousTitre>Statuts</LegendeSousTitre>
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="disponible" />}
+            texte={AIDE_SYMBOLES_E5.disponible.texte}
+          />
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="maitrisee" />}
+            texte={AIDE_SYMBOLES_E5.maitrisee.texte}
+          />
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="prereq" />}
+            texte={AIDE_SYMBOLES_E5.prereq.texte}
+          />
+          <LegendeLigne
+            symbole={<PastilleStatutCompetence statut="bloque" />}
+            texte={AIDE_SYMBOLES_E5.bloque.texte}
+          />
+
+          <LegendeSousTitre>Accès par classe</LegendeSousTitre>
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="acquis">Toutes les Classes ✨</PastilleStatus>
+            }
+            texte={AIDE_SYMBOLES_E5.toutes.texte}
+          />
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="restriction">Max niveau 2</PastilleStatus>
+            }
+            texte={AIDE_SYMBOLES_E5.max2.texte}
+          />
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="restriction">Maître Requis</PastilleStatus>
+            }
+            texte={AIDE_SYMBOLES_E5.maitre.texte}
+          />
+          <LegendeLigne
+            symbole={
+              <PastilleStatus status="manquant">Réservée</PastilleStatus>
+            }
+            texte={AIDE_SYMBOLES_E5.reservee.texte}
+          />
+
+          {modeCampagne && (
+            <>
+              <LegendeSousTitre>Vos compétences (campagne)</LegendeSousTitre>
+              <LegendeLigne
+                symbole={
+                  <span className="inline-block h-4 w-[46px] shrink-0 rounded border border-gold/50 border-l-4 border-l-gold bg-gold/15" />
+                }
+                texte={
+                  <span>
+                    <strong className="text-gold">Fond doré 🔒</strong> — niveau
+                    acquis et scellé à un GN : améliorable, jamais retirable.
+                  </span>
+                }
+              />
+              <LegendeLigne
+                symbole={
+                  <span className="inline-block h-4 w-[46px] shrink-0 rounded border border-emerald-600/35 border-l-[3px] border-l-emerald-600/60 bg-emerald-600/10" />
+                }
+                texte={
+                  <span>
+                    <strong className="text-emerald-700 dark:text-emerald-400">
+                      Fond vert ＋
+                    </strong>{" "}
+                    — ajout de la fenêtre courante : retirable librement (XP
+                    remboursés).
+                  </span>
+                }
+              />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -502,8 +645,15 @@ const Etape5_Competences_V2 = ({
   onError,
   onPrevious,
   onXpDeltaChange,
+  modeCampagne = false,
 }: Etape5Props) => {
   const queryClient = useQueryClient();
+
+  // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
+  const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
+
+  // PR-C2 (Lot C) : aide L2 au tap (bulle sticky bottom), source AIDE_SYMBOLES_E5.
+  const { aide, montrer: montrerAide, fermer: fermerAide } = useTapBulle();
 
   // =======================================================================
   // ÉTATS LOCAUX
@@ -568,7 +718,7 @@ const Etape5_Competences_V2 = ({
   };
 
   // Légende des pastilles : repliée par défaut.
-  const [legendeOuverte, setLegendeOuverte] = useState(false);
+  const [legendeOuverte, setLegendeOuverte] = useState(true);
 
   // Infra scroll + highlight pour le badge prérequis cliquable.
   const compRefs = useRef<Map<string, HTMLElement | null>>(new Map());
@@ -767,6 +917,33 @@ const Etape5_Competences_V2 = ({
     },
   });
 
+  // PR liv1b : aperçu GROUPÉ du rabais Acquisition Cercle/Domaine (un appel RPC
+  // par compétence cercle/domaine). Map clé `${comp.id}|${choix}|${niveau}` → ligne
+  // rabais. Ne contient QUE les rabais réels (nb>0) ; absence ⇒ prix de base.
+  const { data: rabaisMap } = useQuery({
+    queryKey: ["apercu-rabais-acquisition", personnageId, personnage?.updated_at],
+    enabled: !!personnageId && !!competences && !!personnage,
+    queryFn: async () => {
+      const cibles = (competences ?? []).filter(
+        (c) =>
+          c.type_achat === "multiple_avec_choix_par_niveau" &&
+          (c.type_choix === "cercle" || c.type_choix === "domaine"),
+      );
+      const map = new Map<string, ApercuRabaisRow>();
+      for (const comp of cibles) {
+        const { data, error } = await supabase.rpc(
+          "apercu_rabais_acquisition_competence",
+          { p_personnage_id: personnageId, p_competence_id: comp.id },
+        );
+        if (error) throw error;
+        for (const r of (data ?? []) as unknown as ApercuRabaisRow[]) {
+          map.set(`${comp.id}|${r.choix}|${r.niveau}`, r);
+        }
+      }
+      return map;
+    },
+  });
+
   // =======================================================================
   // DÉRIVÉES MEMOIZED
   // =======================================================================
@@ -810,6 +987,9 @@ const Etape5_Competences_V2 = ({
    * compétence, scrolle au centre et la met en surbrillance ~2 s.
    */
   const goToComp = (compId: string) => {
+    // Cross-nav fiable : la cible peut être « Disponible » alors que le
+    // filtre actif est « Bloquées » (ou inversement) → retour à « Toutes ».
+    setFiltre("toutes");
     const cible = (competences ?? []).find((c) => c.id === compId);
     if (cible) {
       const cat = normalizeCategorie(cible.categorie);
@@ -980,6 +1160,46 @@ const Etape5_Competences_V2 = ({
     if (!opposingComp) return null;
     const achatsOp = achatsParCompetence.get(opposingComp.id) ?? [];
     return achatsOp.length > 0 ? opposingCat : null;
+  };
+
+  /**
+   * Cross-nav pour les compétences duales mage/prêtre (COMP_VERROUS_MUTUELS) :
+   * quand la version affichée est bloquée, retourne la pastille cliquable qui
+   * explique POURQUOI et pointe vers la version jumelle dans l'autre liste.
+   * - Version jumelle déjà achetée → « Déjà acquise dans la liste X » (✓ vert)
+   * - Version réservée à la classe opposée → « Bloqué ici — achetable dans la
+   *   liste X » (✗ rouge)
+   * Retourne null si la compétence n'est pas duale, si la jumelle est absente,
+   * ou si le blocage vient d'ailleurs (classes_requises pures → BlocClasses).
+   */
+  const crossNavDual = (
+    comp: CompetenceWithNiveaux,
+  ): { label: string; targetId: string; statut: StatusPastille } | null => {
+    if (!comp.nom || !COMP_VERROUS_MUTUELS.has(comp.nom)) return null;
+    const cat = normalizeCategorie(comp.categorie);
+    if (cat !== "mage" && cat !== "pretre") return null;
+    const opposingCat = cat === "mage" ? "pretre" : "mage";
+    const opposing = (competences ?? []).find(
+      (c) =>
+        c.nom === comp.nom && normalizeCategorie(c.categorie) === opposingCat,
+    );
+    if (!opposing) return null;
+    const labelCat = opposingCat === "mage" ? "Mage" : "Prêtre";
+    if ((achatsParCompetence.get(opposing.id) ?? []).length > 0) {
+      return {
+        label: `Déjà acquise dans la liste ${labelCat}`,
+        targetId: opposing.id,
+        statut: "acquis",
+      };
+    }
+    if (classeReservataireOpposee(comp)) {
+      return {
+        label: `Bloqué ici — achetable dans la liste ${labelCat}`,
+        targetId: opposing.id,
+        statut: "manquant",
+      };
+    }
+    return null;
   };
 
   /**
@@ -1186,6 +1406,8 @@ const Etape5_Competences_V2 = ({
     niveauPrecedentRequis: boolean;
     bloque: boolean;
     xpInsuffisants: boolean;
+    /** PR-C2 : niveau (pour ce choix) scellé par la photo de compo. */
+    acquis: boolean;
   };
 
   /**
@@ -1195,6 +1417,24 @@ const Etape5_Competences_V2 = ({
    * le 1er niveau avec choix est le niveau 2 (le niveau 1 est un savoir général
    * sans choix géré à part) => la cascade « niveau précédent requis » démarre à 3.
    */
+  // PR liv1b : coût effectif d'un niveau pour un cercle/domaine donné (prix réduit
+  // si rabais connu en map, sinon prix de base). Sert à l'affichage ET au calcul
+  // d'affordability (sinon la case se grise sur l'ancien prix plein).
+  const coutEffectif = (
+    comp: CompetenceWithNiveaux,
+    niv: NiveauInfo,
+    choix?: string,
+  ): number => {
+    if (
+      choix &&
+      (comp.type_choix === "cercle" || comp.type_choix === "domaine")
+    ) {
+      const r = rabaisMap?.get(`${comp.id}|${choix}|${niv.niveau}`);
+      if (r) return r.cout_final;
+    }
+    return niv.cout_xp;
+  };
+
   const niveauChoixState = (
     comp: CompetenceWithNiveaux,
     niv: NiveauInfo,
@@ -1217,8 +1457,16 @@ const Etape5_Competences_V2 = ({
     const prereqBloque =
       !!prereqInfo && niv.niveau > prereqInfo.niveauMaxAchetable;
     const compBloqueeClasse = classeBloque(comp);
+    const coutEff = coutEffectif(comp, niv, choixValue);
     const xpInsuffisants =
-      !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
+      !dejaAchete && coutEff > 0 && coutEff > xpDisponible;
+    const acquis = estNiveauCompetenceAcquis(
+      modeCampagne,
+      photo,
+      comp.id,
+      choixValue,
+      niv.niveau,
+    );
     const disabled =
       compBloqueeClasse ||
       niveauHorsClasse ||
@@ -1226,7 +1474,8 @@ const Etape5_Competences_V2 = ({
       (!dejaAchete && niveauPrecedentRequis) ||
       mutationEnCours ||
       (dejaAchete && estGratuit) ||
-      xpInsuffisants;
+      xpInsuffisants ||
+      acquis;
     return {
       achat,
       dejaAchete,
@@ -1235,6 +1484,7 @@ const Etape5_Competences_V2 = ({
       niveauPrecedentRequis,
       bloque: compBloqueeClasse || niveauHorsClasse || prereqBloque,
       xpInsuffisants,
+      acquis,
     };
   };
 
@@ -1395,6 +1645,22 @@ const Etape5_Competences_V2 = ({
     comp: CompetenceWithNiveaux,
     achat: PersonnageCompetenceRow,
   ) => {
+    // PR-C2 : garde défensive — un acquis scellé par la photo ne peut être
+    // retiré (miroir d'INV-3 backend, qui refuse de toute façon le désachat).
+    if (
+      estNiveauCompetenceAcquis(
+        modeCampagne,
+        photo,
+        comp.id,
+        achat.choix_achat ?? null,
+        achat.niveau_acquis,
+      )
+    ) {
+      toast.error(
+        "Cet acquis a été joué en événement — il ne peut plus être retiré.",
+      );
+      return;
+    }
     if (achat.xp_depense === 0 && !comp.desachat_force) {
       toast.error("Une compétence gratuite ne peut pas être désachetée.");
       return;
@@ -1581,6 +1847,8 @@ const Etape5_Competences_V2 = ({
     compBloqueeClasse: boolean;
     xpInsuffisants: boolean;
     niveauPrecedentRequis: boolean;
+    /** PR-C2 : niveau scellé par la photo de compo (acquis, désachat refusé). */
+    acquis: boolean;
     disabled: boolean;
   };
 
@@ -1602,6 +1870,14 @@ const Etape5_Competences_V2 = ({
     const compBloqueeClasse = classeBloque(comp);
     const xpInsuffisants =
       !dejaAchete && niv.cout_xp > 0 && niv.cout_xp > xpDisponible;
+    // PR-C2 : les renderers `simple` n'ont pas de choix → choixAchat = null.
+    const acquis = estNiveauCompetenceAcquis(
+      modeCampagne,
+      photo,
+      comp.id,
+      null,
+      niv.niveau,
+    );
     const disabled =
       compBloqueeClasse ||
       niveauHorsClasse ||
@@ -1609,7 +1885,8 @@ const Etape5_Competences_V2 = ({
       niveauPrecedentRequis ||
       mutationEnCours ||
       (dejaAchete && estGratuit && !comp.desachat_force) ||
-      xpInsuffisants;
+      xpInsuffisants ||
+      acquis;
     return {
       dejaAchete,
       achat,
@@ -1619,6 +1896,7 @@ const Etape5_Competences_V2 = ({
       compBloqueeClasse,
       xpInsuffisants,
       niveauPrecedentRequis,
+      acquis,
       disabled,
     };
   };
@@ -1649,6 +1927,44 @@ const Etape5_Competences_V2 = ({
       }}
     />
   );
+
+  /**
+   * Libellé VISIBLE « Manque X XP ». Le tooltip `title` des cases ne s'affiche
+   * pas au survol sur mobile : sans ce libellé, une case grisée faute d'XP
+   * paraît cassée. À afficher uniquement quand `xpInsuffisants` est vrai.
+   */
+  const renderManqueXp = (coutXp: number): ReactNode => (
+    <span className="flex items-center gap-1 text-xs text-amber-400">
+      <Lock className="h-3 w-3" /> Manque {coutXp - xpDisponible} XP
+    </span>
+  );
+
+  /**
+   * Libellé VISIBLE des prérequis manquants d'un niveau, affiché sur l'en-tête
+   * (même logique que renderManqueXp : le détail dans le sous-accordéon ne
+   * suffit pas, une case grisée sans explication paraît cassée).
+   */
+  const renderPrereqManquantHeader = (
+    niv: NiveauInfo,
+    blocData: BlocPrerequisData,
+    st: NiveauAchatState,
+  ): ReactNode => {
+    if (!st.prereqBloque || st.dejaAchete) return null;
+    const ligne = blocData.lignes.find((l) => l.niveau === niv.niveau);
+    const labels = (ligne?.pastilles ?? [])
+      .filter(
+        (p) =>
+          p.statut === "manquant" &&
+          p.label !== "Inaccessible hors de votre classe",
+      )
+      .map((p) => p.label);
+    if (labels.length === 0) return null;
+    return (
+      <span className="flex items-center gap-1 text-xs text-amber-400">
+        <Lock className="h-3 w-3" /> Prérequis : {labels.join(", ")}
+      </span>
+    );
+  };
 
   /** Ligne « Prérequis » d'un niveau donné (vert ✓ rempli / orange ⚠ cliquable). */
   const renderLignePrereqNiveau = (
@@ -1697,11 +2013,20 @@ const Etape5_Competences_V2 = ({
     const achetes = niveauxAchetes.get(comp.id) ?? new Set<number>();
     const maxAchete = achetes.size ? Math.max(...achetes) : 0;
     const st = niveauAchatState(comp, niv, maxAchete);
+    // PR-C2.2 : niveau acheté depuis la photo mais non scellé → ajout vert.
+    const ajout = modeCampagne && st.dejaAchete && !st.acquis;
     return (
       <div className="space-y-2">
         <div
-          className={`flex items-center gap-3 rounded border border-border p-2 ${
-            st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque
+          className={`flex items-center gap-3 rounded border p-2 ${
+            st.acquis
+              ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+              : ajout
+                ? "border-emerald-600/40 bg-emerald-600/10"
+                : "border-border"
+          } ${
+            !st.acquis &&
+            (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
               ? "opacity-50"
               : ""
           }`}
@@ -1714,11 +2039,15 @@ const Etape5_Competences_V2 = ({
             <Badge variant="secondary" className="text-xs">
               {niv.cout_xp} XP
             </Badge>
+            {st.acquis && <BadgeAcquis />}
+            {ajout && <LabelAjoutAnnulable />}
             {st.estGratuit && (
               <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                 Acquis gratuitement
               </Badge>
             )}
+            {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
+            {renderPrereqManquantHeader(niv, blocData, st)}
           </Label>
         </div>
         {niv.description && (
@@ -1741,13 +2070,22 @@ const Etape5_Competences_V2 = ({
       <div className="space-y-1.5">
         {niveaux.map((niv) => {
           const st = niveauAchatState(comp, niv, maxAchete);
+          // PR-C2.2 : niveau acheté depuis la photo mais non scellé → ajout vert.
+          const ajout = modeCampagne && st.dejaAchete && !st.acquis;
           const key = `${comp.id}-${niv.niveau}`;
           const open = niveauxDeplies.has(key);
           return (
             <div
               key={niv.niveau}
-              className={`rounded border border-border ${
-                st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque
+              className={`rounded border ${
+                st.acquis
+                  ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                  : ajout
+                    ? "border-emerald-600/40 bg-emerald-600/10"
+                    : "border-border"
+              } ${
+                !st.acquis &&
+                (st.compBloqueeClasse || st.niveauHorsClasse || st.prereqBloque)
                   ? "opacity-50"
                   : ""
               }`}
@@ -1775,14 +2113,23 @@ const Etape5_Competences_V2 = ({
                   <Badge variant="secondary" className="text-xs">
                     {niv.cout_xp} XP
                   </Badge>
+                  {st.acquis && <BadgeAcquis />}
+                  {ajout && <LabelAjoutAnnulable />}
                   {st.estGratuit && (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
                     </Badge>
                   )}
-                  {st.dejaAchete && !st.estGratuit && (
+                  {!ajout && st.dejaAchete && !st.estGratuit && (
                     <span className="text-xs text-emerald-400" aria-hidden>
                       ✓
+                    </span>
+                  )}
+                  {st.xpInsuffisants && renderManqueXp(niv.cout_xp)}
+                  {renderPrereqManquantHeader(niv, blocData, st)}
+                  {niv.description && !open && (
+                    <span className="ml-auto whitespace-nowrap text-[10.5px] italic text-gold">
+                      · voir l'effet
                     </span>
                   )}
                 </div>
@@ -1791,6 +2138,12 @@ const Etape5_Competences_V2 = ({
                 <div className="space-y-2 border-t border-border/60 px-3 py-2 text-xs">
                   {niv.description && (
                     <p className="text-muted-foreground">{niv.description}</p>
+                  )}
+                  {st.acquis && (
+                    <p className="flex items-center gap-1 text-[11px] text-gold-accent">
+                      <Lock className="h-2.5 w-2.5" /> Joué en événement —
+                      conservé définitivement.
+                    </p>
                   )}
                   {st.niveauPrecedentRequis &&
                     !st.dejaAchete &&
@@ -1872,6 +2225,7 @@ const Etape5_Competences_V2 = ({
           <span className="ml-2 text-muted-foreground">
             ({niv1.cout_xp} XP / achat)
           </span>
+          {xpInsuffisants && renderManqueXp(niv1.cout_xp)}
         </div>
         <Button
           size="sm"
@@ -1975,12 +2329,21 @@ const Etape5_Competences_V2 = ({
           <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
             {niveauxAMontrer.map((niv) => {
               const st = niveauChoixState(comp, niv, opt.value);
+              // PR liv1b : prix effectif (réduit si rabais) pour CE cercle/domaine.
+              const coutEff = coutEffectif(comp, niv, opt.value);
+              const aRabais = coutEff < niv.cout_xp;
+              // PR-C2.2 : niveau acheté depuis la photo mais non scellé → ajout vert.
+              const ajout = modeCampagne && st.dejaAchete && !st.acquis;
               return (
                 <div
                   key={niv.niveau}
-                  className={`flex flex-wrap items-center gap-3 pl-1 ${
-                    st.bloque ? "opacity-50" : ""
-                  }`}
+                  className={`flex flex-wrap items-center gap-3 ${
+                    st.acquis
+                      ? "rounded border border-gold/60 border-l-4 border-l-gold bg-gold/15 p-1"
+                      : ajout
+                        ? "rounded border border-emerald-600/40 bg-emerald-600/10 p-1"
+                        : "pl-1"
+                  } ${!st.acquis && st.bloque ? "opacity-50" : ""}`}
                 >
                   <Checkbox
                     id={`${comp.id}-${opt.value}-${niv.niveau}`}
@@ -1988,7 +2351,7 @@ const Etape5_Competences_V2 = ({
                     disabled={st.disabled}
                     title={
                       st.xpInsuffisants
-                        ? `XP insuffisants (manque ${niv.cout_xp - xpDisponible} XP)`
+                        ? `XP insuffisants (manque ${coutEff - xpDisponible} XP)`
                         : undefined
                     }
                     onCheckedChange={(checked) => {
@@ -2004,9 +2367,22 @@ const Etape5_Competences_V2 = ({
                     className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
                   >
                     <span>Niveau {niv.niveau}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {niv.cout_xp} XP
-                    </Badge>
+                    {aRabais ? (
+                      <span className="flex items-center gap-1">
+                        <span className="text-muted-foreground line-through">
+                          {niv.cout_xp} XP
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {coutEff} XP
+                        </Badge>
+                      </span>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        {niv.cout_xp} XP
+                      </Badge>
+                    )}
+                    {st.acquis && <BadgeAcquis />}
+                    {ajout && <LabelAjoutAnnulable />}
                     {st.estGratuit && (
                       <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                         Gratuit
@@ -2017,6 +2393,7 @@ const Etape5_Competences_V2 = ({
                         <Lock className="h-3 w-3" /> Niv. {niv.niveau - 1} requis
                       </span>
                     )}
+                    {st.xpInsuffisants && renderManqueXp(coutEff)}
                   </Label>
                 </div>
               );
@@ -2057,12 +2434,22 @@ const Etape5_Competences_V2 = ({
           const estGratuit = achat?.xp_depense === 0;
           const xpInsuffisants =
             !dejaAchete && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+          const acquis = estNiveauCompetenceAcquis(
+            modeCampagne,
+            photo,
+            comp.id,
+            opt.value,
+            1,
+          );
           const disabled =
             compBloqueeClasse ||
             prereqCompBloquee ||
             mutationEnCours ||
             (dejaAchete && estGratuit) ||
-            xpInsuffisants;
+            xpInsuffisants ||
+            acquis;
+          // PR-C2.2 : option achetée depuis la photo mais non scellée → ajout vert.
+          const ajout = modeCampagne && dejaAchete && !acquis;
           const religionObj = estReligion
             ? (religions ?? []).find((r) => r.id === opt.value)
             : undefined;
@@ -2070,7 +2457,16 @@ const Etape5_Competences_V2 = ({
           const manKey = `relman-${comp.id}-${opt.value}`;
           const detOuvert = !!optionsOuvertes[detKey];
           return (
-            <div key={opt.value} className="rounded border border-border">
+            <div
+              key={opt.value}
+              className={`rounded border ${
+                acquis
+                  ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                  : ajout
+                    ? "border-emerald-600/40 bg-emerald-600/10"
+                    : "border-border"
+              }`}
+            >
               <div className="flex flex-wrap items-center gap-3 p-2">
                 <Checkbox
                   id={`${comp.id}-${opt.value}`}
@@ -2094,6 +2490,8 @@ const Etape5_Competences_V2 = ({
                   className="flex flex-1 cursor-pointer flex-wrap items-center gap-2 text-xs"
                 >
                   <strong>{opt.label}</strong>
+                  {acquis && <BadgeAcquis />}
+                  {ajout && <LabelAjoutAnnulable />}
                   {estGratuit ? (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
@@ -2103,6 +2501,7 @@ const Etape5_Competences_V2 = ({
                       {niv1.cout_xp} XP
                     </Badge>
                   )}
+                  {xpInsuffisants && renderManqueXp(niv1.cout_xp)}
                 </Label>
                 {estReligion && religionObj && (
                   <button
@@ -2170,6 +2569,16 @@ const Etape5_Competences_V2 = ({
       const estGratuit1 = achatNiv1?.xp_depense === 0;
       const xpInsuff1 =
         !niv1Acquis && !!niv1 && niv1.cout_xp > 0 && niv1.cout_xp > xpDisponible;
+      // PR-C2 : niveau 1 = savoir général sans choix → choixAchat = null.
+      const niv1Scelle = estNiveauCompetenceAcquis(
+        modeCampagne,
+        photo,
+        comp.id,
+        null,
+        1,
+      );
+      // PR-C2.2 : niveau 1 acheté depuis la photo mais non scellé → ajout vert.
+      const niv1Ajout = modeCampagne && niv1Acquis && !niv1Scelle;
       const accKey = `crimfam-${comp.id}`;
       const famOpen = optionsOuvertes[accKey] ?? niv1Acquis;
 
@@ -2180,7 +2589,15 @@ const Etape5_Competences_V2 = ({
           }`}
         >
           {niv1 && (
-            <div className="flex flex-wrap items-center gap-3 rounded border border-border p-2">
+            <div
+              className={`flex flex-wrap items-center gap-3 rounded border p-2 ${
+                niv1Scelle
+                  ? "border-gold/60 border-l-4 border-l-gold bg-gold/15"
+                  : niv1Ajout
+                    ? "border-emerald-600/40 bg-emerald-600/10"
+                    : "border-border"
+              }`}
+            >
               <Checkbox
                 id={`${comp.id}-crim-niv1`}
                 checked={niv1Acquis}
@@ -2189,7 +2606,8 @@ const Etape5_Competences_V2 = ({
                   prereqCompBloquee ||
                   mutationEnCours ||
                   (niv1Acquis && estGratuit1) ||
-                  xpInsuff1
+                  xpInsuff1 ||
+                  niv1Scelle
                 }
                 title={
                   xpInsuff1
@@ -2213,11 +2631,14 @@ const Etape5_Competences_V2 = ({
                   <Badge variant="secondary" className="text-xs">
                     {niv1.cout_xp} XP
                   </Badge>
+                  {niv1Scelle && <BadgeAcquis />}
+                  {niv1Ajout && <LabelAjoutAnnulable />}
                   {estGratuit1 && (
                     <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
                       Acquis gratuitement
                     </Badge>
                   )}
+                  {xpInsuff1 && renderManqueXp(niv1.cout_xp)}
                 </span>
                 {niv1.description && (
                   <span className="text-muted-foreground">{niv1.description}</span>
@@ -2279,12 +2700,55 @@ const Etape5_Competences_V2 = ({
     }
 
     // ---- Cas normal : Créatures, Dépeçage, Cercle, Domaine ----
+    // PR-C3 : bloc « Ce que donnent les niveaux » (paliers GÉNÉRIQUES,
+    // option-indépendants) — déplié par défaut, repliable (pattern Set via
+    // optionsOuvertes/toggleOption). Lit la desc courte (description_courte)
+    // avec fallback verbatim. UNE fois par compétence. Criminelles est gérée
+    // plus haut (cas spécial) et n'atteint pas ce bloc.
+    const paliersKey = `paliers-${comp.id}`;
+    const paliersOuvert = optionsOuvertes[paliersKey] ?? true;
+    const paliersAMontrer = niveaux.filter(
+      (n) => n.description_courte || n.description,
+    );
     return (
       <div
         className={`space-y-2 ${
           compBloqueeClasse || prereqCompBloquee ? "opacity-50" : ""
         }`}
       >
+        {paliersAMontrer.length > 0 && (
+          <div className="rounded-md border border-border/60 bg-background/40 text-xs">
+            <button
+              type="button"
+              onClick={() => toggleOption(paliersKey, paliersOuvert)}
+              className="flex w-full items-center gap-1 px-3 py-2 text-muted-foreground"
+            >
+              {paliersOuvert ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+              ℹ Ce que donnent les niveaux
+            </button>
+            {paliersOuvert && (
+              <div className="flex flex-col gap-1.5 px-3 pb-3">
+                {paliersAMontrer.map((niv) => (
+                  <div key={niv.niveau} className="flex gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="h-fit shrink-0 text-xs"
+                    >
+                      Niv. {niv.niveau}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      {niv.description_courte ?? niv.description}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {options.map((opt) => renderOptionAccordion(comp, opt, niveaux))}
         {options.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
@@ -2333,9 +2797,15 @@ const Etape5_Competences_V2 = ({
     const coutBadge = headerCoutBadge(comp, statut);
     const surbrillance = highlightId === comp.id;
 
-    // Verrou mutuel « Déjà acquise via » : conservé via MessageBlocage.
-    // Les « Réservé aux classes » sont déjà couverts par BlocClasses.
-    const detailBlocage = classeBloque(comp) ? blocageDetail(comp) : null;
+    // Compétences duales mage/prêtre : pastille cliquable cross-nav qui
+    // explique le blocage et saute vers la version jumelle (s159).
+    const crossNav = classeBloque(comp) ? crossNavDual(comp) : null;
+    // Verrou mutuel « Déjà acquise via » : MessageBlocage statique conservé
+    // uniquement en fallback si la cross-nav ne s'applique pas.
+    // Les « Réservé aux classes » sont déjà couverts par PastilleAccesCompacte
+    // (en-tête) ou par la pastille de statut « Bloquée ».
+    const detailBlocage =
+      !crossNav && classeBloque(comp) ? blocageDetail(comp) : null;
     const messageBlocage =
       detailBlocage && !detailBlocage.label.startsWith("Réservé")
         ? detailBlocage
@@ -2379,11 +2849,24 @@ const Etape5_Competences_V2 = ({
                 <span className="font-heading text-base font-bold leading-tight">
                   {comp.nom}
                 </span>
-                <PastilleStatutCompetence statut={statut} />
+                <PastilleAccesCompacte
+                  comp={comp}
+                  classeJoueur={classeNom}
+                  onTap={montrerAide}
+                />
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    montrerAide(AIDE_SYMBOLES_E5[statut]);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <PastilleStatutCompetence statut={statut} />
+                </span>
                 {coutBadge}
               </div>
               {comp.description && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                   {comp.description}
                 </p>
               )}
@@ -2392,13 +2875,16 @@ const Etape5_Competences_V2 = ({
 
           {badgePrereq && <div className="pl-6">{badgePrereq}</div>}
 
-          <div className="pl-6">
-            <BlocClasses
-              comp={comp}
-              classeJoueur={classeNom}
-              normalizeCategorieFn={normalizeCategorie}
-            />
-          </div>
+          {crossNav && (
+            <div className="pl-6">
+              <BadgePrereqCliquable
+                statut={crossNav.statut}
+                label={crossNav.label}
+                competenceId={crossNav.targetId}
+                onGo={goToComp}
+              />
+            </div>
+          )}
 
           {messageBlocage && (
             <div className="pl-6">
@@ -2441,9 +2927,41 @@ const Etape5_Competences_V2 = ({
 
   return (
     <div className="space-y-4">
+      <JaugeXP xpDisponible={xpDisponible} />
+
       <h2 className="font-heading text-xl font-semibold text-foreground">
-        Étape 5 — Achat de compétences
+        Achat de compétences
       </h2>
+
+      <IntroEtape
+        storageKey="hv-e5-intro-replie"
+        titre="Comment fonctionne cette étape ?"
+      >
+        <IntroEtapeItem n={1}>
+          <strong>Achetez des compétences avec vos XP.</strong> Le coût se
+          calcule tout seul et se déduit de votre solde (⚡ en haut). Elles sont
+          rangées par catégorie : <strong>Générales</strong> + les 4 classes —
+          vous pouvez piocher dans <strong>toutes</strong>, pas seulement la
+          vôtre.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          <strong>Votre classe{classe?.nom ? ` (${classe.nom})` : ""}</strong> :
+          accès libre jusqu'au <strong>niveau 2</strong>. Le{" "}
+          <strong>niveau 3 (devenir maître)</strong> se débloque en trouvant un
+          maître en jeu.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          <strong>Autres classes</strong> : <strong>niveau 1</strong> libre, le{" "}
+          <strong>niveau 2</strong> demande un maître. Certaines compétences{" "}
+          <strong>uniques à une classe</strong> restent réservées.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={4}>
+          <strong>Prérequis</strong> : si une compétence en a (autre compétence,
+          ou une classe précise), ils doivent <strong>tous</strong> être remplis
+          avant l'achat. La <strong>pastille</strong> de droite indique le
+          statut.
+        </IntroEtapeItem>
+      </IntroEtape>
 
       {/* Filtres de statut (C3c) — barre globale. */}
       <div className="flex flex-wrap gap-1.5">
@@ -2465,6 +2983,7 @@ const Etape5_Competences_V2 = ({
       <LegendePastilles
         ouvert={legendeOuverte}
         onToggle={() => setLegendeOuverte((v) => !v)}
+        modeCampagne={modeCampagne}
       />
 
       {/* Accordéons par catégorie (remplacent les Radix Tabs). */}
@@ -2502,12 +3021,14 @@ const Etape5_Competences_V2 = ({
               {open && (
                 <div className="space-y-2 border-t border-border/60 px-3 pb-3 pt-3">
                   {(t.key === "mage" || t.key === "pretre") && (
-                    <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                      💡{" "}
-                      {t.key === "mage"
-                        ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
-                        : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."}
-                    </p>
+                    <Astuce
+                      storageKey={`hv-e5-astuce-${t.key}`}
+                      texte={
+                        t.key === "mage"
+                          ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
+                          : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."
+                      }
+                    />
                   )}
                   {comps.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
@@ -2522,6 +3043,9 @@ const Etape5_Competences_V2 = ({
           );
         })}
       </div>
+
+      {/* PR-C2 : bulle d'aide L2 (sticky bottom). */}
+      <TapBulle aide={aide} onClose={fermerAide} />
 
       {/* Dialog maître requis */}
       <Dialog

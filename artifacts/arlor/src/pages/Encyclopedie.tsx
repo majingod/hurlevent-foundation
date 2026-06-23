@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
+import { useModeManuel } from "@/hooks/useModeManuel";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,10 +20,13 @@ import ForgeJoaillerieSection from "@/components/encyclopedie/ForgeJoaillerieSec
 import BestiaireSection from "@/components/encyclopedie/BestiaireSection";
 import LoreSection from "@/components/encyclopedie/LoreSection";
 import PiegesSection from "@/components/encyclopedie/PiegesSection";
-import RaceCard from "@/components/encyclopedie/RaceCard";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
+import { FicheMoteur, type ChampSchema } from "@/components/shared/FicheMoteur";
+import { BlocPaliers } from "@/components/createur/DescriptionDepliable";
+import PastilleType from "@/components/shared/PastilleType";
+import type { BonusNiveau, PalierSort } from "@/utils/calculsMagie";
 
 /* ── types ── */
 
@@ -43,6 +47,7 @@ interface Classe {
   nom: string | null;
   emoji: string | null;
   description: string | null;
+  resume_condense: string | null;
   pv_depart: number | null;
   ps_depart: number | null;
   competences_gratuites: Json | null;
@@ -69,6 +74,9 @@ interface Sort {
   zone_effet: string | null;
   portee: string | null;
   duree: string | null;
+  paliers: PalierSort[] | null;
+  description_tronc: string | null;
+  bonus_niveau: BonusNiveau | null;
 }
 
 interface Priere {
@@ -83,6 +91,9 @@ interface Priere {
   portee: string | null;
   duree: string | null;
   duree_incantation: string | null;
+  paliers: PalierSort[] | null;
+  description_tronc: string | null;
+  bonus_niveau: BonusNiveau | null;
 }
 
 interface Religion {
@@ -106,6 +117,8 @@ interface TraitRacial {
   id: string;
   nom: string;
   description: string;
+  texte_manuel: string | null;
+  resume_condense: string | null;
   cout_xp: number;
   race_traits: {
     sous_type: string | null;
@@ -192,6 +205,9 @@ const Encyclopedie = () => {
   const [races, setRaces] = useState<Race[]>([]);
   const [traits, setTraits] = useState<TraitRacial[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
+  const [schemaClasse, setSchemaClasse] = useState<ChampSchema[]>([]);
+  const [schemaRace, setSchemaRace] = useState<ChampSchema[]>([]);
+  const [schemaTrait, setSchemaTrait] = useState<ChampSchema[]>([]);
   const [competences, setCompetences] = useState<Competence[]>([]);
   const [sorts, setSorts] = useState<Sort[]>([]);
   const [prieres, setPrieres] = useState<Priere[]>([]);
@@ -220,8 +236,8 @@ const Encyclopedie = () => {
         loreRes, piegesRes,
       ] = await Promise.all([
         supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
-        supabase.from("traits_raciaux").select(`id, nom, description, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
-        supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
+        supabase.from("traits_raciaux").select(`id, nom, description, texte_manuel, resume_condense, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
+        supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, resume_condense, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
         supabase.from("vue_competences_encyclopedie").select("*").eq("est_actif", true).order("categorie").order("nom"),
         supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
         supabase.from("prieres").select("*").eq("est_actif", true).order("domaine").order("niveau").order("nom"),
@@ -252,6 +268,16 @@ const Encyclopedie = () => {
       setCreatures(bestRes.data ?? []);
       setLoreEntries(loreRes.data ?? []);
       setPieges(piegesRes.data ?? []);
+      const schemasRes = await supabase
+        .from("fiches_schemas")
+        .select("categorie, champs")
+        .in("categorie", ["classe", "race", "trait_racial"]);
+      const parCategorie = Object.fromEntries(
+        (schemasRes.data ?? []).map((s: any) => [s.categorie, s.champs])
+      );
+      setSchemaClasse((parCategorie["classe"] as ChampSchema[]) ?? []);
+      setSchemaRace((parCategorie["race"] as ChampSchema[]) ?? []);
+      setSchemaTrait((parCategorie["trait_racial"] as ChampSchema[]) ?? []);
       setLoading(false);
     };
     fetchAll();
@@ -330,9 +356,9 @@ const Encyclopedie = () => {
 
       <div>
         {active === "recherche" && <RechercheSection onSelectResult={handleSelectResult} />}
-        {active === "races" && <RacesSection races={races} searchQuery={search} />}
-        {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} />}
-        {active === "classes" && <ClassesSection classes={classes} searchQuery={search} />}
+        {active === "races" && <RacesSection races={races} searchQuery={search} schema={schemaRace} traits={traits} />}
+        {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} schema={schemaTrait} />}
+        {active === "classes" && <ClassesSection classes={classes} searchQuery={search} schema={schemaClasse} competences={competences} />}
         {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
         {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} />}
         {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} />}
@@ -446,47 +472,173 @@ const NoResults = () => (
 );
 
 
-const RacesSection = ({ races, searchQuery }: { races: Race[]; searchQuery: string }) => {
+const RacesSection = ({
+  races,
+  searchQuery,
+  schema,
+  traits,
+}: {
+  races: Race[];
+  searchQuery: string;
+  schema: ChampSchema[];
+  traits: TraitRacial[];
+}) => {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
+
+  // Traits raciaux permis par race (noms distincts) depuis la relation race_traits.
+  const traitsParRace: Record<string, string[]> = {};
+  for (const t of traits) {
+    for (const rt of t.race_traits ?? []) {
+      const rid = rt.races?.id;
+      if (!rid) continue;
+      if (!traitsParRace[rid]) traitsParRace[rid] = [];
+      if (!traitsParRace[rid].includes(t.nom)) traitsParRace[rid].push(t.nom);
+    }
+  }
+
   const filtered = filterByText(races, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.nom_latin ?? "", r.exigences_costume ?? ""]);
 
-  return (
-    <div className="space-y-6">
-      <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Races de Destéa</h2>
-      {filtered.length === 0 ? (
-        <NoResults />
-      ) : (
-        <div className="grid gap-6">
-          {filtered.map((r) => (
-            <RaceCard
-              key={r.id}
-              id={r.id}
-              nom={r.nom || ''}
-              nom_latin={r.nom_latin}
-              emoji={r.emoji || '?'}
-              esperance_vie={r.esperance_vie}
-              xp_depart={r.xp_depart}
-              description={r.description}
-              exigences_costume={r.exigences_costume}
-              nb_traits_raciaux={r.nb_traits_raciaux}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; searchQuery: string; races: Race[] }) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggleExpanded = (id: string) => {
-    setExpanded(prev => {
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
   };
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Races de Destéa</h2>
+      <p className="text-sm text-muted-foreground -mt-3">
+        Chaque race offre 1 trait racial gratuit à la création. Traits supplémentaires : 10 XP chacun, uniquement à la création.
+      </p>
+      <ManuelGlobalSwitch
+        allOpen={mode === "integral"}
+        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+        title="Texte du manuel"
+        subtitle="Intégral (verbatim du manuel) ou abrégé"
+      />
+      {filtered.length === 0 ? (
+        <NoResults />
+      ) : (
+        <div className="grid gap-6">
+          {filtered.map((r) => {
+            const isOpen = expanded.has(r.id);
+            const entite = { ...r, traits_permis: traitsParRace[r.id] ?? [] };
+            return (
+              <div
+                key={r.id}
+                className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
+                onClick={() => toggle(r.id)}
+              >
+                {/* Header — densité carte (moteur) */}
+                <div className="px-6 py-5">
+                  <div className="flex items-start gap-4">
+                    <div className="text-5xl flex-shrink-0 leading-none">{r.emoji}</div>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h2 className="text-3xl font-heading font-bold text-gold leading-tight">{r.nom}</h2>
+                          {r.nom_latin && (
+                            <p className="text-sm italic text-foreground/60 mt-0.5">{r.nom_latin}</p>
+                          )}
+                        </div>
+                        <ChevronDown
+                          size={20}
+                          className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </div>
+                      <div className="mt-3">
+                        <FicheMoteur
+                          schema={schema}
+                          entite={entite as Record<string, any>}
+                          densite="carte"
+                          mode={mode}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body — densité encyclo (moteur) */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: isOpen ? "3000px" : "0", opacity: isOpen ? 1 : 0 }}
+                >
+                  <div className="px-6 pb-5 border-t border-gold/30 pt-4">
+                    <FicheMoteur
+                      schema={schema}
+                      entite={entite as Record<string, any>}
+                      densite="encyclo"
+                      mode={mode}
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-6 py-3 flex justify-end border-t border-gold/20">
+                  <span className="text-xs" style={{ color: "#c9a84c" }}>
+                    {isOpen ? "Voir moins" : "Voir plus"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const chipsRacesTrait = (t: TraitRacial, totalRacesJouables: number): string[] => {
+  // Regroupe les sous_types par race JOUABLE (cohérent avec l'encyclo Races).
+  const parRace = new Map<string, Set<string | null>>();
+  for (const rt of t.race_traits ?? []) {
+    const r = rt.races;
+    if (!r?.nom || !r.est_jouable) continue;
+    if (!parRace.has(r.nom)) parRace.set(r.nom, new Set());
+    parRace.get(r.nom)!.add(rt.sous_type);
+  }
+  if (parRace.size === 0) return [];
+  // Toutes les races jouables y ont droit → collapse.
+  if (totalRacesJouables > 0 && parRace.size === totalRacesJouables) return ["Toutes les races"];
+  const chips: string[] = [];
+  for (const [nom, sousTypes] of parRace) {
+    const discriminants = [...sousTypes].filter(Boolean) as string[];
+    // Un seul sous_type discriminant (ex. Chiméride carnivore) → suffixe ; sinon nom seul.
+    if (sousTypes.size === 1 && discriminants.length === 1) {
+      chips.push(`${nom} (${discriminants[0]})`);
+    } else {
+      chips.push(nom);
+    }
+  }
+  return chips.sort((a, b) => a.localeCompare(b, "fr"));
+};
+
+const TraitsSection = ({
+  traits,
+  searchQuery,
+  races,
+  schema,
+}: {
+  traits: TraitRacial[];
+  searchQuery: string;
+  races: Race[];
+  schema: ChampSchema[];
+}) => {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [raceFiltre, setRaceFiltre] = useState<string | null>(null);
+  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
+  const toggleExpanded = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!searchQuery) return;
@@ -509,8 +661,11 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
 
   return (
     <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Traits Raciaux</h2>
-      <div className="flex flex-wrap gap-2 mb-4">
+      <h2 className="font-heading text-2xl font-bold text-gold mb-2">Traits Raciaux</h2>
+      <p className="text-sm text-muted-foreground -mt-1">
+        1 trait racial gratuit à la création. Traits supplémentaires : 10 XP chacun, uniquement à la création.
+      </p>
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setRaceFiltre(null)}
           className={raceFiltre === null
@@ -520,7 +675,7 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
         >
           Toutes
         </button>
-        {races.map(race => (
+        {races.map((race) => (
           <button
             key={race.id}
             onClick={() => setRaceFiltre(race.id)}
@@ -533,33 +688,67 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
           </button>
         ))}
       </div>
-      {filtered.length === 0 ? <NoResults /> : (
-        <div className="grid gap-4 sm:grid-cols-2">
+      <ManuelGlobalSwitch
+        allOpen={mode === "integral"}
+        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+        title="Texte du manuel"
+        subtitle="Intégral (verbatim du manuel) ou abrégé"
+      />
+      {filtered.length === 0 ? (
+        <NoResults />
+      ) : (
+        <div className="grid gap-6">
           {filtered.map((t) => {
-            const raceNoms = t.race_traits
-              .map(rt => rt.races?.nom)
-              .filter(Boolean) as string[];
+            const isOpen = expanded.has(t.id);
+            const chips = chipsRacesTrait(t, races.length);
             return (
-              <EncyclopedieCard
+              <div
                 key={t.id}
-                id={t.id}
-                isOpen={expanded.has(t.id)}
-                onToggle={() => toggleExpanded(t.id)}
-                header={
-                  <>
-                    <CardTitle className="font-heading text-lg">{t.nom}</CardTitle>
-                    {raceNoms.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {raceNoms.map(nom => (
-                          <span key={nom} className="bg-stone-700 text-amber-200 text-xs px-2 py-0.5 rounded-full">{nom}</span>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                }
+                className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
+                onClick={() => toggleExpanded(t.id)}
               >
-                <p className="border-t border-primary/10 pt-3 mt-1">{t.description}</p>
-              </EncyclopedieCard>
+                {/* Header — densité carte (moteur) + puces races */}
+                <div className="px-6 py-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="text-2xl font-heading font-bold text-gold leading-tight">{t.nom}</h2>
+                    <ChevronDown
+                      size={20}
+                      className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                    />
+                  </div>
+                  {chips.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {chips.map((c) => (
+                        <span
+                          key={c}
+                          className="rounded-full px-2.5 py-0.5 text-xs"
+                          style={{ background: "hsl(0 0% 16%)", color: "hsl(42 75% 52%)" }}
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-3">
+                    <FicheMoteur schema={schema} entite={t as Record<string, any>} densite="carte" mode={mode} />
+                  </div>
+                </div>
+                {/* Body — densité encyclo (moteur) */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: isOpen ? "2000px" : "0", opacity: isOpen ? 1 : 0 }}
+                >
+                  <div className="px-6 pb-5 border-t border-gold/30 pt-4">
+                    <FicheMoteur schema={schema} entite={t as Record<string, any>} densite="encyclo" mode={mode} />
+                  </div>
+                </div>
+                {/* Footer */}
+                <div className="px-6 py-3 flex justify-end border-t border-gold/20">
+                  <span className="text-xs" style={{ color: "#c9a84c" }}>
+                    {isOpen ? "Voir moins" : "Voir plus"}
+                  </span>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -568,12 +757,26 @@ const TraitsSection = ({ traits, searchQuery, races }: { traits: TraitRacial[]; 
   );
 };
 
-const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQuery: string }) => {
+const ClassesSection = ({
+  classes,
+  searchQuery,
+  schema,
+  competences,
+}: {
+  classes: Classe[];
+  searchQuery: string;
+  schema: ChampSchema[];
+  competences: Competence[];
+}) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
+  const competencesParId: Record<string, string> = Object.fromEntries(
+    competences.map((c) => [c.id, c.nom ?? ""])
+  );
   const filtered = filterByText(classes, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
 
   const toggle = (id: string) => {
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -584,20 +787,25 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Classes de Destéa</h2>
-      {filtered.length === 0 ? <NoResults /> : (
+      <ManuelGlobalSwitch
+        allOpen={mode === "integral"}
+        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+        title="Texte du manuel"
+        subtitle="Intégral (verbatim du manuel) ou abrégé"
+      />
+      {filtered.length === 0 ? (
+        <NoResults />
+      ) : (
         <div className="grid gap-6">
           {filtered.map((c) => {
             const isOpen = expanded.has(c.id);
-            const comps: any[] = Array.isArray(c.competences_gratuites)
-              ? c.competences_gratuites
-              : JSON.parse((c.competences_gratuites as string) ?? "[]");
             return (
               <div
                 key={c.id}
                 className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
                 onClick={() => toggle(c.id)}
               >
-                {/* Header — always visible */}
+                {/* Header — densité carte (moteur) */}
                 <div className="px-6 py-5">
                   <div className="flex items-start gap-4">
                     <div className="text-5xl flex-shrink-0 leading-none">{c.emoji}</div>
@@ -609,61 +817,33 @@ const ClassesSection = ({ classes, searchQuery }: { classes: Classe[]; searchQue
                           className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                         />
                       </div>
-                      <div className="flex gap-5 text-sm mt-2 text-foreground/80">
-                        <span>❤️ {c.pv_depart ?? "—"} PV</span>
-                        <span>✨ {c.ps_depart ?? "—"} PS</span>
+                      <div className="mt-3">
+                        <FicheMoteur
+                          schema={schema}
+                          entite={c as Record<string, any>}
+                          densite="carte"
+                          mode={mode}
+                          competencesParId={competencesParId}
+                        />
                       </div>
-                      {comps.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-xs font-semibold mb-2 tracking-wider" style={{ color: "#c9a84c", fontVariant: "small-caps" }}>
-                            ⭐ COMPÉTENCES GRATUITES
-                          </p>
-                          <div className="space-y-1">
-                            {comps.map((comp, i) => (
-                              <div key={i} className="flex items-center gap-2 text-sm text-foreground/80">
-                                <span className="flex-shrink-0">⭐</span>
-                                <span>{String(comp)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Accordion body */}
+                {/* Body — densité encyclo (moteur) */}
                 <div
                   className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{ maxHeight: isOpen ? "1200px" : "0", opacity: isOpen ? 1 : 0 }}
+                  style={{ maxHeight: isOpen ? "2000px" : "0", opacity: isOpen ? 1 : 0 }}
                 >
-                  {c.description && (
-                    <div className="px-6 pb-4 border-t border-gold/30 pt-4">
-                      <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">{c.description}</p>
-                    </div>
-                  )}
-                  {comps.length > 0 && (
-                    <div className="px-6 pb-5">
-                      <p
-                        className="text-xs font-semibold mb-3 tracking-wider"
-                        style={{ color: "#c9a84c", fontVariant: "small-caps" }}
-                      >
-                        ⭐ COMPÉTENCES GRATUITES
-                      </p>
-                      <div className="space-y-2">
-                        {comps.map((comp, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-3 rounded-md border border-gold/30 px-4 py-3"
-                            style={{ background: "rgba(201,168,76,0.06)" }}
-                          >
-                            <span className="flex-shrink-0">⭐</span>
-                            <span className="text-sm text-foreground/90">{String(comp)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <div className="px-6 pb-5 border-t border-gold/30 pt-4">
+                    <FicheMoteur
+                      schema={schema}
+                      entite={c as Record<string, any>}
+                      densite="encyclo"
+                      mode={mode}
+                      competencesParId={competencesParId}
+                    />
+                  </div>
                 </div>
 
                 {/* Footer */}
@@ -931,12 +1111,17 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
                       </AccordionTrigger>
                       <AccordionContent className="text-sm text-muted-foreground">
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
-                          {s.type_sort && <span>Type : {s.type_sort}</span>}
+                          {s.type_sort && <PastilleType type={s.type_sort} />}
                           {s.portee && <span>Portée : {s.portee}</span>}
                           {s.zone_effet && <span>Zone : {s.zone_effet}</span>}
                           {s.duree && <span>Durée : {s.duree}</span>}
                         </div>
                         {(s.description_courte ?? s.description) && <p>{s.description_courte ?? s.description}</p>}
+                        {s.paliers && s.paliers.length > 0 && (
+                          <div className="mt-2">
+                            <BlocPaliers paliers={s.paliers} niveauActif={null} />
+                          </div>
+                        )}
                         <ToggleManuel
                           texte={s.description}
                           isOpen={isManuelOpen(s.id)}
@@ -1052,13 +1237,18 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
                 </AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
-                    {p.type_priere && <span>Type : {p.type_priere}</span>}
+                    {p.type_priere && <PastilleType type={p.type_priere} />}
                     {p.portee && <span>Portée : {p.portee}</span>}
                     {p.zone_effet && <span>Zone : {p.zone_effet}</span>}
                     {p.duree && <span>Durée : {p.duree}</span>}
                     {p.duree_incantation && <span>Incantation : {p.duree_incantation}</span>}
                   </div>
                   {(p.description_courte ?? p.description) && <p>{p.description_courte ?? p.description}</p>}
+                  {p.paliers && p.paliers.length > 0 && (
+                    <div className="mt-2">
+                      <BlocPaliers paliers={p.paliers} niveauActif={null} />
+                    </div>
+                  )}
                   <ToggleManuel
                     texte={p.description}
                     isOpen={isManuelOpen(p.id)}

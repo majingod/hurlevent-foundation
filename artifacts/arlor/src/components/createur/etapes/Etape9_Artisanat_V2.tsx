@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2,
+  Eye,
   Sparkles,
   Hammer,
   Gem,
@@ -37,6 +38,21 @@ import {
 } from "lucide-react";
 import { COUT_RECETTE_SUPPLEMENTAIRE } from "@/constants/artisanat";
 import { SectionAlchimieAccordion } from "./SectionAlchimieAccordion";
+import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
+import { QuickFacts } from "@/components/shared/QuickFacts";
+import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
+import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
+import { estRecetteAcquise, estPiegeAcquis } from "@/lib/acquisCampagne";
+import JaugeXP from "@/components/createur/aide/JaugeXP";
+import IntroEtape, {
+  IntroEtapeItem,
+} from "@/components/createur/aide/IntroEtape";
+import Astuce from "@/components/createur/aide/Astuce";
+import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
+import { PastilleCout } from "@/components/createur/artisanat/PastilleCout";
+import LegendeArtisanat, {
+  type EntreeLegende,
+} from "@/components/createur/artisanat/LegendeArtisanat";
 
 type RecetteRow = Database["public"]["Tables"]["recettes_alchimie"]["Row"];
 type ObjetForgeRow = Database["public"]["Tables"]["objets_forge"]["Row"];
@@ -67,11 +83,6 @@ interface CascadePiegeContext {
 interface Etape9Props {
   personnageId: string;
   /**
-   * Etape de creation actuelle cote serveur (personnages.etape_creation).
-   * Sert de garde a l'auto-skip : on ne skip qu'en avancement (forward).
-   */
-  etapeCreation?: number;
-  /**
    * XP disponible du personnage (xp_total - xp_depense, ajuste du delta
    * courant). Calcule par PersonnageNouveauV2.tsx. Sert a griser le
    * bouton « Acheter » quand XP insuffisant. Fallback 0 = bloque par
@@ -81,17 +92,27 @@ interface Etape9Props {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
+  /**
+   * Mode campagne (évolution) : verrouille visuellement le désachat des
+   * recettes et paliers de pièges acquis (PR-C2). Miroir d'INV-3 backend,
+   * qui reste l'autorité.
+   */
+  modeCampagne?: boolean;
 }
 
 const Etape9_Artisanat_V2 = ({
   personnageId,
-  etapeCreation,
   xpDisponible = 0,
   onSuccess,
   onError,
   onPrevious,
+  modeCampagne = false,
 }: Etape9Props) => {
   const queryClient = useQueryClient();
+
+  // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne
+  // (une seule fois pour les deux sections recettes + pièges).
+  const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
 
   // Modale de confirmation de cascade (décochage d'un palier de piège).
   const [cascadePiege, setCascadePiege] = useState<CascadePiegeContext | null>(
@@ -391,6 +412,14 @@ const Etape9_Artisanat_V2 = ({
 
   const handleToggle = (recette: RecetteRow, acquise: PersonnageRecetteRow | undefined) => {
     if (acquise) {
+      // PR-C2 : garde défensive — une recette scellée par la photo ne peut
+      // être retirée (le backend INV-3 refuserait de toute façon).
+      if (estRecetteAcquise(modeCampagne, photo, recette.id)) {
+        toast.error(
+          "Cet acquis a été joué en événement — il ne peut plus être retiré.",
+        );
+        return;
+      }
       // Désacheter
       desacheterMutation.mutate({ p_personnage_recette_id: acquise.id });
     } else {
@@ -479,6 +508,14 @@ const Etape9_Artisanat_V2 = ({
   // confirmation (miroir cascadeDialog étape 5). Un palier gratuit reste
   // décochable (la DB ne le bloque pas).
   const handleDecocherPiege = (nom: string, niveau: number) => {
+    // PR-C2 : garde défensive — un palier scellé par la photo ne peut être
+    // retiré (le backend INV-3 refuserait de toute façon).
+    if (estPiegeAcquis(modeCampagne, photo, nom, niveau)) {
+      toast.error(
+        "Cet acquis a été joué en événement — il ne peut plus être retiré.",
+      );
+      return;
+    }
     const inner = paliersParFamille.get(nom);
     const cible = inner?.get(niveau);
     if (!inner || !cible) return;
@@ -553,6 +590,9 @@ const Etape9_Artisanat_V2 = ({
     },
   });
 
+  // L2 — bulle d'aide au tap (Lot B, s183). État purement présentationnel.
+  const { aide, montrer: montrerAide, fermer: fermerAide } = useTapBulle();
+
   if (loadingQuotas) {
     return (
       <div className="flex items-center justify-center p-8 text-muted-foreground">
@@ -568,7 +608,7 @@ const Etape9_Artisanat_V2 = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-heading">
-              Étape 9 — Artisanat
+              Artisanat
             </CardTitle>
             <CardDescription>
               Aucune compétence d'artisanat acquise — cette étape ne s'applique
@@ -612,17 +652,189 @@ const Etape9_Artisanat_V2 = ({
   const mutationsPiegesPending =
     acheterPiegeMutation.isPending || desacheterPiegeMutation.isPending;
 
+  // Couche aide (Lot B, s183) — dérivations purement présentationnelles.
+  // Recettes acquises : la Map est clée par id de recette catalogue.
+  const acquisRecettesIds = [...recettesAcquisesParRecetteId.keys()];
+  const aScelAlch =
+    modeCampagne &&
+    acquisRecettesIds.some((id) => estRecetteAcquise(modeCampagne, photo, id));
+  const aAnnAlch =
+    modeCampagne &&
+    acquisRecettesIds.some((id) => !estRecetteAcquise(modeCampagne, photo, id));
+
+  // Pièges acquis : aplatir paliersParFamille (Map<nom, Map<niv, ligne>>).
+  const acquisPieges: { nom: string; niv: number }[] = [];
+  paliersParFamille.forEach((m, nom) =>
+    m.forEach((_l, niv) => acquisPieges.push({ nom, niv })),
+  );
+  const aScelP =
+    modeCampagne &&
+    acquisPieges.some(({ nom, niv }) =>
+      estPiegeAcquis(modeCampagne, photo, nom, niv),
+    );
+  const aAnnP =
+    modeCampagne &&
+    acquisPieges.some(
+      ({ nom, niv }) => !estPiegeAcquis(modeCampagne, photo, nom, niv),
+    );
+
+  // L1 — légende alchimie (Option B : pas de pastille de type sur la rangée →
+  // les types sont expliqués en texte).
+  const legAlch: EntreeLegende[] = [
+    { section: "Types" },
+    {
+      texte:
+        "Potion — breuvage bénéfique : se consomme pour obtenir son effet (soin, protection, bonus).",
+    },
+    {
+      texte:
+        "Poison — substance offensive : s'applique ou se fait ingérer pour nuire à la cible.",
+    },
+    { section: "Coût" },
+    {
+      sym: <PastilleCout gratuit xp={COUT_RECETTE_SUPPLEMENTAIRE} />,
+      texte: "Comprise dans votre quota gratuit du niveau.",
+    },
+    {
+      sym: <PastilleCout gratuit={false} xp={COUT_RECETTE_SUPPLEMENTAIRE} />,
+      texte: `Quota épuisé : ${COUT_RECETTE_SUPPLEMENTAIRE} XP, remboursés si retirée.`,
+    },
+    ...(aScelAlch || aAnnAlch
+      ? ([
+          { section: "Vos recettes" },
+          ...(aScelAlch
+            ? [
+                {
+                  sym: "or",
+                  texte: (
+                    <span>
+                      <strong className="text-gold">Fond doré 🔒</strong> —
+                      scellée à un GN : ne peut plus être retirée.
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+          ...(aAnnAlch
+            ? [
+                {
+                  sym: "vert",
+                  texte: (
+                    <span>
+                      <strong className="text-emerald-400">Fond vert ＋</strong>{" "}
+                      — ajout encore annulable (XP remboursés).
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+        ] as EntreeLegende[])
+      : []),
+  ];
+
+  // L1 — légende pièges. Le coût d'un palier varie → pill « Gratuit » + ligne
+  // texte pour le payant (pas de pill à montant figé).
+  const legP: EntreeLegende[] = [
+    { section: "Paliers" },
+    {
+      sym: <Lock className="h-3.5 w-3.5 text-muted-foreground" />,
+      texte:
+        "Palier verrouillé : achetez d'abord le niveau précédent de la même famille.",
+    },
+    { section: "Coût" },
+    {
+      sym: <PastilleCout gratuit xp={0} />,
+      texte:
+        "Compris dans un quota gratuit (pièges niv 1, améliorations → niv 2 / niv 3).",
+    },
+    {
+      texte:
+        "Quota épuisé : le palier devient payant en XP (montant indiqué sur chaque palier), remboursé si retiré.",
+    },
+    ...(aScelP || aAnnP
+      ? ([
+          { section: "Vos pièges" },
+          ...(aScelP
+            ? [
+                {
+                  sym: "or",
+                  texte: (
+                    <span>
+                      <strong className="text-gold">Fond doré 🔒</strong> —
+                      scellé à un GN : ne peut plus être retiré.
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+          ...(aAnnP
+            ? [
+                {
+                  sym: "vert",
+                  texte: (
+                    <span>
+                      <strong className="text-emerald-400">Fond vert ＋</strong>{" "}
+                      — ajout encore annulable (XP remboursés).
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+        ] as EntreeLegende[])
+      : []),
+  ];
+
   return (
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
-          Étape 9 — Artisanat
+          Artisanat
         </h2>
         <p className="text-sm text-muted-foreground">
           Sélectionnez vos recettes gratuites et complétez avec des recettes
           payantes si vous le souhaitez.
         </p>
       </div>
+
+      {/* I4 — Jauge XP sticky */}
+      <JaugeXP xpDisponible={xpDisponible} />
+
+      {/* W1 — Introduction d'étape */}
+      <IntroEtape
+        storageKey="hv-e9-intro-replie"
+        titre="Comment fonctionne cette étape ?"
+      >
+        <IntroEtapeItem n={1}>
+          L'Artisanat regroupe vos métiers en <strong>onglets</strong>, selon vos
+          compétences : Alchimie, Pièges, et — en consultation — Forge / Joaillerie.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          <strong>Alchimie</strong> et <strong>Pièges</strong> : cochez vos recettes
+          et pièges. Ils sont <strong>gratuits</strong> selon vos quotas (par niveau),
+          sinon <strong>payants en XP</strong> — remboursés si retirés.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          Les <strong>pièges</strong> montent par <strong>paliers</strong> : achetez le
+          niveau précédent avant de débloquer le suivant.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={4}>
+          <strong>Forge</strong> et <strong>Joaillerie</strong> sont en{" "}
+          <strong>consultation seule</strong> : la liste de ce que vous pouvez
+          fabriquer, sans achat ici.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={5}>
+          Touchez un <strong>symbole de coût</strong> pour savoir s'il est gratuit
+          (quota) ou payant en XP.
+        </IntroEtapeItem>
+        {modeCampagne && (
+          <IntroEtapeItem n={6}>
+            Un acquis <strong>joué en GN</strong> est scellé{" "}
+            <strong className="text-gold">🔒</strong> ; un ajout récent{" "}
+            <strong className="text-emerald-400">＋</strong> reste annulable
+            (XP remboursés).
+          </IntroEtapeItem>
+        )}
+      </IntroEtape>
 
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList
@@ -660,7 +872,15 @@ const Etape9_Artisanat_V2 = ({
                   Alchimie — niveau {niveauAlchimie}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <LegendeArtisanat
+                  storageKey="hv-e9-legende-alchimie-replie"
+                  entrees={legAlch}
+                />
+                <Astuce
+                  storageKey="hv-e9-astuce-alchimie-vue"
+                  texte="Touchez une recette pour lire sa fiche, ou filtrez par potions / poisons. La pastille indique si elle est gratuite (quota) ou payante en XP."
+                />
                 {loadingRecettes || loadingPersoRecettes ? (
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -685,6 +905,11 @@ const Etape9_Artisanat_V2 = ({
                     coutSupplementaire={COUT_RECETTE_SUPPLEMENTAIRE}
                     mutationsPending={mutationsPending}
                     onToggle={handleToggle}
+                    estRecetteScellee={(recetteId) =>
+                      estRecetteAcquise(modeCampagne, photo, recetteId)
+                    }
+                    modeCampagne={modeCampagne}
+                    montrerAide={montrerAide}
                   />
                 )}
               </CardContent>
@@ -746,6 +971,14 @@ const Etape9_Artisanat_V2 = ({
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                <LegendeArtisanat
+                  storageKey="hv-e9-legende-pieges-replie"
+                  entrees={legP}
+                />
+                <Astuce
+                  storageKey="hv-e9-astuce-pieges-vue"
+                  texte="Chaque famille de pièges monte par paliers. La pastille de coût indique gratuit (quota) ou payant en XP ; un palier verrouillé attend l'achat du niveau précédent."
+                />
                 {loadingPiegesCatalogue || loadingPersoPieges ? (
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -760,12 +993,6 @@ const Etape9_Artisanat_V2 = ({
                     const maxAcquis = maxAcquisPourFamille(nom);
                     const estPossede = maxAcquis >= 1;
                     const depliee = famillesDepliees.has(nom);
-                    // Ligne catalogue du palier le plus haut acquis (détail
-                    // verbatim toujours visible), sinon niv 1.
-                    const ligneHaute =
-                      niveaux.find((p) => p.niveau === maxAcquis) ??
-                      niveaux.find((p) => p.niveau === 1) ??
-                      niveaux[0];
                     const construction =
                       niveaux.find((p) => p.niveau === 1)?.construction ?? null;
 
@@ -791,8 +1018,20 @@ const Etape9_Artisanat_V2 = ({
                           )}
                         </div>
 
+                        {(() => {
+                          const glance =
+                            niveaux.find((p) => p.niveau === maxAcquis)?.effets ??
+                            niveaux[0]?.effets ??
+                            null;
+                          return glance ? (
+                            <p className="text-xs leading-snug text-muted-foreground">
+                              {glance}
+                            </p>
+                          ) : null;
+                        })()}
+
                         {/* Cases à cocher par niveau (grisage séquentiel) */}
-                        <div className="space-y-2">
+                        <div>
                           {niveaux.map((palier) => {
                             const niv = palier.niveau ?? 0;
                             const acquis =
@@ -806,165 +1045,131 @@ const Etape9_Artisanat_V2 = ({
                               quotaPiegeRestantPourNiveau(niv) > 0;
                             const xpInsuffisant =
                               !acquis && !seraGratuit && cout > xpDisponible;
+                            // PR-C2 : palier scellé par la photo (désachat refusé).
+                            const scelle = estPiegeAcquis(
+                              modeCampagne,
+                              photo,
+                              nom,
+                              niv,
+                            );
                             const disabled = acquis
-                              ? mutationsPiegesPending
+                              ? mutationsPiegesPending || scelle
                               : niveauPrecedentRequis ||
                                 mutationsPiegesPending ||
                                 xpInsuffisant;
                             return (
                               <div
                                 key={niv}
-                                className={`flex flex-wrap items-center gap-3 rounded border border-border p-2 ${
-                                  niveauPrecedentRequis && !acquis
+                                className={`space-y-2 border-t border-border p-2 ${
+                                  scelle
+                                    ? "border-l-4 border-l-gold bg-gold/15"
+                                    : acquis && modeCampagne
+                                      ? "border-l-[3px] border-l-emerald-600/60 bg-emerald-600/10"
+                                      : ""
+                                } ${
+                                  !scelle && niveauPrecedentRequis && !acquis
                                     ? "opacity-50"
                                     : ""
                                 }`}
                               >
-                                <Checkbox
-                                  id={`piege-${nom}-${niv}`}
-                                  checked={acquis}
-                                  disabled={disabled}
-                                  title={
-                                    xpInsuffisant
-                                      ? `XP insuffisants (manque ${cout - xpDisponible} XP)`
-                                      : undefined
-                                  }
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      handleAcheterPiege(niveaux, niv);
-                                    } else {
-                                      handleDecocherPiege(nom, niv);
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <Checkbox
+                                    id={`piege-${nom}-${niv}`}
+                                    checked={acquis}
+                                    disabled={disabled}
+                                    title={
+                                      xpInsuffisant
+                                        ? `XP insuffisants (manque ${cout - xpDisponible} XP)`
+                                        : undefined
                                     }
-                                  }}
-                                />
-                                <Label
-                                  htmlFor={`piege-${nom}-${niv}`}
-                                  className="flex-1 cursor-pointer space-y-1 text-xs"
-                                >
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <strong>Niveau {niv}</strong>
-                                    {acquis && ligneAcquise?.est_gratuit ? (
-                                      <Badge className="border border-green-600/30 bg-green-600/20 text-xs text-green-400">
-                                        Acquis gratuitement
-                                      </Badge>
-                                    ) : (
-                                      <Badge
-                                        variant="secondary"
-                                        className="text-xs"
-                                      >
-                                        {seraGratuit && !acquis
-                                          ? "Gratuit"
-                                          : `${cout} XP`}
-                                      </Badge>
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        handleAcheterPiege(niveaux, niv);
+                                      } else {
+                                        handleDecocherPiege(nom, niv);
+                                      }
+                                    }}
+                                  />
+                                  <Label
+                                    htmlFor={`piege-${nom}-${niv}`}
+                                    className="flex-1 cursor-pointer space-y-1 text-xs"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <strong>Niveau {niv}</strong>
+                                      {scelle && <BadgeAcquis />}
+                                      {!scelle && acquis && modeCampagne && (
+                                        <LabelAjoutAnnulable />
+                                      )}
+                                      <PastilleCout
+                                        gratuit={
+                                          acquis
+                                            ? !!ligneAcquise?.est_gratuit
+                                            : seraGratuit
+                                        }
+                                        xp={cout}
+                                        onAide={montrerAide}
+                                      />
+                                    </div>
+                                    {niveauPrecedentRequis && !acquis && (
+                                      <p className="flex items-center gap-1 text-muted-foreground">
+                                        <Lock className="h-3 w-3" />
+                                        Acheter d'abord le niveau {niv - 1}
+                                      </p>
                                     )}
-                                    {palier.niveau_effet != null && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs"
-                                      >
-                                        Effet de niveau {palier.niveau_effet}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {niveauPrecedentRequis && !acquis && (
-                                    <p className="flex items-center gap-1 text-muted-foreground">
-                                      <Lock className="h-3 w-3" />
-                                      Acheter d'abord le niveau {niv - 1}
+                                  </Label>
+                                </div>
+                                {/* QuickFacts (langage Sections) + effets complet */}
+                                <div className="pl-7">
+                                  <QuickFacts
+                                    facts={[
+                                      { label: "Cible", value: palier.cible },
+                                      { label: "Durée", value: palier.duree },
+                                      {
+                                        label: "Effet de résistance",
+                                        value:
+                                          palier.niveau_effet != null
+                                            ? `niveau ${palier.niveau_effet}`
+                                            : null,
+                                      },
+                                    ]}
+                                  />
+                                  {palier.effets && (
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                      {palier.effets}
                                     </p>
                                   )}
-                                </Label>
+                                </div>
                               </div>
                             );
                           })}
                         </div>
 
-                        {/* Détail verbatim du palier le plus haut acquis */}
-                        {estPossede && ligneHaute && (
-                          <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2 text-xs">
-                            <div className="flex flex-wrap gap-2">
-                              {ligneHaute.cible && (
-                                <Badge variant="outline" className="text-xs">
-                                  Cible : {ligneHaute.cible}
-                                </Badge>
+                        {/* Matériel de construction (niveau 1) — replié. La donnée
+                            commence déjà par « Construction : » → pas de préfixe ajouté. */}
+                        {construction && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto px-1 py-1 text-xs text-muted-foreground"
+                              onClick={() => toggleFamilleDepliee(nom)}
+                            >
+                              {depliee ? (
+                                <ChevronDown className="mr-1 h-3 w-3" />
+                              ) : (
+                                <ChevronRight className="mr-1 h-3 w-3" />
                               )}
-                              {ligneHaute.duree && (
-                                <Badge variant="outline" className="text-xs">
-                                  Durée : {ligneHaute.duree}
-                                </Badge>
-                              )}
-                            </div>
-                            {ligneHaute.effets && (
-                              <p className="text-muted-foreground">
-                                {ligneHaute.effets}
-                              </p>
-                            )}
-                            {construction && (
-                              <p>
-                                <span className="text-amber-400">
-                                  Construction :
-                                </span>{" "}
+                              {depliee
+                                ? "Masquer le matériel de construction"
+                                : "Matériel de construction"}
+                            </Button>
+                            {depliee && (
+                              <p className="whitespace-pre-line border-l-2 border-border pl-3 text-xs text-muted-foreground">
                                 {construction}
                               </p>
                             )}
-                          </div>
-                        )}
-
-                        {/* Toggle « Voir le détail des 3 niveaux » (densité C) */}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto px-1 py-1 text-xs text-muted-foreground"
-                          onClick={() => toggleFamilleDepliee(nom)}
-                        >
-                          {depliee ? (
-                            <ChevronDown className="mr-1 h-3 w-3" />
-                          ) : (
-                            <ChevronRight className="mr-1 h-3 w-3" />
-                          )}
-                          {depliee
-                            ? "Masquer le détail des 3 niveaux"
-                            : "Voir le détail des 3 niveaux"}
-                        </Button>
-
-                        {depliee && (
-                          <div className="space-y-2 border-l-2 border-border pl-3">
-                            {niveaux.map((palier) => (
-                              <div
-                                key={`detail-${palier.niveau}`}
-                                className="space-y-1 text-xs"
-                              >
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <strong>Niveau {palier.niveau}</strong>
-                                  {palier.niveau_effet != null && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      Effet de niveau {palier.niveau_effet}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {palier.cible && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Cible : {palier.cible}
-                                    </Badge>
-                                  )}
-                                  {palier.duree && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Durée : {palier.duree}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {palier.effets && (
-                                  <p className="text-muted-foreground">
-                                    {palier.effets}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                          </>
                         )}
                       </div>
                     );
@@ -990,12 +1195,18 @@ const Etape9_Artisanat_V2 = ({
                       (lecture seule).
                     </CardDescription>
                   </div>
-                  {niveauForge === 3 && (
-                    <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
-                      <Crown className="mr-1 h-3 w-3" />
-                      Droit légendaire
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <Badge variant="outline" className="text-muted-foreground">
+                      <Eye className="mr-1 h-3 w-3" />
+                      Consultation
                     </Badge>
-                  )}
+                    {niveauForge === 3 && (
+                      <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
+                        <Crown className="mr-1 h-3 w-3" />
+                        Droit légendaire
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1154,12 +1365,18 @@ const Etape9_Artisanat_V2 = ({
                       Liste des pièces que vous pouvez créer (lecture seule).
                     </CardDescription>
                   </div>
-                  {niveauJoaillerie === 3 && (
-                    <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
-                      <Crown className="mr-1 h-3 w-3" />
-                      Droit légendaire
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <Badge variant="outline" className="text-muted-foreground">
+                      <Eye className="mr-1 h-3 w-3" />
+                      Consultation
                     </Badge>
-                  )}
+                    {niveauJoaillerie === 3 && (
+                      <Badge className="border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]">
+                        <Crown className="mr-1 h-3 w-3" />
+                        Droit légendaire
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1232,6 +1449,9 @@ const Etape9_Artisanat_V2 = ({
           </TabsContent>
         )}
       </Tabs>
+
+      {/* L2 — Bulle d'aide au tap (sticky bottom) */}
+      <TapBulle aide={aide} onClose={fermerAide} />
 
       {/* Modale de confirmation cascade — décochage d'un palier de piège */}
       <Dialog
