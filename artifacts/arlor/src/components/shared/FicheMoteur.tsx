@@ -27,6 +27,7 @@ export type ChampSchema = {
   cle: string;
   type: "texte" | "mecanique";
   label?: string;
+  titre?: string;
   icone?: string;
   render?: string;
   source?: string;
@@ -70,7 +71,7 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
 
   // --- DENSITÉ CARTE (header compact) ---
   if (!encyclo) {
-    const meca = champs.filter((c) => c.type === "mecanique" && c.render !== "liste_competences");
+    const meca = champs.filter((c) => c.type === "mecanique" && !c.render);
     const listes = champs.filter((c) => c.type === "mecanique" && c.render === "liste_competences");
     return (
       <div className="flex flex-col gap-1.5">
@@ -111,6 +112,26 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
           const src = mode === "integral" ? champ.v?.source : champ.c?.source;
           const txt = lireSource(src, entite);
           if (!txt) return null;
+          if (champ.titre) {
+            return (
+              <div key={champ.cle}>
+                <p
+                  className="text-xs font-semibold mb-2 tracking-wider"
+                  style={{ color: "#c9a84c", fontVariant: "small-caps" }}
+                >
+                  {champ.titre}
+                </p>
+                <div
+                  className="rounded-md border border-gold/30 px-4 py-3"
+                  style={{ background: "rgba(201,168,76,0.06)" }}
+                >
+                  <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {String(txt)}
+                  </p>
+                </div>
+              </div>
+            );
+          }
           return (
             <p key={champ.cle} className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
               {String(txt)}
@@ -141,6 +162,33 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
                     <span className="flex-shrink-0">⭐</span>
                     <span className="text-sm text-foreground/90">{nom}</span>
                   </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        // render liste_traits : liste de noms (col:traits_permis injecté côté front).
+        if (champ.render === "liste_traits") {
+          const arr = normaliserListe(lireSource(champ.source, entite));
+          if (arr.length === 0) return null;
+          return (
+            <div key={champ.cle}>
+              <p
+                className="text-xs font-semibold mb-2 tracking-wider"
+                style={{ color: "#c9a84c", fontVariant: "small-caps" }}
+              >
+                {champ.label}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {arr.map((nom, i) => (
+                  <span
+                    key={i}
+                    className="rounded-full border border-gold/30 px-3 py-1 text-xs text-foreground/90"
+                    style={{ background: "rgba(201,168,76,0.06)" }}
+                  >
+                    {String(nom)}
+                  </span>
                 ))}
               </div>
             </div>
