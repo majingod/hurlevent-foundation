@@ -32,6 +32,7 @@ export type ChampSchema = {
   render?: string;
   source?: string;
   densite?: string;
+  suffixe?: string;
   c?: SousSource;
   v?: SousSource;
 };
@@ -83,6 +84,7 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
               <span key={champ.cle}>
                 {champ.icone ? `${champ.icone} ` : ""}
                 {String(val)}
+                {champ.suffixe ? ` ${champ.suffixe}` : ""}
               </span>
             );
           })}
@@ -202,7 +204,10 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
           <div key={champ.cle} className="flex items-baseline gap-2 text-sm text-foreground/90">
             {champ.icone && <span>{champ.icone}</span>}
             <span className="text-muted-foreground">{champ.label} :</span>
-            <span className="font-semibold text-gold">{String(val)}</span>
+            <span className="font-semibold text-gold">
+              {String(val)}
+              {champ.suffixe ? ` ${champ.suffixe}` : ""}
+            </span>
           </div>
         );
       })}
