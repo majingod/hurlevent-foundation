@@ -26,8 +26,10 @@ export type Database = {
           effet: string | null
           effet_maitrise: string | null
           est_actif: boolean | null
+          fiche_condensee: Json | null
           id: string
           nom: string | null
+          resume_condense: string | null
           runes_requises: string[] | null
           texte_manuel: string | null
         }
@@ -42,8 +44,10 @@ export type Database = {
           effet?: string | null
           effet_maitrise?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           nom?: string | null
+          resume_condense?: string | null
           runes_requises?: string[] | null
           texte_manuel?: string | null
         }
@@ -58,8 +62,10 @@ export type Database = {
           effet?: string | null
           effet_maitrise?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           nom?: string | null
+          resume_condense?: string | null
           runes_requises?: string[] | null
           texte_manuel?: string | null
         }
@@ -409,11 +415,13 @@ export type Database = {
           description_courte: string | null
           emoji: string | null
           est_actif: boolean | null
+          fiche_condensee: Json | null
           id: string
           nom: string | null
           peut_utiliser_armes_deux_mains: boolean | null
           ps_depart: number | null
           pv_depart: number | null
+          resume_condense: string | null
           role_combat: string | null
         }
         Insert: {
@@ -422,11 +430,13 @@ export type Database = {
           description_courte?: string | null
           emoji?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           nom?: string | null
           peut_utiliser_armes_deux_mains?: boolean | null
           ps_depart?: number | null
           pv_depart?: number | null
+          resume_condense?: string | null
           role_combat?: string | null
         }
         Update: {
@@ -435,11 +445,13 @@ export type Database = {
           description_courte?: string | null
           emoji?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           nom?: string | null
           peut_utiliser_armes_deux_mains?: boolean | null
           ps_depart?: number | null
           pv_depart?: number | null
+          resume_condense?: string | null
           role_combat?: string | null
         }
         Relationships: []
@@ -452,11 +464,13 @@ export type Database = {
           description: string | null
           est_actif: boolean | null
           est_general: boolean | null
+          fiche_condensee: Json | null
           id: string
           niveaux: Json | null
           nom: string | null
           prerequis_competences: Json | null
           recherche_tsv: unknown
+          resume_condense: string | null
           type_achat: string
           type_choix: string | null
           verrouillage_croise: boolean
@@ -468,11 +482,13 @@ export type Database = {
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           niveaux?: Json | null
           nom?: string | null
           prerequis_competences?: Json | null
           recherche_tsv?: unknown
+          resume_condense?: string | null
           type_achat?: string
           type_choix?: string | null
           verrouillage_croise?: boolean
@@ -484,11 +500,13 @@ export type Database = {
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           niveaux?: Json | null
           nom?: string | null
           prerequis_competences?: Json | null
           recherche_tsv?: unknown
+          resume_condense?: string | null
           type_achat?: string
           type_choix?: string | null
           verrouillage_croise?: boolean
@@ -639,6 +657,24 @@ export type Database = {
           est_actif?: boolean | null
           id?: string
           nom?: string | null
+        }
+        Relationships: []
+      }
+      fiches_schemas: {
+        Row: {
+          categorie: string
+          champs: Json
+          mis_a_jour: string
+        }
+        Insert: {
+          categorie: string
+          champs: Json
+          mis_a_jour?: string
+        }
+        Update: {
+          categorie?: string
+          champs?: Json
+          mis_a_jour?: string
         }
         Relationships: []
       }
@@ -1442,10 +1478,12 @@ export type Database = {
           cout_xp: number | null
           description: string | null
           est_actif: boolean | null
+          fiche_condensee: Json | null
           id: string
           materiaux_communs: string | null
           materiaux_rares: string | null
           nom: string | null
+          resume_condense: string | null
           stats: Json | null
           temps_fabrication_minutes: number | null
           type: string | null
@@ -1454,10 +1492,12 @@ export type Database = {
           cout_xp?: number | null
           description?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          resume_condense?: string | null
           stats?: Json | null
           temps_fabrication_minutes?: number | null
           type?: string | null
@@ -1466,10 +1506,12 @@ export type Database = {
           cout_xp?: number | null
           description?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          resume_condense?: string | null
           stats?: Json | null
           temps_fabrication_minutes?: number | null
           type?: string | null
@@ -1482,10 +1524,12 @@ export type Database = {
           description: string | null
           effet: string | null
           est_actif: boolean | null
+          fiche_condensee: Json | null
           id: string
           materiaux_communs: string | null
           materiaux_rares: string | null
           nom: string | null
+          resume_condense: string | null
           temps_fabrication_minutes: number | null
           temps_rare_minutes: number | null
         }
@@ -1494,10 +1538,12 @@ export type Database = {
           description?: string | null
           effet?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          resume_condense?: string | null
           temps_fabrication_minutes?: number | null
           temps_rare_minutes?: number | null
         }
@@ -1506,10 +1552,12 @@ export type Database = {
           description?: string | null
           effet?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           materiaux_communs?: string | null
           materiaux_rares?: string | null
           nom?: string | null
+          resume_condense?: string | null
           temps_fabrication_minutes?: number | null
           temps_rare_minutes?: number | null
         }
@@ -3070,10 +3118,12 @@ export type Database = {
           duree: string
           effets: string
           est_actif: boolean
+          fiche_condensee: Json | null
           id: string
           niveau: number
           niveau_effet: number | null
           nom: string
+          resume_condense: string | null
           type_piege: string
           updated_at: string
         }
@@ -3085,10 +3135,12 @@ export type Database = {
           duree: string
           effets: string
           est_actif?: boolean
+          fiche_condensee?: Json | null
           id?: string
           niveau: number
           niveau_effet?: number | null
           nom: string
+          resume_condense?: string | null
           type_piege?: string
           updated_at?: string
         }
@@ -3100,10 +3152,12 @@ export type Database = {
           duree?: string
           effets?: string
           est_actif?: boolean
+          fiche_condensee?: Json | null
           id?: string
           niveau?: number
           niveau_effet?: number | null
           nom?: string
+          resume_condense?: string | null
           type_piege?: string
           updated_at?: string
         }
@@ -3121,6 +3175,7 @@ export type Database = {
           duree_incantation: string | null
           effet_instance: Json | null
           est_actif: boolean
+          fiche_condensee: Json | null
           id: string
           niveau: number
           nom: string
@@ -3128,6 +3183,7 @@ export type Database = {
           portee: string | null
           recherche_tsv: unknown
           religion_id: string | null
+          resume_condense: string | null
           type_priere: string | null
           zone_effet: string | null
         }
@@ -3142,6 +3198,7 @@ export type Database = {
           duree_incantation?: string | null
           effet_instance?: Json | null
           est_actif?: boolean
+          fiche_condensee?: Json | null
           id?: string
           niveau?: number
           nom: string
@@ -3149,6 +3206,7 @@ export type Database = {
           portee?: string | null
           recherche_tsv?: unknown
           religion_id?: string | null
+          resume_condense?: string | null
           type_priere?: string | null
           zone_effet?: string | null
         }
@@ -3163,6 +3221,7 @@ export type Database = {
           duree_incantation?: string | null
           effet_instance?: Json | null
           est_actif?: boolean
+          fiche_condensee?: Json | null
           id?: string
           niveau?: number
           nom?: string
@@ -3170,6 +3229,7 @@ export type Database = {
           portee?: string | null
           recherche_tsv?: unknown
           religion_id?: string | null
+          resume_condense?: string | null
           type_priere?: string | null
           zone_effet?: string | null
         }
@@ -3316,12 +3376,14 @@ export type Database = {
           est_actif: boolean | null
           est_jouable: boolean
           exigences_costume: string | null
+          fiche_condensee: Json | null
           id: string
           image_url: string | null
           nb_traits_raciaux: number
           nom: string | null
           nom_latin: string | null
           restrictions_classes: string[] | null
+          resume_condense: string | null
           xp_depart: number
         }
         Insert: {
@@ -3332,12 +3394,14 @@ export type Database = {
           est_actif?: boolean | null
           est_jouable?: boolean
           exigences_costume?: string | null
+          fiche_condensee?: Json | null
           id?: string
           image_url?: string | null
           nb_traits_raciaux?: number
           nom?: string | null
           nom_latin?: string | null
           restrictions_classes?: string[] | null
+          resume_condense?: string | null
           xp_depart?: number
         }
         Update: {
@@ -3348,12 +3412,14 @@ export type Database = {
           est_actif?: boolean | null
           est_jouable?: boolean
           exigences_costume?: string | null
+          fiche_condensee?: Json | null
           id?: string
           image_url?: string | null
           nb_traits_raciaux?: number
           nom?: string | null
           nom_latin?: string | null
           restrictions_classes?: string[] | null
+          resume_condense?: string | null
           xp_depart?: number
         }
         Relationships: []
@@ -3366,11 +3432,13 @@ export type Database = {
           duree: string | null
           effet: string | null
           est_actif: boolean | null
+          fiche_condensee: Json | null
           formule: string | null
           id: string
           ingredients: Json | null
           niveau_requis: number | null
           nom: string | null
+          resume_condense: string | null
           type: string | null
         }
         Insert: {
@@ -3380,11 +3448,13 @@ export type Database = {
           duree?: string | null
           effet?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           formule?: string | null
           id?: string
           ingredients?: Json | null
           niveau_requis?: number | null
           nom?: string | null
+          resume_condense?: string | null
           type?: string | null
         }
         Update: {
@@ -3394,11 +3464,13 @@ export type Database = {
           duree?: string | null
           effet?: string | null
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           formule?: string | null
           id?: string
           ingredients?: Json | null
           niveau_requis?: number | null
           nom?: string | null
+          resume_condense?: string | null
           type?: string | null
         }
         Relationships: []
@@ -3606,12 +3678,14 @@ export type Database = {
           duree: string | null
           effet_instance: Json | null
           est_actif: boolean
+          fiche_condensee: Json | null
           id: string
           niveau: number
           nom: string
           paliers: Json | null
           portee: string | null
           recherche_tsv: unknown
+          resume_condense: string | null
           type_sort: string | null
           zone_effet: string | null
         }
@@ -3625,12 +3699,14 @@ export type Database = {
           duree?: string | null
           effet_instance?: Json | null
           est_actif?: boolean
+          fiche_condensee?: Json | null
           id?: string
           niveau?: number
           nom: string
           paliers?: Json | null
           portee?: string | null
           recherche_tsv?: unknown
+          resume_condense?: string | null
           type_sort?: string | null
           zone_effet?: string | null
         }
@@ -3644,12 +3720,14 @@ export type Database = {
           duree?: string | null
           effet_instance?: Json | null
           est_actif?: boolean
+          fiche_condensee?: Json | null
           id?: string
           niveau?: number
           nom?: string
           paliers?: Json | null
           portee?: string | null
           recherche_tsv?: unknown
+          resume_condense?: string | null
           type_sort?: string | null
           zone_effet?: string | null
         }
@@ -3661,8 +3739,10 @@ export type Database = {
           created_at: string | null
           description: string
           est_actif: boolean | null
+          fiche_condensee: Json | null
           id: string
           nom: string
+          resume_condense: string | null
           texte_manuel: string | null
           updated_at: string | null
         }
@@ -3671,8 +3751,10 @@ export type Database = {
           created_at?: string | null
           description: string
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           nom: string
+          resume_condense?: string | null
           texte_manuel?: string | null
           updated_at?: string | null
         }
@@ -3681,8 +3763,10 @@ export type Database = {
           created_at?: string | null
           description?: string
           est_actif?: boolean | null
+          fiche_condensee?: Json | null
           id?: string
           nom?: string
+          resume_condense?: string | null
           texte_manuel?: string | null
           updated_at?: string | null
         }
