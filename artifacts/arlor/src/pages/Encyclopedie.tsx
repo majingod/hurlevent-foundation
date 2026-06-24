@@ -208,6 +208,7 @@ const Encyclopedie = () => {
   const [schemaClasse, setSchemaClasse] = useState<ChampSchema[]>([]);
   const [schemaRace, setSchemaRace] = useState<ChampSchema[]>([]);
   const [schemaTrait, setSchemaTrait] = useState<ChampSchema[]>([]);
+  const [schemaSort, setSchemaSort] = useState<ChampSchema[]>([]);
   const [competences, setCompetences] = useState<Competence[]>([]);
   const [sorts, setSorts] = useState<Sort[]>([]);
   const [prieres, setPrieres] = useState<Priere[]>([]);
@@ -271,13 +272,14 @@ const Encyclopedie = () => {
       const schemasRes = await supabase
         .from("fiches_schemas")
         .select("categorie, champs")
-        .in("categorie", ["classe", "race", "trait_racial"]);
+        .in("categorie", ["classe", "race", "trait_racial", "sorts"]);
       const parCategorie = Object.fromEntries(
         (schemasRes.data ?? []).map((s: any) => [s.categorie, s.champs])
       );
       setSchemaClasse((parCategorie["classe"] as ChampSchema[]) ?? []);
       setSchemaRace((parCategorie["race"] as ChampSchema[]) ?? []);
       setSchemaTrait((parCategorie["trait_racial"] as ChampSchema[]) ?? []);
+      setSchemaSort((parCategorie["sorts"] as ChampSchema[]) ?? []);
       setLoading(false);
     };
     fetchAll();
@@ -360,7 +362,7 @@ const Encyclopedie = () => {
         {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} schema={schemaTrait} />}
         {active === "classes" && <ClassesSection classes={classes} searchQuery={search} schema={schemaClasse} competences={competences} />}
         {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
-        {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} />}
+        {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} schema={schemaSort} />}
         {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} />}
         {active === "religions" && <ReligionsSection religions={religions} searchQuery={search} />}
         {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} searchQuery={search} />}
@@ -1013,11 +1015,11 @@ const NIVEAU_MIN_FILTERS: { key: NiveauMin | null; label: string }[] = [
   { key: 11, label: "Niveau 11" },
 ];
 
-const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: string }) => {
+const MagieSection = ({ sorts, searchQuery, schema }: { sorts: Sort[]; searchQuery: string; schema: ChampSchema[] }) => {
   const [cercleActif, setCercleActif] = useState<string | null>(null);
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
+  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   useEffect(() => {
     if (!searchQuery) return;
@@ -1045,7 +1047,6 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
 
   const grouped = groupBy(filtered, (s) => s.cercle);
   const keys = Object.keys(grouped).sort();
-  const idsVerbatim = filtered.filter((s) => s.description).map((s) => s.id);
 
   return (
     <div className="space-y-8">
@@ -1080,14 +1081,12 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
           </button>
         ))}
       </div>
-      {idsVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(idsVerbatim)}
-          onToggle={() => toggleAll(idsVerbatim)}
-          title="Cet onglet"
-          subtitle="Verbatim du manuel pour les sorts"
-        />
-      )}
+      <ManuelGlobalSwitch
+        allOpen={mode === "integral"}
+        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+        title="Texte du manuel"
+        subtitle="Intégral (verbatim du manuel) ou abrégé"
+      />
       {filtered.length === 0 ? <NoResults /> : keys.map((cercle) => {
         const sortsInCercle = grouped[cercle];
         const byNiveauMin = groupBy(sortsInCercle, (s) => String(getNiveauMin(s.niveau)));
@@ -1109,23 +1108,12 @@ const MagieSection = ({ sorts, searchQuery }: { sorts: Sort[]; searchQuery: stri
                           <Badge variant="secondary" className="text-xs">Niv. {s.niveau}</Badge>
                         </span>
                       </AccordionTrigger>
-                      <AccordionContent className="text-sm text-muted-foreground">
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
-                          {s.type_sort && <PastilleType type={s.type_sort} />}
-                          {s.portee && <span>Portée : {s.portee}</span>}
-                          {s.zone_effet && <span>Zone : {s.zone_effet}</span>}
-                          {s.duree && <span>Durée : {s.duree}</span>}
-                        </div>
-                        {(s.description_courte ?? s.description) && <p>{s.description_courte ?? s.description}</p>}
-                        {s.paliers && s.paliers.length > 0 && (
-                          <div className="mt-2">
-                            <BlocPaliers paliers={s.paliers} niveauActif={null} />
-                          </div>
-                        )}
-                        <ToggleManuel
-                          texte={s.description}
-                          isOpen={isManuelOpen(s.id)}
-                          onToggle={() => toggleManuel(s.id)}
+                      <AccordionContent>
+                        <FicheMoteur
+                          schema={schema}
+                          entite={s as unknown as Record<string, any>}
+                          densite="encyclo"
+                          mode={mode}
                         />
                       </AccordionContent>
                     </AccordionItem>
