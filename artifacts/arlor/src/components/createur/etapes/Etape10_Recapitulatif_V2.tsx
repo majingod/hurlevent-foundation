@@ -12,6 +12,10 @@ interface Etape10Props {
   personnageId: string;
   onSuccess?: () => void;
   onPrevious?: () => void;
+  modeAdmin?: boolean;
+  onTerminerAdmin?: () => void;
+  modeCampagne?: boolean;
+  onTerminerCampagne?: () => void;
 }
 
 interface ValidationError {
@@ -39,6 +43,10 @@ const Etape10_Recapitulatif_V2 = ({
   personnageId,
   onSuccess,
   onPrevious,
+  modeAdmin = false,
+  onTerminerAdmin,
+  modeCampagne = false,
+  onTerminerCampagne,
 }: Etape10Props) => {
   const finaliserMutation = useMutation({
     mutationFn: async () => {
@@ -94,11 +102,14 @@ const Etape10_Recapitulatif_V2 = ({
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground flex items-center gap-2">
           <ScrollText className="h-5 w-5" />
-          Étape 10 — Récapitulatif et finalisation
+          Récapitulatif et finalisation
         </h2>
         <p className="text-sm text-muted-foreground">
-          Vérifiez l'ensemble des informations de votre personnage avant de le
-          finaliser. Une fois finalisé, le personnage sera verrouillé.
+          {modeAdmin
+            ? "Aperçu de la fiche. En mode admin, terminer l'édition ne change pas l'état du personnage."
+            : modeCampagne
+            ? "Aperçu de la fiche. Tes ajouts et améliorations sont déjà enregistrés ; tu peux terminer."
+            : "Vérifiez l'ensemble des informations de votre personnage avant de le finaliser. Une fois finalisé, le personnage sera verrouillé."}
         </p>
       </div>
 
@@ -110,24 +121,44 @@ const Etape10_Recapitulatif_V2 = ({
             ← Précédent
           </Button>
         )}
-        <Button
-          size="lg"
-          className="ml-auto"
-          onClick={() => finaliserMutation.mutate()}
-          disabled={finaliserMutation.isPending}
-        >
-          {finaliserMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Finalisation…
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Finaliser le personnage
-            </>
-          )}
-        </Button>
+        {modeAdmin ? (
+          <Button
+            size="lg"
+            className="ml-auto"
+            onClick={() => onTerminerAdmin?.()}
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            Terminer l'édition admin
+          </Button>
+        ) : modeCampagne ? (
+          <Button
+            size="lg"
+            className="ml-auto"
+            onClick={() => onTerminerCampagne?.()}
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            Terminer
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            className="ml-auto"
+            onClick={() => finaliserMutation.mutate()}
+            disabled={finaliserMutation.isPending}
+          >
+            {finaliserMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Finalisation…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Finaliser le personnage
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

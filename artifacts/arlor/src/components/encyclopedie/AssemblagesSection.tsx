@@ -17,6 +17,7 @@ interface Assemblage {
   id: string;
   nom: string | null;
   description_longue: string | null;
+  duree: string | null;
   effet: string | null;
   cible: string | null;
   runes_requises: string[] | null;
@@ -110,6 +111,7 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
             }
           >
             <div className="border-t border-primary/10 pt-3 mt-2 space-y-2">
+              {a.duree && <p><span className="font-medium text-foreground">Durée :</span> {a.duree}</p>}
               {a.effet && <p><span className="font-medium text-foreground">Effet :</span> {a.effet}</p>}
               {a.description_longue && <p className="whitespace-pre-line">{a.description_longue}</p>}
               {a.effet_maitrise && (

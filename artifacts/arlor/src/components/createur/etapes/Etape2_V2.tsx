@@ -1,31 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, BookOpen, Info, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  Info,
+  Loader2,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import JaugeXP from "@/components/createur/aide/JaugeXP";
+import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
 const NON_RACES_ID = "4d7e2226-76cb-4b94-9df4-b8f12ff486e1";
 
-interface Etape2Form {
-  race_id: string;
-  sous_type_chimeride: "carnivore" | "herbivore" | "";
+/**
+ * WIZARD-REFONTE-UX (PR2) — Étape UI 2 « Race + Traits » = fusion des étapes
+ * DB 2 (race) et DB 3 (traits raciaux). DB inchangée : le « Suivant » appelle
+ * sauvegarder_etape_2 PUIS sauvegarder_etape_3 (avance etape_creation 2→3→4).
+ *
+ * Gabarit visuel : maquette WizardRefonteV6 (s213) — accordéon par race
+ * (pattern Set manuel, gotcha s152 : pas de Radix Accordion à enfants
+ * interactifs), traits intégrés dans la carte race ouverte, grisés tant que la
+ * race n'est pas cochée.
+ *
+ * Logique des traits : portée verbatim d'Etape3_V2 (Sets gratuits/achetés +
+ * promotion FIFO, quota = race.nb_traits_raciaux), MAIS branchée sur la race
+ * SÉLECTIONNÉE LOCALEMENT (et non plus la race persistée). Reset au changement
+ * de race / sous-type.
+ */
+
+interface Etape2Props extends EtapeProps {
+  xpDisponible?: number;
 }
 
 interface Race {
@@ -33,51 +45,74 @@ interface Race {
   nom: string;
   nom_latin: string | null;
   description: string | null;
+  description_courte: string | null;
   xp_depart: number | null;
-  image_url: string | null;
   emoji: string | null;
   esperance_vie: string | null;
   exigences_costume: string | null;
   restrictions_classes: string[] | null;
+  nb_traits_raciaux: number | null;
   est_jouable: boolean;
 }
 
-const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
+interface TraitChoisi {
+  trait_id: string;
+  est_gratuit: boolean;
+  xp_depense: number;
+}
+
+interface TraitDispo {
+  id: string;
+  nom: string;
+  description: string;
+  texte_manuel: string | null;
+  cout_xp: number;
+}
+
+const Etape2_V2 = ({
+  personnageId,
+  onSuccess,
+  onPrevious,
+  onXpDeltaChange,
+  onXpGainChange,
+  xpDisponible = 0,
+}: Etape2Props) => {
   const [submitting, setSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, reset } =
-    useForm<Etape2Form>({
-      defaultValues: {
-        race_id: "",
-        sous_type_chimeride: "",
-      },
-    });
+  // Sélection (state simple — pas de react-hook-form : on doit réinitialiser
+  // les traits au changement de race, ce qui est plus limpide en useState).
+  const [raceId, setRaceId] = useState<string | null>(null);
+  const [sousType, setSousType] = useState<"carnivore" | "herbivore" | null>(
+    null,
+  );
 
-  const raceId = watch("race_id");
+  // Pattern Set manuel (gotcha s152) — accordéons « Plus de détails » par race,
+  // verbatim manuel par race, traits cochés (gratuits / achetés), verbatim
+  // manuel par trait.
+  const [racesOuvertes, setRacesOuvertes] = useState<Set<string>>(new Set());
+  const [manuelRaces, setManuelRaces] = useState<Set<string>>(new Set());
+  const [gratuits, setGratuits] = useState<Set<string>>(new Set());
+  const [achetes, setAchetes] = useState<Set<string>>(new Set());
+  const [detailsTraits, setDetailsTraits] = useState<Set<string>>(new Set());
+
+  // Init unique depuis le serveur (reprise etape_creation=2 ou 3).
+  const initFait = useRef(false);
+
+  // PR4 persist-au-choix : timer de debounce pour l'autosave brouillon.
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const estChimeride = raceId === CHIMERIDE_ID;
   const estNonRace = raceId === NON_RACES_ID;
   const necessiteJustification = estChimeride || estNonRace;
 
-
-  const sousTypeChimeride = watch("sous_type_chimeride");
-
-  // Validité formulaire pour griser le bouton Suivant.
-  // Reproduit la logique de onSubmit (les toast.error restent en backup
-  // pour les race conditions et les RPC errors).
-  const isValid = useMemo(() => {
-    if (!raceId) return false;
-    if (estChimeride && !sousTypeChimeride) return false;
-    return true;
-  }, [raceId, estChimeride, sousTypeChimeride]);
-
-  const { data: races = [], isLoading } = useQuery({
+  // -- Données -------------------------------------------------------------
+  const { data: races = [], isLoading: racesLoading } = useQuery({
     queryKey: ["v2-races"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("races")
         .select(
-          "id, nom, nom_latin, description, xp_depart, image_url, emoji, esperance_vie, exigences_costume, restrictions_classes, est_jouable"
+          "id, nom, nom_latin, description, description_courte, xp_depart, emoji, esperance_vie, exigences_costume, restrictions_classes, nb_traits_raciaux, est_jouable",
         )
         .eq("est_actif", true)
         .eq("est_jouable", true)
@@ -100,290 +135,881 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     },
   });
 
-  const raceSelectionnee = races.find((r) => r.id === raceId) ?? null;
-
-  useEffect(() => {
-    const charger = async () => {
-      const { data: perso } = await supabase
+  // État persisté du personnage (race + sous-type + traits + xp_total).
+  const { data: perso } = useQuery({
+    queryKey: ["v2-perso-race-traits", personnageId],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("personnages")
-        .select("race_id, sous_type_chimeride")
+        .select("race_id, sous_type_chimeride, traits_raciaux_choisis, xp_total")
         .eq("id", personnageId)
         .single();
-      if (!perso) return;
-      reset({
-        race_id: perso.race_id ?? "",
-        sous_type_chimeride:
-          (perso.sous_type_chimeride as "carnivore" | "herbivore" | null) ??
-          "",
-      });
-    };
-    charger();
-  }, [personnageId, reset]);
+      if (error) throw error;
+      return data;
+    },
+    // PR4 fix : pas de cache entre deux visites de l'etape. Sinon, au retour via
+    // navigation SPA, l'init one-shot (initFait) fige la valeur perimee du cache
+    // et ignore le refetch frais → la race / les traits persistes n'apparaissent
+    // qu'apres un vrai reload. gcTime:0 jette le cache a la sortie => fetch frais.
+    gcTime: 0,
+  });
 
-  const onSubmit = async (values: Etape2Form) => {
-    if (!values.race_id) {
+  // Traits filtrés par la race SÉLECTIONNÉE (locale) + sous-type — vue dédiée.
+  const {
+    data: traits = [],
+    isLoading: traitsLoading,
+  } = useQuery<TraitDispo[]>({
+    queryKey: ["v2-traits-par-race", raceId, sousType],
+    enabled: !!raceId,
+    queryFn: async () => {
+      let q = supabase
+        .from("vue_traits_par_race")
+        .select(
+          "trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, cout_xp",
+        )
+        .eq("race_id", raceId!);
+      if (sousType) {
+        q = q.or(`sous_type.eq.${sousType},sous_type.is.null`);
+      } else {
+        q = q.is("sous_type", null);
+      }
+      const { data, error } = await q.order("trait_nom");
+      if (error) throw error;
+      return (data ?? []).map((t: any) => ({
+        id: t.trait_id as string,
+        nom: t.trait_nom as string,
+        description: t.trait_description as string,
+        texte_manuel: (t.trait_texte_manuel as string | null) ?? null,
+        cout_xp: t.cout_xp as number,
+      })) as TraitDispo[];
+    },
+  });
+
+  const raceSelectionnee = races.find((r) => r.id === raceId) ?? null;
+  const quotaGratuits = raceSelectionnee?.nb_traits_raciaux ?? 0;
+  const gratuitChoixComplet = gratuits.size >= quotaGratuits;
+  // Traits actifs uniquement si la race est cochée (et, pour Chiméride, le
+  // sous-type choisi) — gating race→traits de la maquette.
+  const traitsActifs = !!raceId && (!estChimeride || !!sousType);
+
+  // -- Initialisation depuis le serveur (une seule fois) -------------------
+  useEffect(() => {
+    if (initFait.current) return;
+    if (!perso) return;
+    const rid = (perso.race_id as string | null) ?? null;
+    setRaceId(rid);
+    setSousType(
+      (perso.sous_type_chimeride as "carnivore" | "herbivore" | null) ?? null,
+    );
+    const choisis = (perso.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
+    const g = new Set<string>();
+    const a = new Set<string>();
+    choisis.forEach((c) => {
+      if (c.est_gratuit) g.add(c.trait_id);
+      else a.add(c.trait_id);
+    });
+    setGratuits(g);
+    setAchetes(a);
+    if (rid) setRacesOuvertes(new Set([rid])); // ouvrir la carte de la race reprise
+    initFait.current = true;
+  }, [perso]);
+
+  // XP des traits DÉJÀ persistés (déjà comptés dans xp_depense serveur). Le
+  // delta remonté ne doit représenter QUE le changement non sauvegardé, sinon
+  // double-comptage à la ré-entrée sur l'étape (gotcha s195).
+  const xpTraitsPersistes = useMemo(() => {
+    const choisis =
+      (perso?.traits_raciaux_choisis as TraitChoisi[] | null) ?? [];
+    return choisis.reduce(
+      (s, c) => s + (c.est_gratuit ? 0 : c.xp_depense ?? 0),
+      0,
+    );
+  }, [perso]);
+
+  const xpTraits = useMemo(() => {
+    let total = 0;
+    achetes.forEach((id) => {
+      const t = traits.find((x) => x.id === id);
+      if (t) total += t.cout_xp;
+    });
+    return total;
+  }, [achetes, traits]);
+
+  // Projection de l'XP de départ de la race AVANT sauvegarde (maquette : la
+  // jauge montre xp_depart dès la sélection). On ne projette QUE si l'XP serveur
+  // n'a pas déjà dépassé ce départ (création) — en édition admin d'un perso
+  // ayant accumulé de l'XP de jeu, xp_total serveur fait foi (gain = 0).
+  const xpTotalServeur = (perso?.xp_total as number | null) ?? 0;
+  const xpDepartCible = raceSelectionnee?.xp_depart ?? 0;
+  const gainProjete =
+    xpDepartCible > xpTotalServeur ? xpDepartCible - xpTotalServeur : 0;
+
+  useEffect(() => {
+    onXpGainChange?.(gainProjete);
+    return () => onXpGainChange?.(0);
+  }, [gainProjete, onXpGainChange]);
+
+  useEffect(() => {
+    onXpDeltaChange?.(xpTraits - xpTraitsPersistes);
+    return () => onXpDeltaChange?.(0);
+  }, [xpTraits, xpTraitsPersistes, onXpDeltaChange]);
+
+  // -- Sélection de race ---------------------------------------------------
+  const pickRace = (id: string) => {
+    if (id === raceId) {
+      // Décocher la race : tout réinitialiser.
+      setRaceId(null);
+      setSousType(null);
+      setGratuits(new Set());
+      setAchetes(new Set());
+      return;
+    }
+    setRaceId(id);
+    setSousType(null);
+    setGratuits(new Set());
+    setAchetes(new Set());
+    setRacesOuvertes((prev) => new Set(prev).add(id)); // ouvrir la carte choisie
+  };
+
+  const choisirSousType = (st: "carnivore" | "herbivore") => {
+    setSousType(st);
+    // Le set de traits dépend du sous-type → on repart à zéro.
+    setGratuits(new Set());
+    setAchetes(new Set());
+  };
+
+  const toggleAccordeon = (id: string) =>
+    setRacesOuvertes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleManuelRace = (id: string) =>
+    setManuelRaces((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleDetailTrait = (id: string) =>
+    setDetailsTraits((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // -- Logique traits (portée d'Etape3_V2 : Sets + promotion FIFO) ---------
+  const toggleGratuit = (id: string) => {
+    if (gratuits.has(id)) {
+      // Décocher un gratuit : promotion FIFO du premier payant (miroir du
+      // recalcul serveur dans sauvegarder_etape_3).
+      const premierPayant =
+        achetes.size > 0 ? (achetes.values().next().value as string) : null;
+      setGratuits((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        if (premierPayant) next.add(premierPayant);
+        return next;
+      });
+      if (premierPayant) {
+        setAchetes((prev) => {
+          const next = new Set(prev);
+          next.delete(premierPayant);
+          return next;
+        });
+      }
+      return;
+    }
+    if (gratuits.size >= quotaGratuits) {
+      toast.error(`Tu ne peux choisir que ${quotaGratuits} trait(s) gratuit(s).`);
+      return;
+    }
+    setGratuits((prev) => new Set(prev).add(id));
+    if (achetes.has(id)) {
+      setAchetes((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const toggleAchete = (id: string) => {
+    if (gratuits.has(id)) {
+      toast.error("Ce trait est déjà sélectionné comme gratuit.");
+      return;
+    }
+    setAchetes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Checkbox UNIQUE par trait : les `quotaGratuits` premiers cochés sont
+  // gratuits, les suivants coûtent leur cout_xp. Aiguilleur sans changer le
+  // calcul ni le payload.
+  const toggleTrait = (id: string) => {
+    if (!traitsActifs) return;
+    if (gratuits.has(id)) {
+      toggleGratuit(id);
+      return;
+    }
+    if (achetes.has(id)) {
+      toggleAchete(id);
+      return;
+    }
+    if (gratuits.size < quotaGratuits) toggleGratuit(id);
+    else toggleAchete(id);
+  };
+
+  // -- Validité « Suivant » ------------------------------------------------
+  const isValid = useMemo(() => {
+    if (!raceId) return false;
+    if (estChimeride && !sousType) return false;
+    if (gratuits.size < quotaGratuits) return false;
+    return true;
+  }, [raceId, estChimeride, sousType, gratuits.size, quotaGratuits]);
+
+  // -- PR4 persist-au-choix : autosave brouillon (race + traits) ----------
+  // Persiste l'etat AU CLIC (p_brouillon=true) sans valider, avancer ni logger
+  // (contrat e2/e3). Debounce 900 ms (gabarit Etape1). Fire-and-forget.
+  const sauvegarderBrouillon = useCallback(() => {
+    if (!initFait.current) return;
+    if (!raceId) return; // rien a persister tant qu'aucune race n'est choisie
+    const sousTypePayload = estChimeride ? sousType : null;
+    supabase
+      .rpc("sauvegarder_etape_2", {
+        p_personnage_id: personnageId,
+        p_race_id: raceId,
+        p_sous_type_chimeride: sousTypePayload as unknown as string,
+        p_brouillon: true,
+      })
+      .then(() => {
+        // Traits seulement apres succes e2 (le perso a desormais sa race).
+        const payloadTraits: TraitChoisi[] = [
+          ...Array.from(gratuits).map((id) => ({
+            trait_id: id,
+            est_gratuit: true,
+            xp_depense: 0,
+          })),
+          ...Array.from(achetes).map((id) => {
+            const t = traits.find((x) => x.id === id);
+            return {
+              trait_id: id,
+              est_gratuit: false,
+              xp_depense: t?.cout_xp ?? 0,
+            };
+          }),
+        ];
+        supabase
+          .rpc("sauvegarder_etape_3", {
+            p_personnage_id: personnageId,
+            p_traits_raciaux_choisis: payloadTraits as unknown as never,
+            p_brouillon: true,
+          })
+          .then(
+            () => {},
+            () => {},
+          );
+      }, () => {});
+  }, [raceId, sousType, estChimeride, gratuits, achetes, traits, personnageId]);
+
+  useEffect(() => {
+    if (!initFait.current) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      sauvegarderBrouillon();
+      autosaveTimer.current = null;
+    }, 900);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [raceId, sousType, gratuits, achetes, sauvegarderBrouillon]);
+
+  // Ref toujours à jour vers le dernier brouillon : la cleanup ci-dessous
+  // dispatche ainsi les VALEURS FRAÎCHES (closure non périmée).
+  const flushRef = useRef(sauvegarderBrouillon);
+  useEffect(() => {
+    flushRef.current = sauvegarderBrouillon;
+  }, [sauvegarderBrouillon]);
+
+  // Si un autosave est EN ATTENTE quand le joueur quitte l'étape (démontage SPA)
+  // ou met l'onglet en arrière-plan / le ferme (mobile), on dispatche le save
+  // tout de suite au lieu de l'annuler. Best-effort (fire-and-forget).
+  useEffect(() => {
+    const flushSiEnAttente = () => {
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+        flushRef.current();
+      }
+    };
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") flushSiEnAttente();
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    window.addEventListener("pagehide", flushSiEnAttente);
+    return () => {
+      document.removeEventListener("visibilitychange", onHidden);
+      window.removeEventListener("pagehide", flushSiEnAttente);
+      flushSiEnAttente();
+    };
+  }, []);
+
+  // -- Soumission : sauvegarder_etape_2 PUIS sauvegarder_etape_3 -----------
+  const onSubmit = async () => {
+    // Annule un autosave brouillon en attente : le « Suivant » fait foi.
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    if (!raceId) {
       toast.error("Choisis une race.");
       return;
     }
-    if (estChimeride && !values.sous_type_chimeride) {
+    if (estChimeride && !sousType) {
       toast.error("Choisis le sous-type Chiméride (carnivore ou herbivore).");
+      return;
+    }
+    if (gratuits.size < quotaGratuits) {
+      toast.error(
+        `Tu dois choisir ${quotaGratuits} trait(s) gratuit(s) avant de continuer.`,
+      );
       return;
     }
 
     setSubmitting(true);
-    const sousType = estChimeride ? values.sous_type_chimeride : null;
-    const { data, error } = await supabase.rpc("sauvegarder_etape_2", {
+
+    // 1) Race (avance etape_creation 2→3 côté serveur).
+    const sousTypePayload = estChimeride ? sousType : null;
+    const { data: d2, error: e2 } = await supabase.rpc("sauvegarder_etape_2", {
       p_personnage_id: personnageId,
-      p_race_id: values.race_id,
-      p_sous_type_chimeride: sousType as unknown as string,
+      p_race_id: raceId,
+      p_sous_type_chimeride: sousTypePayload as unknown as string,
     });
-    setSubmitting(false);
-
-    if (error) {
-      console.error("[V2 Etape2] RPC error:", error);
-      toast.error(`Erreur : ${error.message}`);
+    if (e2) {
+      setSubmitting(false);
+      console.error("[V2 Etape2 fusion] sauvegarder_etape_2:", e2);
+      toast.error(`Erreur : ${e2.message}`);
       return;
     }
-    const payload = (data ?? {}) as Record<string, unknown>;
-    const erreurs =
-      (payload.erreurs as Array<{ code?: string; message?: string }>) ?? [];
-    const avertissements =
-      (payload.avertissements as Array<{ code?: string; message?: string }>) ?? [];
-
-    if (payload.succes === false) {
-      const premiereErreur = erreurs[0] ?? {};
-      const code = premiereErreur.code ?? "erreur";
-      const message = premiereErreur.message ?? "Sauvegarde refusée.";
-      toast.error(`[${code}] ${message}`);
+    const p2 = (d2 ?? {}) as Record<string, unknown>;
+    if (p2.succes === false) {
+      setSubmitting(false);
+      const err =
+        ((p2.erreurs as Array<{ code?: string; message?: string }>) ?? [])[0] ??
+        {};
+      toast.error(`[${err.code ?? "erreur"}] ${err.message ?? "Sauvegarde de la race refusée."}`);
       return;
     }
-
-    // Avertissements éventuels (ex. justification_race_speciale_requise,
-    // demande_race_echec quand on choisit Chiméride ou Les Non-Races)
-    avertissements.forEach((a) => {
+    ((p2.avertissements as Array<{ message?: string }>) ?? []).forEach((a) => {
       if (a.message) toast.info(a.message);
     });
 
-    toast.success("Race enregistrée.");
+    // 2) Traits raciaux (avance etape_creation 3→4 côté serveur).
+    const payloadTraits: TraitChoisi[] = [
+      ...Array.from(gratuits).map((id) => ({
+        trait_id: id,
+        est_gratuit: true,
+        xp_depense: 0,
+      })),
+      ...Array.from(achetes).map((id) => {
+        const t = traits.find((x) => x.id === id);
+        return { trait_id: id, est_gratuit: false, xp_depense: t?.cout_xp ?? 0 };
+      }),
+    ];
+    const { data: d3, error: e3 } = await supabase.rpc("sauvegarder_etape_3", {
+      p_personnage_id: personnageId,
+      p_traits_raciaux_choisis: payloadTraits as unknown as never,
+    });
+    setSubmitting(false);
+    if (e3) {
+      console.error("[V2 Etape2 fusion] sauvegarder_etape_3:", e3);
+      toast.error(`Race enregistrée, mais erreur sur les traits : ${e3.message}`);
+      return;
+    }
+    const p3 = (d3 ?? {}) as Record<string, unknown>;
+    if (p3.succes === false) {
+      const err =
+        ((p3.erreurs as Array<{ code?: string; message?: string }>) ?? [])[0] ??
+        {};
+      toast.error(`[${err.code ?? "erreur"}] ${err.message ?? "Sauvegarde des traits refusée."}`);
+      return;
+    }
+
+    toast.success("Race et traits enregistrés.");
     onSuccess();
   };
 
+  const restantGratuit = Math.max(0, quotaGratuits - gratuits.size);
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      <div className="space-y-2">
-        <h2 className="font-heading text-2xl text-gold">Choix de la race</h2>
-        <p className="text-sm text-white/50">
-          Sélectionne la race de ton personnage.
-        </p>
+    <div className="space-y-6">
+      <JaugeXP
+        xpDisponible={xpDisponible}
+        coutEnCours={
+          xpTraits - xpTraitsPersistes !== 0
+            ? {
+                delta: xpTraits - xpTraitsPersistes,
+                libelle: "traits raciaux",
+              }
+            : null
+        }
+      />
+
+      <IntroEtape
+        storageKey="hv-e2-intro-replie"
+        titre="Comment fonctionne cette étape ?"
+      >
+        <IntroEtapeItem n={1}>
+          Touche <span className="text-primary">« Plus de détails »</span> pour
+          déplier une race, puis coche la case pour la choisir.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          <span className="text-primary">« 📖 Texte du manuel → »</span> affiche
+          la description complète du manuel.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          Une fois la race cochée, choisis ton trait gratuit. Les suivants
+          coûtent <span className="text-primary">10 XP</span> chacun.
+        </IntroEtapeItem>
+      </IntroEtape>
+
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-heading text-2xl text-gold">Choisis ta race</h2>
+        <span className="shrink-0 text-xs text-white/45">
+          {quotaGratuits || 1} trait gratuit · +10 XP / trait
+        </span>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-base text-gold">Race</Label>
-        <Controller
-          control={control}
-          name="race_id"
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger className="bg-white/5 border-white/10">
-                <SelectValue
-                  placeholder={isLoading ? "Chargement…" : "Choisis une race"}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {races.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.emoji ? `${r.emoji} ` : ""}
-                    {r.nom}
-                    {r.xp_depart != null ? ` — ${r.xp_depart} XP` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </div>
-
-      {/* Carte de détails de la race sélectionnée */}
-      {raceSelectionnee && (
-        <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-5">
-          <div className="flex items-start gap-4">
-            {raceSelectionnee.image_url && (
-              <img
-                src={raceSelectionnee.image_url}
-                alt={raceSelectionnee.nom}
-                className="h-24 w-24 rounded-md border border-white/10 object-cover"
-              />
-            )}
-            <div className="flex-1 space-y-1">
-              <h3 className="flex items-center gap-2 font-heading text-xl text-gold">
-                {raceSelectionnee.emoji && (
-                  <span>{raceSelectionnee.emoji}</span>
-                )}
-                <span>{raceSelectionnee.nom}</span>
-              </h3>
-              {raceSelectionnee.nom_latin && (
-                <p className="text-xs italic text-white/50">
-                  {raceSelectionnee.nom_latin}
-                </p>
-              )}
-              {raceSelectionnee.xp_depart != null && (
-                <span className="inline-block rounded-full bg-gold/15 px-3 py-0.5 text-xs text-gold">
-                  XP de départ : {raceSelectionnee.xp_depart}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {(estChimeride || estNonRace) && (
-            <div className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>
-                Race spéciale — nécessite l'approbation de l'équipe d'animation
-                (voir plus bas).
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.description && (
-            <div className="space-y-1">
-              <Label className="text-xs uppercase tracking-wide text-white/60">
-                Description
-              </Label>
-              <p className="whitespace-pre-wrap text-sm text-white/80">
-                {raceSelectionnee.description}
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.esperance_vie && (
-            <div className="space-y-1">
-              <Label className="text-xs uppercase tracking-wide text-white/60">
-                Espérance de vie
-              </Label>
-              <p className="text-sm text-white/80">
-                {raceSelectionnee.esperance_vie}
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.exigences_costume && (
-            <div className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-              <Label className="flex items-center gap-1 text-xs uppercase tracking-wide text-amber-300">
-                <AlertTriangle className="h-3 w-3" />
-                Exigences de costume
-              </Label>
-              <p className="whitespace-pre-wrap text-sm text-amber-100/90">
-                {raceSelectionnee.exigences_costume}
-              </p>
-            </div>
-          )}
-
-          {raceSelectionnee.restrictions_classes &&
-            raceSelectionnee.restrictions_classes.length > 0 && (
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-wide text-white/60">
-                  Classes interdites
-                </Label>
-                <div className="flex flex-wrap gap-1">
-                  {raceSelectionnee.restrictions_classes.map((c) => (
-                    <span
-                      key={c}
-                      className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-200"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+      {racesLoading ? (
+        <div className="flex items-center gap-2 text-sm text-white/50">
+          <Loader2 className="h-4 w-4 animate-spin" /> Chargement des races…
         </div>
-      )}
-
-      {estChimeride && (
-        <div className="space-y-3 rounded-lg border border-gold/20 bg-gold/5 p-4">
-          <Label className="text-base text-gold">Sous-type Chiméride</Label>
-          <Controller
-            control={control}
-            name="sous_type_chimeride"
-            render={({ field }) => (
-              <RadioGroup
-                value={field.value}
-                onValueChange={field.onChange}
-                className="flex gap-6"
+      ) : (
+        <div className="space-y-2.5">
+          {races.map((r) => {
+            const sel = raceId === r.id;
+            const ouvert = racesOuvertes.has(r.id);
+            const manuelOuvert = manuelRaces.has(r.id);
+            const estChim = r.id === CHIMERIDE_ID;
+            const estNonR = r.id === NON_RACES_ID;
+            const verbatimRace = r.description ?? r.description_courte;
+            return (
+              <div
+                key={r.id}
+                className={`overflow-hidden rounded-xl border transition-colors ${
+                  sel ? "border-gold/50 bg-gold/5" : "border-white/10 bg-black/25"
+                }`}
               >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="chim-carn" value="carnivore" />
-                  <Label htmlFor="chim-carn">Carnivore</Label>
+                {/* En-tête : case (sélection) + identité + chevron (accordéon) */}
+                <div className="flex items-start gap-3 px-3 pb-2 pt-3">
+                  <Checkbox
+                    checked={sel}
+                    onCheckedChange={() => pickRace(r.id)}
+                    className="mt-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleAccordeon(r.id)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[15px] font-bold text-gold">
+                        {r.emoji ? `${r.emoji} ` : ""}
+                        {r.nom}
+                        {r.nom_latin && (
+                          <span className="ml-1.5 text-[11px] font-normal italic text-white/45">
+                            {r.nom_latin}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {r.xp_depart != null && (
+                          <span className="rounded-full border border-gold/50 bg-gold/10 px-2.5 py-0.5 text-[11px] font-bold text-gold">
+                            {r.xp_depart} XP
+                          </span>
+                        )}
+                        <ChevronRight
+                          className={`h-4 w-4 text-gold transition-transform ${
+                            ouvert ? "rotate-90" : ""
+                          }`}
+                        />
+                      </span>
+                    </div>
+                    {(r.description_courte ?? r.description) && (
+                      <p className="mt-1.5 text-[12.5px] leading-snug text-white/60">
+                        {r.description_courte ?? r.description}
+                      </p>
+                    )}
+                  </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="chim-herb" value="herbivore" />
-                  <Label htmlFor="chim-herb">Herbivore</Label>
-                </div>
-              </RadioGroup>
-            )}
-          />
+
+                {/* Texte du manuel (toujours accessible) */}
+                {verbatimRace && (
+                  <div className="px-3 pb-1 pl-11">
+                    <button
+                      type="button"
+                      onClick={() => toggleManuelRace(r.id)}
+                      className="inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-gold"
+                    >
+                      📖 Texte du manuel
+                      <ChevronRight
+                        className={`h-3.5 w-3.5 transition-transform ${
+                          manuelOuvert ? "rotate-90" : ""
+                        }`}
+                      />
+                    </button>
+                    {manuelOuvert && (
+                      <div className="mb-1 border-l-2 border-gold/50 pl-3">
+                        <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
+                          {verbatimRace}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Accordéon « Plus de détails » : vie, costume, sous-type,
+                    approbation, traits raciaux */}
+                {ouvert && (
+                  <div className="space-y-3 px-3 pb-2 pl-11">
+                    <div className="space-y-3 border-t border-white/10 pt-3">
+                      {r.esperance_vie && (
+                        <p className="text-[12.5px] text-white/80">
+                          <span className="font-semibold text-gold">
+                            Espérance de vie :
+                          </span>{" "}
+                          {r.esperance_vie}
+                        </p>
+                      )}
+                      {r.exigences_costume && (
+                        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                          <div className="mb-1 flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wide text-amber-300">
+                            <AlertTriangle className="h-3 w-3" /> Exigences de
+                            costume
+                          </div>
+                          <p className="whitespace-pre-line text-[12.5px] leading-snug text-amber-100/90">
+                            {r.exigences_costume}
+                          </p>
+                        </div>
+                      )}
+                      {r.restrictions_classes &&
+                        r.restrictions_classes.length > 0 && (
+                          <div className="space-y-1">
+                            <div className="text-[10.5px] uppercase tracking-wide text-white/55">
+                              Classes interdites
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {r.restrictions_classes.map((c) => (
+                                <span
+                                  key={c}
+                                  className="rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] text-red-200"
+                                >
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    </div>
+
+                    {/* Sous-type Chiméride (race sélectionnée uniquement) */}
+                    {estChim && sel && (
+                      <div className="rounded-lg border border-gold/40 bg-gold/5 p-3">
+                        <div className="mb-2 text-[13px] font-bold text-gold">
+                          Sous-type Chiméride
+                        </div>
+                        <div className="flex gap-2.5">
+                          {(["carnivore", "herbivore"] as const).map((st) => (
+                            <button
+                              key={st}
+                              type="button"
+                              onClick={() => choisirSousType(st)}
+                              className={`flex-1 rounded-md border px-3 py-2 text-[13px] font-semibold capitalize transition-colors ${
+                                sousType === st
+                                  ? "border-gold bg-gold/10 text-gold"
+                                  : "border-white/20 text-white/80"
+                              }`}
+                            >
+                              {sousType === st ? "● " : "○ "}
+                              {st}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Race spéciale : bloc d'approbation (Chiméride / Non-Races) */}
+                    {(estChim || estNonR) && sel && (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2 rounded-md border border-gold/25 bg-gold/5 p-3 text-[12.5px] text-white/80">
+                          <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                          <p>
+                            Ton{" "}
+                            <span className="text-gold">historique</span>{" "}
+                            (étape 1) servira de background pour la demande
+                            d'approbation. Aucune longueur minimale.
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 p-3 text-[12.5px] text-sky-100">
+                          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                          <div className="space-y-2">
+                            <p>
+                              Ta demande sera revue par l'équipe d'animation
+                              après soumission de la fiche. Tu peux continuer à
+                              compléter les autres étapes en attendant.
+                            </p>
+                            {parametres?.texte_envoi_photos_race && (
+                              <p className="text-sky-100/80">
+                                {parametres.texte_envoi_photos_race}
+                              </p>
+                            )}
+                            {(parametres?.lien_facebook ||
+                              parametres?.lien_discord) && (
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {parametres.lien_facebook && (
+                                  <a
+                                    href={parametres.lien_facebook}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-md border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-xs text-sky-100"
+                                  >
+                                    Facebook
+                                  </a>
+                                )}
+                                {parametres.lien_discord && (
+                                  <a
+                                    href={parametres.lien_discord}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-md border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-xs text-sky-100"
+                                  >
+                                    Discord
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ----- Traits raciaux intégrés ----- */}
+                    <div className="pt-1">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="font-heading text-[14.5px] text-gold">
+                          Traits raciaux
+                        </span>
+                        {sel && (
+                          <span
+                            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+                              gratuitChoixComplet
+                                ? "border-green-500/40 bg-green-500/10 text-green-400"
+                                : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                            }`}
+                          >
+                            {gratuitChoixComplet ? "✓ " : ""}
+                            {gratuits.size} / {quotaGratuits} gratuit
+                            {quotaGratuits > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+
+                      {!sel && (
+                        <p className="mb-2 text-[11.5px] text-amber-300">
+                          🔒 Coche la case de cette race (en haut) pour
+                          sélectionner ses traits.
+                        </p>
+                      )}
+
+                      {sel && traitsLoading ? (
+                        <div className="flex items-center gap-2 text-sm text-white/50">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Chargement
+                          des traits…
+                        </div>
+                      ) : sel && traits.length === 0 ? (
+                        <p className="text-[12.5px] text-white/50">
+                          Aucun trait disponible pour cette race.
+                        </p>
+                      ) : (
+                        <div
+                          className={`grid grid-cols-1 gap-2 ${
+                            traitsActifs ? "" : "opacity-55"
+                          }`}
+                        >
+                          {traits.map((t) => {
+                            const estGratuit = gratuits.has(t.id);
+                            const estAchete = achetes.has(t.id);
+                            const selectionne = estGratuit || estAchete;
+                            const detailOuvert = detailsTraits.has(t.id);
+                            const verbatim = t.texte_manuel ?? t.description;
+                            return (
+                              <div
+                                key={t.id}
+                                className={`overflow-hidden rounded-lg border transition-colors ${
+                                  selectionne
+                                    ? "border-gold/50 bg-gold/5"
+                                    : "border-white/10 bg-black/25"
+                                }`}
+                              >
+                                <div
+                                  role="button"
+                                  tabIndex={traitsActifs ? 0 : -1}
+                                  onClick={() => toggleTrait(t.id)}
+                                  onKeyDown={(e) => {
+                                    if (
+                                      traitsActifs &&
+                                      (e.key === "Enter" || e.key === " ")
+                                    ) {
+                                      e.preventDefault();
+                                      toggleTrait(t.id);
+                                    }
+                                  }}
+                                  className={`flex items-start gap-3 px-3 pb-2 pt-2.5 ${
+                                    traitsActifs
+                                      ? "cursor-pointer"
+                                      : "cursor-not-allowed"
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={selectionne}
+                                    disabled={!traitsActifs}
+                                    onCheckedChange={() => toggleTrait(t.id)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-0.5"
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-sm font-semibold text-gold">
+                                        {t.nom}
+                                      </span>
+                                      {selectionne ? (
+                                        estGratuit ? (
+                                          <span className="shrink-0 rounded-full border border-gold bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">
+                                            ✦ Gratuit
+                                          </span>
+                                        ) : (
+                                          <span className="shrink-0 rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-400">
+                                            − {t.cout_xp} XP
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className="shrink-0 text-[11px] text-white/40">
+                                          {t.cout_xp} XP
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="mt-1 text-[12.5px] leading-snug text-white/60">
+                                      {t.description}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {verbatim && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleDetailTrait(t.id)}
+                                    aria-expanded={detailOuvert}
+                                    className={`mb-2 ml-11 inline-flex items-center gap-1.5 rounded-md border border-gold/40 px-2 py-1 text-[11.5px] font-semibold text-gold transition-colors ${
+                                      detailOuvert ? "bg-gold/10" : "bg-transparent"
+                                    }`}
+                                  >
+                                    <ChevronRight
+                                      className={`h-3.5 w-3.5 shrink-0 transition-transform ${
+                                        detailOuvert ? "rotate-90" : ""
+                                      }`}
+                                    />
+                                    {detailOuvert
+                                      ? "Masquer le détail"
+                                      : "📖 Texte du manuel"}
+                                  </button>
+                                )}
+                                {detailOuvert && verbatim && (
+                                  <div className="mb-3 ml-11 mr-3 rounded-md border-l-2 border-gold/50 bg-white/[0.03] px-3 py-2.5">
+                                    <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
+                                      {verbatim}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {sel && (
+                            <div className="mt-1 flex items-center justify-between text-sm">
+                              <span className="text-white/60">
+                                {gratuits.size} gratuit · {achetes.size} acheté
+                                {achetes.size > 1 ? "s" : ""}
+                              </span>
+                              <span
+                                className={`font-bold ${
+                                  xpTraits > 0 ? "text-amber-400" : "text-white/45"
+                                }`}
+                              >
+                                Coût : {xpTraits} XP
+                              </span>
+                            </div>
+                          )}
+
+                          {sel && !gratuitChoixComplet && (
+                            <p className="mt-1 text-xs text-amber-300">
+                              💡 Choisis{" "}
+                              {restantGratuit > 1
+                                ? `tes ${restantGratuit} traits gratuits`
+                                : "ton trait gratuit"}{" "}
+                              pour continuer.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pied : « Plus de détails » / « Réduire » */}
+                <button
+                  type="button"
+                  onClick={() => toggleAccordeon(r.id)}
+                  className="flex w-full items-center justify-center gap-1.5 border-t border-white/10 bg-gold/[0.04] py-2 text-[11.5px] font-bold tracking-wide text-gold"
+                >
+                  {ouvert ? "Réduire" : "Plus de détails"}
+                  {ouvert ? (
+                    <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Bloc d'approbation unifié pour Chiméride ET Non-Races */}
-      {necessiteJustification && (
-        <div className="space-y-3">
-          <div className="flex items-start gap-2 rounded-md border border-gold/25 bg-gold/5 p-3 text-sm text-white/80">
-            <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-            <p>
-              Ton <span className="text-gold">historique</span> (étape 1) servira
-              de background pour la demande d'approbation. Aucune longueur minimale.
-            </p>
-          </div>
-
-          <div className="flex items-start gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 p-3 text-sm text-sky-100">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="space-y-2">
-              <p>
-                Ta demande sera revue par l'équipe d'animation après soumission
-                de la fiche. Tu peux continuer à compléter les autres étapes en
-                attendant.
-              </p>
-              {parametres?.texte_envoi_photos_race && (
-                <p className="text-sky-100/80">
-                  {parametres.texte_envoi_photos_race}
-                </p>
-              )}
-              {(parametres?.lien_facebook || parametres?.lien_discord) && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {parametres.lien_facebook && (
-                    <a
-                      href={parametres.lien_facebook}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-md border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/20"
-                    >
-                      Facebook
-                    </a>
-                  )}
-                  {parametres.lien_discord && (
-                    <a
-                      href={parametres.lien_discord}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-md border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/20"
-                    >
-                      Discord
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {!isValid && (
+        <p className="text-xs text-amber-300">
+          💡{" "}
+          {!raceId
+            ? "Choisis une race."
+            : estChimeride && !sousType
+              ? "Choisis le sous-type Chiméride."
+              : "Coche ton trait racial gratuit pour continuer."}
+        </p>
       )}
 
-      <div className="flex justify-between">
+      <div className="flex justify-between pt-1">
         <Button type="button" variant="outline" onClick={onPrevious}>
           Étape précédente
         </Button>
         <Button
-          type="submit"
+          type="button"
+          onClick={onSubmit}
           disabled={submitting || !isValid}
           className="bg-gold text-black hover:bg-gold/90"
         >
@@ -391,7 +1017,7 @@ const Etape2_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
           Suivant
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 

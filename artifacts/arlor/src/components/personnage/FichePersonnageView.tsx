@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfil } from "@/contexts/ProfilContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb } from "lucide-react";
+import { Printer, X, Check, Hammer, Gem, FlaskConical, Bomb, Wand2, Snowflake, Skull } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 import type {
@@ -28,6 +30,7 @@ import type {
   PersonnagePiegeRow,
 } from "./sections/types";
 import { InfosCard } from "./sections/InfosCard";
+import { BanqueXpCard } from "./sections/BanqueXpCard";
 import { RaceClasseCard } from "./sections/RaceClasseCard";
 import { HistoriqueAmeCard } from "./sections/HistoriqueAmeCard";
 import { TraitsSection } from "./sections/TraitsSection";
@@ -41,6 +44,7 @@ import { JoaillerieSection } from "./sections/JoaillerieSection";
 import { PiegesSection } from "./sections/PiegesSection";
 import { ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 import { FicheImprimable } from "./FicheImprimable";
+import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
@@ -54,9 +58,11 @@ interface FichePersonnageViewProps {
 }
 
 const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const { joueurId } = useProfil();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [editingHistorique, setEditingHistorique] = useState(false);
   const [historiqueTmp, setHistoriqueTmp] = useState("");
   const [ameTmp, setAmeTmp] = useState("");
@@ -275,6 +281,64 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     },
   });
 
+  // M3a PR-C1 : état d'édition (cache partagé avec BoutonRemodeler via ["etat-edition"]).
+  // Sert aux bandeaux lecture seule gelé / mort sur la fiche route.
+  const { data: etatEdition } = useQuery<{
+    etat: string;
+    raison: string;
+    evenement_bloquant_id: string | null;
+    demande_mort_epitaphe: string | null;
+  } | null>({
+    queryKey: ["etat-edition", personnageId],
+    enabled: mode === "route" && !!personnageId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("etat_edition_personnage", {
+        p_personnage_id: personnageId,
+      });
+      if (error) throw error;
+      return (data ?? null) as {
+        etat: string;
+        raison: string;
+        evenement_bloquant_id: string | null;
+        demande_mort_epitaphe: string | null;
+      } | null;
+    },
+  });
+
+  // Événement bloquant (seulement si gelé) — RLS lecture joueurs sur est_publie.
+  const evenementBloquantId = etatEdition?.evenement_bloquant_id ?? null;
+  const { data: evenementBloquant } = useQuery({
+    queryKey: ["evenement-bloquant", evenementBloquantId],
+    enabled: !!evenementBloquantId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("evenements")
+        .select("titre, date_evenement")
+        .eq("id", evenementBloquantId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // CIMETIÈRE — l'état « demande en attente » provient de etat_edition (etat='mort_en_attente').
+  // La stèle vit dans `cimetiere` (statut en_attente), cachée du public.
+
+  // A vécu au moins un événement (statut 'present') ? Condition d'admissibilité.
+  const { data: aVecuEvenement } = useQuery({
+    queryKey: ["a-vecu-evenement", personnageId],
+    enabled: mode === "route" && !!personnageId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("inscriptions_evenements")
+        .select("id", { count: "exact", head: true })
+        .eq("personnage_id", personnageId!)
+        .eq("statut", "present");
+      if (error) throw error;
+      return (count ?? 0) > 0;
+    },
+  });
+
   const competencesGroupees = useMemo(() => {
     // Grouping par competence_id (PR2 v39).
     // Conserve les rows pour permettre un rendu spécifique selon type_achat :
@@ -311,8 +375,43 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     return groupes;
   }, [competences]);
 
-  const isOwner = user?.id === fiche?.joueur_id;
+  // ISOWNER-COMPTE-VS-PROFIL : on compare le PROFIL actif (joueurId), pas le compte (user.id).
+  const isOwner = joueurId === fiche?.joueur_id;
+  const isAdmin = role === "admin";
+  // ÉDITION-ADMIN-WIZARD : l'édition in-place (historique/âme) reste réservée au
+  // propriétaire ; l'admin passe par l'éditeur complet (wizard ?admin=1).
+  const peutEditer = isOwner;
   const xpDisponible = (fiche?.xp_total ?? 0) - (fiche?.xp_depense ?? 0);
+
+  // CIMETIÈRE PR2 — état local du formulaire « Demander la mort ».
+  const [epitapheMort, setEpitapheMort] = useState("");
+  const [mortConfirmee, setMortConfirmee] = useState(false);
+  const [envoiMort, setEnvoiMort] = useState(false);
+  const handleDemanderMort = async () => {
+    if (!fiche || !mortConfirmee) return;
+    setEnvoiMort(true);
+    try {
+      const { data, error } = await supabase.rpc("creer_demande_mort", {
+        p_personnage_id: fiche.id,
+        p_epitaphe: epitapheMort.trim(),
+      });
+      if (error) throw error;
+      const res = data as { succes: boolean; erreur?: string; message?: string };
+      if (!res?.succes) {
+        toast.error(res?.erreur ?? "Impossible d'envoyer la demande.");
+        return;
+      }
+      toast.success(res.message ?? "Demande envoyée. Le staff va l'examiner.");
+      setEpitapheMort("");
+      setMortConfirmee(false);
+      await queryClient.invalidateQueries({ queryKey: ["etat-edition", personnageId] });
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Erreur lors de l'envoi de la demande.");
+    } finally {
+      setEnvoiMort(false);
+    }
+  };
 
   const traits = Array.isArray(fiche?.traits_raciaux_choisis)
     ? (fiche.traits_raciaux_choisis as unknown as Trait[])
@@ -414,15 +513,65 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   return (
     <div className={mode === 'route' ? 'container max-w-6xl py-8 space-y-6' : 'space-y-6'}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-4xl font-bold text-primary">{fiche.nom}</h1>
+      {mode === 'route' && isAdmin && !isOwner && (
+        <div className="rounded-xl border border-gold/20 bg-card p-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <Wand2 className="h-5 w-5 shrink-0 mt-0.5 text-gold" />
+            <div className="min-w-0">
+              <p className="font-heading font-bold text-gold">Mode admin</p>
+              <p className="text-sm mt-1 text-muted-foreground">
+                Plein pouvoir sur <b>{fiche.nom}</b> (compétences, sorts, prières, XP)
+                via l'éditeur complet, sans changer l'état du personnage. Chaque action
+                est journalisée.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => navigate(`/personnage/nouveau?id=${fiche.id}&admin=1`)}
+            className="shrink-0 gap-2 w-full sm:w-auto"
+          >
+            <Wand2 className="h-4 w-4" /> Ouvrir l'éditeur complet
+          </Button>
+        </div>
+      )}
+      {mode === "route" && etatEdition?.etat === "gele" && (
+        <div className="flex items-start gap-3 rounded-lg border border-sky-700/50 bg-sky-900/20 px-4 py-3">
+          <Snowflake className="mt-0.5 h-5 w-5 shrink-0 text-sky-400" />
+          <div className="min-w-0">
+            <p className="font-heading text-sm font-bold text-sky-300">Fiche gelée</p>
+            <p className="mt-0.5 text-sm text-foreground/85">
+              {evenementBloquant?.titre ? (
+                <>Inscrit à <b>{evenementBloquant.titre}</b>
+                {evenementBloquant.date_evenement
+                  ? ` (${new Date(evenementBloquant.date_evenement).toLocaleDateString("fr-CA")})`
+                  : ""}. </>
+              ) : null}
+              La fiche sera de nouveau modifiable après la clôture de l'événement.
+            </p>
+          </div>
+        </div>
+      )}
+      {mode === "route" && etatEdition?.etat === "mort" && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-800/50 bg-red-950/25 px-4 py-3">
+          <Skull className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+          <div>
+            <p className="font-heading text-sm font-bold text-red-300">Personnage mort</p>
+            <p className="mt-0.5 text-sm text-foreground/85">
+              Cette fiche est conservée en mémoire, en lecture seule.
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-heading text-4xl font-bold text-primary break-words">{fiche.nom}</h1>
           <p className="text-muted-foreground mt-1">
             {fiche.race_nom} {fiche.race_nom_latin && <span className="italic">({fiche.race_nom_latin})</span>} • {fiche.classe_nom} • Niveau {fiche.niveau}
           </p>
         </div>
         {mode === 'route' && (
-          <div className="flex gap-2 flex-wrap justify-end">
+          <div className="flex gap-2 flex-wrap sm:justify-end">
             <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
               Fiche Version Courte
@@ -434,6 +583,25 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           </div>
         )}
       </div>
+
+      {mode === 'route' && isOwner && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="max-w-sm">
+            <BoutonRemodeler personnageId={personnageId} />
+          </div>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/personnage/nouveau?id=${fiche.id}&admin=1`)}
+              title="Édite via l'éditeur complet, sans changer l'état du personnage"
+              className="gap-2 border-dashed border-gold/30 text-gold hover:bg-gold/10 hover:text-gold"
+            >
+              <Wand2 className="h-4 w-4" /> Éditer en admin
+            </Button>
+          )}
+        </div>
+      )}
 
       <ManuelGlobalSwitch
         allOpen={isAllOpen(allManuelIds)}
@@ -466,6 +634,12 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             toggleAll={toggleAll}
           />
           <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
+          <BanqueXpCard
+            joueurId={fiche.joueur_id}
+            personnageId={fiche.id}
+            personnageNom={fiche.nom}
+            isOwner={peutEditer}
+          />
           {(() => {
             const maReligion = fiche.religion_id
               ? religions?.find((r) => r.id === fiche.religion_id)
@@ -486,7 +660,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               </Card>
             );
           })()}
-          {editingHistorique && isOwner && mode === 'route' ? (
+          {editingHistorique && peutEditer && mode === 'route' ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Modifier historique et âme</CardTitle>
@@ -531,8 +705,8 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             <HistoriqueAmeCard
               historique={fiche.historique}
               ame_personnage={fiche.ame_personnage}
-              canEdit={isOwner && mode === 'route'}
-              isOwner={isOwner}
+              canEdit={peutEditer && mode === 'route'}
+              isOwner={peutEditer}
               onEdit={handleEditHistorique}
             />
           )}
@@ -664,6 +838,89 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           </TabsContent>
         )}
       </Tabs>
+
+      {mode === "route" && isOwner && etatEdition?.etat !== "mort" && (
+        <>
+          {etatEdition?.etat === "mort_en_attente" ? (
+            <div className="rounded-xl border border-gold/35 bg-card p-4 flex gap-3 items-start">
+              <span className="text-xl mt-0.5">⏳</span>
+              <div className="min-w-0">
+                <p className="font-heading font-bold text-gold">Demande de mort en attente</p>
+                <p className="mt-1.5 text-sm text-foreground/90">
+                  Un animateur examinera bientôt ta demande pour <b>{fiche.nom}</b>. Tu seras notifié de la décision.
+                </p>
+                {etatEdition?.demande_mort_epitaphe && (
+                  <p className="mt-2.5 border-l-2 border-gold pl-3 text-sm italic text-muted-foreground">
+                    « {etatEdition.demande_mort_epitaphe} »
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : !aVecuEvenement ? (
+            <div className="rounded-xl border border-border bg-card p-4 flex gap-3 items-start opacity-90">
+              <Skull className="h-5 w-5 shrink-0 mt-0.5 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="font-heading font-bold text-muted-foreground">Faire mourir ce personnage</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Tu pourras demander la mort de ce personnage <b>après avoir vécu au moins un événement</b> (GN).
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-red-800/50 bg-card overflow-hidden">
+              <div className="border-b border-border px-4 py-3 flex items-center gap-2">
+                <Skull className="h-5 w-5 shrink-0 text-red-400" />
+                <h3 className="font-heading font-bold text-red-300">Faire mourir ce personnage</h3>
+              </div>
+              <div className="px-4 py-4 space-y-4">
+                <p className="text-sm text-foreground/90 leading-relaxed">
+                  Demander que <b>{fiche.nom}</b> rejoigne le <b>Cimetière des Héros</b>. Un animateur examinera ta
+                  demande ; une fois approuvée, la fiche devient <b>définitivement en lecture seule</b> et une stèle
+                  commémorative est créée.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Épitaphe (facultatif) — quelques mots gravés sur la stèle
+                  </label>
+                  <Textarea
+                    value={epitapheMort}
+                    onChange={(e) => setEpitapheMort(e.target.value.slice(0, 280))}
+                    placeholder="« Tombé en défendant le pont de Glaceval… »"
+                    rows={3}
+                  />
+                  <p className="text-[11px] text-muted-foreground text-right">{epitapheMort.length}/280</p>
+                </div>
+                <div className="flex gap-2.5 items-start rounded-lg border border-red-800/50 bg-red-950/25 px-3 py-2.5">
+                  <span className="text-red-300 mt-0.5">⚠️</span>
+                  <p className="text-xs text-foreground/90 leading-snug">
+                    Action <b>définitive</b>. Le personnage ne pourra plus gagner d'XP, ni être modifié, ni revenir en jeu.
+                  </p>
+                </div>
+                <label className="flex gap-2.5 items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={mortConfirmee}
+                    onChange={(e) => setMortConfirmee(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-red-700"
+                  />
+                  <span className="text-sm text-foreground/90">
+                    Je comprends que cette demande est <b>définitive</b>.
+                  </span>
+                </label>
+                <Button
+                  variant="destructive"
+                  disabled={!mortConfirmee || envoiMort}
+                  onClick={handleDemanderMort}
+                  className="gap-2"
+                >
+                  <Skull className="h-4 w-4" />
+                  {envoiMort ? "Envoi…" : "Demander la mort"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {mode === 'route' && (
         <FicheImprimable

@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { BarChart3, Users, Shield, Calendar, CheckCircle, Database } from "lucide-react";
+import { BarChart3, Users, Shield, Calendar, CheckCircle, Database, ScrollText, Skull } from "lucide-react";
 
 interface AdminItem {
   id: string;
@@ -21,6 +21,7 @@ const ADMIN_POLES: AdminPole[] = [
     items: [
       { id: "dashboard", label: "Tableau de bord", icon: BarChart3, path: "/administration/dashboard" },
       { id: "approbations", label: "File d'approbations", icon: CheckCircle, path: "/administration/approbations" },
+      { id: "journal", label: "Journal d'audit", icon: ScrollText, path: "/administration/journal" },
     ],
   },
   {
@@ -29,6 +30,7 @@ const ADMIN_POLES: AdminPole[] = [
       { id: "joueurs", label: "Joueurs", icon: Users, path: "/administration/joueurs" },
       { id: "personnages", label: "Personnages", icon: Shield, path: "/administration/personnages" },
       { id: "evenements", label: "Événements", icon: Calendar, path: "/administration/evenements" },
+      { id: "cimetiere", label: "Cimetière", icon: Skull, path: "/administration/cimetiere" },
     ],
   },
   {

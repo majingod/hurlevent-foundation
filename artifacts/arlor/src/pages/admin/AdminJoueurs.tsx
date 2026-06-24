@@ -1,141 +1,1131 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import AdminLayout from "@/components/admin/AdminLayout";
+  ChevronRight,
+  Crown,
+  Ban,
+  ShieldCheck,
+  Skull,
+  Trash2,
+} from "lucide-react";
 
-interface Joueur {
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import AdminLayout from "@/components/admin/AdminLayout";
+import IntroEtape, {
+  IntroEtapeItem,
+} from "@/components/createur/aide/IntroEtape";
+import LegendeJoueursAdmin from "@/components/admin/joueurs/LegendeJoueursAdmin";
+import DrawerAjusterAdmin, {
+  type CibleAjuster,
+} from "@/components/admin/joueurs/DrawerAjusterAdmin";
+import DrawerRoleCompte from "@/components/admin/joueurs/DrawerRoleCompte";
+import { HistoriqueBanque } from "@/components/personnage/sections/HistoriqueBanque";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+
+type Role = "joueur" | "animateur" | "admin";
+
+interface PersoRow {
   id: string;
-  nom_affichage: string;
+  nom: string | null;
+  niveau: number;
+  niveauCorrection: number;
+  xpTotal: number;
+  xpDepense: number;
+  estFinalise: boolean;
+  estVerrouille: boolean;
+  estMort: boolean;
+  estActif: boolean;
+}
+interface ProfilRow {
+  id: string;
+  nom: string;
+  estPrincipal: boolean;
+  estActif: boolean;
+  solde: number;
+  persos: PersoRow[];
+}
+interface CompteRow {
+  id: string;
+  nom: string;
   email: string;
-  role: "joueur" | "animateur" | "admin";
-  created_at: string;
-  nb_personnages: number;
+  role: Role;
+  isActive: boolean;
+  profils: ProfilRow[];
+  nbPersos: number;
+}
+
+const ROLE_LABEL: Record<Role, string> = {
+  joueur: "Joueur",
+  animateur: "Animateur",
+  admin: "Admin",
+};
+const ROLE_BADGE: Record<Role, string> = {
+  joueur: "border-border text-muted-foreground",
+  animateur: "border-accent/80 text-[hsl(36_33%_80%)]",
+  admin: "border-primary/50 text-primary",
+};
+
+const dotCls = (pe: PersoRow) =>
+  pe.estVerrouille
+    ? "bg-muted-foreground"
+    : pe.estFinalise
+      ? "bg-[hsl(140_40%_50%)]"
+      : "bg-primary";
+const dotTitle = (pe: PersoRow) =>
+  pe.estVerrouille ? "Verrouillé" : pe.estFinalise ? "Finalisé" : "En édition";
+
+// Pastille compteur (or = profils, neutre = personnages).
+const Pastille = ({
+  tone,
+  children,
+}: {
+  tone?: "gold";
+  children: React.ReactNode;
+}) => (
+  <span
+    className={`whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[11px] ${
+      tone === "gold"
+        ? "border-primary/40 text-primary"
+        : "border-primary/25 text-foreground"
+    }`}
+  >
+    {children}
+  </span>
+);
+
+// Badge « Bloqué » — n'apparaît que pour un élément retiré (l'actif est silencieux).
+const BlocBadge = () => (
+  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-muted-foreground/50 bg-muted-foreground/10 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <Ban className="h-2.5 w-2.5" /> Bloqué
+  </span>
+);
+
+// Bouton icône Bloquer / Débloquer.
+const BoutonBloquer = ({
+  bloque,
+  disabled,
+  onClick,
+  title,
+}: {
+  bloque: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  title?: string;
+}) => {
+  const Icon = bloque ? ShieldCheck : Ban;
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      title={title ?? (bloque ? "Débloquer" : "Bloquer")}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!disabled) onClick();
+      }}
+      className={`inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border transition-colors ${
+        disabled
+          ? "cursor-not-allowed border-border text-muted-foreground/40"
+          : bloque
+            ? "border-primary/60 bg-primary/10 text-primary"
+            : "border-border text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      <Icon className="h-[15px] w-[15px]" />
+    </button>
+  );
+};
+
+// Bouton icône Purger (suppression définitive). Visible seulement sur objet bloqué + admin.
+const BoutonPurger = ({
+  onClick,
+  title,
+}: {
+  onClick: () => void;
+  title?: string;
+}) => (
+  <button
+    type="button"
+    title={title ?? "Purger définitivement"}
+    onClick={(e) => {
+      e.stopPropagation();
+      onClick();
+    }}
+    className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border border-destructive/70 bg-destructive/10 text-[hsl(0_70%_62%)] transition-colors hover:bg-destructive/20"
+  >
+    <Trash2 className="h-[15px] w-[15px]" />
+  </button>
+);
+
+type PurgeType = "compte" | "profil" | "personnage";
+interface ApercuPurge {
+  type: PurgeType;
+  cible_nom?: string;
+  est_bloque: boolean;
+  login_conserve?: boolean;
+  profils?: { nom: string }[];
+  persos?: { nom: string; profil?: string }[];
+  nb_persos?: number;
+  nb_banque?: number;
+  nb_inscriptions?: number;
+  nb_notifs?: number;
+  nb_events_detaches?: number;
+}
+
+const titrePurge = (type: PurgeType, nom: string) =>
+  type === "personnage"
+    ? `Purger définitivement « ${nom} » ?`
+    : `Purger définitivement ${type === "compte" ? "le compte" : "le profil"} « ${nom} » ?`;
+
+const LignePurge = ({ k, v }: { k: string; v: number }) => (
+  <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-[13px] last:border-b-0">
+    <span className="text-muted-foreground">{k}</span>
+    <span className="font-semibold tabular-nums">{v}</span>
+  </div>
+);
+
+const ApercuPurgeRecap = ({ apercu: a }: { apercu: ApercuPurge }) => (
+  <div className="my-1 overflow-hidden rounded-xl border border-border">
+    {a.profils && a.profils.length > 0 && (
+      <div className="border-b border-border px-3 py-2 text-[13px]">
+        <div className="mb-1 text-muted-foreground">{a.profils.length} profil(s)</div>
+        <ul className="list-disc pl-4">
+          {a.profils.map((p, i) => (
+            <li key={i}>{p.nom}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {a.persos && a.persos.length > 0 && (
+      <div className="border-b border-border px-3 py-2 text-[13px]">
+        <div className="mb-1 text-muted-foreground">{a.persos.length} personnage(s)</div>
+        <ul className="list-disc pl-4">
+          {a.persos.map((p, i) => (
+            <li key={i}>
+              {p.nom}
+              {p.profil && (
+                <span className="text-[11px] text-muted-foreground"> ({p.profil})</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {typeof a.nb_banque === "number" && (
+      <LignePurge k="Mouvements de banque d'XP" v={a.nb_banque} />
+    )}
+    {typeof a.nb_inscriptions === "number" && (
+      <LignePurge k="Inscriptions à des événements" v={a.nb_inscriptions} />
+    )}
+    {typeof a.nb_notifs === "number" && <LignePurge k="Notifications" v={a.nb_notifs} />}
+    {typeof a.nb_events_detaches === "number" && (
+      <LignePurge k="Événements créés (détachés)" v={a.nb_events_detaches} />
+    )}
+    {a.login_conserve && (
+      <div className="bg-muted/50 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+        🔐 La connexion (e-mail) est{" "}
+        <b className="text-[hsl(43_51%_65%)]">conservée</b> : l'adresse reste prise,
+        aucun retour possible.
+      </div>
+    )}
+  </div>
+);
+
+interface RpcStandard {
+  succes?: boolean;
+  erreurs?: { message?: string }[];
+}
+interface RpcPerso {
+  succes?: boolean;
+  raison?: string;
 }
 
 const AdminJoueurs = () => {
-  const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const estAdmin = role === "admin";
 
-  const { data: joueurs, isLoading, refetch } = useQuery({
+  const [searchTerm, setSearchTerm] = useState("");
+  const [openComptes, setOpenComptes] = useState<Set<string>>(new Set());
+  const [openProfils, setOpenProfils] = useState<Set<string>>(new Set());
+  const [ajusterCle, setAjusterCle] = useState<
+    { kind: "banque"; profilId: string } | { kind: "perso"; persoId: string } | null
+  >(null);
+  const [roleCle, setRoleCle] = useState<string | null>(null);
+  const [confirmer, setConfirmer] = useState<{
+    titre: string;
+    description: string;
+    danger: boolean;
+    requireMotif?: boolean;
+    action: (raison?: string) => void;
+  } | null>(null);
+  const [motif, setMotif] = useState("");
+  const [purge, setPurge] = useState<{
+    type: PurgeType;
+    id: string;
+    nom: string;
+    apercu: ApercuPurge;
+    etape: 1 | 2;
+    okCompris: boolean;
+    enCours: boolean;
+    raison: string;
+  } | null>(null);
+
+  const { data: comptes, isLoading } = useQuery({
     queryKey: ["admin-joueurs"],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("get_joueurs_avec_count");
-      return (data ?? []) as Joueur[];
+    queryFn: async (): Promise<CompteRow[]> => {
+      const [pc, pj, bq, pe] = await Promise.all([
+        supabase.from("profiles").select("id, nom_affichage, email, role, is_active"),
+        supabase.from("profils_joueur").select("id, compte_id, nom, est_principal, est_actif"),
+        supabase.from("vue_banque_joueur").select("joueur_id, solde"),
+        supabase
+          .from("vue_personnages_admin_complet")
+          .select(
+            "id, nom, joueur_id, niveau, niveau_correction, xp_total, xp_depense, est_finalise, est_verrouille, est_mort, est_actif",
+          ),
+      ]);
+      if (pc.error) throw pc.error;
+      if (pj.error) throw pj.error;
+      if (bq.error) throw bq.error;
+      if (pe.error) throw pe.error;
+
+      const soldeParProfil = new Map<string, number>();
+      (bq.data ?? []).forEach((r) => {
+        if (r.joueur_id) soldeParProfil.set(r.joueur_id, r.solde ?? 0);
+      });
+
+      const persosParProfil = new Map<string, PersoRow[]>();
+      (pe.data ?? []).forEach((r) => {
+        if (!r.id || !r.joueur_id) return;
+        const row: PersoRow = {
+          id: r.id,
+          nom: r.nom,
+          niveau: r.niveau ?? 1,
+          niveauCorrection: r.niveau_correction ?? 0,
+          xpTotal: r.xp_total ?? 0,
+          xpDepense: r.xp_depense ?? 0,
+          estFinalise: !!r.est_finalise,
+          estVerrouille: !!r.est_verrouille,
+          estMort: !!r.est_mort,
+          estActif: r.est_actif !== false,
+        };
+        const arr = persosParProfil.get(r.joueur_id) ?? [];
+        arr.push(row);
+        persosParProfil.set(r.joueur_id, arr);
+      });
+
+      const profilsParCompte = new Map<string, ProfilRow[]>();
+      (pj.data ?? []).forEach((r) => {
+        const persos = (persosParProfil.get(r.id) ?? []).sort((a, b) =>
+          (a.nom ?? "").localeCompare(b.nom ?? "", "fr"),
+        );
+        const profil: ProfilRow = {
+          id: r.id,
+          nom: r.nom,
+          estPrincipal: !!r.est_principal,
+          estActif: r.est_actif !== false,
+          solde: soldeParProfil.get(r.id) ?? 0,
+          persos,
+        };
+        const arr = profilsParCompte.get(r.compte_id) ?? [];
+        arr.push(profil);
+        profilsParCompte.set(r.compte_id, arr);
+      });
+
+      return (pc.data ?? [])
+        .map((c): CompteRow => {
+          const profils = (profilsParCompte.get(c.id) ?? []).sort((a, b) =>
+            a.nom.localeCompare(b.nom, "fr"),
+          );
+          return {
+            id: c.id,
+            nom: c.nom_affichage ?? c.email ?? "—",
+            email: c.email ?? "",
+            role: (c.role ?? "joueur") as Role,
+            isActive: c.is_active !== false,
+            profils,
+            nbPersos: profils.reduce((n, p) => n + p.persos.length, 0),
+          };
+        })
+        .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
     },
   });
 
-  const filteredJoueurs = joueurs?.filter(
-    (j) =>
-      j.nom_affichage.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const q = searchTerm.trim().toLowerCase();
+  const matchCompte = (c: CompteRow) =>
+    c.nom.toLowerCase().includes(q) ||
+    c.email.toLowerCase().includes(q) ||
+    c.profils.some(
+      (p) =>
+        p.nom.toLowerCase().includes(q) ||
+        p.persos.some((pe) => (pe.nom ?? "").toLowerCase().includes(q)),
+    );
+
+  const comptesAffiches = useMemo(
+    () => (comptes ?? []).filter((c) => !q || matchCompte(c)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [comptes, q],
   );
 
-  const handleChangeRole = async (joueurId: string, newRole: string) => {
-    setUpdatingRole(joueurId);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role: newRole })
-        .eq("id", joueurId);
+  const compteOuvert = (c: CompteRow) =>
+    q ? matchCompte(c) : openComptes.has(c.id);
+  const profilOuvert = (p: ProfilRow) => (q ? true : openProfils.has(p.id));
 
+  const toggleCompte = (id: string) =>
+    setOpenComptes((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const toggleProfil = (id: string) =>
+    setOpenProfils((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  // ── Blocage (RPC prod, retour standard pour compte/profil, {succes,raison} pour perso) ──
+  const lancerBlocage = async (
+    fn: string,
+    paramNom: string,
+    id: string,
+    libelleSucces: string,
+    perso: boolean,
+    raison?: string,
+  ) => {
+    try {
+      const { data, error } = await supabase.rpc(
+        fn as "bloquer_personnage",
+        {
+          [paramNom]: id,
+          ...(raison !== undefined ? { p_raison: raison } : {}),
+        } as { p_personnage_id: string },
+      );
       if (error) throw error;
-      toast.success("Rôle mis à jour !");
-      refetch();
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Erreur lors de la mise à jour du rôle.");
-    } finally {
-      setUpdatingRole(null);
+      if (perso) {
+        const ret = (data ?? {}) as RpcPerso;
+        if (ret.succes !== true) {
+          toast.error(ret.raison ?? "Action refusée.");
+          return;
+        }
+      } else {
+        const ret = (data ?? {}) as RpcStandard;
+        if (ret.succes !== true) {
+          toast.error(ret.erreurs?.[0]?.message ?? "Action refusée.");
+          return;
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: ["admin-joueurs"] });
+      toast.success(libelleSucces);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur réseau.");
     }
   };
 
-  if (isLoading) {
-    return (
-      <AdminLayout
-        title="Gestion des joueurs"
-        searchPlaceholder="Rechercher un joueur…"
-        searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
-      >
-        <p className="text-center py-12 text-muted-foreground">Chargement…</p>
-      </AdminLayout>
+  const confCompte = (c: CompteRow) =>
+    setConfirmer(
+      c.isActive
+        ? {
+            danger: true,
+            requireMotif: true,
+            titre: `Bloquer le compte « ${c.nom} » ?`,
+            description: `⚠️ Le joueur ne pourra plus se connecter (connexion bloquée). Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront aussi bloqués.`,
+            action: (raison) =>
+              lancerBlocage("bloquer_compte", "p_compte_id", c.id, "Compte bloqué.", false, raison),
+          }
+        : {
+            danger: false,
+            titre: `Débloquer le compte « ${c.nom} » ?`,
+            description: `Le joueur pourra de nouveau se connecter. Ses ${c.profils.length} profil(s) et ${c.nbPersos} personnage(s) seront débloqués.`,
+            action: () =>
+              lancerBlocage("debloquer_compte", "p_compte_id", c.id, "Compte débloqué.", false),
+          },
     );
-  }
+  const confProfil = (p: ProfilRow) =>
+    setConfirmer(
+      p.estActif
+        ? {
+            danger: true,
+            requireMotif: true,
+            titre: `Bloquer le profil « ${p.nom} » ?`,
+            description: `Ses ${p.persos.length} personnage(s) seront aussi bloqués. Le compte reste actif.`,
+            action: (raison) =>
+              lancerBlocage("bloquer_profil", "p_profil_id", p.id, "Profil bloqué.", false, raison),
+          }
+        : {
+            danger: false,
+            titre: `Débloquer le profil « ${p.nom} » ?`,
+            description: `Ses ${p.persos.length} personnage(s) seront débloqués.`,
+            action: () =>
+              lancerBlocage("debloquer_profil", "p_profil_id", p.id, "Profil débloqué.", false),
+          },
+    );
+  const confPerso = (pe: PersoRow) =>
+    setConfirmer(
+      pe.estActif
+        ? {
+            danger: true,
+            requireMotif: true,
+            titre: `Bloquer « ${pe.nom ?? "Sans nom"} » ?`,
+            description:
+              "Le personnage passera en lecture seule côté joueur (visible, non modifiable, non supprimable).",
+            action: (raison) =>
+              lancerBlocage(
+                "bloquer_personnage",
+                "p_personnage_id",
+                pe.id,
+                "Personnage bloqué.",
+                true,
+                raison,
+              ),
+          }
+        : {
+            danger: false,
+            titre: `Débloquer « ${pe.nom ?? "Sans nom"} » ?`,
+            description: "Le personnage redeviendra modifiable par le joueur.",
+            action: () =>
+              lancerBlocage(
+                "debloquer_personnage",
+                "p_personnage_id",
+                pe.id,
+                "Personnage débloqué.",
+                true,
+              ),
+          },
+    );
+
+  // ── Purge définitive (objet déjà bloqué, admin strict ; RPC retour standard) ──
+  const ouvrirPurge = async (type: PurgeType, id: string, nom: string) => {
+    try {
+      const { data, error } = await supabase.rpc("apercu_purge", {
+        p_type: type,
+        p_id: id,
+      });
+      if (error) throw error;
+      const ret = (data ?? {}) as {
+        succes?: boolean;
+        erreurs?: { message?: string }[];
+        donnees?: ApercuPurge | null;
+      };
+      if (ret.succes !== true || !ret.donnees) {
+        toast.error(ret.erreurs?.[0]?.message ?? "Aperçu impossible.");
+        return;
+      }
+      setPurge({
+        type,
+        id,
+        nom,
+        apercu: ret.donnees,
+        etape: 1,
+        okCompris: false,
+        enCours: false,
+        raison: "",
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur réseau.");
+    }
+  };
+
+  const confirmerPurge = async () => {
+    if (!purge) return;
+    const fnParType: Record<PurgeType, string> = {
+      compte: "purger_compte",
+      profil: "purger_profil",
+      personnage: "purger_personnage",
+    };
+    const paramParType: Record<PurgeType, string> = {
+      compte: "p_compte_id",
+      profil: "p_profil_id",
+      personnage: "p_personnage_id",
+    };
+    setPurge((p) => (p ? { ...p, enCours: true } : p));
+    try {
+      const { data, error } = await supabase.rpc(
+        fnParType[purge.type] as "purger_compte",
+        { [paramParType[purge.type]]: purge.id, p_raison: purge.raison } as unknown as {
+          p_compte_id: string;
+        },
+      );
+      if (error) throw error;
+      const ret = (data ?? {}) as RpcStandard;
+      if (ret.succes !== true) {
+        toast.error(ret.erreurs?.[0]?.message ?? "Purge refusée.");
+        setPurge((p) => (p ? { ...p, enCours: false } : p));
+        return;
+      }
+      setPurge(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin-joueurs"] });
+      const lbl =
+        purge.type === "compte"
+          ? "Compte"
+          : purge.type === "profil"
+            ? "Profil"
+            : "Personnage";
+      toast.success(`${lbl} purgé définitivement.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur réseau.");
+      setPurge((p) => (p ? { ...p, enCours: false } : p));
+    }
+  };
+
+  const cibleAjuster: CibleAjuster | null = useMemo(() => {
+    if (!ajusterCle || !comptes) return null;
+    for (const c of comptes) {
+      for (const p of c.profils) {
+        if (ajusterCle.kind === "banque" && p.id === ajusterCle.profilId) {
+          return {
+            mode: "banque",
+            profilId: p.id,
+            profilNom: p.nom,
+            compteNom: c.nom,
+            solde: p.solde,
+          };
+        }
+        if (ajusterCle.kind === "perso") {
+          for (const pe of p.persos) {
+            if (pe.id === ajusterCle.persoId) {
+              return {
+                mode: "perso",
+                persoId: pe.id,
+                persoNom: pe.nom,
+                profilNom: p.nom,
+                niveau: pe.niveau,
+                niveauCorrection: pe.niveauCorrection,
+                xpTotal: pe.xpTotal,
+                xpDepense: pe.xpDepense,
+              };
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }, [ajusterCle, comptes]);
+
+  const compteRole = useMemo(() => {
+    if (!roleCle || !comptes) return null;
+    const c = comptes.find((x) => x.id === roleCle);
+    return c ? { id: c.id, nom: c.nom, role: c.role } : null;
+  }, [roleCle, comptes]);
 
   return (
     <AdminLayout
       title="Gestion des joueurs"
-      searchPlaceholder="Rechercher un joueur…"
+      searchPlaceholder="Rechercher un compte, profil ou personnage…"
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
     >
-      <Card className="border-primary/10 bg-card/50 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-base font-heading">
-            Liste des joueurs ({filteredJoueurs?.length ?? 0})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-primary/10">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nom</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Email</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rôle</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Personnages</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Inscription</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJoueurs?.map((joueur) => (
-                  <tr key={joueur.id} className="border-b border-primary/5 hover:bg-primary/5 transition-colors">
-                    <td className="py-3 px-4 font-medium text-foreground">{joueur.nom_affichage}</td>
-                    <td className="py-3 px-4 text-muted-foreground text-sm">{joueur.email}</td>
-                    <td className="py-3 px-4">
-                      <Select
-                        value={joueur.role}
-                        onValueChange={(value) => handleChangeRole(joueur.id, value)}
-                        disabled={updatingRole === joueur.id}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="joueur">Joueur</SelectItem>
-                          <SelectItem value="animateur">Animateur</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge variant="outline">{joueur.nb_personnages}</Badge>
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground text-xs">
-                      {new Date(joueur.created_at).toLocaleDateString("fr-FR")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <IntroEtape
+        storageKey="hv-admin-joueurs-intro"
+        titre="Comment fonctionne cette page ?"
+      >
+        <IntroEtapeItem n={1}>
+          La <b>recherche</b> filtre sur le compte, le nom de profil <i>et</i> le
+          nom de personnage ; les comptes qui correspondent se déplient tout
+          seuls.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={2}>
+          Touchez un <b>compte</b> pour déplier ses <b>profils de jeu</b>, puis un{" "}
+          <b>profil</b> pour déplier ses <b>personnages</b>.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={3}>
+          Touchez le <b>badge de rôle</b> d'un compte (ex. Joueur ▾) pour le
+          passer à <b>Animateur</b> ou <b>Admin</b>. Le rôle est au niveau du
+          compte, pas du profil.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={4}>
+          Chaque profil a sa <b>banque d'XP du joueur</b> — les XP gagnés aux{" "}
+          <b>Mini-GN</b> et aux <b>ouvertures de terrain</b>. C'est distinct de
+          l'XP d'un personnage. Bouton <b>Ajuster</b> pour créditer ou débiter
+          (le solde peut devenir négatif).
+        </IntroEtapeItem>
+        <IntroEtapeItem n={5}>
+          <b>Voir perso</b> ouvre la fiche du personnage en lecture seule.{" "}
+          <b>Ajuster Niv./Xp</b> corrige l'XP (retrait limité à l'XP disponible)
+          ou le <b>niveau</b> (jamais sous 1), même sur un personnage{" "}
+          <b>verrouillé</b>. Un niveau corrigé est signalé par ✎.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={6}>
+          Les icônes <b>Bloquer</b> / <b>Débloquer</b> retirent ou réactivent un
+          compte, un profil ou un personnage. Bloquer un compte <b>bloque sa
+          connexion</b>. Le blocage descend en <b>cascade</b> (compte → profils
+          → personnages) et reste <b>réversible</b>.
+        </IntroEtapeItem>
+        <IntroEtapeItem n={7}>
+          L'icône <b>corbeille</b> (Purger, admin uniquement) n'apparaît que sur
+          un élément <b>déjà bloqué</b>. Elle <b>supprime définitivement</b> un
+          personnage, un profil ou un compte — action <b>irréversible</b>. Purger
+          un compte efface ses données mais <b>conserve la connexion bloquée</b>
+          (le login ne peut pas être réutilisé).
+        </IntroEtapeItem>
+      </IntroEtape>
+
+      <LegendeJoueursAdmin />
+
+      <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card/60 backdrop-blur-sm">
+        <div className="px-4 pb-1.5 pt-3.5">
+          <h2 className="font-heading text-[15px]">
+            Liste des joueurs ({comptesAffiches.length})
+          </h2>
+        </div>
+        <div>
+          {isLoading ? (
+            <p className="py-12 text-center text-muted-foreground">Chargement…</p>
+          ) : comptesAffiches.length === 0 ? (
+            <p className="py-12 text-center text-muted-foreground">
+              Aucun joueur trouvé.
+            </p>
+          ) : (
+            comptesAffiches.map((c) => {
+              const ouvert = compteOuvert(c);
+              return (
+                <div
+                  key={c.id}
+                  className="border-b border-primary/5 last:border-b-0"
+                >
+                  <div
+                    onClick={() => toggleCompte(c.id)}
+                    className="flex cursor-pointer items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`break-words text-[15px] font-semibold leading-tight ${
+                            c.isActive ? "" : "text-muted-foreground line-through"
+                          }`}
+                        >
+                          {c.nom}
+                        </span>
+                        {!c.isActive && <BlocBadge />}
+                        {estAdmin ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRoleCle(c.id);
+                            }}
+                            className={`whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[11px] ${ROLE_BADGE[c.role]}`}
+                          >
+                            {ROLE_LABEL[c.role]}
+                            <span className="ml-0.5 text-[9px] opacity-70">▾</span>
+                          </button>
+                        ) : (
+                          <span
+                            className={`whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[11px] ${ROLE_BADGE[c.role]}`}
+                          >
+                            {ROLE_LABEL[c.role]}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 break-all text-xs text-muted-foreground">
+                        {c.email}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Pastille tone="gold">{c.profils.length} prof.</Pastille>
+                      <Pastille>{c.nbPersos} pers.</Pastille>
+                    </div>
+                    <span className="inline-flex items-center gap-2">
+                      <BoutonBloquer
+                        bloque={!c.isActive}
+                        onClick={() => confCompte(c)}
+                      />
+                      {estAdmin && !c.isActive && (
+                        <BoutonPurger
+                          onClick={() => ouvrirPurge("compte", c.id, c.nom)}
+                        />
+                      )}
+                    </span>
+                    <ChevronRight
+                      className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${ouvert ? "rotate-90" : ""}`}
+                    />
+                  </div>
+
+                  {ouvert && (
+                    <div className="bg-[hsl(0_0%_5%)] px-2.5 pb-3 pt-1.5">
+                      {c.profils.map((p) => {
+                        const neg = p.solde < 0;
+                        const pOuvert = profilOuvert(p);
+                        return (
+                          <div
+                            key={p.id}
+                            className="my-2 overflow-hidden rounded-xl border border-border"
+                          >
+                            <div
+                              onClick={() => toggleProfil(p.id)}
+                              className="flex cursor-pointer items-start justify-between gap-2.5 bg-muted/45 px-3 py-2.5"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {p.estPrincipal && (
+                                    <Crown
+                                      className="h-3.5 w-3.5 shrink-0 text-primary"
+                                      aria-label="Profil principal"
+                                    />
+                                  )}
+                                  <span
+                                    className={`break-words text-sm font-semibold ${
+                                      p.estActif
+                                        ? ""
+                                        : "text-muted-foreground line-through"
+                                    }`}
+                                  >
+                                    {p.nom}
+                                  </span>
+                                  <span className="whitespace-nowrap text-[10px] font-normal text-muted-foreground">
+                                    profil de jeu
+                                  </span>
+                                  <Pastille>{p.persos.length} pers.</Pastille>
+                                  {!p.estActif && <BlocBadge />}
+                                </div>
+                                <div
+                                  className={`mt-0.5 text-xs ${neg ? "" : "text-muted-foreground"}`}
+                                >
+                                  Banque d'XP :{" "}
+                                  <b
+                                    className={`tabular-nums ${neg ? "text-[hsl(0_70%_62%)]" : "text-primary"}`}
+                                  >
+                                    {p.solde}
+                                  </b>{" "}
+                                  XP
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAjusterCle({ kind: "banque", profilId: p.id });
+                                }}
+                                className="shrink-0 whitespace-nowrap rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"
+                              >
+                                Ajuster
+                              </button>
+                              <span className="inline-flex items-center gap-2">
+                                <BoutonBloquer
+                                  bloque={!p.estActif}
+                                  disabled={!c.isActive}
+                                  title={
+                                    !c.isActive ? "Débloquer le compte d'abord" : undefined
+                                  }
+                                  onClick={() => confProfil(p)}
+                                />
+                                {estAdmin && !p.estActif && (
+                                  <BoutonPurger
+                                    onClick={() => ouvrirPurge("profil", p.id, p.nom)}
+                                  />
+                                )}
+                              </span>
+                              <ChevronRight
+                                className={`mt-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${pOuvert ? "rotate-90" : ""}`}
+                              />
+                            </div>
+
+                            {pOuvert && (
+                              <>
+                                <div className="border-t border-border px-3 py-2.5">
+                                  <HistoriqueBanque joueurId={p.id} vueAdmin />
+                                </div>
+
+                                {p.persos.map((pe) => {
+                                  const rest = pe.xpTotal - pe.xpDepense;
+                                  const persoArchDisabled = !c.isActive || !p.estActif;
+                                  return (
+                                    <div
+                                      key={pe.id}
+                                      className="border-t border-border px-3 py-2.5"
+                                    >
+                                      <div className="flex items-start gap-2">
+                                        {pe.estMort ? (
+                                          <Skull
+                                            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[hsl(348_55%_45%)]"
+                                            aria-label="Mort"
+                                          />
+                                        ) : (
+                                          <span
+                                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotCls(pe)}`}
+                                            title={dotTitle(pe)}
+                                          />
+                                        )}
+                                        <span
+                                          className={`break-words text-sm font-medium leading-tight ${
+                                            pe.nom ? "" : "italic text-muted-foreground"
+                                          } ${pe.estActif ? "" : "line-through"}`}
+                                        >
+                                          {pe.nom ?? "Sans nom"}
+                                        </span>
+                                        {!pe.estActif && <BlocBadge />}
+                                      </div>
+                                      <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-2 pl-[15px]">
+                                        <span className="text-xs tabular-nums">
+                                          Niv.{" "}
+                                          <b className="text-foreground">
+                                            {pe.niveau}
+                                          </b>
+                                          {pe.niveauCorrection !== 0 && (
+                                            <span
+                                              className="ml-1 text-[11px] text-primary"
+                                              title={`Inclut ${pe.niveauCorrection > 0 ? "+" : ""}${pe.niveauCorrection} de correction manuelle de niveau`}
+                                            >
+                                              ✎
+                                            </span>
+                                          )}
+                                        </span>
+                                        <span className="text-xs tabular-nums text-muted-foreground">
+                                          XP rest./tot.{" "}
+                                          <b className="text-primary">{rest}</b> /{" "}
+                                          {pe.xpTotal}
+                                        </span>
+                                        <div className="ml-auto flex flex-wrap items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              navigate(`/personnage/${pe.id}`);
+                                            }}
+                                            className="whitespace-nowrap rounded-lg border border-border px-2.5 py-1.5 text-[11px] text-foreground"
+                                          >
+                                            Voir perso
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setAjusterCle({
+                                                kind: "perso",
+                                                persoId: pe.id,
+                                              });
+                                            }}
+                                            className="whitespace-nowrap rounded-lg border border-primary/50 bg-primary/10 px-2.5 py-1.5 text-[11px] font-semibold text-primary"
+                                          >
+                                            Ajuster Niv./Xp
+                                          </button>
+                                          <span className="inline-flex items-center gap-2">
+                                            <BoutonBloquer
+                                              bloque={!pe.estActif}
+                                              disabled={persoArchDisabled}
+                                              title={
+                                                persoArchDisabled
+                                                  ? "Débloquer le profil/compte d'abord"
+                                                  : undefined
+                                              }
+                                              onClick={() => confPerso(pe)}
+                                            />
+                                            {estAdmin && !pe.estActif && (
+                                              <BoutonPurger
+                                                onClick={() =>
+                                                  ouvrirPurge(
+                                                    "personnage",
+                                                    pe.id,
+                                                    pe.nom ?? "Sans nom",
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      <DrawerAjusterAdmin
+        cible={cibleAjuster}
+        open={ajusterCle !== null && cibleAjuster !== null}
+        onOpenChange={(o) => {
+          if (!o) setAjusterCle(null);
+        }}
+      />
+      <DrawerRoleCompte
+        compte={compteRole}
+        open={roleCle !== null && compteRole !== null}
+        onOpenChange={(o) => {
+          if (!o) setRoleCle(null);
+        }}
+      />
+
+      <AlertDialog
+        open={confirmer !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setConfirmer(null);
+            setMotif("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading">
+              {confirmer?.titre}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="leading-relaxed">
+              {confirmer?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {confirmer?.requireMotif && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Raison du blocage{" "}
+                <span className="text-muted-foreground">(obligatoire)</span>
+              </label>
+              <Textarea
+                value={motif}
+                onChange={(e) => setMotif(e.target.value)}
+                placeholder="Ex. Comportement abusif signalé le 20 juin"
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                Minimum 5 caractères. Le déblocage, lui, n’en demande pas.
+              </p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                confirmer?.danger
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+              disabled={confirmer?.requireMotif && motif.trim().length < 5}
+              onClick={() => confirmer?.action(motif)}
+            >
+              Confirmer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={purge !== null}
+        onOpenChange={(o) => {
+          if (!o) setPurge(null);
+        }}
+      >
+        <AlertDialogContent>
+          {purge && purge.etape === 1 ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-heading">
+                  {titrePurge(purge.type, purge.nom)}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="leading-relaxed">
+                  Tout le contenu de jeu ci-dessous sera effacé sans retour.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <ApercuPurgeRecap apercu={purge.apercu} />
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPurge((p) => (p ? { ...p, etape: 2 } : p));
+                  }}
+                >
+                  Continuer →
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : purge ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-heading">
+                  {titrePurge(purge.type, purge.nom)}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="leading-relaxed">
+                  Cette suppression est définitive et irréversible.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">
+                  Raison de la purge{" "}
+                  <span className="text-muted-foreground">(obligatoire)</span>
+                </label>
+                <Textarea
+                  value={purge.raison}
+                  onChange={(e) =>
+                    setPurge((p) => (p ? { ...p, raison: e.target.value } : p))
+                  }
+                  placeholder="Ex. Demande RGPD du joueur, dossier #42"
+                  rows={2}
+                />
+                <p className="text-xs text-muted-foreground">Minimum 5 caractères.</p>
+              </div>
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border px-3 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={purge.okCompris}
+                  onChange={(e) =>
+                    setPurge((p) =>
+                      p ? { ...p, okCompris: e.target.checked } : p,
+                    )
+                  }
+                  className="mt-0.5 h-4 w-4 accent-[hsl(var(--destructive))]"
+                />
+                <span>
+                  Je comprends que cette suppression est{" "}
+                  <b>définitive et irréversible</b>.
+                </span>
+              </label>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPurge((p) =>
+                      p ? { ...p, etape: 1, okCompris: false } : p,
+                    );
+                  }}
+                >
+                  ← Retour
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={
+                    !purge.okCompris ||
+                    purge.enCours ||
+                    purge.raison.trim().length < 5
+                  }
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    confirmerPurge();
+                  }}
+                >
+                  {purge.enCours ? "Purge…" : "Purger définitivement"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : null}
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
 
 export default AdminJoueurs;
-
