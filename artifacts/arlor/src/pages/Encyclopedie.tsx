@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
 import { useModeManuel } from "@/hooks/useModeManuel";
+import { useEtatPersistant, codecEnsembleTexte } from "@/hooks/useEtatPersistant";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -196,8 +197,9 @@ function filterByText<T>(arr: T[], q: string, fields: (item: T) => string[]): T[
 const Encyclopedie = () => {
   const { data: sectionData } = useSectionsEncyclopedie();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (URL_TO_KEY[searchParams.get("tab") ?? ""] ?? "races") as SectionKey;
-  const [active, setActive] = useState<SectionKey>(initialTab);
+  // Onglet : un ?tab= explicite (lien profond) prime au montage via l'effet de sync URL→active
+  // ci-dessous ; sinon dernier onglet mémorisé (localStorage) ; sinon Races.
+  const [active, setActive] = useEtatPersistant<SectionKey>("encyclo:tab", "races");
   const [search, setSearch] = useState("");
 
   const [races, setRaces] = useState<Race[]>([]);
@@ -485,7 +487,7 @@ const RacesSection = ({
   schema: ChampSchema[];
   traits: TraitRacial[];
 }) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:races:open", new Set(), codecEnsembleTexte);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   // Traits raciaux permis par race (noms distincts) depuis la relation race_traits.
@@ -630,8 +632,8 @@ const TraitsSection = ({
   races: Race[];
   schema: ChampSchema[];
 }) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [raceFiltre, setRaceFiltre] = useState<string | null>(null);
+  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:traits:open", new Set(), codecEnsembleTexte);
+  const [raceFiltre, setRaceFiltre] = useEtatPersistant<string | null>("encyclo:traits:race", null);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
   const toggleExpanded = (id: string) => {
     setExpanded((prev) => {
@@ -770,7 +772,7 @@ const ClassesSection = ({
   schema: ChampSchema[];
   competences: Competence[];
 }) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:classes:open", new Set(), codecEnsembleTexte);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
   const competencesParId: Record<string, string> = Object.fromEntries(
     competences.map((c) => [c.id, c.nom ?? ""])
@@ -873,8 +875,8 @@ const CATEGORIES = [
 ];
 
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
-  const [categorieActive, setCategorieActive] = useState<string | null>(null);
-  const [openItems, setOpenItems] = useState<string[]>([]);
+  const [categorieActive, setCategorieActive] = useEtatPersistant<string | null>("encyclo:competences:cat", null);
+  const [openItems, setOpenItems] = useEtatPersistant<string[]>("encyclo:competences:open", []);
   const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   useEffect(() => {
@@ -1016,9 +1018,9 @@ const NIVEAU_MIN_FILTERS: { key: NiveauMin | null; label: string }[] = [
 ];
 
 const MagieSection = ({ sorts, searchQuery, schema }: { sorts: Sort[]; searchQuery: string; schema: ChampSchema[] }) => {
-  const [cercleActif, setCercleActif] = useState<string | null>(null);
-  const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
-  const [openItems, setOpenItems] = useState<string[]>([]);
+  const [cercleActif, setCercleActif] = useEtatPersistant<string | null>("encyclo:magie:cercle", null);
+  const [niveauMinActif, setNiveauMinActif] = useEtatPersistant<NiveauMin | null>("encyclo:magie:niveau", null);
+  const [openItems, setOpenItems] = useEtatPersistant<string[]>("encyclo:magie:open", []);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   useEffect(() => {
@@ -1137,9 +1139,9 @@ const SOUS_ONGLETS_DOMAINES = [
 ];
 
 const PrieresSection = ({ prieres, searchQuery, schema }: { prieres: Priere[]; searchQuery: string; schema: ChampSchema[] }) => {
-  const [domaineActif, setDomaineActif] = useState<string | null>(null);
-  const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
-  const [openItems, setOpenItems] = useState<string[]>([]);
+  const [domaineActif, setDomaineActif] = useEtatPersistant<string | null>("encyclo:prieres:domaine", null);
+  const [niveauMinActif, setNiveauMinActif] = useEtatPersistant<NiveauMin | null>("encyclo:prieres:niveau", null);
+  const [openItems, setOpenItems] = useEtatPersistant<string[]>("encyclo:prieres:open", []);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   useEffect(() => {
@@ -1251,7 +1253,7 @@ const PrieresSection = ({ prieres, searchQuery, schema }: { prieres: Priere[]; s
 
 const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; searchQuery: string }) => {
   const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:religions:open", new Set(), codecEnsembleTexte);
   const toggleExpanded = (id: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
