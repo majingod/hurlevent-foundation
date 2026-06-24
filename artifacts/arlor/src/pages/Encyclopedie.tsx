@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
 import { useModeManuel } from "@/hooks/useModeManuel";
-import { useEtatPersistant, codecEnsembleTexte } from "@/hooks/useEtatPersistant";
+import { useEtatPersistant } from "@/hooks/useEtatPersistant";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -487,7 +487,7 @@ const RacesSection = ({
   schema: ChampSchema[];
   traits: TraitRacial[];
 }) => {
-  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:races:open", new Set(), codecEnsembleTexte);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   // Traits raciaux permis par race (noms distincts) depuis la relation race_traits.
@@ -632,7 +632,7 @@ const TraitsSection = ({
   races: Race[];
   schema: ChampSchema[];
 }) => {
-  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:traits:open", new Set(), codecEnsembleTexte);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [raceFiltre, setRaceFiltre] = useEtatPersistant<string | null>("encyclo:traits:race", null);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
   const toggleExpanded = (id: string) => {
@@ -772,7 +772,7 @@ const ClassesSection = ({
   schema: ChampSchema[];
   competences: Competence[];
 }) => {
-  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:classes:open", new Set(), codecEnsembleTexte);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
   const competencesParId: Record<string, string> = Object.fromEntries(
     competences.map((c) => [c.id, c.nom ?? ""])
@@ -876,7 +876,7 @@ const CATEGORIES = [
 
 const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
   const [categorieActive, setCategorieActive] = useEtatPersistant<string | null>("encyclo:competences:cat", null);
-  const [openItems, setOpenItems] = useEtatPersistant<string[]>("encyclo:competences:open", []);
+  const [openItems, setOpenItems] = useState<string[]>([]);
   const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
 
   useEffect(() => {
@@ -1020,7 +1020,7 @@ const NIVEAU_MIN_FILTERS: { key: NiveauMin | null; label: string }[] = [
 const MagieSection = ({ sorts, searchQuery, schema }: { sorts: Sort[]; searchQuery: string; schema: ChampSchema[] }) => {
   const [cercleActif, setCercleActif] = useEtatPersistant<string | null>("encyclo:magie:cercle", null);
   const [niveauMinActif, setNiveauMinActif] = useEtatPersistant<NiveauMin | null>("encyclo:magie:niveau", null);
-  const [openItems, setOpenItems] = useEtatPersistant<string[]>("encyclo:magie:open", []);
+  const [openItems, setOpenItems] = useState<string[]>([]);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   useEffect(() => {
@@ -1141,7 +1141,7 @@ const SOUS_ONGLETS_DOMAINES = [
 const PrieresSection = ({ prieres, searchQuery, schema }: { prieres: Priere[]; searchQuery: string; schema: ChampSchema[] }) => {
   const [domaineActif, setDomaineActif] = useEtatPersistant<string | null>("encyclo:prieres:domaine", null);
   const [niveauMinActif, setNiveauMinActif] = useEtatPersistant<NiveauMin | null>("encyclo:prieres:niveau", null);
-  const [openItems, setOpenItems] = useEtatPersistant<string[]>("encyclo:prieres:open", []);
+  const [openItems, setOpenItems] = useState<string[]>([]);
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   useEffect(() => {
@@ -1253,7 +1253,7 @@ const PrieresSection = ({ prieres, searchQuery, schema }: { prieres: Priere[]; s
 
 const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; searchQuery: string }) => {
   const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
-  const [expanded, setExpanded] = useEtatPersistant<Set<string>>("encyclo:religions:open", new Set(), codecEnsembleTexte);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpanded = (id: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
