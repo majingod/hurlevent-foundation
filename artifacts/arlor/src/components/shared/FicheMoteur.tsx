@@ -33,6 +33,7 @@ export type ChampSchema = {
   source?: string;
   densite?: string;
   suffixe?: string;
+  format?: string;
   c?: SousSource;
   v?: SousSource;
 };
@@ -44,6 +45,17 @@ type Props = {
   mode: ModeManuel;
   competencesParId?: Record<string, string>;
 };
+
+// Formate la valeur d'un champ mécanique selon son `format`.
+//  - "coefficient" : multiplicateur de création → "×1.5" (zéros superflus retirés : 1.00→×1, 0.50→×0.5).
+//  - sinon : valeur brute + suffixe éventuel (ex. " XP").
+function formaterValeur(val: any, champ: ChampSchema): string {
+  if (champ.format === "coefficient") {
+    const n = Number(val);
+    return Number.isFinite(n) ? `×${n}` : String(val);
+  }
+  return `${String(val)}${champ.suffixe ? ` ${champ.suffixe}` : ""}`;
+}
 
 // "col:xxx" -> entite.xxx (seule source supportée au Lot 1)
 function lireSource(source: string | undefined, entite: Record<string, any>) {
@@ -83,8 +95,7 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
             return (
               <span key={champ.cle}>
                 {champ.icone ? `${champ.icone} ` : ""}
-                {String(val)}
-                {champ.suffixe ? ` ${champ.suffixe}` : ""}
+                {formaterValeur(val, champ)}
               </span>
             );
           })}
@@ -205,8 +216,7 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
             {champ.icone && <span>{champ.icone}</span>}
             <span className="text-muted-foreground">{champ.label} :</span>
             <span className="font-semibold text-gold">
-              {String(val)}
-              {champ.suffixe ? ` ${champ.suffixe}` : ""}
+              {formaterValeur(val, champ)}
             </span>
           </div>
         );

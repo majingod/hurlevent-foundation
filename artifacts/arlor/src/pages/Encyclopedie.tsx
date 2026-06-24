@@ -24,8 +24,6 @@ import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
 import { FicheMoteur, type ChampSchema } from "@/components/shared/FicheMoteur";
-import { BlocPaliers } from "@/components/createur/DescriptionDepliable";
-import PastilleType from "@/components/shared/PastilleType";
 import type { BonusNiveau, PalierSort } from "@/utils/calculsMagie";
 
 /* ── types ── */
@@ -209,6 +207,7 @@ const Encyclopedie = () => {
   const [schemaRace, setSchemaRace] = useState<ChampSchema[]>([]);
   const [schemaTrait, setSchemaTrait] = useState<ChampSchema[]>([]);
   const [schemaSort, setSchemaSort] = useState<ChampSchema[]>([]);
+  const [schemaPriere, setSchemaPriere] = useState<ChampSchema[]>([]);
   const [competences, setCompetences] = useState<Competence[]>([]);
   const [sorts, setSorts] = useState<Sort[]>([]);
   const [prieres, setPrieres] = useState<Priere[]>([]);
@@ -272,7 +271,7 @@ const Encyclopedie = () => {
       const schemasRes = await supabase
         .from("fiches_schemas")
         .select("categorie, champs")
-        .in("categorie", ["classe", "race", "trait_racial", "sorts"]);
+        .in("categorie", ["classe", "race", "trait_racial", "sorts", "prieres"]);
       const parCategorie = Object.fromEntries(
         (schemasRes.data ?? []).map((s: any) => [s.categorie, s.champs])
       );
@@ -280,6 +279,7 @@ const Encyclopedie = () => {
       setSchemaRace((parCategorie["race"] as ChampSchema[]) ?? []);
       setSchemaTrait((parCategorie["trait_racial"] as ChampSchema[]) ?? []);
       setSchemaSort((parCategorie["sorts"] as ChampSchema[]) ?? []);
+      setSchemaPriere((parCategorie["prieres"] as ChampSchema[]) ?? []);
       setLoading(false);
     };
     fetchAll();
@@ -363,7 +363,7 @@ const Encyclopedie = () => {
         {active === "classes" && <ClassesSection classes={classes} searchQuery={search} schema={schemaClasse} competences={competences} />}
         {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
         {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} schema={schemaSort} />}
-        {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} />}
+        {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} schema={schemaPriere} />}
         {active === "religions" && <ReligionsSection religions={religions} searchQuery={search} />}
         {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} searchQuery={search} />}
         {active === "assemblages" && <AssemblagesSection assemblages={assemblages} searchQuery={search} />}
@@ -1136,11 +1136,11 @@ const SOUS_ONGLETS_DOMAINES = [
   ...DOMAINES_PRETRE.map(d => ({ key: d, label: d })),
 ];
 
-const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQuery: string }) => {
+const PrieresSection = ({ prieres, searchQuery, schema }: { prieres: Priere[]; searchQuery: string; schema: ChampSchema[] }) => {
   const [domaineActif, setDomaineActif] = useState<string | null>(null);
   const [niveauMinActif, setNiveauMinActif] = useState<NiveauMin | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
+  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   useEffect(() => {
     if (!searchQuery) return;
@@ -1167,8 +1167,7 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
   });
 
   const grouped = groupBy(filtered, (p) => p.domaine);
-  const keys = Object.keys(grouped).sort();
-  const idsVerbatim = filtered.filter((p) => p.description).map((p) => p.id);
+  const keys = Object.keys(grouped).sort((a, b) => a.localeCompare(b, "fr"));
 
   return (
     <div className="space-y-8">
@@ -1203,51 +1202,49 @@ const PrieresSection = ({ prieres, searchQuery }: { prieres: Priere[]; searchQue
           </button>
         ))}
       </div>
-      {idsVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(idsVerbatim)}
-          onToggle={() => toggleAll(idsVerbatim)}
-          title="Cet onglet"
-          subtitle="Verbatim du manuel pour les prières"
-        />
-      )}
-      {filtered.length === 0 ? <NoResults /> : keys.map((domaine) => (
-        <section key={domaine}>
-          <h3 className="font-heading text-lg font-semibold text-primary mb-3">{domaine}</h3>
-          <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
-            {grouped[domaine].map((p) => (
-              <AccordionItem key={p.id} value={p.id}>
-                <AccordionTrigger className="font-heading text-base hover:no-underline">
-                  <span className="flex items-center gap-2">
-                    {p.nom}
-                    <Badge variant="secondary" className="text-xs">Niveau Minimum : {getNiveauMin(p.niveau)}</Badge>
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent className="text-sm text-muted-foreground">
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs">
-                    {p.type_priere && <PastilleType type={p.type_priere} />}
-                    {p.portee && <span>Portée : {p.portee}</span>}
-                    {p.zone_effet && <span>Zone : {p.zone_effet}</span>}
-                    {p.duree && <span>Durée : {p.duree}</span>}
-                    {p.duree_incantation && <span>Incantation : {p.duree_incantation}</span>}
-                  </div>
-                  {(p.description_courte ?? p.description) && <p>{p.description_courte ?? p.description}</p>}
-                  {p.paliers && p.paliers.length > 0 && (
-                    <div className="mt-2">
-                      <BlocPaliers paliers={p.paliers} niveauActif={null} />
-                    </div>
-                  )}
-                  <ToggleManuel
-                    texte={p.description}
-                    isOpen={isManuelOpen(p.id)}
-                    onToggle={() => toggleManuel(p.id)}
-                  />
-                </AccordionContent>
-              </AccordionItem>
+      <ManuelGlobalSwitch
+        allOpen={mode === "integral"}
+        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+        title="Texte du manuel"
+        subtitle="Intégral (verbatim du manuel) ou abrégé"
+      />
+      {filtered.length === 0 ? <NoResults /> : keys.map((domaine) => {
+        const prieresInDomaine = grouped[domaine];
+        const byNiveauMin = groupBy(prieresInDomaine, (p) => String(getNiveauMin(p.niveau)));
+        const niveauGroups: [NiveauMin, Priere[]][] = ([1, 6, 11] as NiveauMin[])
+          .filter(n => byNiveauMin[String(n)])
+          .map(n => [n, byNiveauMin[String(n)]]);
+        return (
+          <section key={domaine}>
+            <h3 className="font-heading text-lg font-semibold text-primary mb-3">{domaine}</h3>
+            {niveauGroups.map(([nMin, groupPrieres]) => (
+              <div key={nMin} className="mb-4">
+                <h4 className="font-heading text-sm font-semibold text-primary/70 mb-2 ml-1">Niveau Minimum : {nMin}</h4>
+                <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
+                  {groupPrieres.map((p) => (
+                    <AccordionItem key={p.id} value={p.id}>
+                      <AccordionTrigger className="font-heading text-base hover:no-underline">
+                        <span className="flex items-center gap-2">
+                          {p.nom}
+                          <Badge variant="secondary" className="text-xs">Niv. {p.niveau}</Badge>
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <FicheMoteur
+                          schema={schema}
+                          entite={p as unknown as Record<string, any>}
+                          densite="encyclo"
+                          mode={mode}
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
             ))}
-          </Accordion>
-        </section>
-      ))}
+          </section>
+        );
+      })}
     </div>
   );
 };
