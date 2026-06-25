@@ -14,14 +14,27 @@ import React from "react";
  * Règles :
  *  - champ "mecanique" : toujours visible. carte = `icone valeur` ; encyclo = `icone label : valeur`.
  *    render:"liste_competences" → résout competence_id → nom via `competencesParId`.
+ *    render:"liste_traits" → pastilles de noms (col:traits_permis injecté côté front).
+ *    render:"chips" → pastilles génériques (col:<array de strings>, ex. runes_requises).
+ *    render:"paliers" → 1 carte par palier (matériau commun/rare) : tier + verrou + icône + temps + recette.
+ *    render:"bloc_maitrise" → bloc verrouillé (effet de maîtrise + coût ✨), badge de niveau.
  *  - champ "texte" : visible en encyclo seulement (le header carte n'affiche pas de lore).
  *    source = mode "integral" → v.source ; "abrege" → c.source.
+ *  - la DENSITÉ CARTE exclut tout champ avec `render` (sauf liste_competences pour les classes).
  */
 
 export type Densite = "carte" | "encyclo";
 export type ModeManuel = "abrege" | "integral";
 
 type SousSource = { source?: string; densite?: string };
+
+export type Palier = {
+  tier: string;
+  verrou?: string;
+  icone?: string;
+  temps?: string;
+  recette?: string;
+};
 
 export type ChampSchema = {
   cle: string;
@@ -34,6 +47,10 @@ export type ChampSchema = {
   densite?: string;
   suffixe?: string;
   format?: string;
+  paliers?: Palier[];
+  source_cout?: string;
+  badge?: string;
+  suffixe_cout?: string;
   c?: SousSource;
   v?: SousSource;
 };
@@ -65,6 +82,10 @@ function lireSource(source: string | undefined, entite: Record<string, any>) {
   return undefined;
 }
 
+function aValeur(v: any): boolean {
+  return v !== null && v !== undefined && v !== "";
+}
+
 function normaliserListe(val: any): any[] {
   if (Array.isArray(val)) return val;
   if (typeof val === "string") {
@@ -91,7 +112,7 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-foreground/80">
           {meca.map((champ) => {
             const val = lireSource(champ.source, entite);
-            if (val === null || val === undefined || val === "") return null;
+            if (!aValeur(val)) return null;
             return (
               <span key={champ.cle}>
                 {champ.icone ? `${champ.icone} ` : ""}
@@ -208,9 +229,119 @@ export function FicheMoteur({ schema, entite, densite, mode, competencesParId }:
           );
         }
 
+        // render chips : pastilles génériques depuis un array de strings (ex. runes_requises).
+        if (champ.render === "chips") {
+          const arr = normaliserListe(lireSource(champ.source, entite));
+          if (arr.length === 0) return null;
+          return (
+            <div key={champ.cle}>
+              <p
+                className="text-xs font-semibold mb-2 tracking-wider"
+                style={{ color: "#c9a84c", fontVariant: "small-caps" }}
+              >
+                {champ.label}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {arr.map((x, i) => (
+                  <span
+                    key={i}
+                    className="rounded-full border border-gold/30 px-3 py-1 text-xs text-foreground/90"
+                    style={{ background: "rgba(201,168,76,0.06)" }}
+                  >
+                    {String(x)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        // render paliers : 1 carte par matériau (commun/rare) — tier + verrou + icône + temps + recette.
+        if (champ.render === "paliers") {
+          const defs = Array.isArray(champ.paliers) ? champ.paliers : [];
+          const cartes = defs
+            .map((p) => ({
+              ...p,
+              temps: lireSource(p.temps, entite),
+              recette: lireSource(p.recette, entite),
+            }))
+            .filter((p) => aValeur(p.recette));
+          if (cartes.length === 0) return null;
+          return (
+            <div key={champ.cle}>
+              <p
+                className="text-xs font-semibold mb-2 tracking-wider"
+                style={{ color: "#c9a84c", fontVariant: "small-caps" }}
+              >
+                {champ.label}
+              </p>
+              <div className="grid gap-2">
+                {cartes.map((p, i) => (
+                  <div
+                    key={i}
+                    className="rounded-md border border-gold/30 px-3.5 py-2.5"
+                    style={{ background: "rgba(201,168,76,0.06)" }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-sm text-foreground">{p.tier}</span>
+                      {p.verrou && (
+                        <span className="text-[11px] text-gold border border-gold/30 rounded px-1.5 py-px">
+                          {p.verrou}
+                        </span>
+                      )}
+                      {aValeur(p.temps) && (
+                        <span className="ml-auto text-xs text-muted-foreground">⏱️ {String(p.temps)} min</span>
+                      )}
+                    </div>
+                    <div className="text-[13px] text-foreground">
+                      {p.icone ? `${p.icone} ` : ""}
+                      {String(p.recette)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        // render bloc_maitrise : bloc verrouillé (effet de maîtrise + coût ✨), badge de niveau.
+        if (champ.render === "bloc_maitrise") {
+          const effet = lireSource(champ.source, entite);
+          if (!aValeur(effet)) return null;
+          const cout = lireSource(champ.source_cout, entite);
+          return (
+            <div
+              key={champ.cle}
+              className="rounded-md border border-dashed border-gold/30 px-3.5 py-3"
+              style={{ background: "rgba(201,168,76,0.03)" }}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <span
+                  className="text-xs font-bold tracking-wider"
+                  style={{ color: "#c9a84c", fontVariant: "small-caps" }}
+                >
+                  🔒 {champ.label}
+                </span>
+                {champ.badge && (
+                  <span className="text-[11px] text-gold border border-gold/30 rounded px-1.5 py-px">
+                    {champ.badge}
+                  </span>
+                )}
+                {aValeur(cout) && (
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    ✨ {String(cout)}
+                    {champ.suffixe_cout ? ` ${champ.suffixe_cout}` : ""}
+                  </span>
+                )}
+              </div>
+              <p className="text-[13px] leading-relaxed text-foreground/90">{String(effet)}</p>
+            </div>
+          );
+        }
+
         // Mécanique simple : icone label : valeur
         const val = lireSource(champ.source, entite);
-        if (val === null || val === undefined || val === "") return null;
+        if (!aValeur(val)) return null;
         return (
           <div key={champ.cle} className="flex items-baseline gap-2 text-sm text-foreground/90">
             {champ.icone && <span>{champ.icone}</span>}
