@@ -4,11 +4,11 @@ import { Clock, Info } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 import {
   TYPE_OBJET_FORGE_LABELS,
-  STATS_FORGE_LABELS,
   NOTE_FORGE,
   NOTE_JOAILLERIE,
 } from "@/constants/artisanat";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
+import { FicheMoteur, type ChampSchema } from "@/components/shared/FicheMoteur";
 
 interface ObjetForge {
   id: string;
@@ -71,12 +71,18 @@ const ForgeJoaillerieSection = ({
   joaillerie = [],
   reparations = [],
   searchQuery = "",
+  schemaForge = [],
+  schemaJoaillerie = [],
+  schemaReparation = [],
 }: {
   mode: "forge" | "joaillerie";
   forge?: ObjetForge[];
   joaillerie?: ObjetJoaillerie[];
   reparations?: Reparation[];
   searchQuery?: string;
+  schemaForge?: ChampSchema[];
+  schemaJoaillerie?: ChampSchema[];
+  schemaReparation?: ChampSchema[];
 }) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpanded = (id: string) => {
@@ -215,42 +221,35 @@ const ForgeJoaillerieSection = ({
                   {labelTypeForge[type] ?? type}
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {forgeByType[type].map((o) => {
-                    const stats = o.stats && typeof o.stats === "object" && !Array.isArray(o.stats) ? o.stats as Record<string, any> : null;
-                    return (
-                      <EncyclopedieCard
-                        key={o.id}
-                        id={o.id}
-                        isOpen={expanded.has(o.id)}
-                        onToggle={() => toggleExpanded(o.id)}
-                        maxHeight={1000}
-                        header={
-                          <>
-                            <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
-                            {o.type && (
-                              <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
-                            )}
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> Temps de fabrication : {o.temps_fabrication_minutes} min
-                            </p>
-                          </>
-                        }
-                      >
-                        <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
-                          {o.description && <p>{o.description}</p>}
-                          {stats && Object.entries(stats).map(([k, v]) => (
-                            <p key={k}><span className="font-medium text-foreground">{STATS_FORGE_LABELS[k] || k} :</span> {String(v)}</p>
-                          ))}
-                          {o.materiaux_communs && (
-                            <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
+                  {forgeByType[type].map((o) => (
+                    <EncyclopedieCard
+                      key={o.id}
+                      id={o.id}
+                      isOpen={expanded.has(o.id)}
+                      onToggle={() => toggleExpanded(o.id)}
+                      maxHeight={1000}
+                      header={
+                        <>
+                          <CardTitle className="font-heading text-base">{o.nom}</CardTitle>
+                          {o.type && (
+                            <p className="text-xs text-muted-foreground">{TYPE_OBJET_FORGE_LABELS[o.type] ?? o.type}</p>
                           )}
-                          {o.materiaux_rares && (
-                            <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
-                          )}
-                        </div>
-                      </EncyclopedieCard>
-                    );
-                  })}
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> Temps de fabrication : {o.temps_fabrication_minutes} min
+                          </p>
+                        </>
+                      }
+                    >
+                      <div className="border-t border-primary/10 pt-3 mt-1">
+                        <FicheMoteur
+                          schema={schemaForge}
+                          entite={o as unknown as Record<string, any>}
+                          densite="encyclo"
+                          mode="integral"
+                        />
+                      </div>
+                    </EncyclopedieCard>
+                  ))}
                 </div>
               </div>
             ));
@@ -291,15 +290,13 @@ const ForgeJoaillerieSection = ({
                   </>
                 }
               >
-                <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
-                  {o.description && <p>{o.description}</p>}
-                  {o.effet && <p><span className="font-medium text-foreground">Effet :</span> {o.effet}</p>}
-                  {o.materiaux_communs && (
-                    <p><span className="font-medium text-amber-400">Matériaux communs :</span> {o.materiaux_communs}</p>
-                  )}
-                  {o.materiaux_rares && (
-                    <p><span className="font-medium text-purple-400">Matériaux rares :</span> {o.materiaux_rares}</p>
-                  )}
+                <div className="border-t border-primary/10 pt-3 mt-1">
+                  <FicheMoteur
+                    schema={schemaJoaillerie}
+                    entite={o as unknown as Record<string, any>}
+                    densite="encyclo"
+                    mode="integral"
+                  />
                 </div>
               </EncyclopedieCard>
             ))}
@@ -334,12 +331,13 @@ const ForgeJoaillerieSection = ({
                       </>
                     }
                   >
-                    <div className="border-t border-primary/10 pt-3 mt-1 space-y-1.5 text-xs">
-                      <p><span className="font-medium text-foreground">Temps commun :</span> {r.temps_minutes} min</p>
-                      <p><span className="font-medium text-foreground">Temps rare :</span> {r.temps_rare_minutes} min</p>
-                      <p><span className="font-medium text-foreground">Matériaux communs :</span> {r.materiaux}</p>
-                      <p><span className="font-medium text-foreground">Matériaux rares :</span> {r.materiaux_rares}</p>
-                      {r.notes && <p className="italic mt-2">{r.notes}</p>}
+                    <div className="border-t border-primary/10 pt-3 mt-1">
+                      <FicheMoteur
+                        schema={schemaReparation}
+                        entite={r as unknown as Record<string, any>}
+                        densite="encyclo"
+                        mode="integral"
+                      />
                     </div>
                   </EncyclopedieCard>
                 ))}

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
-import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
+import { ManuelGlobalSwitch } from "@/components/shared/ToggleManuel";
+import { FicheMoteur, type ChampSchema } from "@/components/shared/FicheMoteur";
+import { useModeManuel } from "@/hooks/useModeManuel";
 
 const CIBLE_FILTERS: { value: string | null; label: string }[] = [
   { value: null, label: "Tous" },
@@ -25,9 +26,18 @@ interface Assemblage {
   effet_maitrise: string | null;
   cout_ps_maitrise: number | null;
   texte_manuel: string | null;
+  resume_condense: string | null;
 }
 
-const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: Assemblage[]; searchQuery?: string }) => {
+const AssemblagesSection = ({
+  assemblages,
+  searchQuery = "",
+  schema,
+}: {
+  assemblages: Assemblage[];
+  searchQuery?: string;
+  schema: ChampSchema[];
+}) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpanded = (id: string) => {
     setExpanded(prev => {
@@ -38,7 +48,7 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
     });
   };
   const [cibleFilter, setCibleFilter] = useState<string | null>(null);
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
+  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
 
   useEffect(() => {
     if (!searchQuery) return;
@@ -76,12 +86,12 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
           </Button>
         ))}
       </div>
-      {filtered.length > 0 && filtered.some((a) => a.texte_manuel) && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(filtered.map((a) => a.id))}
-          onToggle={() => toggleAll(filtered.map((a) => a.id))}
-        />
-      )}
+      <ManuelGlobalSwitch
+        allOpen={mode === "integral"}
+        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+        title="Texte du manuel"
+        subtitle="Intégral (verbatim du manuel) ou abrégé"
+      />
       {filtered.length === 0 && (q || cibleFilter !== null) && (
         <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
       )}
@@ -93,37 +103,14 @@ const AssemblagesSection = ({ assemblages, searchQuery = "" }: { assemblages: As
             isOpen={expanded.has(a.id)}
             onToggle={() => toggleExpanded(a.id)}
             maxHeight={1000}
-            header={
-              <>
-                <CardTitle className="font-heading text-xl">{a.nom}</CardTitle>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {a.cible && <Badge variant="secondary" className="text-xs">Cible : {a.cible}</Badge>}
-                  {a.cout_ps != null && <Badge variant="outline" className="text-xs">{a.cout_ps} PS</Badge>}
-                </div>
-                {a.runes_requises && a.runes_requises.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {a.runes_requises.map((rune, i) => (
-                      <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
-                    ))}
-                  </div>
-                )}
-              </>
-            }
+            header={<CardTitle className="font-heading text-xl">{a.nom}</CardTitle>}
           >
-            <div className="border-t border-primary/10 pt-3 mt-2 space-y-2">
-              {a.duree && <p><span className="font-medium text-foreground">Durée :</span> {a.duree}</p>}
-              {a.effet && <p><span className="font-medium text-foreground">Effet :</span> {a.effet}</p>}
-              {a.description_longue && <p className="whitespace-pre-line">{a.description_longue}</p>}
-              {a.effet_maitrise && (
-                <p>
-                  <span className="font-medium text-foreground">Effet de maîtrise :</span> {a.effet_maitrise}
-                  {a.cout_ps_maitrise != null && <span className="text-xs ml-1">({a.cout_ps_maitrise} PS)</span>}
-                </p>
-              )}
-              <ToggleManuel
-                texte={a.texte_manuel}
-                isOpen={isManuelOpen(a.id)}
-                onToggle={() => toggleManuel(a.id)}
+            <div className="border-t border-primary/10 pt-3 mt-2">
+              <FicheMoteur
+                schema={schema}
+                entite={a as unknown as Record<string, any>}
+                densite="encyclo"
+                mode={mode}
               />
             </div>
           </EncyclopedieCard>
