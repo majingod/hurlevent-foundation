@@ -4,10 +4,12 @@ import type { Json } from "@/integrations/supabase/types";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import { CardTitle } from "@/components/ui/card";
 
-// Icône lingot (commun, Niveau 1) — embarquée pour éviter un asset externe.
-const LINGOT_SRC = "data:image/png;base64,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";
+// Icône lingot (commun, Niveau 1) — SVG net, scalable.
 const Lingot = ({ s = 20 }: { s?: number }) => (
-  <img src={LINGOT_SRC} alt="" width={s} height={s} className="block shrink-0" />
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" className="block shrink-0" aria-hidden="true">
+    <path d="M5 16 L19 16 L17 11 L7 11 Z" fill="hsl(43 51% 54%)" stroke="hsl(43 30% 35%)" strokeWidth="1" />
+    <path d="M7 11 L17 11 L16 9 L8 9 Z" fill="hsl(43 51% 64%)" stroke="hsl(43 30% 35%)" strokeWidth="0.8" />
+  </svg>
 );
 
 interface ObjetForge {
@@ -33,6 +35,7 @@ interface ObjetForge {
   pression_max: number | null;
   fab_a_preciser: boolean | null;
   reparation_id: string | null;
+  non_reparable: boolean | null;
 }
 
 interface ObjetJoaillerie {
@@ -65,7 +68,7 @@ type PalierData = {
   attente?: boolean;
 };
 
-type MetaData = { label: string; valeur: string; note?: string };
+type MetaData = { label: string; valeur: string; note?: string; icone?: "temps" };
 
 type EtatReparation =
   | { etat: "paliers"; paliers: PalierData[]; matAttente?: boolean }
@@ -181,7 +184,7 @@ const metasObjet = (o: ObjetForge): MetaData[] => {
   if (o.points_armure != null)
     m.push({
       label: "Points d'armure",
-      valeur: estAccessoire ? `+${o.points_armure}` : String(o.points_armure),
+      valeur: String(o.points_armure),
       note: estAccessoire ? "Nécessite un torse d'armure ; perdu si le torse est détruit." : undefined,
     });
   if (o.combats != null) m.push({ label: "Durée", valeur: `${o.combats} combats` });
@@ -216,9 +219,10 @@ const etatReparation = (o: ObjetForge, reparations: Reparation[]): EtatReparatio
       ],
     };
   }
-  // pas de réparation liée : fab_a_preciser → « à préciser » (jet, hast) ; sinon → non réparable (arc, accessoires)
-  if (o.fab_a_preciser) return { etat: "tbd" };
-  return { etat: "none" };
+  // pas de réparation liée : « ne se répare pas » seulement si explicitement marqué (Arc/Arbalète) ;
+  // sinon (jet, hast, accessoires…) → « à préciser par l'Animation »
+  if (o.non_reparable) return { etat: "none" };
+  return { etat: "tbd" };
 };
 
 /* ---------- Sous-composants ---------- */
@@ -229,11 +233,14 @@ const Badge = ({ children }: { children: React.ReactNode }) => (
   </span>
 );
 
-const Meta = ({ label, valeur, note }: MetaData) => (
+const Meta = ({ label, valeur, note, icone }: MetaData) => (
   <div className="text-sm">
     <div className="flex gap-3 items-baseline">
       <span className="text-primary uppercase text-[11px] font-bold tracking-wide min-w-[120px] shrink-0">{label}</span>
-      <span className="font-semibold text-foreground">{valeur}</span>
+      <span className="font-semibold text-foreground flex items-center gap-1">
+        {icone === "temps" && <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
+        {valeur}
+      </span>
     </div>
     {note && <p className="text-[11.5px] text-muted-foreground italic mt-0.5">{note}</p>}
   </div>
@@ -387,7 +394,7 @@ const PROCEDES: Array<{ id: string; nom: string; metas: MetaData[]; description:
     id: "procede-lingot",
     nom: "Lingot",
     metas: [
-      { label: "Temps", valeur: "15 min, joués en RP" },
+      { label: "Temps", valeur: "15 min, joués en RP", icone: "temps" },
       { label: "Coût", valeur: "10 pépites d'un même métal" },
       { label: "Résultat", valeur: "1 lingot" },
     ],
@@ -397,7 +404,7 @@ const PROCEDES: Array<{ id: string; nom: string; metas: MetaData[]; description:
     id: "procede-poudre",
     nom: "Poudre",
     metas: [
-      { label: "Temps", valeur: "1 min" },
+      { label: "Temps", valeur: "1 min", icone: "temps" },
       { label: "Coût", valeur: "1 gemme ou 1 minerai commun" },
       { label: "Résultat", valeur: "Poudre fine" },
     ],
@@ -458,6 +465,37 @@ const LegendeForge = () => (
   </div>
 );
 
+const AideJoaillerie = () => (
+  <div className="rounded-md border border-primary/20 bg-primary/5 p-4 space-y-3.5">
+    <div>
+      <BlocLabel>Obtenir les matériaux</BlocLabel>
+      <p className="text-[13px] text-muted-foreground leading-relaxed">
+        Les pépites s'obtiennent via la compétence <Fort>Mineur</Fort> ou par achat. Les gemmes se taillent avec la compétence <Fort>Joaillerie</Fort>.
+      </p>
+    </div>
+    <div>
+      <BlocLabel>Niveaux de joaillerie</BlocLabel>
+      <p className="text-[13px] text-muted-foreground leading-relaxed">
+        Le niveau de compétence détermine le métal travaillé : <Fort>Niveau 1</Fort> communs · <Fort>Niveau 2</Fort> + rares.
+      </p>
+    </div>
+    <div>
+      <BlocLabel>Usage</BlocLabel>
+      <p className="text-[13px] text-muted-foreground leading-relaxed">
+        La joaillerie crée des <Fort>supports d'enchantement ou de rituel</Fort>. Ces pièces ne se réparent pas.
+      </p>
+    </div>
+  </div>
+);
+
+const LegendeJoaillerie = () => (
+  <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+    <LegendeRow sym={<Lingot s={20} />}><Fort>Lingot</Fort> — recette en <Fort>Métaux communs</Fort> (Niveau 1).</LegendeRow>
+    <LegendeRow sym={<span className="text-lg">💎</span>}>Recette en <Fort>Métaux rares</Fort> (Niveau 2).</LegendeRow>
+    <LegendeRow sym={<Clock className="h-4 w-4 text-muted-foreground" />}>Temps de fabrication.</LegendeRow>
+  </div>
+);
+
 /* ============================================================ */
 
 const ForgeJoaillerieSection = ({
@@ -515,18 +553,18 @@ const ForgeJoaillerieSection = ({
 
   if (mode === "joaillerie") {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <h2 className="font-heading text-2xl font-bold text-primary mb-4">Joaillerie</h2>
-        <div className="rounded-md border border-primary/20 bg-primary/5 p-4 space-y-3.5">
-          <div>
-            <BlocLabel>Niveaux de joaillerie</BlocLabel>
-            <p className="text-[13px] text-muted-foreground leading-relaxed">Le niveau de compétence détermine le métal travaillé : <Fort>Niveau 1</Fort> communs · <Fort>Niveau 2</Fort> + rares.</p>
-          </div>
-          <div>
-            <BlocLabel>Usage</BlocLabel>
-            <p className="text-[13px] text-muted-foreground leading-relaxed">La joaillerie crée des <Fort>supports d'enchantement ou de rituel</Fort>. Ces pièces ne se réparent pas.</p>
-          </div>
-        </div>
+        {!q && (
+          <>
+            <Accordeon titre="Comment fonctionne la compétence Joaillerie" taille="sm" open={aideOuverte} onToggle={() => setAideOuverte(!aideOuverte)}>
+              <AideJoaillerie />
+            </Accordeon>
+            <Accordeon titre="Légende des symboles" taille="sm" open={legendeOuverte} onToggle={() => setLegendeOuverte(!legendeOuverte)}>
+              <LegendeJoaillerie />
+            </Accordeon>
+          </>
+        )}
         {fJoail.length === 0 && q && <p className="text-muted-foreground text-center py-6">Aucun résultat.</p>}
         <div className="space-y-2">
           {fJoail.map((o) => {
@@ -564,7 +602,7 @@ const ForgeJoaillerieSection = ({
 
       {!q && (
         <>
-          <Accordeon titre="Comment fonctionne la Forge" taille="sm" open={aideOuverte} onToggle={() => setAideOuverte(!aideOuverte)}>
+          <Accordeon titre="Comment fonctionne la compétence Forge" taille="sm" open={aideOuverte} onToggle={() => setAideOuverte(!aideOuverte)}>
             <AideForge />
           </Accordeon>
           <Accordeon titre="Légende des symboles" taille="sm" open={legendeOuverte} onToggle={() => setLegendeOuverte(!legendeOuverte)}>
