@@ -5,6 +5,7 @@ import { LEGENDE_CONSTRUCTION_PIEGES } from "@/constants/artisanat";
 import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
 import { ManuelGlobalSwitch } from "@/components/shared/ToggleManuel";
 import { useModeManuel } from "@/hooks/useModeManuel";
+import { lireStockage, ecrireStockage } from "@/components/createur/aide/stockageLocal";
 
 interface Piege {
   id: string;
@@ -209,6 +210,13 @@ const effetAffiche = (mode: "abrege" | "integral", principal: Piege): string =>
 
 /* ---------- Section ---------- */
 
+// Accordéons d'aide : ouverts par défaut, état persisté en localStorage par joueur.
+const CLE_AIDE = "hv-pieges-aide:";
+const lireAide = (k: string): boolean => {
+  const v = lireStockage(CLE_AIDE + k);
+  return v === null ? true : v === "true";
+};
+
 const PiegesSection = ({
   pieges,
   searchQuery = "",
@@ -218,7 +226,15 @@ const PiegesSection = ({
 }) => {
   const [mode, setMode] = useModeManuel("encyclopedie", "integral");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [aide, setAide] = useState<{ marche: boolean; legende: boolean }>({ marche: false, legende: false });
+  const [aide, setAide] = useState<{ marche: boolean; legende: boolean }>(() => ({
+    marche: lireAide("marche"),
+    legende: lireAide("legende"),
+  }));
+
+  useEffect(() => {
+    ecrireStockage(CLE_AIDE + "marche", String(aide.marche));
+    ecrireStockage(CLE_AIDE + "legende", String(aide.legende));
+  }, [aide]);
 
   const toggleExpanded = (id: string) => {
     setExpanded((prev) => {
@@ -259,7 +275,7 @@ const PiegesSection = ({
         subtitle="Intégral (verbatim du manuel) ou abrégé"
       />
 
-      <Accordeon titre="Comment ça marche" open={aide.marche} onToggle={() => setAide((a) => ({ ...a, marche: !a.marche }))}>
+      <Accordeon titre="Comment fonctionnent les pièges" open={aide.marche} onToggle={() => setAide((a) => ({ ...a, marche: !a.marche }))}>
         <p><span className="font-semibold text-foreground">Découverte.</span> Un joueur qui découvre un piège lit la carte et en subit les effets, puis l'empoche et la remet à l'animation dès que possible.</p>
         <p><span className="font-semibold text-foreground">Sabotage.</span> Saboter un piège prend 5 minutes et permet d'en ignorer les effets. Après son passage, on peut réactiver le piège, ou empocher la carte et la remettre à l'animation.</p>
         <p><span className="font-semibold text-foreground">Rachat.</span> Si vous sabotez un piège et possédez Connaissances criminelles d'un niveau au moins égal à celui du piège, vous pouvez le racheter au camp des DM pour 50 % de son coût.</p>
@@ -271,7 +287,7 @@ const PiegesSection = ({
         </div>
       </Accordeon>
 
-      <Accordeon titre="Légende" open={aide.legende} onToggle={() => setAide((a) => ({ ...a, legende: !a.legende }))}>
+      <Accordeon titre="Légende des symboles" open={aide.legende} onToggle={() => setAide((a) => ({ ...a, legende: !a.legende }))}>
         <p><span className="font-semibold text-foreground">Niveau d'effet</span> — valeur de l'effet du piège utilisée par les règles de résistance et de dissipation.</p>
         <p><span className="font-semibold text-foreground">Construction</span> — {LEGENDE_CONSTRUCTION_PIEGES}</p>
       </Accordeon>
