@@ -417,7 +417,7 @@ const TAILLE_GEMME = {
   niveaux: [
     { n: 1, texte: "Taille les gemmes communes : incrustables et aptes à l'enchantement." },
     { n: 2, texte: "Taille les gemmes rares : leurs propriétés deviennent des ingrédients à part entière de rituel." },
-    { n: 3, texte: "Les gemmes enchantées voient leur potentiel renforcé ; incrustées dans un objet magique, elles lui ajoutent leurs propriétés." },
+    { n: 3, texte: "Les gemmes taillées puis enchantées voient leur potentiel renforcé ; incrustées dans un objet magique, elles lui ajoutent leurs propriétés." },
   ],
 };
 
@@ -486,7 +486,7 @@ const LegendeRow = ({ sym, children }: { sym: React.ReactNode; children: React.R
 
 const LegendeForge = () => (
   <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
-    <LegendeRow sym={<Lingot s={20} />}><Fort>Lingot</Fort> — recette en <Fort>Métaux communs</Fort> (Niveau 1).</LegendeRow>
+    <LegendeRow sym={<Lingot s={20} />}>Recette en <Fort>Métaux communs</Fort> (Niveau 1).</LegendeRow>
     <LegendeRow sym={<span className="text-lg">💎</span>}>Recette en <Fort>Métaux rares</Fort> (Niveau 2).</LegendeRow>
     <LegendeRow sym={<Clock className="h-4 w-4 text-muted-foreground" />}>Temps requis pour l'opération (fabrication ou réparation).</LegendeRow>
     <LegendeRow sym={<Badge>1 main</Badge>}>L'objet se manie à une main.</LegendeRow>
@@ -502,7 +502,7 @@ const AideJoaillerie = () => (
     <div>
       <BlocLabel>Obtenir les matériaux</BlocLabel>
       <p className="text-[13px] text-muted-foreground leading-relaxed">
-        Deux matériaux : les <Fort>pépites de métal</Fort> (via Mineur ou achat, comme la forge) et les <Fort>pierres précieuses</Fort> (butin, achat ou échange ; elles ont une valeur en écus — par exemple les 10 écus/événement de la compétence <Fort>Revenu</Fort>).
+        Deux matériaux : les <Fort>pépites de métal</Fort> (obtenues via la compétence Mineur ou par achat) et les <Fort>pierres précieuses</Fort> (butin, achat ou échange ; elles ont une valeur en écus — par exemple les 10 écus/événement de la compétence <Fort>Revenu</Fort>).
       </p>
     </div>
     <div>
@@ -522,7 +522,7 @@ const AideJoaillerie = () => (
 
 const LegendeJoaillerie = () => (
   <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
-    <LegendeRow sym={<Lingot s={20} />}><Fort>Lingot</Fort> — recette en <Fort>Métaux communs</Fort> (Niveau 1).</LegendeRow>
+    <LegendeRow sym={<Lingot s={20} />}>Recette en <Fort>Métaux communs</Fort> (Niveau 1).</LegendeRow>
     <LegendeRow sym={<span className="text-lg">💎</span>}>Recette en <Fort>Métaux rares</Fort> (Niveau 2).</LegendeRow>
     <LegendeRow sym={<Clock className="h-4 w-4 text-muted-foreground" />}>Temps de fabrication.</LegendeRow>
   </div>
