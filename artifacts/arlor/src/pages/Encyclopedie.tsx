@@ -210,10 +210,7 @@ const Encyclopedie = () => {
   const [schemaTrait, setSchemaTrait] = useState<ChampSchema[]>([]);
   const [schemaSort, setSchemaSort] = useState<ChampSchema[]>([]);
   const [schemaPriere, setSchemaPriere] = useState<ChampSchema[]>([]);
-  const [schemaForge, setSchemaForge] = useState<ChampSchema[]>([]);
-  const [schemaJoaillerie, setSchemaJoaillerie] = useState<ChampSchema[]>([]);
   const [schemaAssemblages, setSchemaAssemblages] = useState<ChampSchema[]>([]);
-  const [schemaReparation, setSchemaReparation] = useState<ChampSchema[]>([]);
   const [competences, setCompetences] = useState<Competence[]>([]);
   const [sorts, setSorts] = useState<Sort[]>([]);
   const [prieres, setPrieres] = useState<Priere[]>([]);
@@ -277,7 +274,7 @@ const Encyclopedie = () => {
       const schemasRes = await supabase
         .from("fiches_schemas")
         .select("categorie, champs")
-        .in("categorie", ["classe", "race", "trait_racial", "sorts", "prieres", "forge", "joaillerie", "assemblages", "reparation"]);
+        .in("categorie", ["classe", "race", "trait_racial", "sorts", "prieres", "assemblages"]);
       const parCategorie = Object.fromEntries(
         (schemasRes.data ?? []).map((s: any) => [s.categorie, s.champs])
       );
@@ -286,10 +283,7 @@ const Encyclopedie = () => {
       setSchemaTrait((parCategorie["trait_racial"] as ChampSchema[]) ?? []);
       setSchemaSort((parCategorie["sorts"] as ChampSchema[]) ?? []);
       setSchemaPriere((parCategorie["prieres"] as ChampSchema[]) ?? []);
-      setSchemaForge((parCategorie["forge"] as ChampSchema[]) ?? []);
-      setSchemaJoaillerie((parCategorie["joaillerie"] as ChampSchema[]) ?? []);
       setSchemaAssemblages((parCategorie["assemblages"] as ChampSchema[]) ?? []);
-      setSchemaReparation((parCategorie["reparation"] as ChampSchema[]) ?? []);
       setLoading(false);
     };
     fetchAll();
@@ -383,8 +377,6 @@ const Encyclopedie = () => {
             forge={forge}
             reparations={reparations}
             searchQuery={search}
-            schemaForge={schemaForge}
-            schemaReparation={schemaReparation}
           />
         )}
         {active === "joaillerie" && (
@@ -392,7 +384,6 @@ const Encyclopedie = () => {
             mode="joaillerie"
             joaillerie={joaillerie}
             searchQuery={search}
-            schemaJoaillerie={schemaJoaillerie}
           />
         )}
         {active === "pieges" && <PiegesSection pieges={pieges} searchQuery={search} />}
