@@ -542,9 +542,6 @@ const ForgeJoaillerieSection = ({
   joaillerie?: ObjetJoaillerie[];
   reparations?: Reparation[];
   searchQuery?: string;
-  schemaForge?: unknown;
-  schemaJoaillerie?: unknown;
-  schemaReparation?: unknown;
 }) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpanded = (id: string) =>
