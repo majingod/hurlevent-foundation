@@ -370,31 +370,63 @@ const CarteObjet = ({
 
 /* ---------- Carte de procédé (Préparation des matériaux) ---------- */
 
+const NiveauRow = ({ n, texte }: { n: number; texte: string }) => (
+  <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
+    <span className="text-[11px] text-primary border border-primary/30 rounded px-1.5">Niveau {n}</span>
+    <p className="text-[13px] text-foreground mt-1.5">{texte}</p>
+  </div>
+);
+
 const CarteProcede = ({
-  id, nom, metas, description, isOpen, onToggle,
+  id, nom, metas, description, niveaux, isOpen, onToggle,
 }: {
-  id: string; nom: string; metas: MetaData[]; description: string; isOpen: boolean; onToggle: () => void;
+  id: string; nom: string; metas: MetaData[]; description: string;
+  niveaux?: Array<{ n: number; texte: string }>; isOpen: boolean; onToggle: () => void;
 }) => (
   <EncyclopedieCard
     id={id}
     isOpen={isOpen}
     onToggle={onToggle}
-    maxHeight={800}
+    maxHeight={1000}
     header={<CardTitle className="font-heading text-base">{nom}</CardTitle>}
   >
     <div className="border-t border-primary/10 pt-3 mt-1 space-y-3.5">
       {metas.map((m) => <Meta key={m.label} {...m} />)}
       <p className="text-[13px] text-muted-foreground leading-relaxed">{description}</p>
+      {niveaux && niveaux.length > 0 && (
+        <div>
+          <BlocLabel>Selon le niveau de Joaillerie</BlocLabel>
+          <div className="grid gap-2">
+            {niveaux.map((nv) => <NiveauRow key={nv.n} {...nv} />)}
+          </div>
+        </div>
+      )}
     </div>
   </EncyclopedieCard>
 );
+
+const TAILLE_GEMME = {
+  id: "procede-taille-gemme",
+  nom: "Taille des pierres précieuses",
+  metas: [
+    { label: "Temps", valeur: "15 min", icone: "temps" as const },
+    { label: "Résultat", valeur: "Gemme taillée, prête à être incrustée" },
+  ],
+  description:
+    "Le joaillier taille les pierres précieuses brutes pour les rendre incrustables dans les bijoux. Une gemme taillée devient un support qu'un enchanteur peut enchanter et utiliser en rituel.",
+  niveaux: [
+    { n: 1, texte: "Taille les gemmes communes : incrustables et aptes à l'enchantement." },
+    { n: 2, texte: "Taille les gemmes rares : leurs propriétés deviennent des ingrédients à part entière de rituel." },
+    { n: 3, texte: "Les gemmes enchantées voient leur potentiel renforcé ; incrustées dans un objet magique, elles lui ajoutent leurs propriétés." },
+  ],
+};
 
 const PROCEDES: Array<{ id: string; nom: string; metas: MetaData[]; description: string }> = [
   {
     id: "procede-lingot",
     nom: "Lingot",
     metas: [
-      { label: "Temps", valeur: "15 min, joués en RP", icone: "temps" },
+      { label: "Temps", valeur: "15 min", icone: "temps" },
       { label: "Coût", valeur: "10 pépites d'un même métal" },
       { label: "Résultat", valeur: "1 lingot" },
     ],
@@ -470,7 +502,7 @@ const AideJoaillerie = () => (
     <div>
       <BlocLabel>Obtenir les matériaux</BlocLabel>
       <p className="text-[13px] text-muted-foreground leading-relaxed">
-        Les pépites s'obtiennent via la compétence <Fort>Mineur</Fort> ou par achat. Les gemmes se taillent avec la compétence <Fort>Joaillerie</Fort>.
+        Deux matériaux : les <Fort>pépites de métal</Fort> (via Mineur ou achat, comme la forge) et les <Fort>pierres précieuses</Fort> (butin, achat ou échange ; elles ont une valeur en écus — par exemple les 10 écus/événement de la compétence <Fort>Revenu</Fort>).
       </p>
     </div>
     <div>
@@ -552,6 +584,7 @@ const ForgeJoaillerieSection = ({
   fForge.forEach((o) => { (forgeByType[o.type ?? "autre"] ||= []).push(o); });
 
   if (mode === "joaillerie") {
+    const fTaille = !q || TAILLE_GEMME.nom.toLowerCase().includes(q) || TAILLE_GEMME.description.toLowerCase().includes(q);
     return (
       <div className="space-y-4">
         <h2 className="font-heading text-2xl font-bold text-primary mb-4">Joaillerie</h2>
@@ -565,8 +598,19 @@ const ForgeJoaillerieSection = ({
             </Accordeon>
           </>
         )}
-        {fJoail.length === 0 && q && <p className="text-muted-foreground text-center py-6">Aucun résultat.</p>}
+        {fJoail.length === 0 && !fTaille && q && <p className="text-muted-foreground text-center py-6">Aucun résultat.</p>}
         <div className="space-y-2">
+          {fTaille && (
+            <CarteProcede
+              id={TAILLE_GEMME.id}
+              nom={TAILLE_GEMME.nom}
+              metas={TAILLE_GEMME.metas}
+              description={TAILLE_GEMME.description}
+              niveaux={TAILLE_GEMME.niveaux}
+              isOpen={expanded.has(TAILLE_GEMME.id)}
+              onToggle={() => toggleExpanded(TAILLE_GEMME.id)}
+            />
+          )}
           {fJoail.map((o) => {
             const tc = o.temps_fabrication_minutes;
             const tr = tc != null ? tc + JOAILLERIE_RARE_SURCOUT : null;
