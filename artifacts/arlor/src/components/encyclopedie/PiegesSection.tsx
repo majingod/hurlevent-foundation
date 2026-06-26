@@ -13,6 +13,7 @@ interface Piege {
   niveau: number;
   cout_xp: number;
   cible: string;
+  rayon: number | null;
   duree: string;
   effets: string;
   effet_generique: string | null;
@@ -47,13 +48,6 @@ function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
 
 const tousIdentiques = (vals: Array<string | number | null>) =>
   vals.every((v) => v === vals[0]);
-
-// Extrait le rayon (en pieds) depuis une cible du type « Rayon de N pieds … ».
-const rayonDe = (cible: string | null): number | null => {
-  if (!cible) return null;
-  const m = cible.match(/Rayon de\s+(\d+)\s+pied/i);
-  return m ? Number(m[1]) : null;
-};
 
 /* ---------- Primitifs visuels (alignés sur ForgeJoaillerieSection) ---------- */
 
@@ -139,7 +133,7 @@ const BlocConstruction = ({ texte }: { texte: string }) => {
 /* ---------- Tableau des niveaux (colonnes dynamiques) ---------- */
 
 const TableauNiveaux = ({ niveaux }: { niveaux: Piege[] }) => {
-  const rayons = niveaux.map((n) => rayonDe(n.cible));
+  const rayons = niveaux.map((n) => n.rayon);
   const showRayon = rayons.some((r) => r != null) && !tousIdentiques(rayons);
   const showDuree = !tousIdentiques(niveaux.map((n) => n.duree));
   const showNivEffet = !tousIdentiques(niveaux.map((n) => n.niveau_effet));
@@ -150,7 +144,7 @@ const TableauNiveaux = ({ niveaux }: { niveaux: Piege[] }) => {
     { key: "niv", header: "Niveau", cell: (n) => n.niveau },
     { key: "cout", header: "Coût", cell: (n) => `${n.cout_xp} XP` },
   ];
-  if (showRayon) cols.push({ key: "rayon", header: "Rayon", cell: (n) => { const r = rayonDe(n.cible); return r != null ? `${r} pieds` : "—"; } });
+  if (showRayon) cols.push({ key: "rayon", header: "Rayon", cell: (n) => n.rayon != null ? `${n.rayon} pieds` : "—" });
   if (showDuree) cols.push({ key: "duree", header: "Durée", cell: (n) => n.duree });
   if (showNivEffet) cols.push({ key: "ne", header: "Niv. d'effet", cell: (n) => n.niveau_effet ?? "—" });
   if (showMag) cols.push({ key: "mag", header: magLabel ?? "Valeur", cell: (n) => n.magnitude ?? "—" });
@@ -183,9 +177,9 @@ const TableauNiveaux = ({ niveaux }: { niveaux: Piege[] }) => {
 
 const metasConstants = (niveaux: Piege[]): Array<{ label: string; valeur: string }> => {
   const metas: Array<{ label: string; valeur: string }> = [];
-  const estRayon = niveaux.some((n) => rayonDe(n.cible) != null);
+  const estRayon = niveaux.some((n) => n.rayon != null);
   if (estRayon) {
-    const rayons = niveaux.map((n) => rayonDe(n.cible));
+    const rayons = niveaux.map((n) => n.rayon);
     if (tousIdentiques(rayons) && rayons[0] != null) {
       metas.push({ label: "Rayon", valeur: `${rayons[0]} pieds autour de la carte du piège` });
     } else {
