@@ -1,4 +1,5 @@
 import React from "react";
+import RecetteSections from "@/components/shared/RecetteSections";
 
 /**
  * FicheMoteur2 — moteur de rendu schema-driven (Moteur V2, PR2a).
@@ -57,6 +58,7 @@ export type ChampSchema = {
   regroupe_par?: string;
   construction?: string;
   encadre?: boolean;
+  abrege?: { source?: string };
 };
 
 type Props = {
@@ -518,6 +520,29 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
               </div>
               {aValeur(construction) && (<div><LabelOr>Construction (niveau 1)</LabelOr><p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{String(construction)}</p></div>)}
             </div>
+          );
+        }
+
+        // render recette : alchimie. Intégral = verbatim parsé (RecetteSections) ;
+        // abrégé = prose resume_condense. Fallback gracieux si pas de verbatim parsé.
+        if (champ.render === "recette") {
+          if (mode === "integral") {
+            const sections = (entite as any)._sections;
+            if (sections) {
+              return (
+                <div key={champ.cle} className="text-sm text-muted-foreground space-y-2">
+                  <RecetteSections data={sections} />
+                </div>
+              );
+            }
+          }
+          const src = (champ as any).abrege?.source;
+          const txt = src ? lireSource(src, entite) : null;
+          if (!aValeur(txt)) return null;
+          return (
+            <p key={champ.cle} className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+              {String(txt)}
+            </p>
           );
         }
 

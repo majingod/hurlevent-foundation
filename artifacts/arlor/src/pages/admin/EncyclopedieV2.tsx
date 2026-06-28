@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
 import { ListeMoteur, type ListeConfig } from "@/components/shared/ListeMoteur";
+import { parseRecetteVerbatim } from "@/utils/alchimie";
 
 /**
  * EncyclopedieV2 — page de VALIDATION admin du Moteur V2 (PR2a).
@@ -19,21 +20,39 @@ import { ListeMoteur, type ListeConfig } from "@/components/shared/ListeMoteur";
 const sb = supabase as any;
 
 const CATS = [
-  { cle: "sorts", label: "Sorts" },
+  { cle: "race", label: "Races" },
+  { cle: "trait_racial", label: "Traits raciaux" },
+  { cle: "classe", label: "Classes" },
   { cle: "competences", label: "Compétences" },
-  { cle: "forge", label: "Forge" },
-  { cle: "pieges", label: "Pièges" },
+  { cle: "assemblages", label: "Assemblages" },
+  { cle: "alchimie", label: "Alchimie" },
+  { cle: "sorts", label: "Sorts" },
+  { cle: "prieres", label: "Prières" },
+  { cle: "religions", label: "Religions" },
   { cle: "bestiaire", label: "Bestiaire" },
+  { cle: "lore", label: "Régions / Lore" },
+  { cle: "forge", label: "Forge" },
+  { cle: "joaillerie", label: "Joaillerie" },
+  { cle: "pieges", label: "Pièges" },
 ] as const;
 
 type CatCle = (typeof CATS)[number]["cle"];
 
 const TABLE_SOURCE: Record<CatCle, string> = {
-  sorts: "sorts",
+  race: "races",
+  trait_racial: "traits_raciaux",
+  classe: "classes",
   competences: "competences",
-  forge: "objets_forge",
-  pieges: "pieges",
+  assemblages: "assemblages_runes",
+  alchimie: "recettes_alchimie",
+  sorts: "sorts",
+  prieres: "prieres",
+  religions: "religions",
   bestiaire: "bestiaire",
+  lore: "lore",
+  forge: "objets_forge",
+  joaillerie: "objets_joaillerie",
+  pieges: "pieges",
 };
 
 export default function EncyclopedieV2() {
@@ -76,6 +95,14 @@ export default function EncyclopedieV2() {
       if (cat === "forge") {
         const repRes = await sb.from("reparations_forge").select("*").eq("est_actif", true);
         lk = { reparations: repRes.data ?? [] };
+      }
+
+      // Alchimie : pré-parse le verbatim en blocs (RecetteSections) injectés dans la fiche.
+      if (cat === "alchimie") {
+        donnees = donnees.map((r) => ({
+          ...r,
+          _sections: parseRecetteVerbatim(r.description_verbatim),
+        }));
       }
 
       if (annule) return;
