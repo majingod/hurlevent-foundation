@@ -62,6 +62,7 @@ export default function EncyclopedieV2() {
   const [config, setConfig] = useState<ListeConfig | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [lookups, setLookups] = useState<Record<string, any[]>>({});
+  const [competencesParId, setCompetencesParId] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<{ item: any } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -105,11 +106,40 @@ export default function EncyclopedieV2() {
         }));
       }
 
+      // Classes : résout competence_id -> nom (render liste_competences).
+      let compMap: Record<string, string> = {};
+      if (cat === "classe") {
+        const compRes = await sb.from("competences").select("id, nom").eq("est_actif", true);
+        compMap = Object.fromEntries(
+          (compRes.data ?? []).map((c: any) => [c.id, c.nom ?? ""])
+        );
+      }
+
+      // Races : injecte les noms de traits permis (relation race_traits) dans chaque entité.
+      if (cat === "race") {
+        const [rtRes, traitsRes] = await Promise.all([
+          sb.from("race_traits").select("race_id, trait_id"),
+          sb.from("traits_raciaux").select("id, nom").eq("est_actif", true),
+        ]);
+        const nomParTrait: Record<string, string> = Object.fromEntries(
+          (traitsRes.data ?? []).map((t: any) => [t.id, t.nom ?? ""])
+        );
+        const traitsParRace: Record<string, string[]> = {};
+        (rtRes.data ?? []).forEach((rt: any) => {
+          const nom = nomParTrait[rt.trait_id];
+          if (!nom) return;
+          (traitsParRace[rt.race_id] ||= []);
+          if (!traitsParRace[rt.race_id].includes(nom)) traitsParRace[rt.race_id].push(nom);
+        });
+        donnees = donnees.map((r) => ({ ...r, traits_permis: traitsParRace[r.id] ?? [] }));
+      }
+
       if (annule) return;
       setSchema((schemaRes.data?.champs_v2 ?? []) as ChampSchema[]);
       setConfig((listeRes.data ?? null) as ListeConfig | null);
       setRows(donnees);
       setLookups(lk);
+      setCompetencesParId(compMap);
       setLoading(false);
     })();
     return () => {
@@ -189,7 +219,7 @@ export default function EncyclopedieV2() {
             densite="encyclo"
             mode={modeEffectif}
             lookups={lookups}
-            competencesParId={{}}
+            competencesParId={competencesParId}
           />
         </div>
       ) : config ? (
