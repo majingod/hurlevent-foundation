@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
@@ -58,7 +59,15 @@ const TABLE_SOURCE: Record<CatCle, string> = {
 };
 
 export default function EncyclopedieV2() {
-  const [cat, setCat] = useState<CatCle | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const catParam = searchParams.get("cat");
+  const cat = (CATS.find((c) => c.cle === catParam)?.cle ?? null) as CatCle | null;
+  const setCat = (c: CatCle | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (c) next.set("cat", c);
+    else next.delete("cat");
+    setSearchParams(next);
+  };
   const [mode, setMode] = useState<"abrege" | "integral">("integral");
   const [schema, setSchema] = useState<ChampSchema[]>([]);
   const [config, setConfig] = useState<ListeConfig | null>(null);
