@@ -135,16 +135,17 @@ function ItemPeek({ titre, xp, suffixeXp, verbatim, apercu, forceOpen }: { titre
   );
 }
 
-// Religions : porte l'état d'ouverture du « Texte du manuel » (ReligionDetails est contrôlé).
-// Mirroir du patron ItemPeek (état local via useState, hook hors de tout .map).
-function ReligionFiche({ entite }: { entite: any }) {
-  const [manuelOpen, setManuelOpen] = React.useState(false);
+// Religions : la couche manuel est pilotée par le toggle global Abrégé/Intégral.
+// Intégral → manuel ouvert ; Abrégé → fiche curée seule. Bouton interne masqué
+// (hideManuelButton) car le toggle global de l'encyclopédie le remplace.
+function ReligionFiche({ entite, mode }: { entite: any; mode: ModeManuel }) {
   return (
     <ReligionDetails
       religion={entite}
-      isManuelOpen={manuelOpen}
-      onToggleManuel={() => setManuelOpen((o) => !o)}
+      isManuelOpen={mode === "integral"}
+      onToggleManuel={() => {}}
       hideDomaines={false}
+      hideManuelButton
     />
   );
 }
@@ -540,9 +541,10 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
           );
         }
 
-        // render religion : délègue à ReligionDetails (fiche double-couche, manuel interne).
+        // render religion : délègue à ReligionDetails (fiche double-couche).
+        // Le manuel suit le mode global (intégral = ouvert).
         if (champ.render === "religion") {
-          return <ReligionFiche key={champ.cle} entite={entite} />;
+          return <ReligionFiche key={champ.cle} entite={entite} mode={mode} />;
         }
 
         // render recette : alchimie. Intégral = verbatim parsé (RecetteSections) ;
