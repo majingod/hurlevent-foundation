@@ -114,7 +114,7 @@ const Encadre = ({ children }: { children: React.ReactNode }) => (
   <div className="rounded-md border border-gold/30 px-4 py-3" style={{ background: "rgba(201,168,76,0.06)" }}>{children}</div>
 );
 
-function ItemPeek({ titre, xp, suffixeXp, verbatim, forceOpen }: { titre: string; xp?: any; suffixeXp?: string; verbatim?: string | null; forceOpen?: boolean; }) {
+function ItemPeek({ titre, xp, suffixeXp, verbatim, apercu, forceOpen }: { titre: string; xp?: any; suffixeXp?: string; verbatim?: string | null; apercu?: string | null; forceOpen?: boolean; }) {
   const [open, setOpen] = React.useState(false);
   const isOpen = forceOpen || open;
   return (
@@ -128,6 +128,7 @@ function ItemPeek({ titre, xp, suffixeXp, verbatim, forceOpen }: { titre: string
           </button>
         )}
       </div>
+      {!isOpen && apercu && <p className="text-[13px] leading-relaxed text-foreground/75 italic mt-1.5">{apercu}</p>}
       {isOpen && verbatim && <p className="text-[13px] leading-relaxed text-foreground/90 mt-2 whitespace-pre-wrap">{verbatim}</p>}
     </div>
   );
@@ -396,6 +397,7 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
                         xp={it.meta_xp ? x[it.meta_xp] : undefined}
                         suffixeXp={it.suffixe_xp}
                         verbatim={it.verbatim ? x[it.verbatim] : null}
+                        apercu={it.abrege ? x[it.abrege] : null}
                         forceOpen={mode === "integral"}
                       />
                     ) : (
