@@ -28,6 +28,8 @@ interface ReligionDetailsProps {
   onToggleManuel: () => void;
   /** Masque les domaines (déjà affichés dans l'en-tête de la surface, ex. encyclopédie) */
   hideDomaines?: boolean;
+  /** Masque le bouton interne « Texte du manuel » (l'ouverture est pilotée par le parent, ex. toggle global encyclo) */
+  hideManuelButton?: boolean;
 }
 
 export function ReligionDetails({
@@ -35,6 +37,7 @@ export function ReligionDetails({
   isManuelOpen,
   onToggleManuel,
   hideDomaines = false,
+  hideManuelButton = false,
 }: ReligionDetailsProps) {
   const rituelsFiche = religion.rituels_fiche ?? [];
   const rituelsManuel = religion.rituels_manuel ?? [];
@@ -148,6 +151,7 @@ export function ReligionDetails({
       {/* Bouton + couche MANUEL (verbatim) */}
       {aManuel && (
         <div>
+          {!hideManuelButton && (
           <button
             type="button"
             onClick={onToggleManuel}
@@ -161,6 +165,7 @@ export function ReligionDetails({
               className={`ml-auto transition-transform ${isManuelOpen ? "rotate-90" : ""}`}
             />
           </button>
+          )}
           {isManuelOpen && (
             <div className="mt-2 space-y-3 rounded-md border border-l-2 border-border border-l-gold bg-background/30 p-3">
               <p className="text-[0.65rem] uppercase tracking-wide text-gold">
