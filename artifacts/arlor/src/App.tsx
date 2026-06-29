@@ -76,7 +76,8 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Accueil />} />
     <Route path="/regles" element={<Regles />} />
-    <Route path="/encyclopedie" element={<Encyclopedie />} />
+    <Route path="/encyclopedie" element={<EncyclopedieV2 />} />
+    <Route path="/encyclopedie-classique" element={<Encyclopedie />} />
     <Route path="/evenements" element={<Evenements />} />
     <Route path="/telechargements" element={<Telechargements />} />
     <Route path="/apropos" element={<Apropos />} />
