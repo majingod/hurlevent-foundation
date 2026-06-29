@@ -48,6 +48,7 @@ export function EncyclopedieRecherche({
   const [debounced, setDebounced] = useState("");
   const [results, setResults] = useState<Resultat[]>([]);
   const [searching, setSearching] = useState(false);
+  const [erreur, setErreur] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 300);
@@ -57,11 +58,13 @@ export function EncyclopedieRecherche({
   useEffect(() => {
     if (debounced.trim().length < 2) {
       setResults([]);
+      setErreur(false);
       setSearching(false);
       return;
     }
     let annule = false;
     setSearching(true);
+    setErreur(false);
     (supabase as any)
       .rpc("rechercher_encyclopedie", { p_terme: debounced })
       .then(({ data, error }: any) => {
@@ -69,9 +72,18 @@ export function EncyclopedieRecherche({
         if (error) {
           console.error("[rechercher_encyclopedie]", error);
           setResults([]);
+          setErreur(true);
         } else {
           setResults((data ?? []) as Resultat[]);
+          setErreur(false);
         }
+        setSearching(false);
+      })
+      .catch((err: unknown) => {
+        if (annule) return;
+        console.error("[rechercher_encyclopedie]", err);
+        setResults([]);
+        setErreur(true);
         setSearching(false);
       });
     return () => {
@@ -84,10 +96,11 @@ export function EncyclopedieRecherche({
   return (
     <div>
       <div className="relative mb-1">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
+        <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="Rechercher dans l'encyclopédie"
           placeholder="Rechercher dans toute l'encyclopédie…"
           className="w-full rounded-lg border border-border bg-card pl-10 pr-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
         />
@@ -98,7 +111,11 @@ export function EncyclopedieRecherche({
       )}
 
       {actif ? (
-        results.length === 0 && !searching ? (
+        erreur && !searching ? (
+          <p className="text-destructive text-center py-4 text-sm">
+            Recherche momentanément indisponible. Réessaie dans un instant.
+          </p>
+        ) : results.length === 0 && !searching ? (
           <p className="text-muted-foreground text-center py-4 text-sm">
             Aucun résultat pour « {debounced} ».
           </p>
