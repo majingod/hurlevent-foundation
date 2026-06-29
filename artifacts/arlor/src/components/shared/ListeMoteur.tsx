@@ -29,6 +29,7 @@ export type ListeConfig = {
     emoji?: string;
     mode?: string;
     regroupe_par?: string;
+    metaLignes?: Array<{ label: string; source: string; couleur?: string }>;
   };
   annexes?: Array<{ titre?: string; source?: string }>;
 };
@@ -160,6 +161,17 @@ export function ListeMoteur({ config, rows, onOpen }: Props) {
                   const titre = carte.titre ? item[carte.titre] : item.nom;
                   const sousTitre = carte.sousTitre ? item[carte.sousTitre] : null;
                   const badges = (carte.badges ?? []).map((b) => item[b]).filter((v) => v != null && v !== "");
+                  const metaLignes = (carte.metaLignes ?? [])
+                    .map((ml) => {
+                      const raw = item[ml.source];
+                      const vals = Array.isArray(raw)
+                        ? raw
+                        : raw != null && raw !== ""
+                          ? [raw]
+                          : [];
+                      return { label: ml.label, couleur: ml.couleur, vals };
+                    })
+                    .filter((m) => m.vals.length > 0);
                   const nbNiveaux = Array.isArray(item.rows) ? item.rows.length : 0;
                   return (
                     <button
@@ -196,6 +208,36 @@ export function ListeMoteur({ config, rows, onOpen }: Props) {
                           )}
                           {sousTitre && (
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{String(sousTitre)}</p>
+                          )}
+                          {metaLignes.length > 0 && (
+                            <div className="mt-2 grid gap-1.5">
+                              {metaLignes.map((m, mi) => {
+                                const col =
+                                  m.couleur === "rouge"
+                                    ? "#f87171"
+                                    : m.couleur === "vert"
+                                      ? "#86efac"
+                                      : "#c9a84c";
+                                return (
+                                  <div key={mi} className="flex items-stretch gap-2">
+                                    <div
+                                      style={{ width: 3, borderRadius: 2, background: col, flexShrink: 0 }}
+                                    />
+                                    <div className="min-w-0">
+                                      <div
+                                        className="text-[10px] font-bold uppercase tracking-wider"
+                                        style={{ color: col, opacity: 0.9 }}
+                                      >
+                                        {m.label}
+                                      </div>
+                                      <div className="text-[13px] text-foreground/90">
+                                        {m.vals.join(", ")}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
                       </div>
