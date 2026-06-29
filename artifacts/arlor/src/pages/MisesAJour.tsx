@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juin 2026",
+    titre: "Encyclopédie repensée",
+    description:
+      "Navigation regroupée par grands thèmes et recherche globale couvrant toutes les catégories de l'encyclopédie, des règles au bestiaire.",
+  },
+  {
+    statut: "fait",
+    periode: "Juin 2026",
     titre: "Cimetière des Héros",
     description:
       "Hommage aux personnages tombés ; les joueurs peuvent demander la mort de leur personnage.",

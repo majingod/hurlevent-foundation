@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { BarChart3, Users, Shield, Calendar, CheckCircle, Database, ScrollText, Skull, BookOpen } from "lucide-react";
+import { BarChart3, Users, Shield, Calendar, CheckCircle, Database, ScrollText, Skull } from "lucide-react";
 
 interface AdminItem {
   id: string;
@@ -37,7 +37,6 @@ const ADMIN_POLES: AdminPole[] = [
     label: "Configuration",
     items: [
       { id: "donnees", label: "Données de jeu", icon: Database, path: "/administration/donnees" },
-      { id: "encyclopedie-v2", label: "Encyclopédie v2 (béta)", icon: BookOpen, path: "/administration/encyclopedie-v2" },
     ],
   },
 ];
