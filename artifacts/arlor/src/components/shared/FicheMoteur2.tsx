@@ -1,5 +1,6 @@
 import React from "react";
 import RecetteSections from "@/components/shared/RecetteSections";
+import { ReligionDetails } from "@/components/shared/ReligionDetails";
 
 /**
  * FicheMoteur2 — moteur de rendu schema-driven (Moteur V2, PR2a).
@@ -131,6 +132,20 @@ function ItemPeek({ titre, xp, suffixeXp, verbatim, apercu, forceOpen }: { titre
       {!isOpen && apercu && <p className="text-[13px] leading-relaxed text-foreground/75 italic mt-1.5">{apercu}</p>}
       {isOpen && verbatim && <p className="text-[13px] leading-relaxed text-foreground/90 mt-2 whitespace-pre-wrap">{verbatim}</p>}
     </div>
+  );
+}
+
+// Religions : porte l'état d'ouverture du « Texte du manuel » (ReligionDetails est contrôlé).
+// Mirroir du patron ItemPeek (état local via useState, hook hors de tout .map).
+function ReligionFiche({ entite }: { entite: any }) {
+  const [manuelOpen, setManuelOpen] = React.useState(false);
+  return (
+    <ReligionDetails
+      religion={entite}
+      isManuelOpen={manuelOpen}
+      onToggleManuel={() => setManuelOpen((o) => !o)}
+      hideDomaines={false}
+    />
   );
 }
 
@@ -523,6 +538,11 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
               {aValeur(construction) && (<div><LabelOr>Construction (niveau 1)</LabelOr><p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{String(construction)}</p></div>)}
             </div>
           );
+        }
+
+        // render religion : délègue à ReligionDetails (fiche double-couche, manuel interne).
+        if (champ.render === "religion") {
+          return <ReligionFiche key={champ.cle} entite={entite} />;
         }
 
         // render recette : alchimie. Intégral = verbatim parsé (RecetteSections) ;
