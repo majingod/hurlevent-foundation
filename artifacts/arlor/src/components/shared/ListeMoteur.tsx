@@ -89,7 +89,8 @@ export function ListeMoteur({ config, rows, onOpen }: Props) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Rechercher…"
-          className="w-full rounded-md border border-gold/30 bg-card px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold"
+          aria-label="Rechercher dans la catégorie"
+          className="w-full rounded-md border border-gold/30 bg-card px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold focus-visible:ring-2 focus-visible:ring-gold/60"
           style={{ background: "rgba(201,168,76,0.04)" }}
         />
       )}
@@ -101,6 +102,7 @@ export function ListeMoteur({ config, rows, onOpen }: Props) {
             <button
               key={String(v)}
               onClick={() => setOngletActif(v)}
+              aria-current={ongletActif === v ? "page" : undefined}
               className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
                 ongletActif === v
                   ? "bg-amber-700 text-white border border-amber-500"
@@ -118,6 +120,7 @@ export function ListeMoteur({ config, rows, onOpen }: Props) {
         <div key={f.champ} className="flex flex-wrap gap-2">
           <button
             onClick={() => setFiltreVals((s) => ({ ...s, [f.champ]: "" }))}
+            aria-pressed={filtreVals[f.champ] == null || filtreVals[f.champ] === ""}
             className={(filtreVals[f.champ] == null || filtreVals[f.champ] === "")
               ? "px-3 py-1 rounded-full text-sm font-medium bg-amber-600 text-white"
               : "px-3 py-1 rounded-full text-sm font-medium bg-stone-700 text-amber-200 hover:bg-stone-600"
@@ -129,6 +132,7 @@ export function ListeMoteur({ config, rows, onOpen }: Props) {
             <button
               key={String(v)}
               onClick={() => setFiltreVals((s) => ({ ...s, [f.champ]: v }))}
+              aria-pressed={String(filtreVals[f.champ]) === String(v)}
               className={String(filtreVals[f.champ]) === String(v)
                 ? "px-3 py-1 rounded-full text-sm font-medium bg-amber-600 text-white"
                 : "px-3 py-1 rounded-full text-sm font-medium bg-stone-700 text-amber-200 hover:bg-stone-600"
@@ -140,10 +144,12 @@ export function ListeMoteur({ config, rows, onOpen }: Props) {
         </div>
       ))}
 
-      {/* Compteur */}
-      <p className="text-xs text-muted-foreground">
-        {vis.length} résultat{vis.length > 1 ? "s" : ""}
-      </p>
+      {/* Compteur (masqué si vide — le message « Aucun résultat. » suffit) */}
+      {vis.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {vis.length} résultat{vis.length > 1 ? "s" : ""}
+        </p>
+      )}
 
       {/* Blocs → cartes */}
       {vis.length === 0 ? (
