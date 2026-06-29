@@ -60,7 +60,7 @@ export function EncyclopedieHub({ onPick }: { onPick: (cle: string) => void }) {
     <div className="grid gap-4">
       {GROUPES_ENCYCLO.map((g) => (
         <div key={g.titre}>
-          <p style={GROUPE_LABEL}>{g.titre}</p>
+          <h2 style={GROUPE_LABEL}>{g.titre}</h2>
           <div className="grid grid-cols-2 gap-2">
             {g.cats.map((c) => (
               <button
@@ -96,6 +96,7 @@ export function EncyclopedieSwitcher({
           <button
             key={c.cle}
             onClick={() => onPick(c.cle)}
+            aria-current={on ? "page" : undefined}
             className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-heading transition-all ${
               on
                 ? "bg-primary text-primary-foreground"
