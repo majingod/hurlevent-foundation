@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
 import { EncyclopedieHub, EncyclopedieSwitcher } from "@/components/encyclopedie/EncyclopedieNav";
+import { EncyclopedieRecherche } from "@/components/encyclopedie/EncyclopedieRecherche";
 import { ListeMoteur, type ListeConfig } from "@/components/shared/ListeMoteur";
 import { parseRecetteVerbatim } from "@/utils/alchimie";
 
@@ -65,6 +66,7 @@ export default function EncyclopedieV2() {
   const [lookups, setLookups] = useState<Record<string, any[]>>({});
   const [competencesParId, setCompetencesParId] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<{ item: any } | null>(null);
+  const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -155,6 +157,16 @@ export default function EncyclopedieV2() {
     };
   }, [cat]);
 
+  // Recherche globale : après navigation vers une catégorie, ouvre la fiche cliquée.
+  useEffect(() => {
+    if (!pendingOpenId || rows.length === 0) return;
+    const item = rows.find((r) => r.id === pendingOpenId);
+    if (item) {
+      setSel({ item });
+      setPendingOpenId(null);
+    }
+  }, [rows, pendingOpenId]);
+
   const modeMasque = config?.carte?.mode === "aucun";
   const modeEffectif: "abrege" | "integral" = modeMasque ? "integral" : mode;
 
@@ -170,7 +182,14 @@ export default function EncyclopedieV2() {
 
       {/* Navigation groupée : hub (accueil) ou switcher (dans une catégorie) */}
       {!cat ? (
-        <EncyclopedieHub onPick={(c) => setCat(c as CatCle)} />
+        <EncyclopedieRecherche
+          onPick={(cle, id) => {
+            setCat(cle as CatCle);
+            setPendingOpenId(id);
+          }}
+        >
+          <EncyclopedieHub onPick={(c) => setCat(c as CatCle)} />
+        </EncyclopedieRecherche>
       ) : (
         <>
         <button
