@@ -183,10 +183,10 @@ export default function EncyclopedieV2() {
     <div className="container py-8 max-w-5xl animate-in fade-in duration-500">
       {/* Header */}
       <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-2 tracking-tight">
-        Encyclopédie — Moteur v2 (validation admin)
+        Encyclopédie
       </h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Choisis une catégorie pour explorer ses fiches. Même brique Liste + même brique Fiche, seule la config change.
+        Choisis une catégorie pour explorer, ou utilise la recherche pour trouver directement.
       </p>
 
       {/* Navigation groupée : hub (accueil) ou switcher (dans une catégorie) */}
