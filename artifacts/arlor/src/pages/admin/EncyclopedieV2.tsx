@@ -219,18 +219,42 @@ export default function EncyclopedieV2() {
           }}
         />
 
-      {/* Toggle Abrégé / Intégral (caché si la config n'a pas d'abrégé) */}
+      {/* Interrupteur Abrégé ⇄ Intégral (caché si la config n'a pas d'abrégé) */}
       {!modeMasque && (
-        <div className="flex items-center gap-2 mb-6">
-          <button
-            onClick={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
-            className="rounded-md border border-gold/40 px-3 py-1.5 text-sm font-medium text-gold hover:border-gold transition-all"
-            style={{ background: "rgba(201,168,76,0.06)" }}
+        <div className="flex items-center gap-2.5 mb-6">
+          <span
+            className={`text-sm ${mode === "integral" ? "text-muted-foreground" : "text-foreground font-semibold"}`}
           >
-            {mode === "integral" ? "Texte intégral ✓" : "Texte abrégé ✓"}
+            Abrégé
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={mode === "integral"}
+            aria-label="Basculer entre texte abrégé et texte intégral"
+            onClick={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+            className="relative rounded-full border border-border transition-colors"
+            style={{
+              width: 46,
+              height: 26,
+              background: mode === "integral" ? "#c9a84c" : "hsl(0 0% 14%)",
+            }}
+          >
+            <span
+              className="absolute rounded-full transition-all"
+              style={{
+                top: 2,
+                left: mode === "integral" ? 22 : 2,
+                width: 20,
+                height: 20,
+                background: mode === "integral" ? "hsl(0 0% 4%)" : "hsl(36 33% 93%)",
+              }}
+            />
           </button>
-          <span className="text-xs text-muted-foreground">
-            Bascule la source des champs texte (n'affecte jamais les chiffres).
+          <span
+            className={`text-sm ${mode === "integral" ? "text-foreground font-semibold" : "text-muted-foreground"}`}
+          >
+            Intégral
           </span>
         </div>
       )}
