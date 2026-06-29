@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
+import { EncyclopedieHub, EncyclopedieSwitcher } from "@/components/encyclopedie/EncyclopedieNav";
 import { ListeMoteur, type ListeConfig } from "@/components/shared/ListeMoteur";
 import { parseRecetteVerbatim } from "@/utils/alchimie";
 
@@ -56,7 +57,7 @@ const TABLE_SOURCE: Record<CatCle, string> = {
 };
 
 export default function EncyclopedieV2() {
-  const [cat, setCat] = useState<CatCle>("sorts");
+  const [cat, setCat] = useState<CatCle | null>(null);
   const [mode, setMode] = useState<"abrege" | "integral">("integral");
   const [schema, setSchema] = useState<ChampSchema[]>([]);
   const [config, setConfig] = useState<ListeConfig | null>(null);
@@ -68,6 +69,13 @@ export default function EncyclopedieV2() {
 
   useEffect(() => {
     let annule = false;
+    if (!cat) {
+      setLoading(false);
+      setSchema([]);
+      setConfig(null);
+      setRows([]);
+      return;
+    }
     setLoading(true);
     setSel(null);
     (async () => {
@@ -157,31 +165,31 @@ export default function EncyclopedieV2() {
         Encyclopédie — Moteur v2 (validation admin)
       </h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Même brique Liste + même brique Fiche, seule la config change. 5 témoins :
-        sorts · compétences · forge · pièges · bestiaire.
+        Choisis une catégorie pour explorer ses fiches. Même brique Liste + même brique Fiche, seule la config change.
       </p>
 
-      {/* Onglets de catégorie */}
-      <div className="overflow-x-auto -mx-2 px-2 mb-6">
-        <div className="inline-flex bg-card border border-border p-1 rounded-lg w-max">
-          {CATS.map((c) => {
-            const isActive = cat === c.cle;
-            return (
-              <button
-                key={c.cle}
-                onClick={() => setCat(c.cle)}
-                className={`rounded-sm px-3 py-1.5 font-heading text-xs sm:text-sm whitespace-nowrap transition-all duration-200 ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                {c.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Navigation groupée : hub (accueil) ou switcher (dans une catégorie) */}
+      {!cat ? (
+        <EncyclopedieHub onPick={(c) => setCat(c as CatCle)} />
+      ) : (
+        <>
+        <button
+          onClick={() => {
+            setCat(null);
+            setSel(null);
+          }}
+          className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline mb-3"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Toutes les catégories
+        </button>
+        <EncyclopedieSwitcher
+          active={cat}
+          onPick={(c) => {
+            setCat(c as CatCle);
+            setSel(null);
+          }}
+        />
 
       {/* Toggle Abrégé / Intégral (caché si la config n'a pas d'abrégé) */}
       {!modeMasque && (
@@ -228,6 +236,8 @@ export default function EncyclopedieV2() {
         <p className="text-muted-foreground text-center py-12">
           Aucune configuration de liste pour « {cat} ».
         </p>
+      )}
+        </>
       )}
     </div>
   );
