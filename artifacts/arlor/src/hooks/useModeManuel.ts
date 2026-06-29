@@ -1,6 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { lireStockage, ecrireStockage } from "@/components/createur/aide/stockageLocal";
-import type { ModeManuel } from "@/components/shared/FicheMoteur";
+import type { ModeManuel } from "@/components/shared/FicheMoteur2";
 
 // Persistance localStorage du MODE manuel (abrégé / intégral) par SURFACE.
 // Réutilise l'accès défensif `stockageLocal` (try/catch Safari navigation privée).
