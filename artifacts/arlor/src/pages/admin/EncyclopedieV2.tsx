@@ -77,25 +77,33 @@ export default function EncyclopedieV2() {
   const [sel, setSel] = useState<{ item: any } | null>(null);
   const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let annule = false;
     if (!cat) {
       setLoading(false);
+      setErreur(null);
       setSchema([]);
       setConfig(null);
       setRows([]);
       return;
     }
     setLoading(true);
+    setErreur(null);
     setSel(null);
     (async () => {
+      try {
       const [schemaRes, listeRes] = await Promise.all([
         sb.from("fiches_schemas").select("champs_v2").eq("categorie", cat).maybeSingle(),
         sb.from("fiches_listes").select("*").eq("categorie", cat).maybeSingle(),
       ]);
 
       const dataRes = await sb.from(TABLE_SOURCE[cat]).select("*").eq("est_actif", true).order("nom");
+      if (schemaRes.error || listeRes.error || dataRes.error) {
+        throw schemaRes.error ?? listeRes.error ?? dataRes.error;
+      }
       let donnees: any[] = dataRes.data ?? [];
 
       // Pièges : regroupe par nom -> 1 fiche porteuse de `.rows` (lignes triées par niveau).
@@ -159,12 +167,19 @@ export default function EncyclopedieV2() {
       setRows(donnees);
       setLookups(lk);
       setCompetencesParId(compMap);
-      setLoading(false);
+      } catch (e) {
+        if (!annule) {
+          console.error("[EncyclopedieV2] chargement catégorie échoué", e);
+          setErreur("Impossible de charger cette catégorie. Vérifie ta connexion et réessaie.");
+        }
+      } finally {
+        if (!annule) setLoading(false);
+      }
     })();
     return () => {
       annule = true;
     };
-  }, [cat]);
+  }, [cat, reloadKey]);
 
   // Recherche globale : après navigation vers une catégorie, ouvre la fiche cliquée.
   useEffect(() => {
@@ -261,6 +276,17 @@ export default function EncyclopedieV2() {
 
       {loading ? (
         <p className="text-muted-foreground text-center py-12">Chargement…</p>
+      ) : erreur ? (
+        <div className="text-center py-12">
+          <p className="text-sm mb-4" style={{ color: "#e6b3b3" }}>{erreur}</p>
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-gold/40 px-4 py-2 text-sm text-gold hover:border-gold transition-all"
+            style={{ background: "rgba(201,168,76,0.06)" }}
+          >
+            Réessayer
+          </button>
+        </div>
       ) : sel ? (
         <div>
           <button
