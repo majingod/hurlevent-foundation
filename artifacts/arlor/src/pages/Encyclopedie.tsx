@@ -9,13 +9,13 @@ import { ListeMoteur, type ListeConfig } from "@/components/shared/ListeMoteur";
 import { parseRecetteVerbatim } from "@/utils/alchimie";
 
 /**
- * EncyclopedieV2 — page de VALIDATION admin du Moteur V2 (PR2a).
+ * Encyclopédie — page PUBLIQUE du Moteur V2, montée sur la route `/encyclopedie`
+ * (aucun ProtectedRoute : accessible à tous, comme /regles ou /evenements).
  *
- * Admin-gated (la route porte <ProtectedRoute requiredRole="animateur">). Prouve
- * sur 5 catégories-témoins que la même brique Liste (ListeMoteur) + la même brique
- * Fiche (FicheMoteur2) rendent tout l'éventail, seule la config (`fiches_listes` /
- * `fiches_schemas.champs_v2`) changeant. La page LIVE (Encyclopedie.tsx) n'est pas
- * touchée : ce moteur lit `champs_v2`, jamais `champs` (v1).
+ * Rend les 14 catégories avec une seule brique Liste (ListeMoteur) + une seule
+ * brique Fiche (FicheMoteur2) ; seule la config (`fiches_listes` /
+ * `fiches_schemas.champs_v2`) change d'une catégorie à l'autre. Lit `champs_v2`,
+ * jamais `champs` (l'ancien Encyclopedie.tsx v1 a été supprimé).
  */
 
 // fiches_listes et fiches_schemas.champs_v2 ne sont pas (encore) dans les types
@@ -199,6 +199,14 @@ export default function Encyclopedie() {
       annule = true;
     };
   }, [cat, reloadKey]);
+
+  // Remonter en haut à chaque changement de vue (ouverture/fermeture de fiche,
+  // changement de catégorie). Sans ça, ouvrir une fiche depuis le bas d'une longue
+  // liste l'affiche scroll resté en bas. La liste se démonte quand une fiche est
+  // ouverte : il n'y a donc pas de position de liste à restaurer.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [cat, ficheParam]);
 
   // Fiche ouverte = dérivée de l'URL (?fiche=clé). Source unique de vérité :
   // back navigateur/Android ferme la fiche, et un lien ?cat&fiche est partageable.
