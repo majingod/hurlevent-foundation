@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
 import { EncyclopedieHub, EncyclopedieSwitcher } from "@/components/encyclopedie/EncyclopedieNav";
 import { EncyclopedieRecherche } from "@/components/encyclopedie/EncyclopedieRecherche";
@@ -91,7 +92,7 @@ export default function Encyclopedie() {
     });
   const closeFiche = () =>
     updateParams((p) => p.delete("fiche"), { replace: true });
-  const [mode, setMode] = useState<"abrege" | "integral">("integral");
+  const { mode, toggleMode } = useModeAffichage();
   const [schema, setSchema] = useState<ChampSchema[]>([]);
   const [config, setConfig] = useState<ListeConfig | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -254,7 +255,7 @@ export default function Encyclopedie() {
       {!modeMasque && (
         <BasculeAbregeIntegral
           mode={mode}
-          onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+          onToggle={toggleMode}
           className="mb-6"
         />
       )}
