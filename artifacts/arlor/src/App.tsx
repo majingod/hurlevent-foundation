@@ -17,7 +17,7 @@ import PwaAutoUpdater from "@/components/PwaAutoUpdater";
 // Pages publiques
 import Accueil from "@/pages/Accueil";
 import Regles from "@/pages/Regles";
-import EncyclopedieV2 from "@/pages/admin/EncyclopedieV2";
+import Encyclopedie from "@/pages/Encyclopedie";
 import Evenements from "@/pages/Evenements";
 import Connexion from "@/pages/Connexion";
 import Telechargements from "@/pages/Telechargements";
@@ -75,7 +75,7 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Accueil />} />
     <Route path="/regles" element={<Regles />} />
-    <Route path="/encyclopedie" element={<EncyclopedieV2 />} />
+    <Route path="/encyclopedie" element={<Encyclopedie />} />
     <Route path="/evenements" element={<Evenements />} />
     <Route path="/telechargements" element={<Telechargements />} />
     <Route path="/apropos" element={<Apropos />} />

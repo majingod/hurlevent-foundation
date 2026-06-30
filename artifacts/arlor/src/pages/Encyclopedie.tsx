@@ -58,7 +58,7 @@ const TABLE_SOURCE: Record<CatCle, string> = {
   pieges: "pieges",
 };
 
-export default function EncyclopedieV2() {
+export default function Encyclopedie() {
   const [searchParams, setSearchParams] = useSearchParams();
   const catParam = searchParams.get("cat");
   const cat = (CATS.find((c) => c.cle === catParam)?.cle ?? null) as CatCle | null;
