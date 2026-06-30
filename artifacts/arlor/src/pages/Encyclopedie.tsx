@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
 import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
 import { EncyclopedieHub, EncyclopedieSwitcher } from "@/components/encyclopedie/EncyclopedieNav";
 import { EncyclopedieRecherche } from "@/components/encyclopedie/EncyclopedieRecherche";
@@ -251,42 +252,11 @@ export default function Encyclopedie() {
 
       {/* Interrupteur Abrégé ⇄ Intégral (caché si la config n'a pas d'abrégé) */}
       {!modeMasque && (
-        <div className="flex items-center gap-2.5 mb-6">
-          <span
-            className={`text-sm ${mode === "integral" ? "text-muted-foreground" : "text-foreground font-semibold"}`}
-          >
-            Abrégé
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={mode === "integral"}
-            aria-label="Basculer entre texte abrégé et texte intégral"
-            onClick={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
-            className="relative rounded-full border border-border transition-colors"
-            style={{
-              width: 46,
-              height: 26,
-              background: mode === "integral" ? "#c9a84c" : "hsl(0 0% 14%)",
-            }}
-          >
-            <span
-              className="absolute rounded-full transition-all"
-              style={{
-                top: 2,
-                left: mode === "integral" ? 22 : 2,
-                width: 20,
-                height: 20,
-                background: mode === "integral" ? "hsl(0 0% 4%)" : "hsl(36 33% 93%)",
-              }}
-            />
-          </button>
-          <span
-            className={`text-sm ${mode === "integral" ? "text-foreground font-semibold" : "text-muted-foreground"}`}
-          >
-            Intégral
-          </span>
-        </div>
+        <BasculeAbregeIntegral
+          mode={mode}
+          onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
+          className="mb-6"
+        />
       )}
 
       {loading ? (
