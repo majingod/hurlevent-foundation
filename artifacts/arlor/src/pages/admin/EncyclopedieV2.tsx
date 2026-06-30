@@ -62,20 +62,40 @@ export default function EncyclopedieV2() {
   const [searchParams, setSearchParams] = useSearchParams();
   const catParam = searchParams.get("cat");
   const cat = (CATS.find((c) => c.cle === catParam)?.cle ?? null) as CatCle | null;
-  const setCat = (c: CatCle | null) => {
+  const ficheParam = searchParams.get("fiche");
+  const updateParams = (
+    mut: (p: URLSearchParams) => void,
+    opts?: { replace?: boolean }
+  ) => {
     const next = new URLSearchParams(searchParams);
-    if (c) next.set("cat", c);
-    else next.delete("cat");
-    setSearchParams(next);
+    mut(next);
+    setSearchParams(next, opts);
   };
+  const cleFiche = (item: any) => (cat === "pieges" ? item?.nom : item?.id);
+  const setCat = (c: CatCle | null) =>
+    updateParams((p) => {
+      if (c) p.set("cat", c);
+      else p.delete("cat");
+      p.delete("fiche");
+    });
+  const goToFiche = (cle: string, key: string) =>
+    updateParams((p) => {
+      p.set("cat", cle);
+      p.set("fiche", key);
+    });
+  const openFiche = (item: any) =>
+    updateParams((p) => {
+      const k = cleFiche(item);
+      if (k != null) p.set("fiche", String(k));
+    });
+  const closeFiche = () =>
+    updateParams((p) => p.delete("fiche"), { replace: true });
   const [mode, setMode] = useState<"abrege" | "integral">("integral");
   const [schema, setSchema] = useState<ChampSchema[]>([]);
   const [config, setConfig] = useState<ListeConfig | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [lookups, setLookups] = useState<Record<string, any[]>>({});
   const [competencesParId, setCompetencesParId] = useState<Record<string, string>>({});
-  const [sel, setSel] = useState<{ item: any } | null>(null);
-  const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -92,7 +112,6 @@ export default function EncyclopedieV2() {
     }
     setLoading(true);
     setErreur(null);
-    setSel(null);
     (async () => {
       try {
       const [schemaRes, listeRes] = await Promise.all([
@@ -181,15 +200,12 @@ export default function EncyclopedieV2() {
     };
   }, [cat, reloadKey]);
 
-  // Recherche globale : après navigation vers une catégorie, ouvre la fiche cliquée.
-  useEffect(() => {
-    if (!pendingOpenId || rows.length === 0) return;
-    const item = rows.find((r) => r.id === pendingOpenId);
-    if (item) {
-      setSel({ item });
-      setPendingOpenId(null);
-    }
-  }, [rows, pendingOpenId]);
+  // Fiche ouverte = dérivée de l'URL (?fiche=clé). Source unique de vérité :
+  // back navigateur/Android ferme la fiche, et un lien ?cat&fiche est partageable.
+  const selItem =
+    ficheParam != null
+      ? (rows.find((r) => String(cleFiche(r)) === ficheParam) ?? null)
+      : null;
 
   const modeMasque = config?.carte?.mode === "aucun";
   const modeEffectif: "abrege" | "integral" = modeMasque ? "integral" : mode;
@@ -207,20 +223,14 @@ export default function EncyclopedieV2() {
       {/* Navigation groupée : hub (accueil) ou switcher (dans une catégorie) */}
       {!cat ? (
         <EncyclopedieRecherche
-          onPick={(cle, id) => {
-            setCat(cle as CatCle);
-            setPendingOpenId(id);
-          }}
+          onPick={(cle, id) => goToFiche(cle, id)}
         >
           <EncyclopedieHub onPick={(c) => setCat(c as CatCle)} />
         </EncyclopedieRecherche>
       ) : (
         <>
         <button
-          onClick={() => {
-            setCat(null);
-            setSel(null);
-          }}
+          onClick={() => setCat(null)}
           className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline mb-3"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -228,10 +238,7 @@ export default function EncyclopedieV2() {
         </button>
         <EncyclopedieSwitcher
           active={cat}
-          onPick={(c) => {
-            setCat(c as CatCle);
-            setSel(null);
-          }}
+          onPick={(c) => setCat(c as CatCle)}
         />
 
       {/* Interrupteur Abrégé ⇄ Intégral (caché si la config n'a pas d'abrégé) */}
@@ -287,21 +294,21 @@ export default function EncyclopedieV2() {
             Réessayer
           </button>
         </div>
-      ) : sel ? (
+      ) : selItem ? (
         <div>
           <button
-            onClick={() => setSel(null)}
+            onClick={closeFiche}
             className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
             Retour à la liste
           </button>
           <h2 className="font-heading text-2xl font-bold text-gold mb-4">
-            {String(sel.item?.nom ?? "")}
+            {String(selItem?.nom ?? "")}
           </h2>
           <FicheMoteur2
             schema={schema}
-            entite={sel.item}
+            entite={selItem}
             densite="encyclo"
             mode={modeEffectif}
             lookups={lookups}
@@ -309,7 +316,7 @@ export default function EncyclopedieV2() {
           />
         </div>
       ) : config ? (
-        <ListeMoteur config={config} rows={rows} onOpen={setSel} />
+        <ListeMoteur config={config} rows={rows} onOpen={({ item }) => openFiche(item)} />
       ) : (
         <p className="text-muted-foreground text-center py-12">
           Aucune configuration de liste pour « {cat} ».
