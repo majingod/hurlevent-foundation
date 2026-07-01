@@ -3919,6 +3919,7 @@ export type Database = {
           id: string | null
           nom: string | null
           personnage_id: string | null
+          resume_condense: string | null
           runes_requises: string[] | null
           texte_manuel: string | null
           xp_depense: number | null
@@ -4395,6 +4396,8 @@ export type Database = {
           choix_achat: string | null
           competence_description: string | null
           competence_id: string | null
+          competence_resume_condense: string | null
+          description_courte_niveau_acquis: string | null
           description_niveau_acquis: string | null
           id: string | null
           niveau_acquis: number | null
@@ -4831,6 +4834,7 @@ export type Database = {
           classe_emoji: string | null
           classe_id: string | null
           classe_nom: string | null
+          classe_resume_condense: string | null
           classe_role_combat: string | null
           est_actif: boolean | null
           est_mort: boolean | null
@@ -4848,6 +4852,7 @@ export type Database = {
           race_description_courte: string | null
           race_emoji: string | null
           race_esperance_vie: string | null
+          race_resume_condense: string | null
           race_exigences_costume: string | null
           race_id: string | null
           race_image_url: string | null
@@ -5574,6 +5579,7 @@ export type Database = {
           portee_choisie: string | null
           priere_description: string | null
           priere_description_courte: string | null
+          priere_resume_condense: string | null
           type_priere: string | null
           zone_choisie: string | null
         }
@@ -5816,6 +5822,7 @@ export type Database = {
           sort_description: string | null
           sort_description_courte: string | null
           sort_nom_base: string | null
+          sort_resume_condense: string | null
           type_sort: string | null
           zone_choisie: string | null
         }

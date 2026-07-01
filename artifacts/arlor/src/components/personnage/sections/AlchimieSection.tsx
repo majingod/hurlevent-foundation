@@ -4,6 +4,7 @@ import {
   parseRecetteVerbatim,
 } from "@/utils/alchimie";
 import { RecetteSections } from "@/components/shared/RecetteSections";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { ArtisanatEtat, Recette, ManipulationAlchimique } from "./types";
 
 interface AlchimieSectionProps {
@@ -17,6 +18,10 @@ export const AlchimieSection = ({
   recettes,
   manipulations,
 }: AlchimieSectionProps) => {
+  // Patron canon abrégé ⇄ intégral (s299) : en abrégé, resume_condense en
+  // paragraphe simple ; en intégral, rendu verbatim actuel. Le teaser
+  // recette.description n'est plus affiché.
+  const { mode } = useModeAffichage();
   // DETTE-MANIPULATIONS-ALCHIMIQUES-ECRAN — filtre par niveau acquis
   const niveauAlchimieEcran = artisanatEtat?.niveau_alchimie ?? 0;
   const manipulationsFiltrees = (manipulations ?? []).filter(
@@ -56,7 +61,9 @@ export const AlchimieSection = ({
                     <div key={recette.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
                       <p className="font-medium text-foreground">{recette.nom}</p>
                       <p className="text-xs text-muted-foreground">{recette.type}</p>
-                      {sections ? (
+                      {mode === "abrege" ? (
+                        <p className="text-xs text-muted-foreground whitespace-pre-line">{recette.resume_condense}</p>
+                      ) : sections ? (
                         <RecetteSections data={sections} />
                       ) : (
                         <>
@@ -77,7 +84,6 @@ export const AlchimieSection = ({
                               </ol>
                             </div>
                           )}
-                          {recette.description && <p className="text-xs text-muted-foreground italic">{recette.description}</p>}
                         </>
                       )}
                     </div>
