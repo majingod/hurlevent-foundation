@@ -30,7 +30,8 @@ import IntroEtape, {
 import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 import Astuce from "@/components/createur/aide/Astuce";
-import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
@@ -77,6 +78,8 @@ interface PriereJointe {
   bonus_niveau: BonusNiveau | null;
   description_courte: string | null;
   description_tronc: string | null;
+  resume_condense: string | null;
+  description: string | null;
   paliers: unknown;
   type_priere: string | null;
   effet_instance: unknown;
@@ -177,6 +180,7 @@ const Etape7_Prieres_V2 = ({
     Set<string>
   >(new Set());
   const [sectionAchetesOuverte, setSectionAchetesOuverte] = useState(true);
+  const { mode, toggleMode } = useModeAffichage();
   // Une seule prière du catalogue ouverte à la fois (radio).
   const [priereOuverteId, setPriereOuverteId] = useState<string | null>(null);
   const [valeursAchat, setValeursAchat] = useState<ValeursConstructeur>({
@@ -347,7 +351,7 @@ const Etape7_Prieres_V2 = ({
       const { data, error } = await supabase
         .from("personnage_prieres")
         .select(
-          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau, description_courte, description_tronc, paliers, type_priere, effet_instance)",
+          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau, resume_condense, description, description_courte, description_tronc, paliers, type_priere, effet_instance)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
@@ -843,6 +847,8 @@ const Etape7_Prieres_V2 = ({
       {/* I4 : jauge XP live, AU-DESSUS du bandeau calcul (z-20 > z-[15]) */}
       <JaugeXP xpDisponible={xpDisponible} coutEnCours={coutEnCours} />
 
+      <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
           Achat de prières divines
@@ -1038,15 +1044,13 @@ const Etape7_Prieres_V2 = ({
 
                           {selectionnee && (
                             <div className="space-y-2.5 border-l-[3px] border-l-primary px-3 pb-4 pt-1">
-                              {p.description_courte && (
-                                <p className="text-sm text-muted-foreground">
-                                  {p.description_courte}
+                              {(p.resume_condense || p.description) && (
+                                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                                  {mode === "integral"
+                                    ? p.description ?? p.resume_condense
+                                    : p.resume_condense ?? p.description}
                                 </p>
                               )}
-                              <ManuelDepliable
-                                tronc={p.description_tronc}
-                                description={p.description}
-                              />
                               <ConstructeurMagie
                                 type="priere"
                                 zoneEffet={p.zone_effet ?? ""}
@@ -1373,15 +1377,13 @@ const Etape7_Prieres_V2 = ({
                                   </div>
                                 ) : null}
 
-                                {pp.prieres?.description_courte && (
-                                  <p className="text-sm text-muted-foreground">
-                                    {pp.prieres.description_courte}
+                                {(pp.prieres?.resume_condense || pp.prieres?.description) && (
+                                  <p className="whitespace-pre-line text-sm text-muted-foreground">
+                                    {mode === "integral"
+                                      ? pp.prieres?.description ?? pp.prieres?.resume_condense
+                                      : pp.prieres?.resume_condense ?? pp.prieres?.description}
                                   </p>
                                 )}
-                                <ManuelDepliable
-                                  tronc={pp.prieres?.description_tronc}
-                                  description={pp.prieres?.description_courte}
-                                />
 
                                 {/* Effet calculé AVANT → APRÈS (live) */}
                                 <AvantApres
