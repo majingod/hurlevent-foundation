@@ -24,7 +24,7 @@ export default function BasculeAbregeIntegral({ mode, onToggle, className }: Pro
         aria-checked={integral}
         aria-label="Basculer entre texte abrégé et texte intégral"
         onClick={onToggle}
-        className="relative rounded-full border border-border transition-colors"
+        className="relative rounded-full border border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         style={{ width: 46, height: 26, background: integral ? "#c9a84c" : "hsl(0 0% 14%)" }}
       >
         <span
