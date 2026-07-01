@@ -2036,8 +2036,12 @@ const Etape5_Competences_V2 = ({
             {renderPrereqManquantHeader(niv, blocData, st)}
           </Label>
         </div>
-        {niv.description && (
-          <p className="text-xs text-muted-foreground">{niv.description}</p>
+        {(niv.description_courte || niv.description) && (
+          <p className="whitespace-pre-line text-xs text-muted-foreground">
+            {mode === "integral"
+              ? niv.description ?? niv.description_courte
+              : niv.description_courte ?? niv.description}
+          </p>
         )}
         {renderLignePrereqNiveau(niv, blocData)}
       </div>
@@ -2122,8 +2126,12 @@ const Etape5_Competences_V2 = ({
               </div>
               {open && (
                 <div className="space-y-2 border-t border-border/60 px-3 py-2 text-xs">
-                  {niv.description && (
-                    <p className="text-muted-foreground">{niv.description}</p>
+                  {(niv.description_courte || niv.description) && (
+                    <p className="whitespace-pre-line text-muted-foreground">
+                      {mode === "integral"
+                        ? niv.description ?? niv.description_courte
+                        : niv.description_courte ?? niv.description}
+                    </p>
                   )}
                   {st.acquis && (
                     <p className="flex items-center gap-1 text-[11px] text-gold-accent">
@@ -2624,8 +2632,12 @@ const Etape5_Competences_V2 = ({
                   )}
                   {xpInsuff1 && renderManqueXp(niv1.cout_xp)}
                 </span>
-                {niv1.description && (
-                  <span className="text-muted-foreground">{niv1.description}</span>
+                {(niv1.description_courte || niv1.description) && (
+                  <span className="whitespace-pre-line text-muted-foreground">
+                    {mode === "integral"
+                      ? niv1.description ?? niv1.description_courte
+                      : niv1.description_courte ?? niv1.description}
+                  </span>
                 )}
               </Label>
             </div>
