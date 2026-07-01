@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ReligionDetails from "@/components/shared/ReligionDetails";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
@@ -666,6 +668,7 @@ const Etape5_Competences_V2 = ({
     choixAchat?: string;
   } | null>(null);
   const [masterName, setMasterName] = useState("");
+  const { mode, toggleMode } = useModeAffichage();
 
   // Sous-accordéons des options à choix (Pure1b). Clé absente => repli par
   // défaut sauf si l'option a un achat (D2 : auto-ouverture). Valeur explicite
@@ -2454,7 +2457,6 @@ const Etape5_Competences_V2 = ({
             ? (religions ?? []).find((r) => r.id === opt.value)
             : undefined;
           const detKey = `reldet-${comp.id}-${opt.value}`;
-          const manKey = `relman-${comp.id}-${opt.value}`;
           const detOuvert = !!optionsOuvertes[detKey];
           return (
             <div
@@ -2523,10 +2525,9 @@ const Etape5_Competences_V2 = ({
                 <div className="border-t border-border/60 p-3">
                   <ReligionDetails
                     religion={religionObj}
-                    isManuelOpen={!!optionsOuvertes[manKey]}
-                    onToggleManuel={() =>
-                      toggleOption(manKey, !!optionsOuvertes[manKey])
-                    }
+                    isManuelOpen={mode === "integral"}
+                    onToggleManuel={() => {}}
+                    hideManuelButton
                   />
                 </div>
               )}
@@ -2932,6 +2933,8 @@ const Etape5_Competences_V2 = ({
       <h2 className="font-heading text-xl font-semibold text-foreground">
         Achat de compétences
       </h2>
+
+      <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
 
       <IntroEtape
         storageKey="hv-e5-intro-replie"
