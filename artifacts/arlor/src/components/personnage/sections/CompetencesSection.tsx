@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
+import type { ModeAffichage } from "@/contexts/ModeAffichageContext";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { resoudreChoixAffichage } from "./helpers";
 import type { CompetenceGroupee } from "./types";
@@ -9,58 +10,42 @@ interface CompetencesSectionProps {
   competencesGroupees: CompetenceGroupee[];
   langues: { id: string; nom: string | null }[] | undefined;
   religions: { id: string; nom: string | null }[] | undefined;
-  isManuelOpen: (id: string) => boolean;
-  toggleManuel: (id: string) => void;
-  isAllOpen: (ids: string[]) => boolean;
-  toggleAll: (ids: string[]) => void;
 }
 
-// Verbatim concaténé par compétence : 1 entrée par niveau acquis (dédup),
-// triée par niveau. Couvre les 4 patterns type_achat (validé s87 ②).
-const construireVerbatim = (comp: CompetenceGroupee): string => {
+// Textes par niveau acquis : 1 entrée par niveau (dédup), triée par niveau.
+// Swap canon s299 : description_courte_niveau_acquis (abrégé) ⇄
+// description_niveau_acquis (intégral). Couvre les 4 patterns type_achat.
+const textesParNiveau = (comp: CompetenceGroupee, mode: ModeAffichage): [number, string][] => {
   const parNiveau = new Map<number, string>();
   for (const r of comp.rows) {
-    if (r.description_niveau_acquis && !parNiveau.has(r.niveau_acquis)) {
-      parNiveau.set(r.niveau_acquis, r.description_niveau_acquis);
+    const texte = mode === "abrege" ? r.description_courte_niveau_acquis : r.description_niveau_acquis;
+    if (texte && !parNiveau.has(r.niveau_acquis)) {
+      parNiveau.set(r.niveau_acquis, texte);
     }
   }
-  return [...parNiveau.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([niveau, desc]) => `Niveau ${niveau} — ${desc}`)
-    .join("\n\n");
+  return [...parNiveau.entries()].sort(([a], [b]) => a - b);
 };
 
 export const CompetencesSection = ({
   competencesGroupees,
   langues,
   religions,
-  isManuelOpen,
-  toggleManuel,
-  isAllOpen,
-  toggleAll,
 }: CompetencesSectionProps) => {
+  // Patron canon abrégé ⇄ intégral (s299) : competence_resume_condense ⇄
+  // competence_description sur TOUS les sites (les 4 patterns + fallback).
+  const { mode } = useModeAffichage();
+
   if (competencesGroupees.length === 0) {
     return <p className="text-center py-8 text-muted-foreground">Aucune compétence acquise.</p>;
   }
 
-  const verbatimParComp = new Map<string, string>(
-    competencesGroupees.map((c) => [c.competence_id, construireVerbatim(c)]),
-  );
-  const idsVerbatim = competencesGroupees
-    .filter((c) => (verbatimParComp.get(c.competence_id) ?? "").length > 0)
-    .map((c) => c.competence_id);
-
   return (
     <div className="space-y-3">
-      {idsVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(idsVerbatim)}
-          onToggle={() => toggleAll(idsVerbatim)}
-          title="Cet onglet"
-          subtitle="Verbatim du manuel pour les compétences"
-        />
-      )}
       {competencesGroupees.map((comp) => {
+        const descriptionAffichee =
+          mode === "abrege" ? comp.competence_resume_condense : comp.competence_description;
+        const niveaux = textesParNiveau(comp, mode);
+
         const headerBadges = (
           <div className="flex items-center gap-2 flex-shrink-0">
             {comp.xp_total === 0 ? (
@@ -89,8 +74,8 @@ export const CompetencesSection = ({
               {/* PATTERN 1 — simple : sections par niveau acquis */}
               {comp.type_achat === "simple" && (
                 <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
-                  {comp.competence_description && (
-                    <p className="whitespace-pre-line">{comp.competence_description}</p>
+                  {descriptionAffichee && (
+                    <p className="whitespace-pre-line">{descriptionAffichee}</p>
                   )}
                   {comp.rows.map((r) => (
                     <div key={r.id} className="space-y-1">
@@ -114,8 +99,8 @@ export const CompetencesSection = ({
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">× {comp.rows.length} achats</Badge>
                   </div>
-                  {comp.competence_description && (
-                    <p className="whitespace-pre-line">{comp.competence_description}</p>
+                  {descriptionAffichee && (
+                    <p className="whitespace-pre-line">{descriptionAffichee}</p>
                   )}
                 </div>
               )}
@@ -140,8 +125,8 @@ export const CompetencesSection = ({
                       })}
                     </ul>
                   </div>
-                  {comp.competence_description && (
-                    <p className="whitespace-pre-line">{comp.competence_description}</p>
+                  {descriptionAffichee && (
+                    <p className="whitespace-pre-line">{descriptionAffichee}</p>
                   )}
                 </div>
               )}
@@ -149,8 +134,8 @@ export const CompetencesSection = ({
               {/* PATTERN 4 — multiple_avec_choix_par_niveau : groupé par niveau + liste de choix */}
               {comp.type_achat === "multiple_avec_choix_par_niveau" && (
                 <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
-                  {comp.competence_description && (
-                    <p className="whitespace-pre-line">{comp.competence_description}</p>
+                  {descriptionAffichee && (
+                    <p className="whitespace-pre-line">{descriptionAffichee}</p>
                   )}
                   {Object.entries(
                     comp.rows.reduce<Record<number, typeof comp.rows>>((acc, r) => {
@@ -195,8 +180,8 @@ export const CompetencesSection = ({
                 comp.type_achat !== "multiple_choix_distinct" &&
                 comp.type_achat !== "multiple_avec_choix_par_niveau" && (
                   <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
-                    {comp.competence_description && (
-                      <p className="whitespace-pre-line">{comp.competence_description}</p>
+                    {descriptionAffichee && (
+                      <p className="whitespace-pre-line">{descriptionAffichee}</p>
                     )}
                     {comp.rows.map((r) => {
                       const choixResolu = resoudreChoixAffichage(r.choix_achat, langues, religions);
@@ -220,12 +205,16 @@ export const CompetencesSection = ({
                   </div>
                 )}
 
-              {/* Toggle « Texte du manuel » — verbatim par niveau replié (s87 ①) */}
-              <ToggleManuel
-                texte={verbatimParComp.get(comp.competence_id)}
-                isOpen={isManuelOpen(comp.competence_id)}
-                onToggle={() => toggleManuel(comp.competence_id)}
-              />
+              {/* Textes du niveau acquis — swap canon (remplace le dépliage additif s87) */}
+              {niveaux.length > 0 && (
+                <div className="border-t border-border/50 pt-3 space-y-2 text-sm text-muted-foreground">
+                  {niveaux.map(([niveau, texte]) => (
+                    <p key={niveau} className="whitespace-pre-line">
+                      <span className="font-medium text-foreground">Niveau {niveau}</span> — {texte}
+                    </p>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         );

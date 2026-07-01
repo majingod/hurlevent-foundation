@@ -3,6 +3,7 @@ import type { PalierSort, EffetInstance } from "@/utils/calculsMagie";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { resoudreChoixAffichage } from "./sections/helpers";
+import { RappelFouillePrint } from "./RappelFouille";
 import type {
   FichePersonnage,
   Trait,
@@ -243,11 +244,15 @@ export const FicheImprimable = ({
       .join(", ");
   };
 
+  // Textes du niveau acquis — canon s299 : Abrégé = description_courte_niveau_acquis,
+  // Intégral = description_niveau_acquis (rendu dans les DEUX variantes).
   const verbatimCompetence = (c: CompetenceGroupee) => {
     const parNiveau = new Map<number, string>();
     c.rows.forEach((r) => {
-      if (r.description_niveau_acquis && !parNiveau.has(r.niveau_acquis)) {
-        parNiveau.set(r.niveau_acquis, r.description_niveau_acquis);
+      const texte =
+        printMode === "fiche" ? r.description_courte_niveau_acquis : r.description_niveau_acquis;
+      if (texte && !parNiveau.has(r.niveau_acquis)) {
+        parNiveau.set(r.niveau_acquis, texte);
       }
     });
     return [...parNiveau.entries()]
@@ -287,7 +292,7 @@ export const FicheImprimable = ({
         {s.portee_choisie && <div className="fp-row"><span className="fp-k">Portée :</span> {s.portee_choisie}</div>}
         {s.duree_choisie && <div className="fp-row"><span className="fp-k">Durée :</span> {s.duree_choisie}</div>}
         <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
-        {descRow(s.sort_description_courte, s.sort_description)}
+        {descRow(s.sort_resume_condense, s.sort_description)}
         {effetRow(s.effet_instance, s.paliers, s.niveau_sort) ?? palierActifRow(s.paliers, s.niveau_sort)}
       </div>
     );
@@ -317,7 +322,7 @@ export const FicheImprimable = ({
         {p.cout_xp_base != null && (
           <div className="fp-row"><span className="fp-k">Coût de lancement :</span> {calculerCoutPS(xp)} PS</div>
         )}
-        {descRow(p.priere_description_courte, p.priere_description)}
+        {descRow(p.priere_resume_condense, p.priere_description)}
         {effetRow(p.effet_instance, p.paliers, p.niveau_priere) ?? palierActifRow(p.paliers, p.niveau_priere)}
       </div>
     );
@@ -363,6 +368,9 @@ export const FicheImprimable = ({
         {fiche.race_nom ?? ""}
         {fiche.race_nom_latin ? ` (${fiche.race_nom_latin})` : ""} — {fiche.classe_nom ?? ""} — Niveau {fiche.niveau}
       </p>
+
+      {/* 0. Règles de fouille (s299) — en haut des deux variantes */}
+      <RappelFouillePrint variante={printMode === "fiche" ? "abrege" : "integral"} />
 
       {/* 1. Informations générales + Historique/Âme (2 cartes) */}
       <h2>Informations générales</h2>
@@ -439,7 +447,7 @@ export const FicheImprimable = ({
           {fiche.race_exigences_costume && (
             <div className="fp-muted"><strong>Exigences de costume :</strong> {fiche.race_exigences_costume}</div>
           )}
-          {desc(fiche.race_description_courte, fiche.race_description)}
+          {desc(fiche.race_resume_condense, fiche.race_description)}
         </div>
         <div className="fp-card">
           <div className="fp-card-title">
@@ -448,12 +456,12 @@ export const FicheImprimable = ({
           {fiche.classe_role_combat && (
             <div className="fp-muted"><strong>Rôle de combat :</strong> {fiche.classe_role_combat}</div>
           )}
-          {desc(fiche.classe_description_courte, fiche.classe_description)}
+          {desc(fiche.classe_resume_condense, fiche.classe_description)}
         </div>
         {traits.map((t) => (
           <div className="fp-card" key={t.id}>
             <div className="fp-card-title">Trait — {t.nom}</div>
-            {t.description && <div className="fp-desc">{t.description}</div>}
+            {desc(t.resume_condense, t.texte_manuel)}
           </div>
         ))}
       </div>
@@ -480,7 +488,8 @@ export const FicheImprimable = ({
                     {detail ? ` • ${detail}` : ""}
                     {statut}
                   </div>
-                  {printMode === "manuel" && verbatimCompetence(c)}
+                  {desc(c.competence_resume_condense, c.competence_description)}
+                  {verbatimCompetence(c)}
                 </div>
               );
             })}
@@ -522,7 +531,7 @@ export const FicheImprimable = ({
                 {a.effet_maitrise && (
                   <div className="fp-row"><span className="fp-k">⭐ Maîtrise :</span> {a.cout_ps_maitrise != null ? `${a.effet_maitrise} (${a.cout_ps_maitrise} PS)` : a.effet_maitrise}</div>
                 )}
-                {descRow(a.description, a.texte_manuel)}
+                {descRow(a.resume_condense, a.texte_manuel)}
               </div>
             ))}
           </div>
@@ -547,22 +556,29 @@ export const FicheImprimable = ({
                           <div className="fp-card-title">{r.nom}</div>
                           <span className="fp-badge">{xpBadge(r.xp_depense)}</span>
                         </div>
-                        {r.effet && <div className="fp-row"><span className="fp-k">Effet :</span> {r.effet}</div>}
-                        {r.formule && (
-                          <div className="fp-row fp-formula"><span className="fp-k">Formule :</span> {r.formule}</div>
+                        {/* Canon s299 : Abrégé = resume_condense seul ; Intégral = détail
+                            actuel (le teaser r.description n'est plus imprimé). */}
+                        {printMode === "fiche" ? (
+                          r.resume_condense && <div className="fp-row fp-desc">{r.resume_condense}</div>
+                        ) : (
+                          <>
+                            {r.effet && <div className="fp-row"><span className="fp-k">Effet :</span> {r.effet}</div>}
+                            {r.formule && (
+                              <div className="fp-row fp-formula"><span className="fp-k">Formule :</span> {r.formule}</div>
+                            )}
+                            {composants.length > 0 && (
+                              <div className="fp-row">
+                                <span className="fp-k">Ingrédients :</span> {composants.map(formaterComposant).join(" · ")}
+                              </div>
+                            )}
+                            {manips.length > 0 && (
+                              <div className="fp-row">
+                                <span className="fp-k">Préparation :</span>{" "}
+                                {manips.map((e, i) => `${i + 1}. ${e}`).join("  ")}
+                              </div>
+                            )}
+                          </>
                         )}
-                        {composants.length > 0 && (
-                          <div className="fp-row">
-                            <span className="fp-k">Ingrédients :</span> {composants.map(formaterComposant).join(" · ")}
-                          </div>
-                        )}
-                        {manips.length > 0 && (
-                          <div className="fp-row">
-                            <span className="fp-k">Préparation :</span>{" "}
-                            {manips.map((e, i) => `${i + 1}. ${e}`).join("  ")}
-                          </div>
-                        )}
-                        {r.description && <div className="fp-row fp-desc">{r.description}</div>}
                       </div>
                     );
                   })}
@@ -657,7 +673,7 @@ export const FicheImprimable = ({
                     {niveauForge >= 3 && (
                       <div className="fp-row fp-desc"><em>Accès aux matériaux légendaires disponible.</em></div>
                     )}
-                    {o.description && <div className="fp-row fp-desc">{o.description}</div>}
+                    {descRow(o.resume_condense, o.description)}
                   </div>
                 ))}
               </div>
@@ -722,7 +738,7 @@ export const FicheImprimable = ({
                     {niveauJoaillerie >= 3 && (
                       <div className="fp-row fp-desc"><em>Accès aux matériaux légendaires disponible.</em></div>
                     )}
-                    {o.description && <div className="fp-row fp-desc">{o.description}</div>}
+                    {descRow(o.resume_condense, o.description)}
                   </div>
                 ))}
               </div>

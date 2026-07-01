@@ -1,70 +1,52 @@
 import { Badge } from "@/components/ui/badge";
-import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
 import { EffetBox } from "@/components/shared/EffetBox";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { Assemblage } from "./types";
 
 interface AssemblagesSectionProps {
   assemblages: Assemblage[] | undefined;
-  isManuelOpen: (id: string) => boolean;
-  toggleManuel: (id: string) => void;
-  isAllOpen: (ids: string[]) => boolean;
-  toggleAll: (ids: string[]) => void;
 }
 
-export const AssemblagesSection = ({
-  assemblages,
-  isManuelOpen,
-  toggleManuel,
-  isAllOpen,
-  toggleAll,
-}: AssemblagesSectionProps) => {
+export const AssemblagesSection = ({ assemblages }: AssemblagesSectionProps) => {
+  // Patron canon abrégé ⇄ intégral (s299) : resume_condense ⇄ texte_manuel.
+  // La colonne description ne s'affiche plus (précédent Étape 8 s298).
+  const { mode } = useModeAffichage();
+
   if (!assemblages || assemblages.length === 0) {
     return <p className="text-center py-8 text-muted-foreground">Aucun assemblage de runes.</p>;
   }
 
-  const idsVerbatim = assemblages.filter((a) => a.texte_manuel).map((a) => a.id);
-
   return (
     <div className="space-y-3">
-      {idsVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(idsVerbatim)}
-          onToggle={() => toggleAll(idsVerbatim)}
-          title="Cet onglet"
-          subtitle="Verbatim du manuel pour les assemblages"
-        />
-      )}
-      {assemblages.map((asm) => (
-        <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium text-foreground">{asm.nom}</p>
-            {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
-            {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
-            {asm.duree && <Badge variant="outline" className="text-xs">Durée : {asm.duree}</Badge>}
-          </div>
-          {asm.runes_requises && asm.runes_requises.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {asm.runes_requises.map((rune, i) => (
-                <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
-              ))}
+      {assemblages.map((asm) => {
+        const texte = mode === "abrege" ? asm.resume_condense : asm.texte_manuel;
+        return (
+          <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium text-foreground">{asm.nom}</p>
+              {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
+              {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
+              {asm.duree && <Badge variant="outline" className="text-xs">Durée : {asm.duree}</Badge>}
             </div>
-          )}
-          {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
-          {asm.effet_maitrise && (
-            <EffetBox titre="⭐ Maîtrise">
-              {asm.cout_ps_maitrise != null
-                ? `${asm.effet_maitrise} (${asm.cout_ps_maitrise} PS)`
-                : asm.effet_maitrise}
-            </EffetBox>
-          )}
-          {asm.description && <p className="text-muted-foreground whitespace-pre-line">{asm.description}</p>}
-          <ToggleManuel
-            texte={asm.texte_manuel}
-            isOpen={isManuelOpen(asm.id)}
-            onToggle={() => toggleManuel(asm.id)}
-          />
-        </div>
-      ))}
+            {asm.runes_requises && asm.runes_requises.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {asm.runes_requises.map((rune, i) => (
+                  <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">{rune}</Badge>
+                ))}
+              </div>
+            )}
+            {asm.effet && <p><span className="font-medium text-foreground">Effet :</span> {asm.effet}</p>}
+            {asm.effet_maitrise && (
+              <EffetBox titre="⭐ Maîtrise">
+                {asm.cout_ps_maitrise != null
+                  ? `${asm.effet_maitrise} (${asm.cout_ps_maitrise} PS)`
+                  : asm.effet_maitrise}
+              </EffetBox>
+            )}
+            {texte && <p className="text-muted-foreground whitespace-pre-line">{texte}</p>}
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { PastilleType } from "@/components/shared/PastilleType";
 import { calculerBonusNiveau, calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
 import type { PalierSort } from "@/utils/calculsMagie";
@@ -10,19 +10,11 @@ import type { Sort } from "./types";
 
 interface SortsSectionProps {
   sorts: Sort[];
-  isManuelOpen: (id: string) => boolean;
-  toggleManuel: (id: string) => void;
-  isAllOpen: (ids: string[]) => boolean;
-  toggleAll: (ids: string[]) => void;
 }
 
-export const SortsSection = ({
-  sorts,
-  isManuelOpen,
-  toggleManuel,
-  isAllOpen,
-  toggleAll,
-}: SortsSectionProps) => {
+export const SortsSection = ({ sorts }: SortsSectionProps) => {
+  // Patron canon abrégé ⇄ intégral (s299) : sort_resume_condense ⇄ sort_description.
+  const { mode } = useModeAffichage();
   // État dépliage des paliers (rendu « effets calculés ») — Set manuel par id.
   const [paliersOuverts, setPaliersOuverts] = useState<Set<string>>(new Set());
   const togglePaliers = (id: string) =>
@@ -36,18 +28,8 @@ export const SortsSection = ({
     return <p className="text-center py-8 text-muted-foreground">Aucun sort arcanique.</p>;
   }
 
-  const idsVerbatim = sorts.filter((s) => s.sort_description).map((s) => s.id);
-
   return (
     <div className="space-y-3">
-      {idsVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(idsVerbatim)}
-          onToggle={() => toggleAll(idsVerbatim)}
-          title="Cet onglet"
-          subtitle="Verbatim du manuel pour les sorts"
-        />
-      )}
       {sorts.map((sort) => {
         const paliers = sort.paliers as PalierSort[] | null;
         const segments = rendreEffetInstance(sort.effet_instance, paliers, sort.niveau_sort);
@@ -70,6 +52,8 @@ export const SortsSection = ({
           bonusRayon && bonusRayon.gratuit
             ? ` (+${bonusRayon.n} ${bonusRayon.unite}${bonusRayon.n > 1 ? "s" : ""} gratuit${bonusRayon.n > 1 ? "s" : ""})`
             : "";
+        // Swap canon : le texte affiché REMPLACE (jamais empilé).
+        const texteSort = mode === "abrege" ? sort.sort_resume_condense : sort.sort_description;
 
         return (
           <Card key={sort.id}>
@@ -168,6 +152,12 @@ export const SortsSection = ({
                       )}
                     </div>
                   )}
+
+                  {texteSort && (
+                    <p className="border-t border-border/50 pt-2 text-sm text-foreground/90 whitespace-pre-line">
+                      {texteSort}
+                    </p>
+                  )}
                 </>
               ) : (
                 <>
@@ -183,21 +173,15 @@ export const SortsSection = ({
                     </p>
                   )}
 
-                  {(sort.sort_description_courte ?? sort.sort_description) && (
+                  {texteSort && (
                     <p className="border-t border-border/50 pt-2 text-sm text-foreground/90 whitespace-pre-line">
-                      {sort.sort_description_courte ?? sort.sort_description}
+                      {texteSort}
                     </p>
                   )}
 
                   <PaliersDepliable paliers={paliers} niveau={sort.niveau_sort} />
                 </>
               )}
-
-              <ToggleManuel
-                texte={sort.sort_description}
-                isOpen={isManuelOpen(sort.id)}
-                onToggle={() => toggleManuel(sort.id)}
-              />
             </CardContent>
           </Card>
         );

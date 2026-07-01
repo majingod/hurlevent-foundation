@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock } from "lucide-react";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { ArtisanatEtat, ObjetForge, ReparationForge } from "./types";
 
 interface ForgeSectionProps {
@@ -13,6 +14,9 @@ export const ForgeSection = ({
   objetsForge,
   reparationsForge,
 }: ForgeSectionProps) => {
+  // Patron canon abrégé ⇄ intégral (s299) : resume_condense ⇄ description.
+  const { mode } = useModeAffichage();
+
   return (artisanatEtat?.niveau_forge ?? 0) < 1 ? (
     <p className="text-center py-8 text-muted-foreground">Aucune compétence en forge.</p>
   ) : (
@@ -34,7 +38,11 @@ export const ForgeSection = ({
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-1 text-xs pt-0">
-                  {obj.description && <p className="text-muted-foreground">{obj.description}</p>}
+                  {(mode === "abrege" ? obj.resume_condense : obj.description) && (
+                    <p className="text-muted-foreground whitespace-pre-line">
+                      {mode === "abrege" ? obj.resume_condense : obj.description}
+                    </p>
+                  )}
                   {obj.materiaux_communs && (
                     <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {obj.materiaux_communs}</p>
                   )}
