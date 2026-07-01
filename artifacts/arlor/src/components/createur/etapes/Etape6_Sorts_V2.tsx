@@ -30,7 +30,6 @@ import IntroEtape, {
 import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 import Astuce from "@/components/createur/aide/Astuce";
-import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
@@ -78,6 +77,8 @@ interface SortJoint {
   bonus_niveau: BonusNiveau | null;
   description_courte: string | null;
   description_tronc: string | null;
+  resume_condense: string | null;
+  description: string | null;
   paliers: unknown;
   type_sort: string | null;
   effet_instance: unknown;
@@ -300,7 +301,7 @@ const Etape6_Sorts_V2 = ({
       const { data, error } = await supabase
         .from("personnage_sorts")
         .select(
-          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau, description_courte, description_tronc, paliers, type_sort, effet_instance)",
+          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau, resume_condense, description, description_courte, description_tronc, paliers, type_sort, effet_instance)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
@@ -982,17 +983,13 @@ const Etape6_Sorts_V2 = ({
 
                           {selectionne && (
                             <div className="space-y-2.5 border-l-[3px] border-l-primary px-3 pb-4 pt-1">
-                              {s.description_courte && (
-                                <p className="text-sm text-muted-foreground">
-                                  {s.description_courte}
+                              {(s.resume_condense || s.description) && (
+                                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                                  {mode === "integral"
+                                    ? s.description ?? s.resume_condense
+                                    : s.resume_condense ?? s.description}
                                 </p>
                               )}
-                              <ManuelDepliable
-                                tronc={s.description_tronc}
-                                description={s.description}
-                                forceOpen={mode === "integral"}
-                                hideButton
-                              />
                               <ConstructeurMagie
                                 type="sort"
                                 zoneEffet={s.zone_effet ?? ""}
@@ -1311,16 +1308,13 @@ const Etape6_Sorts_V2 = ({
                                   </div>
                                 ) : null}
 
-                                {ps.sorts?.description_courte && (
-                                  <p className="text-sm text-muted-foreground">
-                                    {ps.sorts.description_courte}
+                                {(ps.sorts?.resume_condense || ps.sorts?.description) && (
+                                  <p className="whitespace-pre-line text-sm text-muted-foreground">
+                                    {mode === "integral"
+                                      ? ps.sorts?.description ?? ps.sorts?.resume_condense
+                                      : ps.sorts?.resume_condense ?? ps.sorts?.description}
                                   </p>
                                 )}
-                                <ManuelDepliable
-                                  tronc={ps.sorts?.description_tronc}
-                                  forceOpen={mode === "integral"}
-                                  hideButton
-                                />
 
                                 {/* Effet calculé AVANT → APRÈS (live) */}
                                 <AvantApres
