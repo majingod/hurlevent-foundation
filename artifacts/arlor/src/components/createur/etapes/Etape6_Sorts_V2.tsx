@@ -31,6 +31,7 @@ import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 import Astuce from "@/components/createur/aide/Astuce";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
@@ -234,7 +235,7 @@ const Etape6_Sorts_V2 = ({
   };
 
   // Cercles disponibles (vue_cercles_disponibles)
-  const { data: cerclesDisponibles, isLoading: loadingCercles } = useQuery({
+  const { data: cerclesDisponibles, isLoading: loadingCercles, isError: cerclesError, refetch: refetchCercles } = useQuery({
     queryKey: ["cercles-disponibles", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -788,6 +789,15 @@ const Etape6_Sorts_V2 = ({
       <JaugeXP xpDisponible={xpDisponible} coutEnCours={coutEnCours} />
 
       <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {(cerclesError || sortsQueries.some((q) => q.isError)) && (
+        <ErreurChargement
+          onRetry={() => {
+            refetchCercles();
+            sortsQueries.forEach((q) => q.refetch());
+          }}
+        />
+      )}
 
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">

@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import JaugeXP from "@/components/createur/aide/JaugeXP";
 import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
@@ -108,7 +109,7 @@ const Etape2_V2 = ({
   const necessiteJustification = estChimeride || estNonRace;
 
   // -- Données -------------------------------------------------------------
-  const { data: races = [], isLoading: racesLoading } = useQuery({
+  const { data: races = [], isLoading: racesLoading, isError: racesError, refetch: refetchRaces } = useQuery({
     queryKey: ["v2-races"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -573,6 +574,8 @@ const Etape2_V2 = ({
       </div>
 
       <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {racesError && <ErreurChargement onRetry={() => refetchRaces()} />}
 
       {racesLoading ? (
         <div className="flex items-center gap-2 text-sm text-white/50">

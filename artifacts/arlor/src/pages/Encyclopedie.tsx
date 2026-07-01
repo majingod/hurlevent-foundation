@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
 import { EncyclopedieHub, EncyclopedieSwitcher } from "@/components/encyclopedie/EncyclopedieNav";
@@ -263,16 +264,7 @@ export default function Encyclopedie() {
       {loading ? (
         <p className="text-muted-foreground text-center py-12">Chargement…</p>
       ) : erreur ? (
-        <div className="text-center py-12">
-          <p className="text-sm mb-4" style={{ color: "#e6b3b3" }}>{erreur}</p>
-          <button
-            onClick={() => setReloadKey((k) => k + 1)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gold/40 px-4 py-2 text-sm text-gold hover:border-gold transition-all"
-            style={{ background: "rgba(201,168,76,0.06)" }}
-          >
-            Réessayer
-          </button>
-        </div>
+        <ErreurChargement message={erreur} onRetry={() => setReloadKey((k) => k + 1)} />
       ) : selItem ? (
         <div>
           <button

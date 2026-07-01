@@ -31,6 +31,7 @@ import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 import Astuce from "@/components/createur/aide/Astuce";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
@@ -278,7 +279,7 @@ const Etape7_Prieres_V2 = ({
   const conditionsRemplies = niveauAcquisition >= 1;
 
   // Domaines disponibles (vue_domaines_disponibles)
-  const { data: domainesDisponibles, isLoading: loadingDomaines } = useQuery({
+  const { data: domainesDisponibles, isLoading: loadingDomaines, isError: domainesError, refetch: refetchDomaines } = useQuery({
     queryKey: ["domaines-disponibles", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -848,6 +849,15 @@ const Etape7_Prieres_V2 = ({
       <JaugeXP xpDisponible={xpDisponible} coutEnCours={coutEnCours} />
 
       <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {(domainesError || prieresQueries.some((q) => q.isError)) && (
+        <ErreurChargement
+          onRetry={() => {
+            refetchDomaines();
+            prieresQueries.forEach((q) => q.refetch());
+          }}
+        />
+      )}
 
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
