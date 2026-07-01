@@ -128,7 +128,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       const { data, error } = await supabase
         .from("classes")
         .select(
-          "id, nom, description, description_courte, emoji, role_combat, pv_depart, ps_depart, competences_gratuites"
+          "id, nom, description, resume_condense, emoji, role_combat, pv_depart, ps_depart, competences_gratuites"
         )
         .eq("est_actif", true)
         .order("nom");
@@ -748,8 +748,8 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
             const gratuites = competencesParClasseId[c.id] ?? [];
             const texteClasse =
               mode === "integral"
-                ? c.description ?? c.description_courte
-                : c.description_courte ?? c.description;
+                ? c.description ?? c.resume_condense
+                : c.resume_condense ?? c.description;
             return (
               <div
                 key={c.id}

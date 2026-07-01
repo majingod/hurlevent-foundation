@@ -47,7 +47,7 @@ interface Race {
   nom: string;
   nom_latin: string | null;
   description: string | null;
-  description_courte: string | null;
+  resume_condense: string | null;
   xp_depart: number | null;
   emoji: string | null;
   esperance_vie: string | null;
@@ -113,7 +113,7 @@ const Etape2_V2 = ({
       const { data, error } = await supabase
         .from("races")
         .select(
-          "id, nom, nom_latin, description, description_courte, xp_depart, emoji, esperance_vie, exigences_costume, restrictions_classes, nb_traits_raciaux, est_jouable",
+          "id, nom, nom_latin, description, resume_condense, xp_depart, emoji, esperance_vie, exigences_costume, restrictions_classes, nb_traits_raciaux, est_jouable",
         )
         .eq("est_actif", true)
         .eq("est_jouable", true)
@@ -585,8 +585,8 @@ const Etape2_V2 = ({
             const estNonR = r.id === NON_RACES_ID;
             const texteRace =
               mode === "integral"
-                ? r.description ?? r.description_courte
-                : r.description_courte ?? r.description;
+                ? r.description ?? r.resume_condense
+                : r.resume_condense ?? r.description;
             return (
               <div
                 key={r.id}
@@ -629,9 +629,9 @@ const Etape2_V2 = ({
                         />
                       </span>
                     </div>
-                    {!ouvert && (r.description_courte ?? r.description) && (
+                    {!ouvert && (r.resume_condense ?? r.description) && (
                       <p className="mt-1.5 text-[12.5px] leading-snug text-white/60">
-                        {r.description_courte ?? r.description}
+                        {r.resume_condense ?? r.description}
                       </p>
                     )}
                   </button>
