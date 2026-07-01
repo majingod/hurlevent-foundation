@@ -18,7 +18,7 @@ interface Jalon {
 }
 
 // Ordre d'affichage des mois dans la section « Fait » (plus récent d'abord).
-const PERIODES: string[] = ["Juin 2026", "Mai 2026", "Avril 2026 · Mise en route"];
+const PERIODES: string[] = ["Juillet 2026", "Juin 2026", "Mai 2026", "Avril 2026 · Mise en route"];
 
 const JALONS: Jalon[] = [
   // ===== En cours =====
@@ -27,6 +27,22 @@ const JALONS: Jalon[] = [
     titre: "Page « Nouveautés »",
     description:
       "La page que tu lis : un espace de transparence sur l'évolution de la plateforme.",
+  },
+
+  // ===== Fait — Juillet 2026 =====
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Création alignée sur l'encyclopédie",
+    description:
+      "La création de personnage affiche désormais la version abrégée de l'encyclopédie — le même texte partout — avec l'interrupteur abrégé ↔ intégral pour races, classes, traits, compétences, sorts et prières.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Alerte de nouvelle version",
+    description:
+      "Quand une nouvelle version de l'app est prête, un bandeau propose de recharger — fini le « vider le cache » ou réinstaller.",
   },
 
   // ===== Fait — Juin 2026 =====
@@ -190,9 +206,9 @@ const JALONS: Jalon[] = [
   },
   {
     statut: "prevu",
-    titre: "Affichage court / complet généralisé",
+    titre: "Abrégé / intégral sur la fiche de personnage",
     description:
-      "Un seul interrupteur court ↔ complet pour les textes de règles, partout sur la plateforme.",
+      "Amener le même interrupteur abrégé ↔ intégral sur la fiche de personnage.",
   },
 ];
 
@@ -323,7 +339,7 @@ export default function MisesAJour() {
         >
           page officielle du GN
         </a>
-        . Dernière mise à jour : 21 juin 2026.
+        . Dernière mise à jour : 1er juillet 2026.
       </p>
     </div>
   );
