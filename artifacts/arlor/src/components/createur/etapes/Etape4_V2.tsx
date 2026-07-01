@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BookOpen, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import ModaleChangementClasse, {
   type DChangementClasse,
 } from "@/components/createur/ModaleChangementClasse";
 import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 interface CompetenceGratuite {
@@ -56,9 +58,9 @@ interface ApercuChangementClasse {
 
 const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [submitting, setSubmitting] = useState(false);
+  const { mode, toggleMode } = useModeAffichage();
   const [classeIdSelectionnee, setClasseIdSelectionnee] = useState<string>("");
   const [classesOuvertes, setClassesOuvertes] = useState<Set<string>>(new Set());
-  const [manuelClasses, setManuelClasses] = useState<Set<string>>(new Set());
   const [detailsComp, setDetailsComp] = useState<Set<string>>(new Set());
   const [fichesReligion, setFichesReligion] = useState<Set<string>>(new Set());
   const [manuelReligion, setManuelReligion] = useState<Set<string>>(new Set());
@@ -734,6 +736,8 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
           </p>
         </div>
 
+        <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
         {isLoading && (
           <p className="text-white/50">Chargement des classes…</p>
         )}
@@ -742,8 +746,11 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
           {classesAffichees.map((c: any) => {
             const selectionne = classeIdSelectionnee === c.id;
             const ouverte = classesOuvertes.has(c.id);
-            const manuelOuvert = manuelClasses.has(c.id);
             const gratuites = competencesParClasseId[c.id] ?? [];
+            const texteClasse =
+              mode === "integral"
+                ? c.description ?? c.description_courte
+                : c.description_courte ?? c.description;
             return (
               <div
                 key={c.id}
@@ -762,7 +769,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                         setClasseIdSelectionnee("");
                       } else {
                         setClasseIdSelectionnee(c.id);
-                        setClassesOuvertes((prev) => new Set(prev).add(c.id));
+                        setClassesOuvertes(new Set([c.id]));
                         // PR4 persist-au-choix : persiste classe_id en brouillon.
                         // Garde !perso?.classe_id => 1er choix en creation
                         // uniquement (evite la cascade changer_classe en
@@ -788,7 +795,11 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                   />
                   <button
                     type="button"
-                    onClick={() => toggleSet(setClassesOuvertes, c.id)}
+                    onClick={() =>
+                      setClassesOuvertes((prev) =>
+                        prev.has(c.id) ? new Set() : new Set([c.id]),
+                      )
+                    }
                     aria-expanded={ouverte}
                     className="min-w-0 flex-1 text-left"
                   >
@@ -821,34 +832,10 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
 
                 {ouverte && (
                   <div className="space-y-3 px-3 pb-3 pl-12">
-                    {c.description_courte && (
-                      <p className="text-sm leading-relaxed text-white/75">
-                        {c.description_courte}
+                    {texteClasse && (
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-white/75">
+                        {texteClasse}
                       </p>
-                    )}
-                    {c.description && (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => toggleSet(setManuelClasses, c.id)}
-                          aria-expanded={manuelOuvert}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold"
-                        >
-                          <BookOpen className="h-3.5 w-3.5" /> Texte du manuel
-                          <ChevronRight
-                            className={`h-3.5 w-3.5 transition-transform ${
-                              manuelOuvert ? "rotate-90" : ""
-                            }`}
-                          />
-                        </button>
-                        {manuelOuvert && (
-                          <div className="mt-2 border-l-2 border-gold/50 pl-3">
-                            <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/75">
-                              {c.description}
-                            </p>
-                          </div>
-                        )}
-                      </div>
                     )}
 
                     {gratuites.length > 0 && (
