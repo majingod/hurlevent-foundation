@@ -21,7 +21,9 @@ import { estAssemblageAcquis } from "@/lib/acquisCampagne";
 import { QuickFacts } from "@/components/shared/QuickFacts";
 import { EffetBox } from "@/components/shared/EffetBox";
 import { BlocMaitrise } from "@/components/shared/BlocMaitrise";
-import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import JaugeXP from "@/components/createur/aide/JaugeXP";
 import IntroEtape, {
   IntroEtapeItem,
@@ -82,6 +84,7 @@ const Etape8_Assemblages_V2 = ({
   modeCampagne = false,
 }: Etape8Props) => {
   const queryClient = useQueryClient();
+  const { mode, toggleMode } = useModeAffichage();
 
   // PR-C2 : photo de compo (frontière des acquis). Fetch seulement en campagne.
   const { data: photo } = useDernierePhotoCompo(personnageId, modeCampagne);
@@ -106,7 +109,7 @@ const Etape8_Assemblages_V2 = ({
   const hasAssemblage = niveauRunes >= 1;
 
   // Liste des assemblages de runes
-  const { data: assemblages, isLoading: loadingAssemblages } = useQuery({
+  const { data: assemblages, isLoading: loadingAssemblages, isError: assemblagesError, refetch: refetchAssemblages } = useQuery({
     queryKey: ["assemblages-runes"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -383,6 +386,10 @@ const Etape8_Assemblages_V2 = ({
       {/* I4 — Jauge XP sticky */}
       <JaugeXP xpDisponible={xpDisponible} />
 
+      <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {assemblagesError && <ErreurChargement onRetry={() => refetchAssemblages()} />}
+
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
           Assemblages de runes
@@ -575,16 +582,17 @@ const Etape8_Assemblages_V2 = ({
                               },
                             ]}
                           />
-                          {assemblage.description_longue && (
-                            <EffetBox>{assemblage.description_longue}</EffetBox>
+                          {(assemblage.resume_condense || assemblage.texte_manuel) && (
+                            <EffetBox>
+                              {mode === "integral"
+                                ? assemblage.texte_manuel ?? assemblage.resume_condense
+                                : assemblage.resume_condense ?? assemblage.texte_manuel}
+                            </EffetBox>
                           )}
                           <BlocMaitrise
                             effetMaitrise={assemblage.effet_maitrise}
                             coutPsMaitrise={assemblage.cout_ps_maitrise}
                             debloque={maitriseDebloquee}
-                          />
-                          <ManuelDepliable
-                            description={assemblage.texte_manuel}
                           />
                         </div>
                       )}
