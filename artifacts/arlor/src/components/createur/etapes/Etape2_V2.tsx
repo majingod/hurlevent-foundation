@@ -68,6 +68,7 @@ interface TraitDispo {
   nom: string;
   description: string;
   texte_manuel: string | null;
+  resume_condense: string | null;
   cout_xp: number;
 }
 
@@ -166,7 +167,7 @@ const Etape2_V2 = ({
       let q = supabase
         .from("vue_traits_par_race")
         .select(
-          "trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, cout_xp",
+          "trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, trait_resume_condense, cout_xp",
         )
         .eq("race_id", raceId!);
       if (sousType) {
@@ -181,6 +182,7 @@ const Etape2_V2 = ({
         nom: t.trait_nom as string,
         description: t.trait_description as string,
         texte_manuel: (t.trait_texte_manuel as string | null) ?? null,
+        resume_condense: (t.trait_resume_condense as string | null) ?? null,
         cout_xp: t.cout_xp as number,
       })) as TraitDispo[];
     },
@@ -822,7 +824,7 @@ const Etape2_V2 = ({
                             const texteTrait =
                               mode === "integral"
                                 ? t.texte_manuel ?? t.description
-                                : t.description;
+                                : t.resume_condense ?? t.description;
                             return (
                               <div
                                 key={t.id}
