@@ -5,6 +5,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import tailwindcss from "tailwindcss";
 import autoprefixer from "autoprefixer";
 import { VitePWA } from "vite-plugin-pwa";
+import fs from "node:fs";
 
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
@@ -15,8 +16,14 @@ if (rawPort !== undefined && (Number.isNaN(port) || port <= 0)) {
 
 const basePath = process.env.BASE_PATH ?? "/";
 
+const APP_VERSION =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? String(Date.now());
+
 export default defineConfig({
   base: basePath,
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -51,6 +58,18 @@ export default defineConfig({
         clientsClaim: true,
       },
     }),
+    {
+      name: "emit-version-json",
+      apply: "build" as const,
+      closeBundle() {
+        const dir = path.resolve(import.meta.dirname, "dist");
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(
+          path.join(dir, "version.json"),
+          JSON.stringify({ version: APP_VERSION }),
+        );
+      },
+    },
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
