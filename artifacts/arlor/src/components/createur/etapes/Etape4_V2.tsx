@@ -63,7 +63,6 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const [classesOuvertes, setClassesOuvertes] = useState<Set<string>>(new Set());
   const [detailsComp, setDetailsComp] = useState<Set<string>>(new Set());
   const [fichesReligion, setFichesReligion] = useState<Set<string>>(new Set());
-  const [manuelReligion, setManuelReligion] = useState<Set<string>>(new Set());
   const [legendeOuverte, setLegendeOuverte] = useState(false);
   const [choixParCompetence, setChoixParCompetence] = useState<
     Record<string, string>
@@ -867,12 +866,6 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                             onToggleFiche={(rid) =>
                               toggleSet(setFichesReligion, `${comp.id}:${rid}`)
                             }
-                            estManuelOuvert={(rid) =>
-                              manuelReligion.has(`${comp.id}:${rid}`)
-                            }
-                            onToggleManuel={(rid) =>
-                              toggleSet(setManuelReligion, `${comp.id}:${rid}`)
-                            }
                             dejaCroyant={dejaCroyant}
                             devenirCroyant={devenirCroyant}
                             onDevenirCroyant={setDevenirCroyant}
@@ -965,8 +958,6 @@ interface CompGratuiteProps {
   onChoisir: (valeur: string) => void;
   estFicheOuverte: (religionId: string) => boolean;
   onToggleFiche: (religionId: string) => void;
-  estManuelOuvert: (religionId: string) => boolean;
-  onToggleManuel: (religionId: string) => void;
   dejaCroyant: boolean;
   devenirCroyant: boolean;
   onDevenirCroyant: (v: boolean) => void;
@@ -986,12 +977,11 @@ function CompetenceGratuiteEtape5({
   onChoisir,
   estFicheOuverte,
   onToggleFiche,
-  estManuelOuvert,
-  onToggleManuel,
   dejaCroyant,
   devenirCroyant,
   onDevenirCroyant,
 }: CompGratuiteProps) {
+  const { mode } = useModeAffichage();
   const estReligion = comp.type_choix === "religion";
   const estLangue = comp.type_choix === "langue_ancienne";
   const aChoix = estReligion || estLangue;
@@ -1141,8 +1131,9 @@ function CompetenceGratuiteEtape5({
                     <div className="border-t border-white/[0.08] px-3 py-2.5">
                       <ReligionDetails
                         religion={religionObj}
-                        isManuelOpen={estManuelOuvert(o.id)}
-                        onToggleManuel={() => onToggleManuel(o.id)}
+                        isManuelOpen={mode === "integral"}
+                        onToggleManuel={() => {}}
+                        hideManuelButton
                       />
                     </div>
                   )}
