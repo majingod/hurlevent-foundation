@@ -12,6 +12,7 @@ import ModaleChangementClasse, {
 } from "@/components/createur/ModaleChangementClasse";
 import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
@@ -122,7 +123,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     },
   });
 
-  const { data: classes = [], isLoading } = useQuery({
+  const { data: classes = [], isLoading, isError: classesError, refetch: refetchClasses } = useQuery({
     queryKey: ["v2-classes"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -736,6 +737,8 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
         </div>
 
         <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+        {classesError && <ErreurChargement onRetry={() => refetchClasses()} />}
 
         {isLoading && (
           <p className="text-white/50">Chargement des classes…</p>

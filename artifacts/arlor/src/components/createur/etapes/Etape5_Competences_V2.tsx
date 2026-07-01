@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
@@ -762,7 +763,7 @@ const Etape5_Competences_V2 = ({
 
   const classeNom = normalizeCategorie(classe?.nom ?? null);
 
-  const { data: competences, isLoading: loadingCompetences } = useQuery({
+  const { data: competences, isLoading: loadingCompetences, isError: competencesError, refetch: refetchCompetences } = useQuery({
     queryKey: ["competences-actives"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -2932,6 +2933,8 @@ const Etape5_Competences_V2 = ({
       </h2>
 
       <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {competencesError && <ErreurChargement onRetry={() => refetchCompetences()} />}
 
       <IntroEtape
         storageKey="hv-e5-intro-replie"
