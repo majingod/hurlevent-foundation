@@ -35,7 +35,7 @@ const JALONS: Jalon[] = [
     periode: "Juillet 2026",
     titre: "Création alignée sur l'encyclopédie",
     description:
-      "La création de personnage affiche désormais la version abrégée de l'encyclopédie — le même texte partout — avec l'interrupteur abrégé ↔ intégral pour races, classes, traits, compétences, sorts et prières.",
+      "La création de personnage affiche désormais la version abrégée de l'encyclopédie — le même texte partout — avec l'interrupteur abrégé ↔ intégral pour races, classes, traits, compétences, sorts, prières et assemblages de runes.",
   },
   {
     statut: "fait",
@@ -43,6 +43,13 @@ const JALONS: Jalon[] = [
     titre: "Alerte de nouvelle version",
     description:
       "Quand une nouvelle version de l'app est prête, un bandeau propose de recharger — fini le « vider le cache » ou réinstaller.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Chargement plus fiable",
+    description:
+      "Si une liste ne se charge pas (souci de réseau), la création de personnage et l'encyclopédie affichent un message clair avec un bouton « Réessayer » au lieu d'une page vide.",
   },
 
   // ===== Fait — Juin 2026 =====
