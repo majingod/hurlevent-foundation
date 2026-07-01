@@ -1370,23 +1370,6 @@ const Etape5_Competences_V2 = ({
         accessible: true,
       }));
     }
-    if (t === "categorie_depecage") {
-      // Accessible uniquement pour les catégories où le perso possède
-      // Connaissances des Créatures (D1 : on affiche tout, le reste verrouillé).
-      const connais = (achats ?? []).filter(
-        (a) =>
-          (competences ?? []).find((cc) => cc.id === a.competence_id)?.nom ===
-          "Connaissances des Créatures",
-      );
-      const acc = new Set(
-        connais.map((a) => a.choix_achat).filter(Boolean) as string[],
-      );
-      return (categoriesCreatures ?? []).map((c) => ({
-        value: c.nom,
-        label: c.nom,
-        accessible: acc.has(c.nom),
-      }));
-    }
     if (t === "cercle") {
       return (cercles ?? []).map((c) => ({ value: c, label: c, accessible: true }));
     }
@@ -2707,7 +2690,9 @@ const Etape5_Competences_V2 = ({
     // avec fallback verbatim. UNE fois par compétence. Criminelles est gérée
     // plus haut (cas spécial) et n'atteint pas ce bloc.
     const paliersKey = `paliers-${comp.id}`;
-    const paliersOuvert = optionsOuvertes[paliersKey] ?? true;
+    // Défaut : ouvert en abrégé (texte court), replié en intégral (texte complet
+    // long → éviter le mur ; le joueur déplie la compétence qui l'intéresse).
+    const paliersOuvert = optionsOuvertes[paliersKey] ?? (mode !== "integral");
     const paliersAMontrer = niveaux.filter(
       (n) => n.description_courte || n.description,
     );
@@ -2741,8 +2726,10 @@ const Etape5_Competences_V2 = ({
                     >
                       Niv. {niv.niveau}
                     </Badge>
-                    <span className="text-muted-foreground">
-                      {niv.description_courte ?? niv.description}
+                    <span className="whitespace-pre-line text-muted-foreground">
+                      {mode === "integral"
+                        ? niv.description ?? niv.description_courte
+                        : niv.description_courte ?? niv.description}
                     </span>
                   </div>
                 ))}
@@ -2753,9 +2740,7 @@ const Etape5_Competences_V2 = ({
         {options.map((opt) => renderOptionAccordion(comp, opt, niveaux))}
         {options.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
-            {comp.type_choix === "categorie_depecage"
-              ? "Achetez d'abord Connaissances des Créatures pour au moins une catégorie."
-              : "Aucune option disponible pour le moment."}
+            Aucune option disponible pour le moment.
           </p>
         )}
       </div>
