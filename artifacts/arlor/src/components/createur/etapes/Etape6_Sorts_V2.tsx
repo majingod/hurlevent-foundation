@@ -31,6 +31,8 @@ import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 import Astuce from "@/components/createur/aide/Astuce";
 import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
@@ -169,6 +171,7 @@ const Etape6_Sorts_V2 = ({
   // Accordéons en état manuel (pattern É5 / maquette useSet) — PAS de Radix
   // Accordion : enfants interactifs → bug connu.
   const [cerclesOuverts, setCerclesOuverts] = useState<Set<string>>(new Set());
+  const { mode, toggleMode } = useModeAffichage();
   const [cerclesAchetesOuverts, setCerclesAchetesOuverts] = useState<
     Set<string>
   >(new Set());
@@ -783,6 +786,8 @@ const Etape6_Sorts_V2 = ({
       {/* I4 : jauge XP live, AU-DESSUS du bandeau calcul (z-20 > z-[15]) */}
       <JaugeXP xpDisponible={xpDisponible} coutEnCours={coutEnCours} />
 
+      <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
           Achat de sorts arcaniques
@@ -985,6 +990,8 @@ const Etape6_Sorts_V2 = ({
                               <ManuelDepliable
                                 tronc={s.description_tronc}
                                 description={s.description}
+                                forceOpen={mode === "integral"}
+                                hideButton
                               />
                               <ConstructeurMagie
                                 type="sort"
@@ -1311,6 +1318,8 @@ const Etape6_Sorts_V2 = ({
                                 )}
                                 <ManuelDepliable
                                   tronc={ps.sorts?.description_tronc}
+                                  forceOpen={mode === "integral"}
+                                  hideButton
                                 />
 
                                 {/* Effet calculé AVANT → APRÈS (live) */}
