@@ -33,6 +33,27 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Fiche de personnage : abrégé ou intégral",
+    description:
+      "Ta fiche de personnage propose maintenant le même interrupteur que l'encyclopédie : « abrégé » pour l'essentiel d'un coup d'œil, « intégral » pour le texte complet du manuel — pour tes races, classes, traits, compétences, sorts, prières et assemblages de runes.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Feuille de personnage imprimable",
+    description:
+      "Tu peux imprimer ta fiche en deux versions : « abrégé » — une feuille compacte pensée pour le terrain, qui rassemble tout ton personnage (compétences, magie, artisanat) sur le moins de pages possible — ou « intégral », avec le texte complet du manuel. Un rappel des règles de fouille figure en haut de la feuille.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Forge présentée d'un seul tenant",
+    description:
+      "À la création de personnage comme sur ta fiche, chaque objet de forge affiche désormais sa fabrication ET sa réparation au même endroit, comme dans l'encyclopédie — fini les allers-retours entre deux onglets.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Création alignée sur l'encyclopédie",
     description:
       "La création de personnage affiche désormais la version abrégée de l'encyclopédie — le même texte partout — avec l'interrupteur abrégé ↔ intégral pour races, classes, traits, compétences, sorts, prières et assemblages de runes.",
