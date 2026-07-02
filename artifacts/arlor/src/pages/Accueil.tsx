@@ -268,7 +268,7 @@ const Accueil = () => {
           ) : cartes?.map(c => (
             <Link
               key={c.id}
-              to={`/encyclopedie?tab=${c.tab_cible}`}
+              to={`/encyclopedie?cat=${c.tab_cible}`}
               className="group rounded-lg border p-5 transition-colors hover:border-primary/60"
               style={{ background: "#111111", borderColor: "#c9a84c33" }}
             >
