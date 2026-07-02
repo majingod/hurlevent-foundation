@@ -77,7 +77,6 @@ interface PriereJointe {
   duree: string | null;
   cout_xp_base: number | null;
   bonus_niveau: BonusNiveau | null;
-  description_courte: string | null;
   description_tronc: string | null;
   resume_condense: string | null;
   description: string | null;
@@ -352,7 +351,7 @@ const Etape7_Prieres_V2 = ({
       const { data, error } = await supabase
         .from("personnage_prieres")
         .select(
-          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau, resume_condense, description, description_courte, description_tronc, paliers, type_priere, effet_instance)",
+          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau, resume_condense, description, description_tronc, paliers, type_priere, effet_instance)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
