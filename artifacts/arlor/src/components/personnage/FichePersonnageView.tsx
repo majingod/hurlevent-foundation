@@ -23,7 +23,6 @@ import type {
   ArtisanatEtat,
   ManipulationAlchimique,
   ObjetForge,
-  ReparationForge,
   ObjetJoaillerie,
   CompetenceGroupee,
   PiegeRow,
@@ -185,7 +184,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     queryFn: async () => {
       const { data } = await supabase
         .from("vue_artisanat_etat")
-        .select("niveau_alchimie, niveau_forge, niveau_joaillerie, niveau_pieges")
+        .select("niveau_alchimie, niveau_forge, niveau_joaillerie, niveau_pieges, niveau_runes")
         .eq("personnage_id", personnageId!)
         .maybeSingle();
       return (data as ArtisanatEtat) ?? null;
@@ -194,11 +193,12 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   });
 
   const { data: manipulations } = useQuery({
-    queryKey: ["manipulations-alchimiques"],
+    queryKey: ["manipulations-alchimiques", artisanatEtat?.niveau_alchimie],
     queryFn: async () => {
       const { data } = await supabase
         .from("ingredients_alchimiques")
         .select("id, nom, niveau, manipulations")
+        .lte("niveau", artisanatEtat?.niveau_alchimie ?? 0)
         .order("niveau")
         .order("nom");
       return (data ?? []) as ManipulationAlchimique[];
@@ -206,30 +206,21 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     enabled: !!(artisanatEtat?.niveau_alchimie && artisanatEtat.niveau_alchimie >= 1),
   });
 
+  // s299 v2 — fusion fabrication & réparation : jointure imbriquée vers
+  // reparations_forge (remplace l'ancienne requête séparée sur cette table).
+  // Clé de cache distincte de l'étape 9 du wizard (["objets-forge"], select *).
   const { data: objetsForge } = useQuery({
-    queryKey: ["objets-forge"],
+    queryKey: ["objets-forge-fiche"],
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_forge")
-        .select("id, nom, description, resume_condense, type, cout_xp, temps_fabrication_minutes, materiaux_communs, materiaux_rares")
+        .select(
+          "id, nom, description, resume_condense, type, cout_xp, temps_fabrication_minutes, materiaux_communs, materiaux_rares, non_reparable, reparation:reparations_forge!reparation_id(nom_affichage, temps_minutes, materiaux)"
+        )
         .eq("est_actif", true)
         .order("temps_fabrication_minutes")
         .order("nom");
       return (data ?? []) as ObjetForge[];
-    },
-    enabled: !!(artisanatEtat?.niveau_forge && artisanatEtat.niveau_forge >= 1),
-  });
-
-  const { data: reparationsForge } = useQuery({
-    queryKey: ["reparations-forge"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("reparations_forge")
-        .select("id, nom_affichage, categorie, materiaux, materiaux_rares, temps_minutes, temps_rare_minutes, notes")
-        .eq("est_actif", true)
-        .order("categorie")
-        .order("nom_affichage");
-      return (data ?? []) as ReparationForge[];
     },
     enabled: !!(artisanatEtat?.niveau_forge && artisanatEtat.niveau_forge >= 1),
   });
@@ -250,12 +241,13 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   // PR-4 — Pièges : catalogue + possession (lecture seule, mirror étape 9)
   const { data: piegesCatalogue } = useQuery({
-    queryKey: ["pieges-catalogue-fiche"],
+    queryKey: ["pieges-catalogue-fiche", artisanatEtat?.niveau_pieges],
     queryFn: async () => {
       const { data } = await supabase
         .from("pieges")
         .select("*")
         .eq("est_actif", true)
+        .lte("niveau", artisanatEtat?.niveau_pieges ?? 0)
         .order("nom")
         .order("niveau");
       return (data ?? []) as PiegeRow[];
@@ -764,7 +756,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               <ForgeSection
                 artisanatEtat={artisanatEtat}
                 objetsForge={objetsForge}
-                reparationsForge={reparationsForge}
               />
             </TabsContent>
 
@@ -908,7 +899,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           recettes={recettes ?? []}
           manipulations={manipulations ?? []}
           objetsForge={objetsForge ?? []}
-          reparationsForge={reparationsForge ?? []}
           objetsJoaillerie={objetsJoaillerie ?? []}
           artisanatEtat={artisanatEtat ?? null}
           piegesCatalogue={piegesCatalogue ?? []}

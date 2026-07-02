@@ -159,6 +159,7 @@ export interface ArtisanatEtat {
   niveau_forge: number | null;
   niveau_joaillerie: number | null;
   niveau_pieges: number | null;
+  niveau_runes: number | null;
 }
 
 export interface ManipulationAlchimique {
@@ -178,17 +179,13 @@ export interface ObjetForge {
   temps_fabrication_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
-}
-
-export interface ReparationForge {
-  id: string;
-  nom_affichage: string;
-  categorie: string;
-  materiaux: string;
-  materiaux_rares: string;
-  temps_minutes: number;
-  temps_rare_minutes: number;
-  notes: string | null;
+  non_reparable: boolean;
+  // Jointure reparations_forge!reparation_id — fusion fabrication & réparation (s299).
+  reparation?: {
+    nom_affichage: string;
+    temps_minutes: number;
+    materiaux: string;
+  } | null;
 }
 
 export interface ObjetJoaillerie {
