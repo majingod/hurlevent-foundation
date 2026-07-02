@@ -1338,7 +1338,13 @@ const Etape5_Competences_V2 = ({
   // OPTIONS À CHOIX (Pure1b) — univers complet + état par couple choix/niveau
   // =======================================================================
 
-  type OptionChecklist = { value: string; label: string; accessible: boolean };
+  type OptionChecklist = {
+    value: string;
+    label: string;
+    accessible: boolean;
+    /** Si verrouillé : phrase expliquant pourquoi (sinon message générique). */
+    raisonVerrou?: string;
+  };
 
   /**
    * Univers COMPLET d'options pour un `type_choix`, SANS filtrer le déjà-pris
@@ -1375,7 +1381,22 @@ const Etape5_Competences_V2 = ({
       return (cercles ?? []).map((c) => ({ value: c, label: c, accessible: true }));
     }
     if (t === "domaine") {
-      return (domaines ?? []).map((d) => ({ value: d, label: d, accessible: true }));
+      const religionPerso = (religions ?? []).find(
+        (r) => r.id === personnage?.religion_id,
+      );
+      const proscrits = new Set(
+        (religionPerso?.domaines_proscrits ?? []) as string[],
+      );
+      return (domaines ?? []).map((d) => ({
+        value: d,
+        label: d,
+        accessible: !proscrits.has(d),
+        raisonVerrou: proscrits.has(d)
+          ? `Interdit par ta religion${
+              religionPerso?.nom ? ` (${religionPerso.nom})` : ""
+            }.`
+          : undefined,
+      }));
     }
     if (t === "famille_criminelle") {
       return (famillesCriminelles ?? [])
@@ -2316,7 +2337,8 @@ const Etape5_Competences_V2 = ({
 
         {!opt.accessible && (
           <p className="px-3 pb-2 pl-8 text-xs text-muted-foreground">
-            Achetez d'abord Connaissances des Créatures « {opt.label} ».
+            {opt.raisonVerrou ??
+              `Achetez d'abord Connaissances des Créatures « ${opt.label} ».`}
           </p>
         )}
 
