@@ -1,9 +1,11 @@
+import { Fragment } from "react";
 import { calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
 import type { PalierSort, EffetInstance } from "@/utils/calculsMagie";
 import { parseIngredientsRecette, formaterComposant } from "@/utils/alchimie";
 import { STATUT_MAITRE_LABELS } from "@/constants/labels";
 import { resoudreChoixAffichage } from "./sections/helpers";
-import { RappelFouillePrint } from "./RappelFouille";
+import { RappelFouillePrint, FOUILLE_ABREGE } from "./RappelFouille";
+import type { Json } from "@/integrations/supabase/types";
 import type {
   FichePersonnage,
   Trait,
@@ -14,19 +16,21 @@ import type {
   ArtisanatEtat,
   ManipulationAlchimique,
   ObjetForge,
-  ReparationForge,
   ObjetJoaillerie,
   CompetenceGroupee,
   PiegeRow,
   PersonnagePiegeRow,
 } from "./sections/types";
 
-// PDF-PATTERN-4 — Vue imprimable React, format "recette" unifié (s90).
+// PDF-PATTERN-4 — Vue imprimable React, deux variantes (s299 v2) :
+// - ABRÉGÉ ("fiche") : layout dense « journal » (racine .fp-compact) — corps 9.5px,
+//   colonnes doubles, catalogues d'artisanat en tableaux filtrés au niveau. Objectif
+//   2 pages pour un perso typique SANS perdre de contenu abrégé.
+// - INTÉGRAL ("manuel") : layout carte historique inchangé (verbatims, historique/âme,
+//   catalogues complets), à une exception : la réparation est fusionnée dans la carte
+//   de chaque objet forgé (jointure objets_forge → reparations_forge).
 // - Rendue dans le document principal, masquée à l'écran (.fp-root { display:none }),
 //   révélée uniquement à l'impression via @media print (le reste de l'appli est masqué).
-// - Cartes "recette" : titre + pastille XP, puis lignes étiquetées séparées par des filets fins.
-//   Les sections hors périmètre (identité/traits, compétences, manipulations) gardent
-//   l'ancienne carte (.fp-card sans .fp-recette).
 // - Encre économe : aucun aplat, contours fins, filets gris, texte noir.
 // - Le déclenchement de l'impression vit dans le parent FichePersonnageView.
 
@@ -42,7 +46,6 @@ interface FicheImprimableProps {
   recettes: Recette[];
   manipulations: ManipulationAlchimique[];
   objetsForge: ObjetForge[];
-  reparationsForge: ReparationForge[];
   objetsJoaillerie: ObjetJoaillerie[];
   artisanatEtat: ArtisanatEtat | null;
   piegesCatalogue: PiegeRow[];
@@ -103,7 +106,47 @@ const PRINT_CSS = `
 #fiche-imprimable .fp-lvl { border-top: 2px solid #ddd; }
 #fiche-imprimable .fp-lvl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px 4px; }
 #fiche-imprimable .fp-lvl-title { font-weight: bold; font-size: 11.5px; color: #333; }
+/* ── Variante ABRÉGÉ compacte (s299 v2) — layout dense « journal », racine .fp-compact ──
+   Corps 9.5px · tableaux/méta 8.5px · formules magiques 10px mono, JAMAIS plus petites. */
+#fiche-imprimable.fp-compact { font-size: 9.5px; line-height: 1.28; }
+#fiche-imprimable.fp-compact h1 { font-size: 20px; display: inline; margin: 0; }
+#fiche-imprimable.fp-compact .fp-sub { display: inline; margin-left: 8px; font-size: 11px; color: #444; }
+#fiche-imprimable.fp-compact .fp-statband { display: flex; flex-wrap: wrap; gap: 3px 14px; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 3px 0; font-size: 10px; margin: 5px 0 6px; }
+#fiche-imprimable.fp-compact .fp-fouille { border: 1px solid #888; padding: 4px 7px; font-size: 9px; margin: 0 0 7px; }
+#fiche-imprimable.fp-compact h2 { font-size: 12.5px; margin: 8px 0 3px; padding-bottom: 1px; }
+#fiche-imprimable.fp-compact .fp-cols2 { column-count: 2; column-gap: 18px; }
+#fiche-imprimable.fp-compact .fp-it { break-inside: avoid; margin: 0 0 4px; }
+#fiche-imprimable.fp-compact .fp-it b { font-size: 9.8px; }
+#fiche-imprimable.fp-compact .fp-meta { color: #555; font-size: 8.5px; }
+#fiche-imprimable.fp-compact .fp-bloc { break-inside: avoid; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px dotted #bbb; }
+#fiche-imprimable.fp-compact .fp-params { color: #444; font-size: 8.5px; }
+#fiche-imprimable.fp-compact .fp-formula { font-family: "Courier New", monospace; font-size: 10px; }
+#fiche-imprimable.fp-compact table { width: 100%; border-collapse: collapse; font-size: 8.5px; margin: 2px 0 8px; }
+#fiche-imprimable.fp-compact th { text-align: left; border-bottom: 1px solid #555; padding: 1px 4px 1px 0; font-size: 8px; text-transform: uppercase; letter-spacing: .02em; color: #333; }
+#fiche-imprimable.fp-compact td { border-bottom: 1px solid #e0e0e0; padding: 1.5px 4px 1.5px 0; vertical-align: top; }
+#fiche-imprimable.fp-compact td b { font-size: 8.8px; }
+#fiche-imprimable.fp-compact tr.fp-grptype td { border-bottom: 1px solid #999; font-weight: bold; font-size: 8px; text-transform: uppercase; color: #444; padding-top: 4px; }
+#fiche-imprimable.fp-compact table, #fiche-imprimable.fp-compact .fp-it, #fiche-imprimable.fp-compact .fp-bloc { break-inside: avoid; }
 `;
+
+// Nom court d'assemblage : préfixe « Assemblage de / d' » retiré, majuscule rétablie.
+const nomCourtAssemblage = (nom: string): string => {
+  const court = nom.replace(/^assemblage\s+d(?:e\s+|['’]\s*)/i, "").trim();
+  return court ? court.charAt(0).toLocaleUpperCase("fr") + court.slice(1) : nom;
+};
+
+// Ingrédients compacts d'une recette : clés de l'objet `ingredients` sauf
+// `manipulations`, underscores → espaces, quantité > 1 → « ×N ».
+const ingredientsCompact = (ingredients: Json | null): string => {
+  if (!ingredients || typeof ingredients !== "object" || Array.isArray(ingredients)) return "";
+  return Object.entries(ingredients as Record<string, unknown>)
+    .filter(([cle]) => cle !== "manipulations")
+    .map(([cle, valeur]) => {
+      const quantite = Number(valeur);
+      return `${cle.replace(/_/g, " ")}${Number.isFinite(quantite) && quantite > 1 ? ` ×${quantite}` : ""}`;
+    })
+    .join(", ");
+};
 
 export const FicheImprimable = ({
   printMode,
@@ -117,7 +160,6 @@ export const FicheImprimable = ({
   recettes,
   manipulations,
   objetsForge,
-  reparationsForge,
   objetsJoaillerie,
   artisanatEtat,
   piegesCatalogue,
@@ -174,6 +216,34 @@ export const FicheImprimable = ({
     );
   };
 
+  // Effets calculés / palier actif, rendu compact (variante abrégé) : div nue 9.5px.
+  const effetCompact = (
+    effet: EffetInstance | null | undefined,
+    paliers: PalierSort[] | null | undefined,
+    niveau: number,
+  ) => {
+    const segments = rendreEffetInstance(effet, paliers, niveau);
+    if (segments) {
+      return (
+        <div>
+          <b>Effets :</b>{" "}
+          {segments.map((seg, i) =>
+            seg.fort ? <b key={i}>{seg.texte}</b> : <span key={i}>{seg.texte}</span>,
+          )}
+        </div>
+      );
+    }
+    if (!paliers || paliers.length === 0) return null;
+    const atteints = paliers.filter((p) => p.niveau <= niveau);
+    if (atteints.length === 0) return null;
+    const actif = atteints[atteints.length - 1];
+    return (
+      <div>
+        <b>Effet ({actif.libelle}) :</b> {actif.texte}
+      </div>
+    );
+  };
+
   // Pastille XP : 0 ou absent => "Gratuit" (zéro ambiguïté, convention compétences).
   const xpBadge = (v: number | null | undefined) =>
     v == null || Number(v) === 0 ? "Gratuit" : `${v} XP`;
@@ -182,6 +252,7 @@ export const FicheImprimable = ({
   const niveauForge = artisanatEtat?.niveau_forge ?? 0;
   const niveauJoaillerie = artisanatEtat?.niveau_joaillerie ?? 0;
   const niveauPieges = artisanatEtat?.niveau_pieges ?? 0;
+  const niveauRunes = artisanatEtat?.niveau_runes ?? 0;
 
   // Regroupements magie.
   const sortsByCercle: Record<string, Sort[]> = {};
@@ -244,13 +315,12 @@ export const FicheImprimable = ({
       .join(", ");
   };
 
-  // Textes du niveau acquis — canon s299 : Abrégé = description_courte_niveau_acquis,
-  // Intégral = description_niveau_acquis (rendu dans les DEUX variantes).
+  // Textes du niveau acquis — canon s299 : Intégral = description_niveau_acquis.
+  // (Le détail par niveau est réservé à la variante manuel depuis s299 v2.)
   const verbatimCompetence = (c: CompetenceGroupee) => {
     const parNiveau = new Map<number, string>();
     c.rows.forEach((r) => {
-      const texte =
-        printMode === "fiche" ? r.description_courte_niveau_acquis : r.description_niveau_acquis;
+      const texte = r.description_niveau_acquis;
       if (texte && !parNiveau.has(r.niveau_acquis)) {
         parNiveau.set(r.niveau_acquis, texte);
       }
@@ -265,6 +335,455 @@ export const FicheImprimable = ({
   };
 
   const manipulationsVisibles = manipulations.filter((m) => (m.niveau ?? 0) <= niveauAlchimie);
+
+  // Ligne réparation fusionnée (s299 v2) : jointure objets_forge → reparations_forge.
+  const reparationTexte = (o: ObjetForge): string | null =>
+    o.non_reparable || !o.reparation ? null : `${o.reparation.temps_minutes} min · ${o.reparation.materiaux}`;
+
+  // ════════════════════════════════════════════════════════════════════
+  // VARIANTE ABRÉGÉ — layout dense « journal » (s299 v2, maquette validée)
+  // ════════════════════════════════════════════════════════════════════
+  if (printMode === "fiche") {
+    // Ligne Artisanat du bandeau : uniquement les niveaux ≥ 1.
+    const artisanats = (
+      [
+        ["Alchimie", niveauAlchimie],
+        ["Forge", niveauForge],
+        ["Joaillerie", niveauJoaillerie],
+        ["Pièges", niveauPieges],
+        ["Runes", niveauRunes],
+      ] as [string, number][]
+    ).filter(([, n]) => n >= 1);
+
+    // Sorts — groupement ×N : clé = base + niveau + zone + portée + durée + formule + nom perso.
+    type BlocSort = { cle: string; sort: Sort; n: number };
+    const blocsSorts: BlocSort[] = [];
+    {
+      const parCle = new Map<string, BlocSort>();
+      [...sorts]
+        .sort((a, b) => {
+          const bA = a.sort_nom_base ?? a.nom_personnalise;
+          const bB = b.sort_nom_base ?? b.nom_personnalise;
+          return bA.localeCompare(bB, "fr") || a.niveau_sort - b.niveau_sort;
+        })
+        .forEach((s) => {
+          const cle = [
+            s.sort_nom_base ?? "",
+            s.niveau_sort,
+            s.zone_choisie ?? "",
+            s.portee_choisie ?? "",
+            s.duree_choisie ?? "",
+            s.formule_magique ?? "",
+            s.nom_personnalise ?? "",
+          ].join("§");
+          const existant = parCle.get(cle);
+          if (existant) existant.n += 1;
+          else {
+            const bloc = { cle, sort: s, n: 1 };
+            parCle.set(cle, bloc);
+            blocsSorts.push(bloc);
+          }
+        });
+    }
+    // Dédoublonnage du résumé : au sein d'un même sort_nom_base, le resume_condense
+    // n'est imprimé que sur le PREMIER bloc ; les suivants renvoient « même effet que niv. X ».
+    const premierBlocParBase = new Map<string, BlocSort>();
+    blocsSorts.forEach((b) => {
+      const base = b.sort.sort_nom_base ?? b.sort.nom_personnalise;
+      if (!premierBlocParBase.has(base) && b.sort.sort_resume_condense) {
+        premierBlocParBase.set(base, b);
+      }
+    });
+
+    // Pièges possédés groupés par nom (niveaux triés) — résumé du niveau max acquis.
+    const piegesPossedes = [...famN.entries()].sort((a, b) => a[0].localeCompare(b[0], "fr"));
+
+    // Pièges catalogue : dédoublonnage strict nom + resume_condense entre niveaux.
+    const catalogueMerge = new Map<string, { nom: string; resume: string | null; niveaux: number[] }>();
+    piegesCatalogue.forEach((p) => {
+      const cle = `${p.nom}§${p.resume_condense ?? ""}`;
+      const existant = catalogueMerge.get(cle);
+      if (existant) existant.niveaux.push(p.niveau);
+      else catalogueMerge.set(cle, { nom: p.nom, resume: p.resume_condense, niveaux: [p.niveau] });
+    });
+    const cataloguePieges = [...catalogueMerge.values()]
+      .map((e) => ({ ...e, niveaux: [...e.niveaux].sort((x, y) => x - y) }))
+      .sort((a, b) => a.nom.localeCompare(b.nom, "fr") || a.niveaux[0] - b.niveaux[0]);
+    // Couvre tous les niveaux réalisables (1..N) → le titre de section suffit, pas de méta.
+    const couvreTousNiveaux = (niveaux: number[]) =>
+      niveaux.length === niveauPieges && niveaux[0] === 1;
+
+    // Forge : lignes de regroupement par type (Accessoires / Armes / Armures / Boucliers).
+    const forgeParType = new Map<string, ObjetForge[]>();
+    objetsForge.forEach((o) => {
+      const type = o.type ?? "Autres";
+      (forgeParType.get(type) ?? forgeParType.set(type, []).get(type)!).push(o);
+    });
+    const typesForge = [...forgeParType.keys()].sort((a, b) => a.localeCompare(b, "fr"));
+    const nbColsForge = niveauForge >= 2 ? 6 : 5;
+
+    return (
+      <div id="fiche-imprimable" className="fp-root fp-compact">
+        <style>{PRINT_CSS}</style>
+
+        {/* 1. En-tête inline — AUCUNE description de race/classe en abrégé */}
+        <div>
+          <h1>{fiche.nom}</h1>
+          <span className="fp-sub">
+            {fiche.race_nom ?? ""}
+            {fiche.race_nom_latin ? ` (${fiche.race_nom_latin})` : ""} — {fiche.classe_nom ?? ""} —{" "}
+            Niveau {fiche.niveau}
+          </span>
+        </div>
+
+        {/* 2. Bandeau stats (religion : nom seul, pas de détails en abrégé) */}
+        <div className="fp-statband">
+          <span><b>PV</b> {fiche.pv_max}</span>
+          <span><b>PS</b> {fiche.ps_max}</span>
+          <span>
+            <b>XP</b> {fiche.xp_total} total · {fiche.xp_depense} dépensé · {xpDisponible} dispo
+          </span>
+          <span>
+            <b>GN</b> {fiche.gn_completes} · <b>Mini-GN</b> {fiche.mini_gn_completes} ·{" "}
+            <b>Ouvertures</b> {fiche.ouvertures_terrain}
+          </span>
+          {fiche.religion_nom && (
+            <span><b>Religion</b> {fiche.religion_nom}</span>
+          )}
+          {artisanats.length > 0 && (
+            <span>
+              <b>Artisanat</b> {artisanats.map(([nom, n]) => `${nom} ${n}`).join(" · ")}
+            </span>
+          )}
+        </div>
+
+        {/* 3. Fouille — rappel #604, texte abrégé, style compact */}
+        <div className="fp-fouille">
+          <b>🔍 Fouille.</b> {FOUILLE_ABREGE}
+        </div>
+
+        {/* 4. Traits raciaux (historique/âme : réservés à la variante intégral) */}
+        {traits.length > 0 && (
+          <>
+            <h2>Traits raciaux</h2>
+            <div className="fp-cols2">
+              {traits.map((t) => (
+                <div className="fp-it" key={t.id}>
+                  <b>{t.nom}.</b> {t.resume_condense ?? t.texte_manuel ?? t.description}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* 5. Compétences (détail par niveau : réservé à la variante intégral) */}
+        {competencesGroupees.length > 0 && (
+          <>
+            <h2>Compétences</h2>
+            <div className="fp-cols2">
+              {competencesGroupees.map((c) => {
+                const meta = [
+                  detailCompetence(c),
+                  c.xp_total === 0 ? "Gratuit" : `${c.xp_total} XP`,
+                  c.statut_maitre !== "non_requis"
+                    ? STATUT_MAITRE_LABELS[c.statut_maitre] || c.statut_maitre
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <div className="fp-it" key={c.competence_id}>
+                    <b>{c.nom}</b> <span className="fp-meta">{meta}</span>
+                    {c.competence_resume_condense ? <> — {c.competence_resume_condense}</> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* 6. Sorts — blocs groupés ×N, résumé dédoublonné par sort de base */}
+        {blocsSorts.length > 0 && (
+          <>
+            <h2>Sorts arcaniques</h2>
+            <div className="fp-cols2">
+              {blocsSorts.map((bloc) => {
+                const s = bloc.sort;
+                const base = s.sort_nom_base ?? s.nom_personnalise;
+                const premier = premierBlocParBase.get(base);
+                const xp = calculerCoutXP(
+                  s.zone_choisie ?? "",
+                  s.portee_choisie ?? "",
+                  s.duree_choisie ?? "",
+                  s.niveau_sort,
+                  Number(s.cout_xp_base),
+                );
+                const params = [
+                  s.zone_choisie ? `Zone ${s.zone_choisie}` : null,
+                  s.portee_choisie ? `Portée ${s.portee_choisie}` : null,
+                  s.duree_choisie ? `Durée ${s.duree_choisie}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                const meta = [
+                  `niv. ${s.niveau_sort}`,
+                  s.cercle,
+                  s.sort_nom_base && s.sort_nom_base !== s.nom_personnalise ? s.sort_nom_base : null,
+                  `${calculerCoutPS(xp)} PS`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <div className="fp-bloc" key={bloc.cle}>
+                    <b>
+                      {s.nom_personnalise}
+                      {bloc.n > 1 ? ` ×${bloc.n}` : ""}
+                    </b>{" "}
+                    <span className="fp-meta">{meta}</span>
+                    {params && <div className="fp-params">{params}</div>}
+                    {s.formule_magique && <div className="fp-formula">« {s.formule_magique} »</div>}
+                    {premier === bloc
+                      ? s.sort_resume_condense && <div>{s.sort_resume_condense}</div>
+                      : premier && (
+                          <div className="fp-meta">même effet que niv. {premier.sort.niveau_sort}</div>
+                        )}
+                    {effetCompact(s.effet_instance, s.paliers, s.niveau_sort)}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* 7. Prières */}
+        {prieres.length > 0 && (
+          <>
+            <h2>Prières divines</h2>
+            <div className="fp-cols2">
+              {prieres.map((p) => {
+                const xp = calculerCoutXP(
+                  p.zone_choisie ?? "",
+                  p.portee_choisie ?? "",
+                  p.duree_choisie ?? "",
+                  p.niveau_priere,
+                  Number(p.cout_xp_base ?? 0),
+                );
+                const params = [
+                  p.zone_choisie ? `Zone ${p.zone_choisie}` : null,
+                  p.portee_choisie ? `Portée ${p.portee_choisie}` : null,
+                  p.duree_choisie ? `Durée ${p.duree_choisie}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                const meta = [
+                  `niv. ${p.niveau_priere}`,
+                  p.domaine,
+                  p.duree_incantation_calculee != null
+                    ? `incantation ${p.duree_incantation_calculee} s`
+                    : null,
+                  p.cout_xp_base != null ? `${calculerCoutPS(xp)} PS` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <div className="fp-bloc" key={p.id}>
+                    <b>{p.nom_personnalise}</b> <span className="fp-meta">{meta}</span>
+                    {params && <div className="fp-params">{params}</div>}
+                    {p.priere_resume_condense && <div>{p.priere_resume_condense}</div>}
+                    {effetCompact(p.effet_instance, p.paliers, p.niveau_priere)}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* 8. Assemblages de runes — nom court, méta PS · cible */}
+        {assemblages.length > 0 && (
+          <>
+            <h2>Assemblages de runes</h2>
+            <div className="fp-cols2">
+              {assemblages.map((a) => {
+                const meta = [a.cout_ps != null ? `${a.cout_ps} PS` : null, a.cible]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <div className="fp-it" key={a.id}>
+                    <b>{nomCourtAssemblage(a.nom)}</b>{" "}
+                    {meta && <span className="fp-meta">{meta}</span>}
+                    {a.resume_condense ? <> — {a.resume_condense}</> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* 9. Pièges possédés — groupés par nom, niveaux triés */}
+        {piegesPossedes.length > 0 && (
+          <>
+            <h2>Pièges possédés</h2>
+            <div className="fp-cols2">
+              {piegesPossedes.map(([nom, niveaux]) => {
+                const nivMax = niveaux[niveaux.length - 1];
+                const resume = piegeCat.get(`${nom}__${nivMax}`)?.resume_condense;
+                return (
+                  <div className="fp-it" key={nom}>
+                    <b>{nom}</b> <span className="fp-meta">niv. {niveaux.join(", ")}</span>
+                    {resume ? <> — {resume}</> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* 10. Forge — tableau pleine largeur, groupé par type, réparation fusionnée */}
+        {niveauForge >= 1 && objetsForge.length > 0 && (
+          <>
+            <h2>Forge — Niv. {niveauForge} · fabrication &amp; réparation</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Objet</th>
+                  <th>Fab.</th>
+                  <th>Matériaux</th>
+                  {niveauForge >= 2 && <th>Rares</th>}
+                  <th>Effet</th>
+                  <th>Réparation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {typesForge.map((type) => (
+                  <Fragment key={type}>
+                    <tr className="fp-grptype">
+                      <td colSpan={nbColsForge}>{type}</td>
+                    </tr>
+                    {forgeParType.get(type)!.map((o) => (
+                      <tr key={o.id}>
+                        <td><b>{o.nom ?? ""}</b></td>
+                        <td>
+                          {o.temps_fabrication_minutes != null
+                            ? `${o.temps_fabrication_minutes} min`
+                            : "—"}
+                        </td>
+                        <td>{o.materiaux_communs ?? "—"}</td>
+                        {niveauForge >= 2 && <td>{o.materiaux_rares ?? "—"}</td>}
+                        <td>{o.resume_condense ?? ""}</td>
+                        <td>{reparationTexte(o) ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* 11. Joaillerie — effet identique partout : dans le titre, pas en colonne */}
+        {niveauJoaillerie >= 1 && objetsJoaillerie.length > 0 && (
+          <>
+            <h2>Joaillerie — Niv. {niveauJoaillerie} (tous support d'enchantement)</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Bijou</th>
+                  <th>{niveauJoaillerie >= 2 ? "Fab. (rare)" : "Fab."}</th>
+                  <th>Matériaux</th>
+                  {niveauJoaillerie >= 2 && <th>Rares</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {objetsJoaillerie.map((o) => (
+                  <tr key={o.id}>
+                    <td><b>{o.nom ?? ""}</b></td>
+                    <td>
+                      {o.temps_fabrication_minutes != null
+                        ? `${o.temps_fabrication_minutes}${
+                            niveauJoaillerie >= 2 && o.temps_rare_minutes != null
+                              ? ` (${o.temps_rare_minutes})`
+                              : ""
+                          } min`
+                        : "—"}
+                    </td>
+                    <td>{o.materiaux_communs ?? "—"}</td>
+                    {niveauJoaillerie >= 2 && <td>{o.materiaux_rares ?? "—"}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* 12. Alchimie — recettes en tableau */}
+        {niveauAlchimie >= 1 && recettes.length > 0 && (
+          <>
+            <h2>Alchimie — Niv. {niveauAlchimie} · recettes</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Recette</th>
+                  <th>Niv</th>
+                  <th>Effet</th>
+                  <th>Ingrédients</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recettes.map((r) => (
+                  <tr key={r.id}>
+                    <td><b>{r.nom}</b></td>
+                    <td>{r.niveau_requis}</td>
+                    <td>{r.resume_condense ?? ""}</td>
+                    <td>{ingredientsCompact(r.ingredients)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* 13. Ingrédients & manipulations — texte complet, 8.5px */}
+        {niveauAlchimie >= 1 && manipulationsVisibles.length > 0 && (
+          <>
+            <h2>Ingrédients &amp; manipulations — Niv. ≤ {niveauAlchimie}</h2>
+            <div className="fp-cols2" style={{ fontSize: "8.5px" }}>
+              {manipulationsVisibles.map((m) => (
+                <div className="fp-it" key={m.id}>
+                  <b>{m.nom ?? ""}</b>{" "}
+                  {m.niveau != null && <span className="fp-meta">niv. {m.niveau}</span>}
+                  {m.manipulations ? <> — {m.manipulations}</> : null}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* 14. Pièges — catalogue dédoublonné (nom + résumé strictement identiques) */}
+        {niveauPieges >= 1 && cataloguePieges.length > 0 && (
+          <>
+            <h2>
+              Pièges — Niv. {niveauPieges} · catalogue (réalisables aux niv. 1-{niveauPieges})
+            </h2>
+            <div className="fp-cols2" style={{ fontSize: "8.5px" }}>
+              {cataloguePieges.map((p) => (
+                <div className="fp-it" key={`${p.nom}§${p.niveaux.join(",")}`}>
+                  <b>{p.nom}</b>{" "}
+                  {!couvreTousNiveaux(p.niveaux) && (
+                    <span className="fp-meta">niv. {p.niveaux.join(", ")}</span>
+                  )}
+                  {p.resume ? <> — {p.resume}</> : null}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // VARIANTE INTÉGRAL — layout carte historique (fusion forge exceptée)
+  // ════════════════════════════════════════════════════════════════════
 
   // ── Cartes recette magie (réutilisées en empilé OU en côte à côte) ──
   const renderSortCard = (s: Sort) => {
@@ -369,8 +888,8 @@ export const FicheImprimable = ({
         {fiche.race_nom_latin ? ` (${fiche.race_nom_latin})` : ""} — {fiche.classe_nom ?? ""} — Niveau {fiche.niveau}
       </p>
 
-      {/* 0. Règles de fouille (s299) — en haut des deux variantes */}
-      <RappelFouillePrint variante={printMode === "fiche" ? "abrege" : "integral"} />
+      {/* 0. Règles de fouille (s299) — en haut de la variante intégral */}
+      <RappelFouillePrint variante="integral" />
 
       {/* 1. Informations générales + Historique/Âme (2 cartes) */}
       <h2>Informations générales</h2>
@@ -407,8 +926,8 @@ export const FicheImprimable = ({
       {(() => {
         const rel = fiche.religion_id ? religions?.find((r) => r.id === fiche.religion_id) : null;
         if (!rel) return null;
-        const lore = printMode === "fiche" ? rel.lore_fiche : rel.lore_manuel;
-        const rituels = (printMode === "fiche" ? rel.rituels_fiche : rel.rituels_manuel) ?? [];
+        const lore = rel.lore_manuel;
+        const rituels = rel.rituels_manuel ?? [];
         if (!lore && rituels.length === 0) return null;
         return (
           <>
@@ -556,28 +1075,22 @@ export const FicheImprimable = ({
                           <div className="fp-card-title">{r.nom}</div>
                           <span className="fp-badge">{xpBadge(r.xp_depense)}</span>
                         </div>
-                        {/* Canon s299 : Abrégé = resume_condense seul ; Intégral = détail
-                            actuel (le teaser r.description n'est plus imprimé). */}
-                        {printMode === "fiche" ? (
-                          r.resume_condense && <div className="fp-row fp-desc">{r.resume_condense}</div>
-                        ) : (
-                          <>
-                            {r.effet && <div className="fp-row"><span className="fp-k">Effet :</span> {r.effet}</div>}
-                            {r.formule && (
-                              <div className="fp-row fp-formula"><span className="fp-k">Formule :</span> {r.formule}</div>
-                            )}
-                            {composants.length > 0 && (
-                              <div className="fp-row">
-                                <span className="fp-k">Ingrédients :</span> {composants.map(formaterComposant).join(" · ")}
-                              </div>
-                            )}
-                            {manips.length > 0 && (
-                              <div className="fp-row">
-                                <span className="fp-k">Préparation :</span>{" "}
-                                {manips.map((e, i) => `${i + 1}. ${e}`).join("  ")}
-                              </div>
-                            )}
-                          </>
+                        {/* Canon s299 : Intégral = détail actuel (le teaser r.description
+                            n'est plus imprimé). */}
+                        {r.effet && <div className="fp-row"><span className="fp-k">Effet :</span> {r.effet}</div>}
+                        {r.formule && (
+                          <div className="fp-row fp-formula"><span className="fp-k">Formule :</span> {r.formule}</div>
+                        )}
+                        {composants.length > 0 && (
+                          <div className="fp-row">
+                            <span className="fp-k">Ingrédients :</span> {composants.map(formaterComposant).join(" · ")}
+                          </div>
+                        )}
+                        {manips.length > 0 && (
+                          <div className="fp-row">
+                            <span className="fp-k">Préparation :</span>{" "}
+                            {manips.map((e, i) => `${i + 1}. ${e}`).join("  ")}
+                          </div>
                         )}
                       </div>
                     );
@@ -646,63 +1159,39 @@ export const FicheImprimable = ({
         </>
       )}
 
-      {/* 7c. Forge */}
-      {niveauForge >= 1 && (
+      {/* 7c. Forge — fusion fabrication & réparation (s299 v2) : chaque objet
+          affiche sa réparation en ligne dédiée, plus de sous-section séparée. */}
+      {niveauForge >= 1 && objetsForge.length > 0 && (
         <>
           <h2>Forge (Niv. {niveauForge})</h2>
-          {objetsForge.length > 0 && (
-            <>
-              <h3>Fabrication</h3>
-              <div className="fp-grid" style={gridStyle(objetsForge.length)}>
-                {objetsForge.map((o) => (
-                  <div className="fp-card fp-recette" key={o.id}>
-                    <div className="fp-card-head">
-                      <div className="fp-card-title">{o.nom ?? ""}</div>
-                      <span className="fp-badge">{xpBadge(o.cout_xp)}</span>
-                    </div>
-                    {o.type && <div className="fp-row"><span className="fp-k">Type :</span> {o.type}</div>}
-                    {o.temps_fabrication_minutes != null && (
-                      <div className="fp-row"><span className="fp-k">Temps de fabrication :</span> {o.temps_fabrication_minutes} min</div>
-                    )}
-                    {o.materiaux_communs && (
-                      <div className="fp-row"><span className="fp-k">Matériaux communs :</span> {o.materiaux_communs}</div>
-                    )}
-                    {niveauForge >= 2 && o.materiaux_rares && (
-                      <div className="fp-row"><span className="fp-k">Matériaux rares :</span> {o.materiaux_rares}</div>
-                    )}
-                    {niveauForge >= 3 && (
-                      <div className="fp-row fp-desc"><em>Accès aux matériaux légendaires disponible.</em></div>
-                    )}
-                    {descRow(o.resume_condense, o.description)}
-                  </div>
-                ))}
+          <h3>Fabrication &amp; réparation</h3>
+          <div className="fp-grid" style={gridStyle(objetsForge.length)}>
+            {objetsForge.map((o) => (
+              <div className="fp-card fp-recette" key={o.id}>
+                <div className="fp-card-head">
+                  <div className="fp-card-title">{o.nom ?? ""}</div>
+                  <span className="fp-badge">{xpBadge(o.cout_xp)}</span>
+                </div>
+                {o.type && <div className="fp-row"><span className="fp-k">Type :</span> {o.type}</div>}
+                {o.temps_fabrication_minutes != null && (
+                  <div className="fp-row"><span className="fp-k">Temps de fabrication :</span> {o.temps_fabrication_minutes} min</div>
+                )}
+                {o.materiaux_communs && (
+                  <div className="fp-row"><span className="fp-k">Matériaux communs :</span> {o.materiaux_communs}</div>
+                )}
+                {niveauForge >= 2 && o.materiaux_rares && (
+                  <div className="fp-row"><span className="fp-k">Matériaux rares :</span> {o.materiaux_rares}</div>
+                )}
+                {reparationTexte(o) && (
+                  <div className="fp-row"><span className="fp-k">Réparation :</span> {reparationTexte(o)}</div>
+                )}
+                {niveauForge >= 3 && (
+                  <div className="fp-row fp-desc"><em>Accès aux matériaux légendaires disponible.</em></div>
+                )}
+                {descRow(o.resume_condense, o.description)}
               </div>
-            </>
-          )}
-          {reparationsForge.length > 0 && (
-            <>
-              <h3>Réparation</h3>
-              <div className="fp-grid" style={gridStyle(reparationsForge.length)}>
-                {reparationsForge.map((rep) => (
-                  <div className="fp-card fp-recette" key={rep.id}>
-                    <div className="fp-card-head">
-                      <div className="fp-card-title">{rep.nom_affichage}</div>
-                    </div>
-                    <div className="fp-row"><span className="fp-k">Catégorie :</span> {rep.categorie}</div>
-                    <div className="fp-row"><span className="fp-k">Temps commun :</span> {rep.temps_minutes} min</div>
-                    {niveauForge >= 2 && (
-                      <div className="fp-row"><span className="fp-k">Temps rare :</span> {rep.temps_rare_minutes} min</div>
-                    )}
-                    <div className="fp-row"><span className="fp-k">Matériaux communs :</span> {rep.materiaux}</div>
-                    {niveauForge >= 2 && (
-                      <div className="fp-row"><span className="fp-k">Matériaux rares :</span> {rep.materiaux_rares}</div>
-                    )}
-                    {rep.notes && <div className="fp-row fp-desc">{rep.notes}</div>}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+            ))}
+          </div>
         </>
       )}
 
