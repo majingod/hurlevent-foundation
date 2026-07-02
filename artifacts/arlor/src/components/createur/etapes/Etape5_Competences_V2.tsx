@@ -2864,9 +2864,9 @@ const Etape5_Competences_V2 = ({
                 </span>
                 {coutBadge}
               </div>
-              {comp.description && (
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                  {comp.description}
+              {(comp.resume_condense ?? comp.description) && (
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {comp.resume_condense ?? comp.description}
                 </p>
               )}
             </div>
