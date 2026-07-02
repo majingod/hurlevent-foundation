@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Recherche sans accents",
+    description:
+      "La recherche de l'encyclopédie trouve maintenant les résultats même si tu tapes sans accents : « creatures », « depecage » ou « regeneration » donnent les mêmes résultats que « créatures », « dépeçage » ou « régénération ».",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Tableau de bord allégé",
     description:
       "Ton tableau de bord va droit au but : tes personnages apparaissent dès le haut de la page, et un petit tableau de bord regroupe en un coup d'œil ton prochain événement, ta banque d'XP et tes notifications — chacun se déplie quand tu veux le détail.",
