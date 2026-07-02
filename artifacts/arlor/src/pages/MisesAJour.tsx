@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Tableau de bord allégé",
+    description:
+      "Ton tableau de bord va droit au but : tes personnages apparaissent dès le haut de la page, et un petit tableau de bord regroupe en un coup d'œil ton prochain événement, ta banque d'XP et tes notifications — chacun se déplie quand tu veux le détail.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Fiche de personnage : abrégé ou intégral",
     description:
       "Ta fiche de personnage propose maintenant le même interrupteur que l'encyclopédie : « abrégé » pour l'essentiel d'un coup d'œil, « intégral » pour le texte complet du manuel — pour tes races, classes, traits, compétences, sorts, prières et assemblages de runes.",
