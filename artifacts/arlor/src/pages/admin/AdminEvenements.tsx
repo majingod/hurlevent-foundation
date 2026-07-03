@@ -84,6 +84,7 @@ interface Evenement {
   type_evenement: string | null;
   xp_recompense: number | null;
   niveaux_recompense: number | null;
+  gel_heures_avant: number | null;
   est_publie: boolean | null;
   est_termine: boolean | null;
   created_at: string | null;
@@ -976,6 +977,7 @@ interface FormState {
   max_participants: string;
   xp_recompense: string;
   niveaux_recompense: string;
+  gel_heures_avant: string;
 }
 
 const emptyForm: FormState = {
@@ -989,6 +991,7 @@ const emptyForm: FormState = {
   max_participants: "",
   xp_recompense: String(TYPE_DEFAULTS.gn_regulier.xp),
   niveaux_recompense: String(TYPE_DEFAULTS.gn_regulier.niveaux),
+  gel_heures_avant: "",
 };
 
 const EventFormDialog = ({ open, evenement, onClose, onSaved }: EventFormDialogProps) => {
@@ -1018,6 +1021,11 @@ const EventFormDialog = ({ open, evenement, onClose, onSaved }: EventFormDialogP
         niveaux_recompense: String(
           evenement.niveaux_recompense ?? TYPE_DEFAULTS[type].niveaux,
         ),
+        gel_heures_avant:
+          evenement.gel_heures_avant !== null &&
+          evenement.gel_heures_avant !== undefined
+            ? String(evenement.gel_heures_avant)
+            : "",
       });
     } else {
       setForm(emptyForm);
@@ -1052,6 +1060,9 @@ const EventFormDialog = ({ open, evenement, onClose, onSaved }: EventFormDialogP
           : null,
         xp_recompense: parseInt(form.xp_recompense, 10) || 0,
         niveaux_recompense: parseInt(form.niveaux_recompense, 10) || 0,
+        gel_heures_avant: form.gel_heures_avant.trim()
+          ? parseInt(form.gel_heures_avant, 10)
+          : null,
       };
 
       if (isEdit && evenement) {
@@ -1183,6 +1194,24 @@ const EventFormDialog = ({ open, evenement, onClose, onSaved }: EventFormDialogP
                 onChange={(e) => update("date_fin", e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gel_heures_avant">
+              Gel des fiches — heures avant le début
+            </Label>
+            <Input
+              id="gel_heures_avant"
+              type="number"
+              min={0}
+              value={form.gel_heures_avant}
+              onChange={(e) => update("gel_heures_avant", e.target.value)}
+              placeholder="24"
+            />
+            <p className="text-xs text-muted-foreground">
+              Laisser vide = 24 h (défaut). Passé ce délai avant le début, les
+              fiches inscrites se gèlent et la désinscription se bloque.
+            </p>
           </div>
 
           <div className="space-y-2">
