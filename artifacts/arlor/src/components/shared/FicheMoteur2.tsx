@@ -539,7 +539,8 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
           );
         }
 
-        // render religion : délègue à ReligionDetails (fiche double-couche, manuel interne).
+        // render religion : délègue à ReligionDetails (fiche double-couche).
+        // Le manuel suit le mode global (intégral = ouvert).
         if (champ.render === "religion") {
           return <ReligionFiche key={champ.cle} entite={entite} mode={mode} />;
         }

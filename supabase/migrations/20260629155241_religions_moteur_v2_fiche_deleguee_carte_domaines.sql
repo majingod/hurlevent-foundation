@@ -1,5 +1,6 @@
 -- Religions — Moteur V2 (PR3a)
 -- Fiche déléguée à ReligionDetails (render:"religion") + domaines en V3 sur la carte.
+-- Manuel piloté par le toggle global (carte.mode = swap).
 -- N'affecte QUE le moteur v2 / admin v2 : le LIVE religions lit la table custom, pas champs_v2.
 -- Idempotent : UPDATE vers valeurs fixes, rejouable à froid.
 
@@ -11,7 +12,7 @@ WHERE categorie = 'religions';
 
 UPDATE fiches_listes
 SET carte = jsonb_build_object(
-  'mode', 'aucun',
+  'mode', 'swap',
   'titre', 'nom',
   'sousTitre', 'description',
   'metaLignes', jsonb_build_array(
