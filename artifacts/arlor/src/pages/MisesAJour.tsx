@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Recherche par fragment de mot",
+    description:
+      "La recherche de l'encyclopédie trouve maintenant les mots à partir d'un simple fragment, où qu'il se trouve dans le mot : « reat » trouve « créature », « boucl » trouve tous les boucliers, « regen » trouve « régénération ». À combiner avec la recherche sans accents.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Recherche sans accents",
     description:
       "La recherche de l'encyclopédie trouve maintenant les résultats même si tu tapes sans accents : « creatures », « depecage » ou « regeneration » donnent les mêmes résultats que « créatures », « dépeçage » ou « régénération ».",
