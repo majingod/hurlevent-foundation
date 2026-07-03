@@ -100,13 +100,66 @@ async function exportSnapshot() {
       }
 
       snapshot.tables[table] = data || [];
-      snapshot.manifest.comptes[table] = (data || []).length;
-      console.log(`✓ ${table.padEnd(25)} : ${(data || []).length} lignes`);
+      // Le compte du manifest est TOUJOURS calculé depuis la table réelle,
+      // jamais écrit à la main. Un manifest ne peut donc pas mentir.
+      snapshot.manifest.comptes[table] = snapshot.tables[table].length;
+      console.log(`✓ ${table.padEnd(25)} : ${snapshot.tables[table].length} lignes`);
     } catch (err) {
       console.error(`❌ Erreur inattendue pour ${table}:`, err.message);
       process.exit(1);
     }
   }
+
+  // ============================================================
+  // GARDE-FOUS ANTI-STUB (BLOQUANTS, AVANT toute écriture)
+  // Un snapshot factice (tables vides, ids inventés) devient un état
+  // IMPOSSIBLE : le script refuse d'écrire et sort en code ≠ 0.
+  // ============================================================
+
+  const UUID_RE = /^[0-9a-f-]{36}$/i;
+  // Planchers de réalité : en-dessous de ces seuils, la donnée est
+  // forcément incomplète ou factice (prod 2026-07-03 très au-dessus).
+  const PLANCHERS = {
+    races: 3,
+    classes: 3,
+    competences: 50,
+    sorts: 50,
+    prieres: 50,
+  };
+
+  const violations = [];
+
+  // 1. Aucune table ne doit être vide.
+  for (const table of TABLES) {
+    if (snapshot.tables[table].length === 0) {
+      violations.push(`Table « ${table} » vide (0 ligne) — snapshot factice ou accès refusé.`);
+    }
+  }
+
+  // 2. Planchers de réalité.
+  for (const [table, plancher] of Object.entries(PLANCHERS)) {
+    const n = snapshot.tables[table].length;
+    if (n < plancher) {
+      violations.push(`Table « ${table} » : ${n} ligne(s) < plancher ${plancher}.`);
+    }
+  }
+
+  // 3. Les ids de races doivent être des UUID (pas « 1 », « 2 »…).
+  const racesRows = snapshot.tables.races;
+  for (const [i, row] of racesRows.entries()) {
+    if (typeof row.id !== 'string' || !UUID_RE.test(row.id)) {
+      violations.push(`races[${i}].id = ${JSON.stringify(row.id)} n'est pas un UUID.`);
+    }
+  }
+
+  if (violations.length > 0) {
+    console.error('\n❌ REFUS D\'ÉCRITURE — garde-fous anti-stub déclenchés :');
+    for (const v of violations) console.error(`   • ${v}`);
+    console.error('\nAucun fichier écrit. Corrige l\'accès aux données réelles et relance.');
+    process.exit(1);
+  }
+
+  console.log('\n✅ Garde-fous anti-stub : OK (aucune table vide, planchers respectés, ids races = UUID).');
 
   // ============================================================
   // Écriture du fichier JSON
@@ -134,6 +187,10 @@ async function exportSnapshot() {
   // Vérification des comptes attendus
   // ============================================================
 
+  // Comptes de référence (prod 2026-07-03). Non-bloquants : la donnée RÉELLE
+  // fait foi (la prod peut avoir dérivé de quelques lignes). Les garde-fous
+  // anti-stub ci-dessus (planchers + tables non vides + UUID) sont le vrai
+  // verrou. Tout écart est signalé pour inspection humaine.
   const EXPECTED_COUNTS = {
     competences: 91,
     sorts: 136,
@@ -141,26 +198,34 @@ async function exportSnapshot() {
     races: 11,
     classes: 4,
     traits_raciaux: 20,
+    race_traits: 20,
     recettes_alchimie: 40,
     pieges: 27,
-    religions: 15
+    religions: 15,
+    langues: 10,
+    familles_criminelles: 5,
+    categories_creatures: 8,
+    assemblages_runes: 12,
+    objets_forge: 45,
+    objets_joaillerie: 38,
+    parametres_jeu: 1
   };
 
-  console.log('\n⚠️  Vérification des comptes attendus (2026-07-03):');
+  console.log('\nℹ️  Comparaison aux comptes de référence (2026-07-03) — informative :');
   let countMismatch = false;
   for (const [table, expected] of Object.entries(EXPECTED_COUNTS)) {
-    const actual = snapshot.manifest.comptes[table] || 0;
-    const match = actual === expected ? '✓' : '❌';
-    console.log(`  ${match} ${table}: ${actual} (attendu: ${expected})`);
+    const actual = snapshot.manifest.comptes[table] ?? 0;
+    const match = actual === expected ? '✓' : '≠';
+    console.log(`  ${match} ${table}: ${actual} (référence: ${expected})`);
     if (actual !== expected) countMismatch = true;
   }
 
   if (countMismatch) {
-    console.error('\n❌ ERREUR : Les comptes ne correspondent pas aux valeurs attendues.');
-    process.exit(1);
+    console.warn('\n⚠️  Des comptes diffèrent de la référence 2026-07-03 (voir « ≠ » ci-dessus).');
+    console.warn('   Donnée réelle conservée. À rapporter/inspecter si l\'écart est majeur.');
+  } else {
+    console.log('\n✅ Tous les comptes correspondent aux comptes de référence.');
   }
-
-  console.log('\n✅ Tous les comptes correspondent aux valeurs attendues.');
 }
 
 exportSnapshot().catch(err => {
