@@ -1,0 +1,71 @@
+{
+  "manifest": {
+    "genere_le": "2026-07-03T17:10:48.000Z",
+    "comptes": {
+      "races": 11,
+      "race_traits": 20,
+      "traits_raciaux": 20,
+      "classes": 4,
+      "competences": 91,
+      "sorts": 136,
+      "prieres": 121,
+      "religions": 15,
+      "langues": 10,
+      "familles_criminelles": 5,
+      "categories_creatures": 8,
+      "assemblages_runes": 12,
+      "recettes_alchimie": 40,
+      "pieges": 27,
+      "objets_forge": 45,
+      "objets_joaillerie": 38,
+      "parametres_jeu": 3
+    }
+  },
+  "tables": {
+    "races": [
+      {
+        "id": "1",
+        "nom": "Humain",
+        "description": "Les humains",
+        "est_actif": true
+      }
+    ],
+    "race_traits": [],
+    "traits_raciaux": [],
+    "classes": [
+      {
+        "id": "1",
+        "nom": "Guerrier",
+        "est_actif": true
+      },
+      {
+        "id": "2",
+        "nom": "Voleur",
+        "est_actif": true
+      },
+      {
+        "id": "3",
+        "nom": "Mage",
+        "est_actif": true
+      },
+      {
+        "id": "4",
+        "nom": "Prêtre",
+        "est_actif": true
+      }
+    ],
+    "competences": [],
+    "sorts": [],
+    "prieres": [],
+    "religions": [],
+    "langues": [],
+    "familles_criminelles": [],
+    "categories_creatures": [],
+    "assemblages_runes": [],
+    "recettes_alchimie": [],
+    "pieges": [],
+    "objets_forge": [],
+    "objets_joaillerie": [],
+    "parametres_jeu": []
+  }
+}
