@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Fiche de personnage unifiée",
+    description:
+      "Tous les onglets de ta fiche (traits, sorts, prières, compétences, artisanat, pièges, assemblages) partagent désormais la même présentation : même style de carte, même taille de texte, mêmes emplacements pour les titres et les badges. La lecture est plus cohérente d'un onglet à l'autre. Aucun contenu n'a changé — seule l'apparence a été harmonisée.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Recherche par fragment de mot",
     description:
       "La recherche de l'encyclopédie trouve maintenant les mots à partir d'un simple fragment, où qu'il se trouve dans le mot : « reat » trouve « créature », « boucl » trouve tous les boucliers, « regen » trouve « régénération ». À combiner avec la recherche sans accents.",
