@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ItemFiche } from "./ItemFiche";
 import { Badge } from "@/components/ui/badge";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { PastilleType } from "@/components/shared/PastilleType";
@@ -56,16 +56,13 @@ export const SortsSection = ({ sorts }: SortsSectionProps) => {
         const texteSort = mode === "abrege" ? sort.sort_resume_condense : sort.sort_description;
 
         return (
-          <Card key={sort.id}>
-            <CardContent className="pt-4 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium text-foreground">{sort.nom_personnalise}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs text-muted-foreground">{sort.cercle} • Niveau {sort.niveau_sort}</p>
-                    <PastilleType type={sort.type_sort} />
-                  </div>
-                </div>
+          <ItemFiche
+            key={sort.id}
+            titre={sort.nom_personnalise}
+            sousTitre={<>{sort.cercle} • Niveau {sort.niveau_sort}</>}
+            badges={
+              <>
+                <PastilleType type={sort.type_sort} />
                 <Badge variant="secondary" className="text-xs shrink-0">
                   {calculerCoutPS(calculerCoutXP(
                     sort.zone_choisie ?? "",
@@ -75,8 +72,9 @@ export const SortsSection = ({ sorts }: SortsSectionProps) => {
                     Number(sort.cout_xp_base),
                   ))} PS
                 </Badge>
-              </div>
-
+              </>
+            }
+          >
               {sort.sort_nom_base && sort.sort_nom_base !== sort.nom_personnalise && (
                 <p className="text-xs italic text-muted-foreground">Basé sur : {sort.sort_nom_base}</p>
               )}
@@ -182,8 +180,7 @@ export const SortsSection = ({ sorts }: SortsSectionProps) => {
                   <PaliersDepliable paliers={paliers} niveau={sort.niveau_sort} />
                 </>
               )}
-            </CardContent>
-          </Card>
+          </ItemFiche>
         );
       })}
     </div>
