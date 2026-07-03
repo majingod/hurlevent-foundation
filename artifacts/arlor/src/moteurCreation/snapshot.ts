@@ -15,6 +15,28 @@ export type TraitRacial = Database["public"]["Tables"]["traits_raciaux"]["Row"];
 export type Religion = Database["public"]["Tables"]["religions"]["Row"];
 export type Langue = Database["public"]["Tables"]["langues"]["Row"];
 
+/**
+ * Forme structurelle du snapshot visiteur offline chargé depuis
+ * `@/data/snapshotVisiteur.json`. Seules les tables réellement consommées par
+ * le moteur de création sont typées fortement ; le reste reste ouvert.
+ */
+export interface SnapshotVisiteur {
+  manifest: {
+    genere_le: string;
+    comptes: Record<string, number>;
+  };
+  tables: {
+    races: Race[];
+    race_traits: RaceTrait[];
+    traits_raciaux: TraitRacial[];
+    classes: Classe[];
+    competences: Competence[];
+    religions: Religion[];
+    langues: Langue[];
+    [table: string]: unknown[];
+  };
+}
+
 export function getCompetence(id: string): Competence | undefined {
   const competences = snapshot.tables.competences as Competence[];
   return competences.find((c) => c.id === id);
@@ -33,29 +55,11 @@ export function getReligionNom(id: string): string | undefined {
 }
 
 /**
- * Détermine si une race possède le trait « Inapte à la magie »
- * Jointure race_traits × traits_raciaux : nom === "Inapte à la magie" ET est_actif
+ * Getter du snapshot complet pour les tests et usage interne.
+ *
+ * NB : le JSON importé a un type littéral inféré ; on le projette sur
+ * `SnapshotVisiteur` (le contenu correspond à cette forme à l'exécution).
  */
-export function raceEstInapteMagie(raceId: string): boolean {
-  const raceTraits = snapshot.tables.race_traits as RaceTrait[];
-  const traitsRaciaux = snapshot.tables.traits_raciaux as TraitRacial[];
-
-  // Récupérer tous les traits actifs de cette race
-  const traitsActifs = raceTraits
-    .filter((rt) => rt.race_id === raceId)
-    .map((rt) => {
-      const traitRacial = traitsRaciaux.find((t) => t.id === rt.trait_id);
-      return traitRacial;
-    })
-    .filter((t): t is TraitRacial => t != null && t.est_actif === true);
-
-  // Vérifier s'il existe un trait nommé « Inapte à la magie »
-  return traitsActifs.some((t) => t.nom === "Inapte à la magie");
-}
-
-/**
- * Getter du snapshot complet pour les tests et usage interne
- */
-export function getSnapshot() {
-  return snapshot;
+export function getSnapshot(): SnapshotVisiteur {
+  return snapshot as unknown as SnapshotVisiteur;
 }

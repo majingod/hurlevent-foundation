@@ -1,8 +1,22 @@
 #!/usr/bin/env node
 /**
- * snapshot-visiteur.mjs
- * Script ESM pour exporter les données de contenu du jeu (tables publiques)
- * vers un JSON snapshot pour le moteur de création offline.
+ * snapshot-visiteur.mjs — script de RÉGÉNÉRATION du snapshot visiteur offline.
+ *
+ * ⚠️ NÉCESSITE LE RÉSEAU (accès Supabase) — NON exécuté dans ce lot.
+ *    L'environnement CC ne peut pas joindre Supabase (egress). Le
+ *    snapshot committé (src/data/snapshotVisiteur.json) a été capturé en
+ *    prod par l'orchestrateur via la RPC public.snapshot_visiteur()
+ *    (voir supabase/migrations/20260703182834_visiteur_snapshot_rpc.sql).
+ *    Ce script reste la source de RÉGÉNÉRATION quand le réseau est dispo.
+ *
+ * Un SEUL appel `supabase.rpc('snapshot_visiteur')` renvoie tout le jsonb
+ * `{manifest:{genere_le,comptes}, tables:{…17 tables…}}` — la RPC est
+ * SECURITY INVOKER, donc l'appelant anon voit exactement ce que la RLS lui
+ * montre (parité stricte avec ce que l'app peut lire).
+ *
+ * Après réception : les MÊMES garde-fous anti-stub que la version précédente
+ * (comptes recalculés depuis tables[t].length, planchers de réalité, ids de
+ * `races` = UUID) — un snapshot factice reste IMPOSSIBLE à écrire.
  */
 
 import fs from 'fs';
@@ -13,27 +27,6 @@ import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Tables à exporter (ordre déterministe par 'id')
-const TABLES = [
-  'races',
-  'race_traits',
-  'traits_raciaux',
-  'classes',
-  'competences',
-  'sorts',
-  'prieres',
-  'religions',
-  'langues',
-  'familles_criminelles',
-  'categories_creatures',
-  'assemblages_runes',
-  'recettes_alchimie',
-  'pieges',
-  'objets_forge',
-  'objets_joaillerie',
-  'parametres_jeu'
-];
 
 // ============================================================
 // Chargement des variables d'environnement
@@ -71,54 +64,51 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 // ============================================================
-// Initialisation Supabase et export des tables
+// Initialisation Supabase et export via la RPC snapshot_visiteur
 // ============================================================
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function exportSnapshot() {
-  console.log('📊 Exporting snapshot for offline visitor mode...\n');
+  console.log('📊 Régénération du snapshot visiteur offline (RPC snapshot_visiteur)...\n');
 
+  const { data, error } = await supabase.rpc('snapshot_visiteur');
+  if (error) {
+    console.error('❌ Erreur RPC snapshot_visiteur :', error.message);
+    process.exit(1);
+  }
+  if (!data || typeof data !== 'object' || !data.tables) {
+    console.error('❌ Réponse RPC invalide : racine { manifest, tables } attendue.');
+    process.exit(1);
+  }
+
+  const tables = data.tables;
+  const tableNames = Object.keys(tables);
+
+  // Le compte du manifest est TOUJOURS recalculé côté client depuis la table
+  // réelle, jamais repris tel quel : un manifest ne peut donc pas mentir.
   const snapshot = {
     manifest: {
-      genere_le: new Date().toISOString(),
-      comptes: {}
+      genere_le: data.manifest?.genere_le ?? new Date().toISOString(),
+      comptes: {},
     },
-    tables: {}
+    tables: {},
   };
-
-  for (const table of TABLES) {
-    try {
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .order('id');
-
-      if (error) {
-        console.error(`❌ Erreur lors de l'export de ${table}:`, error.message);
-        process.exit(1);
-      }
-
-      snapshot.tables[table] = data || [];
-      // Le compte du manifest est TOUJOURS calculé depuis la table réelle,
-      // jamais écrit à la main. Un manifest ne peut donc pas mentir.
-      snapshot.manifest.comptes[table] = snapshot.tables[table].length;
-      console.log(`✓ ${table.padEnd(25)} : ${snapshot.tables[table].length} lignes`);
-    } catch (err) {
-      console.error(`❌ Erreur inattendue pour ${table}:`, err.message);
-      process.exit(1);
-    }
+  for (const t of tableNames) {
+    snapshot.tables[t] = Array.isArray(tables[t]) ? tables[t] : [];
+    snapshot.manifest.comptes[t] = snapshot.tables[t].length;
+    console.log(`✓ ${t.padEnd(25)} : ${snapshot.tables[t].length} lignes`);
   }
 
   // ============================================================
   // GARDE-FOUS ANTI-STUB (BLOQUANTS, AVANT toute écriture)
   // Un snapshot factice (tables vides, ids inventés) devient un état
   // IMPOSSIBLE : le script refuse d'écrire et sort en code ≠ 0.
+  // ⚠️ Aucun compte codé en dur : la seule vérité est la cohérence interne
+  //    manifest ↔ contenu (les stats pg divergent — ex. objets_forge).
   // ============================================================
 
   const UUID_RE = /^[0-9a-f-]{36}$/i;
-  // Planchers de réalité : en-dessous de ces seuils, la donnée est
-  // forcément incomplète ou factice (prod 2026-07-03 très au-dessus).
   const PLANCHERS = {
     races: 3,
     classes: 3,
@@ -130,22 +120,22 @@ async function exportSnapshot() {
   const violations = [];
 
   // 1. Aucune table ne doit être vide.
-  for (const table of TABLES) {
-    if (snapshot.tables[table].length === 0) {
-      violations.push(`Table « ${table} » vide (0 ligne) — snapshot factice ou accès refusé.`);
+  for (const t of tableNames) {
+    if (snapshot.tables[t].length === 0) {
+      violations.push(`Table « ${t} » vide (0 ligne) — snapshot factice ou accès refusé.`);
     }
   }
 
   // 2. Planchers de réalité.
-  for (const [table, plancher] of Object.entries(PLANCHERS)) {
-    const n = snapshot.tables[table].length;
+  for (const [t, plancher] of Object.entries(PLANCHERS)) {
+    const n = (snapshot.tables[t] || []).length;
     if (n < plancher) {
-      violations.push(`Table « ${table} » : ${n} ligne(s) < plancher ${plancher}.`);
+      violations.push(`Table « ${t} » : ${n} ligne(s) < plancher ${plancher}.`);
     }
   }
 
   // 3. Les ids de races doivent être des UUID (pas « 1 », « 2 »…).
-  const racesRows = snapshot.tables.races;
+  const racesRows = snapshot.tables.races || [];
   for (const [i, row] of racesRows.entries()) {
     if (typeof row.id !== 'string' || !UUID_RE.test(row.id)) {
       violations.push(`races[${i}].id = ${JSON.stringify(row.id)} n'est pas un UUID.`);
@@ -162,7 +152,7 @@ async function exportSnapshot() {
   console.log('\n✅ Garde-fous anti-stub : OK (aucune table vide, planchers respectés, ids races = UUID).');
 
   // ============================================================
-  // Écriture du fichier JSON
+  // Écriture du fichier JSON (pretty 2 espaces)
   // ============================================================
 
   const outputDir = path.join(__dirname, '..', 'src', 'data');
@@ -171,61 +161,13 @@ async function exportSnapshot() {
   }
 
   const outputPath = path.join(outputDir, 'snapshotVisiteur.json');
-  fs.writeFileSync(
-    outputPath,
-    JSON.stringify(snapshot, null, 2) + '\n',
-    'utf-8'
-  );
+  fs.writeFileSync(outputPath, JSON.stringify(snapshot, null, 2) + '\n', 'utf-8');
 
   console.log('\n✅ Snapshot généré :', outputPath);
-  console.log('\n📈 Comptes exportés:');
-  Object.entries(snapshot.manifest.comptes).forEach(([table, count]) => {
-    console.log(`  ${table}: ${count}`);
+  console.log('\n📈 Comptes exportés (recalculés depuis le contenu) :');
+  Object.entries(snapshot.manifest.comptes).forEach(([t, count]) => {
+    console.log(`  ${t}: ${count}`);
   });
-
-  // ============================================================
-  // Vérification des comptes attendus
-  // ============================================================
-
-  // Comptes de référence (prod 2026-07-03). Non-bloquants : la donnée RÉELLE
-  // fait foi (la prod peut avoir dérivé de quelques lignes). Les garde-fous
-  // anti-stub ci-dessus (planchers + tables non vides + UUID) sont le vrai
-  // verrou. Tout écart est signalé pour inspection humaine.
-  const EXPECTED_COUNTS = {
-    competences: 91,
-    sorts: 136,
-    prieres: 121,
-    races: 11,
-    classes: 4,
-    traits_raciaux: 20,
-    race_traits: 20,
-    recettes_alchimie: 40,
-    pieges: 27,
-    religions: 15,
-    langues: 10,
-    familles_criminelles: 5,
-    categories_creatures: 8,
-    assemblages_runes: 12,
-    objets_forge: 45,
-    objets_joaillerie: 38,
-    parametres_jeu: 1
-  };
-
-  console.log('\nℹ️  Comparaison aux comptes de référence (2026-07-03) — informative :');
-  let countMismatch = false;
-  for (const [table, expected] of Object.entries(EXPECTED_COUNTS)) {
-    const actual = snapshot.manifest.comptes[table] ?? 0;
-    const match = actual === expected ? '✓' : '≠';
-    console.log(`  ${match} ${table}: ${actual} (référence: ${expected})`);
-    if (actual !== expected) countMismatch = true;
-  }
-
-  if (countMismatch) {
-    console.warn('\n⚠️  Des comptes diffèrent de la référence 2026-07-03 (voir « ≠ » ci-dessus).');
-    console.warn('   Donnée réelle conservée. À rapporter/inspecter si l\'écart est majeur.');
-  } else {
-    console.log('\n✅ Tous les comptes correspondent aux comptes de référence.');
-  }
 }
 
 exportSnapshot().catch(err => {
