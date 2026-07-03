@@ -1,34 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { FichePersonnage } from "./types";
 
-interface RaceClasseCardProps {
-  fiche: FichePersonnage;
-  isManuelOpen: (id: string) => boolean;
-  toggleManuel: (id: string) => void;
-  isAllOpen: (ids: string[]) => boolean;
-  toggleAll: (ids: string[]) => void;
-}
-
-// Ids synthétiques stables (ne peuvent pas entrer en collision avec un UUID).
-const RACE_ID = "race";
-const CLASSE_ID = "classe";
-
-export const RaceClasseCard = ({
-  fiche,
-  isManuelOpen,
-  toggleManuel,
-  isAllOpen,
-  toggleAll,
-}: RaceClasseCardProps) => {
-  const raceCourte = fiche.race_description_courte ?? fiche.race_description;
-  const classeCourte = fiche.classe_description_courte ?? fiche.classe_description;
-
-  const idsVerbatim = [
-    fiche.race_description ? RACE_ID : null,
-    fiche.classe_description ? CLASSE_ID : null,
-  ].filter((x): x is string => x !== null);
+export const RaceClasseCard = ({ fiche }: { fiche: FichePersonnage }) => {
+  // Patron canon abrégé ⇄ intégral (s299) : swap qui REMPLACE, jamais empilé.
+  const { mode } = useModeAffichage();
+  const texteRace = mode === "abrege" ? fiche.race_resume_condense : fiche.race_description;
+  const texteClasse = mode === "abrege" ? fiche.classe_resume_condense : fiche.classe_description;
 
   return (
     <Card>
@@ -36,15 +15,6 @@ export const RaceClasseCard = ({
         <CardTitle className="text-base">Identité</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {idsVerbatim.length > 0 && (
-          <ManuelGlobalSwitch
-            allOpen={isAllOpen(idsVerbatim)}
-            onToggle={() => toggleAll(idsVerbatim)}
-            title="Cet onglet"
-            subtitle="Verbatim du manuel pour la race et la classe"
-          />
-        )}
-
         {/* Race */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -69,8 +39,8 @@ export const RaceClasseCard = ({
             />
           )}
 
-          {raceCourte && (
-            <p className="text-sm text-foreground/90 whitespace-pre-line">{raceCourte}</p>
+          {texteRace && (
+            <p className="text-sm text-foreground/90 whitespace-pre-line">{texteRace}</p>
           )}
 
           <div className="flex flex-wrap gap-2">
@@ -85,12 +55,6 @@ export const RaceClasseCard = ({
               {fiche.race_exigences_costume}
             </p>
           )}
-
-          <ToggleManuel
-            texte={fiche.race_description}
-            isOpen={isManuelOpen(RACE_ID)}
-            onToggle={() => toggleManuel(RACE_ID)}
-          />
         </div>
 
         <div className="border-t border-border/50" />
@@ -111,15 +75,9 @@ export const RaceClasseCard = ({
             </div>
           )}
 
-          {classeCourte && (
-            <p className="text-sm text-foreground/90 whitespace-pre-line">{classeCourte}</p>
+          {texteClasse && (
+            <p className="text-sm text-foreground/90 whitespace-pre-line">{texteClasse}</p>
           )}
-
-          <ToggleManuel
-            texte={fiche.classe_description}
-            isOpen={isManuelOpen(CLASSE_ID)}
-            onToggle={() => toggleManuel(CLASSE_ID)}
-          />
         </div>
       </CardContent>
     </Card>

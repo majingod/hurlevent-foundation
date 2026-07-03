@@ -27,22 +27,24 @@ export interface FichePersonnage {
   race_nom_latin: string | null;
   race_emoji: string | null;
   race_description: string | null;
-  race_description_courte: string | null;
   race_esperance_vie: string | null;
   race_exigences_costume: string | null;
   race_image_url: string | null;
   classe_nom: string | null;
   classe_emoji: string | null;
   classe_description: string | null;
-  classe_description_courte: string | null;
   classe_role_combat: string | null;
   religion_nom: string | null;
+  race_resume_condense: string | null;
+  classe_resume_condense: string | null;
 }
 
 export interface Trait {
   id: string;
   nom: string;
   description: string | null;
+  resume_condense: string | null;
+  texte_manuel: string | null;
 }
 
 export interface Competence {
@@ -61,6 +63,8 @@ export interface Competence {
   type_achat: string;
   competence_description: string | null;
   description_niveau_acquis: string | null;
+  competence_resume_condense: string | null;
+  description_courte_niveau_acquis: string | null;
 }
 
 // Regroupement des rows d'une compétence par competence_id (cf. useMemo
@@ -72,6 +76,7 @@ export interface CompetenceGroupee {
   type_achat: string;
   niveau_max_competence: number;
   competence_description: string | null;
+  competence_resume_condense: string | null;
   statut_maitre: string;
   xp_total: number;
   rows: Competence[];
@@ -90,7 +95,7 @@ export interface Sort {
   cout_xp_base: number;
   sort_nom_base: string | null;
   sort_description: string | null;
-  sort_description_courte: string | null;
+  sort_resume_condense: string | null;
   paliers?: PalierSort[] | null;
   effet_instance?: EffetInstance | null;
   type_sort?: string | null;
@@ -107,7 +112,7 @@ export interface Priere {
   duree_choisie: string | null;
   domaine: string;
   priere_description: string | null;
-  priere_description_courte: string | null;
+  priere_resume_condense: string | null;
   duree_incantation: string | null;
   duree_incantation_calculee: number | null;
   cout_xp_base: number | null;
@@ -131,6 +136,7 @@ export interface Assemblage {
   duree: string | null;
   effet_maitrise: string | null;
   cout_ps_maitrise: number | null;
+  resume_condense: string | null;
 }
 
 export interface Recette {
@@ -145,6 +151,7 @@ export interface Recette {
   formule: string | null;
   ingredients: Json | null;
   description_verbatim: string | null;
+  resume_condense: string | null;
 }
 
 export interface ArtisanatEtat {
@@ -152,6 +159,7 @@ export interface ArtisanatEtat {
   niveau_forge: number | null;
   niveau_joaillerie: number | null;
   niveau_pieges: number | null;
+  niveau_runes: number | null;
 }
 
 export interface ManipulationAlchimique {
@@ -165,28 +173,26 @@ export interface ObjetForge {
   id: string;
   nom: string | null;
   description: string | null;
+  resume_condense: string | null;
   type: string | null;
   cout_xp: number | null;
   temps_fabrication_minutes: number | null;
   materiaux_communs: string | null;
   materiaux_rares: string | null;
-}
-
-export interface ReparationForge {
-  id: string;
-  nom_affichage: string;
-  categorie: string;
-  materiaux: string;
-  materiaux_rares: string;
-  temps_minutes: number;
-  temps_rare_minutes: number;
-  notes: string | null;
+  non_reparable: boolean;
+  // Jointure reparations_forge!reparation_id — fusion fabrication & réparation (s299).
+  reparation?: {
+    nom_affichage: string;
+    temps_minutes: number;
+    materiaux: string;
+  } | null;
 }
 
 export interface ObjetJoaillerie {
   id: string;
   nom: string | null;
   description: string | null;
+  resume_condense: string | null;
   effet: string | null;
   cout_xp: number | null;
   temps_fabrication_minutes: number | null;

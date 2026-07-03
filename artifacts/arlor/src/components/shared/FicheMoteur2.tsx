@@ -124,7 +124,7 @@ function ItemPeek({ titre, xp, suffixeXp, verbatim, apercu, forceOpen }: { titre
         <b style={{ color: "#c9a84c" }}>{titre}</b>
         {aValeur(xp) && <span className="text-xs text-muted-foreground">{String(xp)}{suffixeXp ? ` ${suffixeXp}` : ""}</span>}
         {!forceOpen && verbatim && (
-          <button onClick={() => setOpen(o => !o)} className="ml-auto text-xs" style={{ color: "#c9a84c" }}>
+          <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="ml-auto text-xs" style={{ color: "#c9a84c" }}>
             {open ? "Masquer le manuel ▴" : "Texte du manuel ▸"}
           </button>
         )}
@@ -189,9 +189,7 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
   }
 
   // --- DENSITÉ ENCYCLO (corps déplié, complet) ---
-  return (
-    <div className="flex flex-col gap-4">
-      {champs.map((champ) => {
+  const blocs = champs.map((champ) => {
         // Champ texte (lore) : source pilotée par le MODE + toggle 3-valeurs.
         if (champ.type === "texte") {
           // toggle: "swap" (défaut, = v1) | "peek" (géré par render:"liste") | "aucun" (toujours intégral)
@@ -582,7 +580,16 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
             </span>
           </div>
         );
-      })}
+  });
+
+  const aDuContenu = blocs.some(Boolean);
+  return (
+    <div className="flex flex-col gap-4">
+      {aDuContenu ? (
+        blocs
+      ) : (
+        <p className="text-sm italic text-muted-foreground">Aucun détail disponible pour cette fiche.</p>
+      )}
     </div>
   );
 }

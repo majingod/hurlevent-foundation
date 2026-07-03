@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ReligionDetails from "@/components/shared/ReligionDetails";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { BadgeAcquis } from "@/components/createur/BadgeAcquis";
 import { LabelAjoutAnnulable } from "@/components/createur/LabelAjoutAnnulable";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
@@ -666,6 +669,7 @@ const Etape5_Competences_V2 = ({
     choixAchat?: string;
   } | null>(null);
   const [masterName, setMasterName] = useState("");
+  const { mode, toggleMode } = useModeAffichage();
 
   // Sous-accordéons des options à choix (Pure1b). Clé absente => repli par
   // défaut sauf si l'option a un achat (D2 : auto-ouverture). Valeur explicite
@@ -759,7 +763,7 @@ const Etape5_Competences_V2 = ({
 
   const classeNom = normalizeCategorie(classe?.nom ?? null);
 
-  const { data: competences, isLoading: loadingCompetences } = useQuery({
+  const { data: competences, isLoading: loadingCompetences, isError: competencesError, refetch: refetchCompetences } = useQuery({
     queryKey: ["competences-actives"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1334,7 +1338,13 @@ const Etape5_Competences_V2 = ({
   // OPTIONS À CHOIX (Pure1b) — univers complet + état par couple choix/niveau
   // =======================================================================
 
-  type OptionChecklist = { value: string; label: string; accessible: boolean };
+  type OptionChecklist = {
+    value: string;
+    label: string;
+    accessible: boolean;
+    /** Si verrouillé : phrase expliquant pourquoi (sinon message générique). */
+    raisonVerrou?: string;
+  };
 
   /**
    * Univers COMPLET d'options pour un `type_choix`, SANS filtrer le déjà-pris
@@ -1367,28 +1377,26 @@ const Etape5_Competences_V2 = ({
         accessible: true,
       }));
     }
-    if (t === "categorie_depecage") {
-      // Accessible uniquement pour les catégories où le perso possède
-      // Connaissances des Créatures (D1 : on affiche tout, le reste verrouillé).
-      const connais = (achats ?? []).filter(
-        (a) =>
-          (competences ?? []).find((cc) => cc.id === a.competence_id)?.nom ===
-          "Connaissances des Créatures",
-      );
-      const acc = new Set(
-        connais.map((a) => a.choix_achat).filter(Boolean) as string[],
-      );
-      return (categoriesCreatures ?? []).map((c) => ({
-        value: c.nom,
-        label: c.nom,
-        accessible: acc.has(c.nom),
-      }));
-    }
     if (t === "cercle") {
       return (cercles ?? []).map((c) => ({ value: c, label: c, accessible: true }));
     }
     if (t === "domaine") {
-      return (domaines ?? []).map((d) => ({ value: d, label: d, accessible: true }));
+      const religionPerso = (religions ?? []).find(
+        (r) => r.id === personnage?.religion_id,
+      );
+      const proscrits = new Set(
+        (religionPerso?.domaines_proscrits ?? []) as string[],
+      );
+      return (domaines ?? []).map((d) => ({
+        value: d,
+        label: d,
+        accessible: !proscrits.has(d),
+        raisonVerrou: proscrits.has(d)
+          ? `Interdit par ta religion${
+              religionPerso?.nom ? ` (${religionPerso.nom})` : ""
+            }.`
+          : undefined,
+      }));
     }
     if (t === "famille_criminelle") {
       return (famillesCriminelles ?? [])
@@ -2050,8 +2058,12 @@ const Etape5_Competences_V2 = ({
             {renderPrereqManquantHeader(niv, blocData, st)}
           </Label>
         </div>
-        {niv.description && (
-          <p className="text-xs text-muted-foreground">{niv.description}</p>
+        {(niv.description_courte || niv.description) && (
+          <p className="whitespace-pre-line text-xs text-muted-foreground">
+            {mode === "integral"
+              ? niv.description ?? niv.description_courte
+              : niv.description_courte ?? niv.description}
+          </p>
         )}
         {renderLignePrereqNiveau(niv, blocData)}
       </div>
@@ -2136,8 +2148,12 @@ const Etape5_Competences_V2 = ({
               </div>
               {open && (
                 <div className="space-y-2 border-t border-border/60 px-3 py-2 text-xs">
-                  {niv.description && (
-                    <p className="text-muted-foreground">{niv.description}</p>
+                  {(niv.description_courte || niv.description) && (
+                    <p className="whitespace-pre-line text-muted-foreground">
+                      {mode === "integral"
+                        ? niv.description ?? niv.description_courte
+                        : niv.description_courte ?? niv.description}
+                    </p>
                   )}
                   {st.acquis && (
                     <p className="flex items-center gap-1 text-[11px] text-gold-accent">
@@ -2321,7 +2337,8 @@ const Etape5_Competences_V2 = ({
 
         {!opt.accessible && (
           <p className="px-3 pb-2 pl-8 text-xs text-muted-foreground">
-            Achetez d'abord Connaissances des Créatures « {opt.label} ».
+            {opt.raisonVerrou ??
+              `Achetez d'abord Connaissances des Créatures « ${opt.label} ».`}
           </p>
         )}
 
@@ -2454,7 +2471,6 @@ const Etape5_Competences_V2 = ({
             ? (religions ?? []).find((r) => r.id === opt.value)
             : undefined;
           const detKey = `reldet-${comp.id}-${opt.value}`;
-          const manKey = `relman-${comp.id}-${opt.value}`;
           const detOuvert = !!optionsOuvertes[detKey];
           return (
             <div
@@ -2523,10 +2539,9 @@ const Etape5_Competences_V2 = ({
                 <div className="border-t border-border/60 p-3">
                   <ReligionDetails
                     religion={religionObj}
-                    isManuelOpen={!!optionsOuvertes[manKey]}
-                    onToggleManuel={() =>
-                      toggleOption(manKey, !!optionsOuvertes[manKey])
-                    }
+                    isManuelOpen={mode === "integral"}
+                    onToggleManuel={() => {}}
+                    hideManuelButton
                   />
                 </div>
               )}
@@ -2640,8 +2655,12 @@ const Etape5_Competences_V2 = ({
                   )}
                   {xpInsuff1 && renderManqueXp(niv1.cout_xp)}
                 </span>
-                {niv1.description && (
-                  <span className="text-muted-foreground">{niv1.description}</span>
+                {(niv1.description_courte || niv1.description) && (
+                  <span className="whitespace-pre-line text-muted-foreground">
+                    {mode === "integral"
+                      ? niv1.description ?? niv1.description_courte
+                      : niv1.description_courte ?? niv1.description}
+                  </span>
                 )}
               </Label>
             </div>
@@ -2706,7 +2725,9 @@ const Etape5_Competences_V2 = ({
     // avec fallback verbatim. UNE fois par compétence. Criminelles est gérée
     // plus haut (cas spécial) et n'atteint pas ce bloc.
     const paliersKey = `paliers-${comp.id}`;
-    const paliersOuvert = optionsOuvertes[paliersKey] ?? true;
+    // Défaut : ouvert en abrégé (texte court), replié en intégral (texte complet
+    // long → éviter le mur ; le joueur déplie la compétence qui l'intéresse).
+    const paliersOuvert = optionsOuvertes[paliersKey] ?? (mode !== "integral");
     const paliersAMontrer = niveaux.filter(
       (n) => n.description_courte || n.description,
     );
@@ -2740,8 +2761,10 @@ const Etape5_Competences_V2 = ({
                     >
                       Niv. {niv.niveau}
                     </Badge>
-                    <span className="text-muted-foreground">
-                      {niv.description_courte ?? niv.description}
+                    <span className="whitespace-pre-line text-muted-foreground">
+                      {mode === "integral"
+                        ? niv.description ?? niv.description_courte
+                        : niv.description_courte ?? niv.description}
                     </span>
                   </div>
                 ))}
@@ -2752,9 +2775,7 @@ const Etape5_Competences_V2 = ({
         {options.map((opt) => renderOptionAccordion(comp, opt, niveaux))}
         {options.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
-            {comp.type_choix === "categorie_depecage"
-              ? "Achetez d'abord Connaissances des Créatures pour au moins une catégorie."
-              : "Aucune option disponible pour le moment."}
+            Aucune option disponible pour le moment.
           </p>
         )}
       </div>
@@ -2865,9 +2886,9 @@ const Etape5_Competences_V2 = ({
                 </span>
                 {coutBadge}
               </div>
-              {comp.description && (
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                  {comp.description}
+              {(comp.resume_condense ?? comp.description) && (
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {comp.resume_condense ?? comp.description}
                 </p>
               )}
             </div>
@@ -2932,6 +2953,10 @@ const Etape5_Competences_V2 = ({
       <h2 className="font-heading text-xl font-semibold text-foreground">
         Achat de compétences
       </h2>
+
+      <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {competencesError && <ErreurChargement onRetry={() => refetchCompetences()} />}
 
       <IntroEtape
         storageKey="hv-e5-intro-replie"

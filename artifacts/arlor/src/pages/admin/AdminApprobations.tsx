@@ -14,6 +14,7 @@ interface CompetenceMaitre {
   nom_maitre: string;
   statut_maitre: "non_requis" | "en_attente" | "approuve" | "refuse";
   date_demande: string;
+  choix_achat: string | null;
 }
 
 interface DemandeRace {
@@ -373,7 +374,7 @@ const AdminApprobations = () => {
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      Compétence <span className="text-foreground font-medium">{comp.competence_nom}</span> · Nv {comp.niveau_acquis} · maître : <span className="text-foreground font-medium">{comp.nom_maitre}</span> · joueur {comp.joueur_nom}
+                      Compétence <span className="text-foreground font-medium">{comp.competence_nom}</span>{comp.choix_achat ? <> — <span className="text-primary font-semibold">{comp.choix_achat}</span></> : null} · Nv {comp.niveau_acquis} · maître : <span className="text-foreground font-medium">{comp.nom_maitre}</span> · joueur {comp.joueur_nom}
                     </div>
                   </div>
                 </div>

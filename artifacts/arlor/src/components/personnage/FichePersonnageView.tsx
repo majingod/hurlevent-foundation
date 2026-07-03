@@ -23,7 +23,6 @@ import type {
   ArtisanatEtat,
   ManipulationAlchimique,
   ObjetForge,
-  ReparationForge,
   ObjetJoaillerie,
   CompetenceGroupee,
   PiegeRow,
@@ -42,7 +41,9 @@ import { AlchimieSection } from "./sections/AlchimieSection";
 import { ForgeSection } from "./sections/ForgeSection";
 import { JoaillerieSection } from "./sections/JoaillerieSection";
 import { PiegesSection } from "./sections/PiegesSection";
-import { ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import RappelFouille from "./RappelFouille";
 import { FicheImprimable } from "./FicheImprimable";
 import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
 import ReligionDetails from "@/components/shared/ReligionDetails";
@@ -67,7 +68,11 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const [historiqueTmp, setHistoriqueTmp] = useState("");
   const [ameTmp, setAmeTmp] = useState("");
   const [saving, setSaving] = useState(false);
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
+  // Patron canon abrégé ⇄ intégral (s299) — remplace l'ancien patron additif
+  // « Texte(s) du manuel » sur toute la fiche.
+  const { mode: modeAffichage, toggleMode } = useModeAffichage();
+  // Religion : hors matrice canon s299 — son verbatim garde un dépliage local.
+  const [religionManuelOuvert, setReligionManuelOuvert] = useState(false);
 
   // DATA-FIRST : vue_fiche_personnage joint personnages + races + classes + religions
   // Remplace 3 requêtes en cascade (personnage → race → classe → religion)
@@ -146,18 +151,30 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     enabled: !!personnageId,
   });
 
-  // DATA-FIRST : vue_recettes_personnage — plus de jointure ni de .map() frontend
+  // s299 : vue_recettes_personnage n'expose ni recette_id ni resume_condense →
+  // lecture directe personnage_recettes + jointure recettes_alchimie (même RLS
+  // que les autres tables personnage_*), tri client équivalent aux .order() de la vue.
   const { data: recettes } = useQuery({
     queryKey: ["recettes-personnage", personnageId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("vue_recettes_personnage")
-        .select("*")
-        .eq("personnage_id", personnageId!)
-        .order("type")
-        .order("niveau_requis")
-        .order("nom");
-      return (data ?? []) as Recette[];
+        .from("personnage_recettes")
+        .select(
+          "id, personnage_id, xp_depense, recettes_alchimie(nom, type, niveau_requis, description, effet, formule, ingredients, description_verbatim, resume_condense)"
+        )
+        .eq("personnage_id", personnageId!);
+      const rows = (data ?? []).map((r) => ({
+        id: r.id,
+        personnage_id: r.personnage_id,
+        xp_depense: r.xp_depense,
+        ...r.recettes_alchimie,
+      })) as Recette[];
+      return rows.sort(
+        (a, b) =>
+          (a.type ?? "").localeCompare(b.type ?? "", "fr") ||
+          (a.niveau_requis ?? 0) - (b.niveau_requis ?? 0) ||
+          (a.nom ?? "").localeCompare(b.nom ?? "", "fr"),
+      );
     },
     enabled: !!personnageId,
   });
@@ -167,7 +184,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     queryFn: async () => {
       const { data } = await supabase
         .from("vue_artisanat_etat")
-        .select("niveau_alchimie, niveau_forge, niveau_joaillerie, niveau_pieges")
+        .select("niveau_alchimie, niveau_forge, niveau_joaillerie, niveau_pieges, niveau_runes")
         .eq("personnage_id", personnageId!)
         .maybeSingle();
       return (data as ArtisanatEtat) ?? null;
@@ -176,11 +193,12 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   });
 
   const { data: manipulations } = useQuery({
-    queryKey: ["manipulations-alchimiques"],
+    queryKey: ["manipulations-alchimiques", artisanatEtat?.niveau_alchimie],
     queryFn: async () => {
       const { data } = await supabase
         .from("ingredients_alchimiques")
         .select("id, nom, niveau, manipulations")
+        .lte("niveau", artisanatEtat?.niveau_alchimie ?? 0)
         .order("niveau")
         .order("nom");
       return (data ?? []) as ManipulationAlchimique[];
@@ -188,30 +206,21 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     enabled: !!(artisanatEtat?.niveau_alchimie && artisanatEtat.niveau_alchimie >= 1),
   });
 
+  // s299 v2 — fusion fabrication & réparation : jointure imbriquée vers
+  // reparations_forge (remplace l'ancienne requête séparée sur cette table).
+  // Clé de cache distincte de l'étape 9 du wizard (["objets-forge"], select *).
   const { data: objetsForge } = useQuery({
-    queryKey: ["objets-forge"],
+    queryKey: ["objets-forge-fiche"],
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_forge")
-        .select("id, nom, description, type, cout_xp, temps_fabrication_minutes, materiaux_communs, materiaux_rares")
+        .select(
+          "id, nom, description, resume_condense, type, cout_xp, temps_fabrication_minutes, materiaux_communs, materiaux_rares, non_reparable, reparation:reparations_forge!reparation_id(nom_affichage, temps_minutes, materiaux)"
+        )
         .eq("est_actif", true)
         .order("temps_fabrication_minutes")
         .order("nom");
       return (data ?? []) as ObjetForge[];
-    },
-    enabled: !!(artisanatEtat?.niveau_forge && artisanatEtat.niveau_forge >= 1),
-  });
-
-  const { data: reparationsForge } = useQuery({
-    queryKey: ["reparations-forge"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("reparations_forge")
-        .select("id, nom_affichage, categorie, materiaux, materiaux_rares, temps_minutes, temps_rare_minutes, notes")
-        .eq("est_actif", true)
-        .order("categorie")
-        .order("nom_affichage");
-      return (data ?? []) as ReparationForge[];
     },
     enabled: !!(artisanatEtat?.niveau_forge && artisanatEtat.niveau_forge >= 1),
   });
@@ -221,7 +230,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
     queryFn: async () => {
       const { data } = await supabase
         .from("objets_joaillerie")
-        .select("id, nom, description, effet, cout_xp, temps_fabrication_minutes, temps_rare_minutes, materiaux_communs, materiaux_rares")
+        .select("id, nom, description, resume_condense, effet, cout_xp, temps_fabrication_minutes, temps_rare_minutes, materiaux_communs, materiaux_rares")
         .eq("est_actif", true)
         .order("temps_fabrication_minutes")
         .order("nom");
@@ -232,12 +241,13 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   // PR-4 — Pièges : catalogue + possession (lecture seule, mirror étape 9)
   const { data: piegesCatalogue } = useQuery({
-    queryKey: ["pieges-catalogue-fiche"],
+    queryKey: ["pieges-catalogue-fiche", artisanatEtat?.niveau_pieges],
     queryFn: async () => {
       const { data } = await supabase
         .from("pieges")
         .select("*")
         .eq("est_actif", true)
+        .lte("niveau", artisanatEtat?.niveau_pieges ?? 0)
         .order("nom")
         .order("niveau");
       return (data ?? []) as PiegeRow[];
@@ -362,6 +372,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           type_achat: c.type_achat,
           niveau_max_competence: c.niveau_max,
           competence_description: c.competence_description,
+          competence_resume_condense: c.competence_resume_condense,
           statut_maitre: c.statut_maitre,
           xp_total: c.xp_depense,
           rows: [c],
@@ -427,22 +438,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const hasAssemblages = (assemblages?.length ?? 0) > 0;
   const hasPieges = (artisanatEtat?.niveau_pieges ?? 0) >= 1;
   const hasArtisanat = hasAlchimie || hasForge || hasJoaillerie || hasPieges;
-
-  // Ids de tous les items porteurs de verbatim (pour le switch global « Tous les onglets »).
-  // race/classe = ids synthétiques (0 NULL en prod : toujours présents).
-  const allManuelIds = useMemo(
-    () => [
-      ...(sorts ?? []).filter((s) => s.sort_description).map((s) => s.id),
-      ...(prieres ?? []).filter((p) => p.priere_description).map((p) => p.id),
-      ...(assemblages ?? []).filter((a) => a.texte_manuel).map((a) => a.id),
-      ...competencesGroupees
-        .filter((c) => c.rows.some((r) => r.description_niveau_acquis))
-        .map((c) => c.competence_id),
-      "race",
-      "classe",
-    ],
-    [sorts, prieres, assemblages, competencesGroupees],
-  );
 
   // PR4b — Sous-onglets Artisanat dynamiques
   type ArtisanatSubTab = { value: string; icon: typeof FlaskConical; label: string };
@@ -574,15 +569,20 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           <div className="flex gap-2 flex-wrap sm:justify-end">
             <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
-              Fiche Version Courte
+              Imprimer (Abrégé)
             </Button>
             <Button onClick={() => triggerPrint('manuel')} variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
-              Fiche Version Détaillée
+              Imprimer (Intégral)
             </Button>
           </div>
         )}
       </div>
+
+      {/* s299 — rappel fouille tout en haut, puis bascule canon, visibles dans
+          TOUS les modes (route ET embarqué wizard/admin). */}
+      <RappelFouille />
+      <BasculeAbregeIntegral mode={modeAffichage} onToggle={toggleMode} />
 
       {mode === 'route' && isOwner && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -603,13 +603,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         </div>
       )}
 
-      <ManuelGlobalSwitch
-        allOpen={isAllOpen(allManuelIds)}
-        onToggle={() => toggleAll(allManuelIds)}
-        title="Tous les onglets"
-        subtitle="Affiche le verbatim du manuel sur tous les onglets"
-      />
-
       <Tabs defaultValue="infos" className="w-full">
         <div className="overflow-x-auto -mx-2 px-2">
           <TabsList className="inline-flex w-max">
@@ -626,13 +619,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
         {/* Infos générales */}
         <TabsContent value="infos" className="space-y-4 mt-6">
-          <RaceClasseCard
-            fiche={fiche}
-            isManuelOpen={isManuelOpen}
-            toggleManuel={toggleManuel}
-            isAllOpen={isAllOpen}
-            toggleAll={toggleAll}
-          />
+          <RaceClasseCard fiche={fiche} />
           <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
           <BanqueXpCard
             joueurId={fiche.joueur_id}
@@ -653,8 +640,8 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
                 <CardContent>
                   <ReligionDetails
                     religion={maReligion}
-                    isManuelOpen={isManuelOpen(maReligion.id)}
-                    onToggleManuel={() => toggleManuel(maReligion.id)}
+                    isManuelOpen={religionManuelOuvert}
+                    onToggleManuel={() => setReligionManuelOuvert((o) => !o)}
                   />
                 </CardContent>
               </Card>
@@ -723,44 +710,22 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             competencesGroupees={competencesGroupees}
             langues={langues}
             religions={religions}
-            isManuelOpen={isManuelOpen}
-            toggleManuel={toggleManuel}
-            isAllOpen={isAllOpen}
-            toggleAll={toggleAll}
           />
         </TabsContent>
 
         {/* Sorts */}
         <TabsContent value="sorts" className="space-y-4 mt-6">
-          <SortsSection
-            sorts={sorts ?? []}
-            isManuelOpen={isManuelOpen}
-            toggleManuel={toggleManuel}
-            isAllOpen={isAllOpen}
-            toggleAll={toggleAll}
-          />
+          <SortsSection sorts={sorts ?? []} />
         </TabsContent>
 
         {/* Prières */}
         <TabsContent value="prieres" className="space-y-4 mt-6">
-          <PrieresSection
-            prieres={prieres ?? []}
-            isManuelOpen={isManuelOpen}
-            toggleManuel={toggleManuel}
-            isAllOpen={isAllOpen}
-            toggleAll={toggleAll}
-          />
+          <PrieresSection prieres={prieres ?? []} />
         </TabsContent>
 
         {/* Assemblages de runes */}
         <TabsContent value="assemblages" className="space-y-4 mt-6">
-          <AssemblagesSection
-            assemblages={assemblages}
-            isManuelOpen={isManuelOpen}
-            toggleManuel={toggleManuel}
-            isAllOpen={isAllOpen}
-            toggleAll={toggleAll}
-          />
+          <AssemblagesSection assemblages={assemblages} />
         </TabsContent>
 
         {/* Artisanat */}
@@ -791,7 +756,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               <ForgeSection
                 artisanatEtat={artisanatEtat}
                 objetsForge={objetsForge}
-                reparationsForge={reparationsForge}
               />
             </TabsContent>
 
@@ -823,15 +787,15 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
               <CardContent className="space-y-3">
                 <Button onClick={() => triggerPrint('fiche')} className="w-full gap-2">
                   <Printer className="h-4 w-4" />
-                  Imprimer (Fiche Version Courte)
+                  Imprimer (Abrégé)
                 </Button>
                 <Button onClick={() => triggerPrint('manuel')} variant="outline" className="w-full gap-2">
                   <Printer className="h-4 w-4" />
-                  Imprimer (Fiche Version Détaillée)
+                  Imprimer (Intégral)
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  <strong>Fiche Version Courte</strong> : descriptions courtes (résumé de jeu, version compacte).{" "}
-                  <strong>Fiche Version Détaillée</strong> : texte verbatim complet du manuel (sorts, prières, race, classe, assemblages).
+                  <strong>Abrégé</strong> : résumés de jeu, feuille compacte pour le terrain.{" "}
+                  <strong>Intégral</strong> : texte verbatim complet du manuel.
                 </p>
               </CardContent>
             </Card>
@@ -935,7 +899,6 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           recettes={recettes ?? []}
           manipulations={manipulations ?? []}
           objetsForge={objetsForge ?? []}
-          reparationsForge={reparationsForge ?? []}
           objetsJoaillerie={objetsJoaillerie ?? []}
           artisanatEtat={artisanatEtat ?? null}
           piegesCatalogue={piegesCatalogue ?? []}

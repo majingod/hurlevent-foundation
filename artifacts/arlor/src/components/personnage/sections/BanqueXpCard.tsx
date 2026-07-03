@@ -87,7 +87,7 @@ export const BanqueXpCard = ({
           q.queryKey.includes(personnageId) || q.queryKey.includes(joueurId),
       });
     },
-    onError: () => setErreur("Erreur réseau lors du versement."),
+    onError: (e) => setErreur(e instanceof Error ? e.message : "Erreur réseau lors du versement."),
   });
 
   // Carte visible seulement si la banque a du contenu ou si le joueur en est propriétaire

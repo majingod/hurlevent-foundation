@@ -30,7 +30,9 @@ import IntroEtape, {
 import LegendeDynamique from "@/components/createur/magie/LegendeDynamique";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 import Astuce from "@/components/createur/aide/Astuce";
-import ManuelDepliable from "@/components/createur/magie/ManuelDepliable";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
@@ -74,8 +76,9 @@ interface SortJoint {
   duree: string | null;
   cout_xp_base: number | null;
   bonus_niveau: BonusNiveau | null;
-  description_courte: string | null;
   description_tronc: string | null;
+  resume_condense: string | null;
+  description: string | null;
   paliers: unknown;
   type_sort: string | null;
   effet_instance: unknown;
@@ -169,6 +172,7 @@ const Etape6_Sorts_V2 = ({
   // Accordéons en état manuel (pattern É5 / maquette useSet) — PAS de Radix
   // Accordion : enfants interactifs → bug connu.
   const [cerclesOuverts, setCerclesOuverts] = useState<Set<string>>(new Set());
+  const { mode, toggleMode } = useModeAffichage();
   const [cerclesAchetesOuverts, setCerclesAchetesOuverts] = useState<
     Set<string>
   >(new Set());
@@ -230,7 +234,7 @@ const Etape6_Sorts_V2 = ({
   };
 
   // Cercles disponibles (vue_cercles_disponibles)
-  const { data: cerclesDisponibles, isLoading: loadingCercles } = useQuery({
+  const { data: cerclesDisponibles, isLoading: loadingCercles, isError: cerclesError, refetch: refetchCercles } = useQuery({
     queryKey: ["cercles-disponibles", personnageId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -297,7 +301,7 @@ const Etape6_Sorts_V2 = ({
       const { data, error } = await supabase
         .from("personnage_sorts")
         .select(
-          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau, description_courte, description_tronc, paliers, type_sort, effet_instance)",
+          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau, resume_condense, description, description_tronc, paliers, type_sort, effet_instance)",
         )
         .eq("personnage_id", personnageId)
         .order("date_acquisition");
@@ -783,6 +787,17 @@ const Etape6_Sorts_V2 = ({
       {/* I4 : jauge XP live, AU-DESSUS du bandeau calcul (z-20 > z-[15]) */}
       <JaugeXP xpDisponible={xpDisponible} coutEnCours={coutEnCours} />
 
+      <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {(cerclesError || sortsQueries.some((q) => q.isError)) && (
+        <ErreurChargement
+          onRetry={() => {
+            refetchCercles();
+            sortsQueries.forEach((q) => q.refetch());
+          }}
+        />
+      )}
+
       <div className="space-y-1">
         <h2 className="font-heading text-xl font-semibold text-foreground">
           Achat de sorts arcaniques
@@ -977,15 +992,13 @@ const Etape6_Sorts_V2 = ({
 
                           {selectionne && (
                             <div className="space-y-2.5 border-l-[3px] border-l-primary px-3 pb-4 pt-1">
-                              {s.description_courte && (
-                                <p className="text-sm text-muted-foreground">
-                                  {s.description_courte}
+                              {(s.resume_condense || s.description) && (
+                                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                                  {mode === "integral"
+                                    ? s.description ?? s.resume_condense
+                                    : s.resume_condense ?? s.description}
                                 </p>
                               )}
-                              <ManuelDepliable
-                                tronc={s.description_tronc}
-                                description={s.description}
-                              />
                               <ConstructeurMagie
                                 type="sort"
                                 zoneEffet={s.zone_effet ?? ""}
@@ -1304,14 +1317,13 @@ const Etape6_Sorts_V2 = ({
                                   </div>
                                 ) : null}
 
-                                {ps.sorts?.description_courte && (
-                                  <p className="text-sm text-muted-foreground">
-                                    {ps.sorts.description_courte}
+                                {(ps.sorts?.resume_condense || ps.sorts?.description) && (
+                                  <p className="whitespace-pre-line text-sm text-muted-foreground">
+                                    {mode === "integral"
+                                      ? ps.sorts?.description ?? ps.sorts?.resume_condense
+                                      : ps.sorts?.resume_condense ?? ps.sorts?.description}
                                   </p>
                                 )}
-                                <ManuelDepliable
-                                  tronc={ps.sorts?.description_tronc}
-                                />
 
                                 {/* Effet calculé AVANT → APRÈS (live) */}
                                 <AvantApres

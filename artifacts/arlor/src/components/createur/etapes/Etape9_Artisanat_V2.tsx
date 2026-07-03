@@ -30,7 +30,6 @@ import {
   Hammer,
   Gem,
   Crown,
-  Wrench,
   Bomb,
   Lock,
   ChevronDown,
@@ -55,11 +54,14 @@ import LegendeArtisanat, {
 } from "@/components/createur/artisanat/LegendeArtisanat";
 
 type RecetteRow = Database["public"]["Tables"]["recettes_alchimie"]["Row"];
-type ObjetForgeRow = Database["public"]["Tables"]["objets_forge"]["Row"];
+type ObjetForgeRow = Database["public"]["Tables"]["objets_forge"]["Row"] & {
+  reparation: Pick<
+    Database["public"]["Tables"]["reparations_forge"]["Row"],
+    "nom_affichage" | "temps_minutes" | "temps_rare_minutes" | "materiaux" | "materiaux_rares"
+  > | null;
+};
 type ObjetJoaillerieRow =
   Database["public"]["Tables"]["objets_joaillerie"]["Row"];
-type ReparationForgeRow =
-  Database["public"]["Tables"]["reparations_forge"]["Row"];
 type PersonnageRecetteRow =
   Database["public"]["Tables"]["personnage_recettes"]["Row"];
 type PiegeRow = Database["public"]["Tables"]["pieges"]["Row"];
@@ -238,34 +240,21 @@ const Etape9_Artisanat_V2 = ({
       enabled: !!personnageId && hasAlchimie,
     });
 
-  // Objets de forge (fabrication)
+  // Objets de forge — fusion fabrication & réparation (s299) : la réparation
+  // est jointe en ligne via la FK reparation_id (miroir ForgeSection.tsx).
   const { data: objetsForge, isLoading: loadingForge } = useQuery({
     queryKey: ["objets-forge"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("objets_forge")
-        .select("*")
+        .select(
+          "*, reparation:reparations_forge!reparation_id(nom_affichage, temps_minutes, temps_rare_minutes, materiaux, materiaux_rares)",
+        )
         .eq("est_actif", true)
         .order("temps_fabrication_minutes")
         .order("nom");
       if (error) throw error;
       return (data ?? []) as ObjetForgeRow[];
-    },
-    enabled: hasForge,
-  });
-
-  // Réparations forge (PR 6 — Bug 1)
-  const { data: reparationsForge, isLoading: loadingReparations } = useQuery({
-    queryKey: ["reparations-forge"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reparations_forge")
-        .select("*")
-        .eq("est_actif", true)
-        .order("categorie")
-        .order("nom_affichage");
-      if (error) throw error;
-      return (data ?? []) as ReparationForgeRow[];
     },
     enabled: hasForge,
   });
@@ -1180,7 +1169,7 @@ const Etape9_Artisanat_V2 = ({
           </TabsContent>
         )}
 
-        {/* Forge — avec sous-onglets Fabrication / Réparation (PR 6 — Bug 1) */}
+        {/* Forge — réparation en ligne par objet (s299, miroir ForgeSection.tsx) */}
         {hasForge && (
           <TabsContent value="forge" className="mt-6 space-y-4">
             <Card>
@@ -1209,143 +1198,77 @@ const Etape9_Artisanat_V2 = ({
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="fabrication" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger
-                      value="fabrication"
-                      className="flex items-center gap-2"
+              <CardContent className="space-y-3">
+                {loadingForge ? (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Chargement des objets de forge…
+                  </div>
+                ) : (objetsForge ?? []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun objet de forge disponible.
+                  </p>
+                ) : (
+                  (objetsForge ?? []).map((obj) => (
+                    <div
+                      key={obj.id}
+                      className="space-y-1 rounded-lg border border-border p-3 text-sm"
                     >
-                      <Hammer className="h-4 w-4" /> Fabrication
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="reparation"
-                      className="flex items-center gap-2"
-                    >
-                      <Wrench className="h-4 w-4" /> Réparation
-                    </TabsTrigger>
-                  </TabsList>
-
-                  {/* Sous-onglet Fabrication */}
-                  <TabsContent
-                    value="fabrication"
-                    className="mt-4 space-y-3"
-                  >
-                    {loadingForge ? (
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Chargement des objets de forge…
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="font-heading text-primary">
+                          {obj.nom}
+                        </strong>
+                        {obj.type && (
+                          <Badge variant="outline">{obj.type}</Badge>
+                        )}
                       </div>
-                    ) : (objetsForge ?? []).length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Aucun objet de forge disponible.
-                      </p>
-                    ) : (
-                      (objetsForge ?? []).map((obj) => (
-                        <div
-                          key={obj.id}
-                          className="space-y-1 rounded-lg border border-border p-3 text-sm"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <strong className="font-heading text-primary">
-                              {obj.nom}
-                            </strong>
-                            {obj.type && (
-                              <Badge variant="outline">{obj.type}</Badge>
+                      {obj.description && (
+                        <p className="text-xs text-muted-foreground">
+                          {obj.description}
+                        </p>
+                      )}
+                      {obj.temps_fabrication_minutes != null && (
+                        <p className="text-xs text-muted-foreground">
+                          Temps de fabrication : {obj.temps_fabrication_minutes} min
+                        </p>
+                      )}
+                      {obj.materiaux_communs && (
+                        <p className="text-xs">
+                          <span className="text-amber-400">
+                            Matériaux communs :
+                          </span>{" "}
+                          {obj.materiaux_communs}
+                        </p>
+                      )}
+                      {niveauForge >= 2 && obj.materiaux_rares && (
+                        <p className="text-xs">
+                          <span className="text-purple-400">
+                            Matériaux rares :
+                          </span>{" "}
+                          {obj.materiaux_rares}
+                        </p>
+                      )}
+                      {!obj.non_reparable && obj.reparation && (
+                        <p className="text-xs">
+                          <span className="text-emerald-400 font-medium">
+                            Réparation :
+                          </span>{" "}
+                          {obj.reparation.temps_minutes} min ·{" "}
+                          {obj.reparation.materiaux}
+                          {niveauForge >= 2 &&
+                            obj.reparation.temps_rare_minutes != null &&
+                            obj.reparation.materiaux_rares && (
+                              <>
+                                {" — rare : "}
+                                {obj.reparation.temps_rare_minutes} min ·{" "}
+                                {obj.reparation.materiaux_rares}
+                              </>
                             )}
-                          </div>
-                          {obj.description && (
-                            <p className="text-xs text-muted-foreground">
-                              {obj.description}
-                            </p>
-                          )}
-                          {obj.temps_fabrication_minutes != null && (
-                            <p className="text-xs text-muted-foreground">
-                              Temps de fabrication : {obj.temps_fabrication_minutes} min
-                            </p>
-                          )}
-                          {obj.materiaux_communs && (
-                            <p className="text-xs">
-                              <span className="text-amber-400">
-                                Matériaux communs :
-                              </span>{" "}
-                              {obj.materiaux_communs}
-                            </p>
-                          )}
-                          {niveauForge >= 2 && obj.materiaux_rares && (
-                            <p className="text-xs">
-                              <span className="text-purple-400">
-                                Matériaux rares :
-                              </span>{" "}
-                              {obj.materiaux_rares}
-                            </p>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </TabsContent>
-
-                  {/* Sous-onglet Réparation */}
-                  <TabsContent value="reparation" className="mt-4 space-y-3">
-                    {loadingReparations ? (
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Chargement des réparations…
-                      </div>
-                    ) : (reparationsForge ?? []).length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Aucune réparation disponible.
-                      </p>
-                    ) : (
-                      (reparationsForge ?? []).map((rep) => (
-                        <div
-                          key={rep.id}
-                          className="space-y-1 rounded-lg border border-border p-3 text-sm"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <strong className="font-heading text-primary">
-                              {rep.nom_affichage}
-                            </strong>
-                            {rep.categorie && (
-                              <Badge variant="outline">{rep.categorie}</Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Temps commun : {rep.temps_minutes} min
-                            {niveauForge >= 2 &&
-                              rep.temps_rare_minutes != null && (
-                                <>
-                                  {" — "}
-                                  Temps rare : {rep.temps_rare_minutes} min
-                                </>
-                              )}
-                          </p>
-                          {rep.materiaux && (
-                            <p className="text-xs">
-                              <span className="text-amber-400">
-                                Matériaux communs :
-                              </span>{" "}
-                              {rep.materiaux}
-                            </p>
-                          )}
-                          {niveauForge >= 2 && rep.materiaux_rares && (
-                            <p className="text-xs">
-                              <span className="text-purple-400">
-                                Matériaux rares :
-                              </span>{" "}
-                              {rep.materiaux_rares}
-                            </p>
-                          )}
-                          {rep.notes && (
-                            <p className="text-xs italic text-muted-foreground">
-                              {rep.notes}
-                            </p>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </TabsContent>
-                </Tabs>
+                        </p>
+                      )}
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>

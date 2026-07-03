@@ -4,6 +4,8 @@ import {
   parseRecetteVerbatim,
 } from "@/utils/alchimie";
 import { RecetteSections } from "@/components/shared/RecetteSections";
+import { ItemFiche } from "./ItemFiche";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { ArtisanatEtat, Recette, ManipulationAlchimique } from "./types";
 
 interface AlchimieSectionProps {
@@ -17,6 +19,10 @@ export const AlchimieSection = ({
   recettes,
   manipulations,
 }: AlchimieSectionProps) => {
+  // Patron canon abrégé ⇄ intégral (s299) : en abrégé, resume_condense en
+  // paragraphe simple ; en intégral, rendu verbatim actuel. Le teaser
+  // recette.description n'est plus affiché.
+  const { mode } = useModeAffichage();
   // DETTE-MANIPULATIONS-ALCHIMIQUES-ECRAN — filtre par niveau acquis
   const niveauAlchimieEcran = artisanatEtat?.niveau_alchimie ?? 0;
   const manipulationsFiltrees = (manipulations ?? []).filter(
@@ -53,22 +59,22 @@ export const AlchimieSection = ({
                     const { composants, manipulations } = parseIngredientsRecette(recette.ingredients);
                     const sections = parseRecetteVerbatim(recette.description_verbatim);
                     return (
-                    <div key={recette.id} className="p-2 rounded border border-border/50 text-sm space-y-1">
-                      <p className="font-medium text-foreground">{recette.nom}</p>
-                      <p className="text-xs text-muted-foreground">{recette.type}</p>
-                      {sections ? (
+                    <ItemFiche key={recette.id} titre={recette.nom} sousTitre={recette.type}>
+                      {mode === "abrege" ? (
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{recette.resume_condense}</p>
+                      ) : sections ? (
                         <RecetteSections data={sections} />
                       ) : (
                         <>
-                          {recette.effet && <p className="text-xs text-muted-foreground"><strong>Effet :</strong> {recette.effet}</p>}
-                          {recette.formule && <p className="text-xs text-muted-foreground"><strong>Formule :</strong> {recette.formule}</p>}
+                          {recette.effet && <p className="text-sm text-muted-foreground"><strong>Effet :</strong> {recette.effet}</p>}
+                          {recette.formule && <p className="text-sm text-muted-foreground"><strong>Formule :</strong> {recette.formule}</p>}
                           {composants.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-muted-foreground">
                               <strong>Ingrédients :</strong> {composants.map(formaterComposant).join(" · ")}
                             </p>
                           )}
                           {manipulations.length > 0 && (
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-sm text-muted-foreground">
                               <strong>Préparation :</strong>
                               <ol className="list-decimal list-inside mt-0.5 space-y-0.5">
                                 {manipulations.map((etape, i) => (
@@ -77,10 +83,9 @@ export const AlchimieSection = ({
                               </ol>
                             </div>
                           )}
-                          {recette.description && <p className="text-xs text-muted-foreground italic">{recette.description}</p>}
                         </>
                       )}
-                    </div>
+                    </ItemFiche>
                     );
                   })}
                 </div>
@@ -96,12 +101,11 @@ export const AlchimieSection = ({
           </h3>
           <div className="space-y-2">
             {manipulationsFiltrees.map((m) => (
-              <div key={m.id} className="p-2 rounded border border-border/50 text-sm">
-                <p className="font-medium text-foreground">{m.nom}</p>
+              <ItemFiche key={m.id} titre={m.nom}>
                 {m.manipulations && (
-                  <p className="text-xs text-muted-foreground mt-1">{m.manipulations}</p>
+                  <p className="text-sm text-muted-foreground">{m.manipulations}</p>
                 )}
-              </div>
+              </ItemFiche>
             ))}
           </div>
         </div>

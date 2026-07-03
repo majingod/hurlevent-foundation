@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import JaugeXP from "@/components/createur/aide/JaugeXP";
 import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
 
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
@@ -45,7 +48,7 @@ interface Race {
   nom: string;
   nom_latin: string | null;
   description: string | null;
-  description_courte: string | null;
+  resume_condense: string | null;
   xp_depart: number | null;
   emoji: string | null;
   esperance_vie: string | null;
@@ -66,6 +69,7 @@ interface TraitDispo {
   nom: string;
   description: string;
   texte_manuel: string | null;
+  resume_condense: string | null;
   cout_xp: number;
 }
 
@@ -78,6 +82,7 @@ const Etape2_V2 = ({
   xpDisponible = 0,
 }: Etape2Props) => {
   const [submitting, setSubmitting] = useState(false);
+  const { mode, toggleMode } = useModeAffichage();
 
   // Sélection (state simple — pas de react-hook-form : on doit réinitialiser
   // les traits au changement de race, ce qui est plus limpide en useState).
@@ -86,14 +91,12 @@ const Etape2_V2 = ({
     null,
   );
 
-  // Pattern Set manuel (gotcha s152) — accordéons « Plus de détails » par race,
-  // verbatim manuel par race, traits cochés (gratuits / achetés), verbatim
-  // manuel par trait.
+  // Pattern Set manuel (gotcha s152) — accordéon « Plus de détails » par race
+  // (MONO-ouverture), traits cochés (gratuits / achetés). Le verbatim manuel
+  // (race + trait) est piloté par le switch global Abrégé⇄Intégral.
   const [racesOuvertes, setRacesOuvertes] = useState<Set<string>>(new Set());
-  const [manuelRaces, setManuelRaces] = useState<Set<string>>(new Set());
   const [gratuits, setGratuits] = useState<Set<string>>(new Set());
   const [achetes, setAchetes] = useState<Set<string>>(new Set());
-  const [detailsTraits, setDetailsTraits] = useState<Set<string>>(new Set());
 
   // Init unique depuis le serveur (reprise etape_creation=2 ou 3).
   const initFait = useRef(false);
@@ -106,13 +109,13 @@ const Etape2_V2 = ({
   const necessiteJustification = estChimeride || estNonRace;
 
   // -- Données -------------------------------------------------------------
-  const { data: races = [], isLoading: racesLoading } = useQuery({
+  const { data: races = [], isLoading: racesLoading, isError: racesError, refetch: refetchRaces } = useQuery({
     queryKey: ["v2-races"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("races")
         .select(
-          "id, nom, nom_latin, description, description_courte, xp_depart, emoji, esperance_vie, exigences_costume, restrictions_classes, nb_traits_raciaux, est_jouable",
+          "id, nom, nom_latin, description, resume_condense, xp_depart, emoji, esperance_vie, exigences_costume, restrictions_classes, nb_traits_raciaux, est_jouable",
         )
         .eq("est_actif", true)
         .eq("est_jouable", true)
@@ -165,7 +168,7 @@ const Etape2_V2 = ({
       let q = supabase
         .from("vue_traits_par_race")
         .select(
-          "trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, cout_xp",
+          "trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, trait_resume_condense, cout_xp",
         )
         .eq("race_id", raceId!);
       if (sousType) {
@@ -180,6 +183,7 @@ const Etape2_V2 = ({
         nom: t.trait_nom as string,
         description: t.trait_description as string,
         texte_manuel: (t.trait_texte_manuel as string | null) ?? null,
+        resume_condense: (t.trait_resume_condense as string | null) ?? null,
         cout_xp: t.cout_xp as number,
       })) as TraitDispo[];
     },
@@ -268,7 +272,7 @@ const Etape2_V2 = ({
     setSousType(null);
     setGratuits(new Set());
     setAchetes(new Set());
-    setRacesOuvertes((prev) => new Set(prev).add(id)); // ouvrir la carte choisie
+    setRacesOuvertes(new Set([id])); // ouvrir la carte choisie (mono-ouverture)
   };
 
   const choisirSousType = (st: "carnivore" | "herbivore") => {
@@ -278,29 +282,10 @@ const Etape2_V2 = ({
     setAchetes(new Set());
   };
 
+  // Mono-ouverture : ouvrir une race ferme les autres (au plus 1 texte intégral
+  // affiché à la fois).
   const toggleAccordeon = (id: string) =>
-    setRacesOuvertes((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  const toggleManuelRace = (id: string) =>
-    setManuelRaces((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  const toggleDetailTrait = (id: string) =>
-    setDetailsTraits((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setRacesOuvertes((prev) => (prev.has(id) ? new Set() : new Set([id])));
 
   // -- Logique traits (portée d'Etape3_V2 : Sets + promotion FIFO) ---------
   const toggleGratuit = (id: string) => {
@@ -572,8 +557,8 @@ const Etape2_V2 = ({
           déplier une race, puis coche la case pour la choisir.
         </IntroEtapeItem>
         <IntroEtapeItem n={2}>
-          <span className="text-primary">« 📖 Texte du manuel → »</span> affiche
-          la description complète du manuel.
+          Le bouton <span className="text-primary">Abrégé ⇄ Intégral</span> en
+          haut bascule entre résumé et texte complet du manuel.
         </IntroEtapeItem>
         <IntroEtapeItem n={3}>
           Une fois la race cochée, choisis ton trait gratuit. Les suivants
@@ -588,6 +573,10 @@ const Etape2_V2 = ({
         </span>
       </div>
 
+      <BasculeAbregeIntegral mode={mode} onToggle={toggleMode} />
+
+      {racesError && <ErreurChargement onRetry={() => refetchRaces()} />}
+
       {racesLoading ? (
         <div className="flex items-center gap-2 text-sm text-white/50">
           <Loader2 className="h-4 w-4 animate-spin" /> Chargement des races…
@@ -597,10 +586,12 @@ const Etape2_V2 = ({
           {races.map((r) => {
             const sel = raceId === r.id;
             const ouvert = racesOuvertes.has(r.id);
-            const manuelOuvert = manuelRaces.has(r.id);
             const estChim = r.id === CHIMERIDE_ID;
             const estNonR = r.id === NON_RACES_ID;
-            const verbatimRace = r.description ?? r.description_courte;
+            const texteRace =
+              mode === "integral"
+                ? r.description ?? r.resume_condense
+                : r.resume_condense ?? r.description;
             return (
               <div
                 key={r.id}
@@ -643,36 +634,21 @@ const Etape2_V2 = ({
                         />
                       </span>
                     </div>
-                    {(r.description_courte ?? r.description) && (
+                    {!ouvert && (r.resume_condense ?? r.description) && (
                       <p className="mt-1.5 text-[12.5px] leading-snug text-white/60">
-                        {r.description_courte ?? r.description}
+                        {r.resume_condense ?? r.description}
                       </p>
                     )}
                   </button>
                 </div>
 
-                {/* Texte du manuel (toujours accessible) */}
-                {verbatimRace && (
-                  <div className="px-3 pb-1 pl-11">
-                    <button
-                      type="button"
-                      onClick={() => toggleManuelRace(r.id)}
-                      className="inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-gold"
-                    >
-                      📖 Texte du manuel
-                      <ChevronRight
-                        className={`h-3.5 w-3.5 transition-transform ${
-                          manuelOuvert ? "rotate-90" : ""
-                        }`}
-                      />
-                    </button>
-                    {manuelOuvert && (
-                      <div className="mb-1 border-l-2 border-gold/50 pl-3">
-                        <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
-                          {verbatimRace}
-                        </p>
-                      </div>
-                    )}
+                {/* Description — pilotée par le switch global, visible quand la
+                    carte est dépliée (équivalent « fiche » de l'encyclopédie). */}
+                {ouvert && texteRace && (
+                  <div className="px-3 pb-2 pl-11">
+                    <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
+                      {texteRace}
+                    </p>
                   </div>
                 )}
 
@@ -848,8 +824,10 @@ const Etape2_V2 = ({
                             const estGratuit = gratuits.has(t.id);
                             const estAchete = achetes.has(t.id);
                             const selectionne = estGratuit || estAchete;
-                            const detailOuvert = detailsTraits.has(t.id);
-                            const verbatim = t.texte_manuel ?? t.description;
+                            const texteTrait =
+                              mode === "integral"
+                                ? t.texte_manuel ?? t.description
+                                : t.resume_condense ?? t.description;
                             return (
                               <div
                                 key={t.id}
@@ -906,38 +884,12 @@ const Etape2_V2 = ({
                                         </span>
                                       )}
                                     </div>
-                                    <p className="mt-1 text-[12.5px] leading-snug text-white/60">
-                                      {t.description}
+                                    <p className="mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
+                                      {texteTrait}
                                     </p>
                                   </div>
                                 </div>
 
-                                {verbatim && (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleDetailTrait(t.id)}
-                                    aria-expanded={detailOuvert}
-                                    className={`mb-2 ml-11 inline-flex items-center gap-1.5 rounded-md border border-gold/40 px-2 py-1 text-[11.5px] font-semibold text-gold transition-colors ${
-                                      detailOuvert ? "bg-gold/10" : "bg-transparent"
-                                    }`}
-                                  >
-                                    <ChevronRight
-                                      className={`h-3.5 w-3.5 shrink-0 transition-transform ${
-                                        detailOuvert ? "rotate-90" : ""
-                                      }`}
-                                    />
-                                    {detailOuvert
-                                      ? "Masquer le détail"
-                                      : "📖 Texte du manuel"}
-                                  </button>
-                                )}
-                                {detailOuvert && verbatim && (
-                                  <div className="mb-3 ml-11 mr-3 rounded-md border-l-2 border-gold/50 bg-white/[0.03] px-3 py-2.5">
-                                    <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
-                                      {verbatim}
-                                    </p>
-                                  </div>
-                                )}
                               </div>
                             );
                           })}

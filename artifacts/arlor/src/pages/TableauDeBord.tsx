@@ -21,6 +21,8 @@ import {
   TrendingUp,
   Ban,
   Lock,
+  Bell,
+  type LucideIcon,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,6 +44,7 @@ import {
 import { ModalesInscription } from "@/components/evenements/ModalesInscription";
 import { useInscriptionEvenements } from "@/hooks/useInscriptionEvenements";
 import CarteNotifications from "@/components/notifications/CarteNotifications";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface PersonnageResume {
   id: string;
@@ -268,6 +271,37 @@ const SectionProchainEvenement = () => {
   );
 };
 
+// Tuile compacte du hub joueur : icône + valeur + libellé, se déplie au clic.
+const TuileHub = ({
+  icone: Icone,
+  valeur,
+  libelle,
+  actif,
+  onClick,
+  pastille = false,
+}: {
+  icone: LucideIcon;
+  valeur: string;
+  libelle: string;
+  actif: boolean;
+  onClick: () => void;
+  pastille?: boolean;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-expanded={actif}
+    className={`relative rounded-lg border bg-white/5 p-2.5 text-center transition-colors ${
+      actif ? "border-gold/50" : "border-white/10 hover:border-gold/30"
+    }`}
+  >
+    <Icone className="mx-auto h-4 w-4 text-gold" />
+    <p className="mt-1 text-[11px] font-bold text-white/90 leading-tight">{valeur}</p>
+    <p className="text-[10px] text-white/45 leading-tight">{libelle}</p>
+    {pastille && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-gold" />}
+  </button>
+);
+
 const TableauDeBord = () => {
   const { user } = useAuth();
   const { joueurId, rechargerProfils } = useProfil();
@@ -275,6 +309,46 @@ const TableauDeBord = () => {
   const [personnageASupprimer, setPersonnageASupprimer] = useState<PersonnageResume | null>(null);
   const [personnageATransferer, setPersonnageATransferer] = useState<PersonnageResume | null>(null);
   const navigate = useNavigate();
+
+  // Hub compact : une seule tuile dépliée à la fois (événement / banque / notifs).
+  type PanneauHub = "evenement" | "banque" | "notifs" | null;
+  const [panneauHub, setPanneauHub] = useState<PanneauHub>(null);
+  const basculerPanneau = (p: Exclude<PanneauHub, null>) =>
+    setPanneauHub((cur) => (cur === p ? null : p));
+
+  // Données des tuiles : mêmes queryKeys que les cartes existantes → cache partagé.
+  const { data: banqueTuile } = useQuery({
+    queryKey: ["banque-joueur", joueurId],
+    enabled: !!joueurId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vue_banque_joueur")
+        .select("solde, total_gagne, total_transfere")
+        .eq("joueur_id", joueurId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? { solde: 0, total_gagne: 0, total_transfere: 0 };
+    },
+  });
+
+  const { data: evenementsTuile = [] } = useQuery({
+    queryKey: ["evenements-publies"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vue_evenements_publies").select("*");
+      if (error) throw error;
+      return (data ?? []) as EvenementPublie[];
+    },
+  });
+  const prochainTuile = useMemo(() => {
+    const now = Date.now();
+    return (
+      evenementsTuile
+        .filter((e) => e.date_evenement && new Date(e.date_evenement).getTime() >= now)
+        .sort((a, b) => new Date(a.date_evenement!).getTime() - new Date(b.date_evenement!).getTime())[0] ?? null
+    );
+  }, [evenementsTuile]);
+
+  const { nbNonLus } = useNotifications();
 
   // DATA-FIRST : vue_personnages_joueur retourne directement race_nom / classe_nom
   // + les compteurs de progression (gn_completes / mini_gn_completes / ouvertures_terrain)
@@ -328,11 +402,41 @@ const TableauDeBord = () => {
         </Link>
       </div>
 
-      {joueurId && <CarteBanqueJoueur joueurId={joueurId} />}
+      {/* Hub compact : 3 tuiles dépliables, une seule ouverte à la fois */}
+      <div className="grid grid-cols-3 gap-2">
+        <TuileHub
+          icone={CalendarDays}
+          valeur={
+            prochainTuile?.date_evenement
+              ? new Date(prochainTuile.date_evenement).toLocaleDateString("fr-CA", { day: "numeric", month: "short" })
+              : "Aucun"
+          }
+          libelle={prochainTuile ? "Prochain GN" : "Événement"}
+          actif={panneauHub === "evenement"}
+          onClick={() => basculerPanneau("evenement")}
+        />
+        <TuileHub
+          icone={Wallet}
+          valeur={`${banqueTuile?.solde ?? 0} XP`}
+          libelle="Banque"
+          actif={panneauHub === "banque"}
+          onClick={() => basculerPanneau("banque")}
+          pastille={(banqueTuile?.solde ?? 0) > 0}
+        />
+        <TuileHub
+          icone={Bell}
+          valeur={nbNonLus > 0 ? `${nbNonLus} non lue${nbNonLus > 1 ? "s" : ""}` : "À jour"}
+          libelle="Notifs"
+          actif={panneauHub === "notifs"}
+          onClick={() => basculerPanneau("notifs")}
+          pastille={nbNonLus > 0}
+        />
+      </div>
 
-      <SectionProchainEvenement />
-
-      <CarteNotifications />
+      {/* Panneau déplié : réutilise les cartes existantes telles quelles */}
+      {panneauHub === "evenement" && <SectionProchainEvenement />}
+      {panneauHub === "banque" && joueurId && <CarteBanqueJoueur joueurId={joueurId} />}
+      {panneauHub === "notifs" && <CarteNotifications />}
 
       {error && (
         <Card className="border-destructive/50 bg-destructive/10">

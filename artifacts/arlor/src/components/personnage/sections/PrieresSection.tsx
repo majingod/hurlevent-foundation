@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ItemFiche } from "./ItemFiche";
 import { Badge } from "@/components/ui/badge";
-import { ManuelGlobalSwitch, ToggleManuel } from "@/components/shared/ToggleManuel";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { PastilleType } from "@/components/shared/PastilleType";
 import { calculerBonusNiveau, calculerCoutPS, calculerCoutXP, rendreEffetInstance } from "@/utils/calculsMagie";
 import type { PalierSort } from "@/utils/calculsMagie";
@@ -10,19 +10,11 @@ import type { Priere } from "./types";
 
 interface PrieresSectionProps {
   prieres: Priere[];
-  isManuelOpen: (id: string) => boolean;
-  toggleManuel: (id: string) => void;
-  isAllOpen: (ids: string[]) => boolean;
-  toggleAll: (ids: string[]) => void;
 }
 
-export const PrieresSection = ({
-  prieres,
-  isManuelOpen,
-  toggleManuel,
-  isAllOpen,
-  toggleAll,
-}: PrieresSectionProps) => {
+export const PrieresSection = ({ prieres }: PrieresSectionProps) => {
+  // Patron canon abrégé ⇄ intégral (s299) : priere_resume_condense ⇄ priere_description.
+  const { mode } = useModeAffichage();
   // État dépliage des paliers (rendu « effets calculés ») — Set manuel par id.
   const [paliersOuverts, setPaliersOuverts] = useState<Set<string>>(new Set());
   const togglePaliers = (id: string) =>
@@ -36,18 +28,8 @@ export const PrieresSection = ({
     return <p className="text-center py-8 text-muted-foreground">Aucune prière.</p>;
   }
 
-  const idsVerbatim = prieres.filter((p) => p.priere_description).map((p) => p.id);
-
   return (
     <div className="space-y-3">
-      {idsVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(idsVerbatim)}
-          onToggle={() => toggleAll(idsVerbatim)}
-          title="Cet onglet"
-          subtitle="Verbatim du manuel pour les prières"
-        />
-      )}
       {prieres.map((priere) => {
         const paliers = priere.paliers as PalierSort[] | null;
         const segments = rendreEffetInstance(priere.effet_instance, paliers, priere.niveau_priere);
@@ -73,25 +55,25 @@ export const PrieresSection = ({
             ? ` (+${bonusZone.n} ${bonusZone.unite}${bonusZone.n > 1 ? "s" : ""} gratuit${accordZone}${bonusZone.n > 1 ? "s" : ""})`
             : "";
         const showIncantationBox = priere.duree_incantation_calculee != null && priere.duree_incantation_calculee > 0;
+        // Swap canon : le texte affiché REMPLACE (jamais empilé).
+        const textePriere = mode === "abrege" ? priere.priere_resume_condense : priere.priere_description;
 
         return (
-          <Card key={priere.id}>
-            <CardContent className="pt-4 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs text-muted-foreground">{priere.domaine} • Niveau {priere.niveau_priere}</p>
-                    <PastilleType type={priere.type_priere} />
-                  </div>
-                </div>
+          <ItemFiche
+            key={priere.id}
+            titre={priere.nom_personnalise}
+            sousTitre={<>{priere.domaine} • Niveau {priere.niveau_priere}</>}
+            badges={
+              <>
+                <PastilleType type={priere.type_priere} />
                 {priere.cout_xp_base != null && (
                   <Badge variant="secondary" className="text-xs shrink-0">
                     {calculerCoutPS(calculerCoutXP(priere.zone_choisie ?? "", priere.portee_choisie ?? "", priere.duree_choisie ?? "", priere.niveau_priere, Number(priere.cout_xp_base)))} PS
                   </Badge>
                 )}
-              </div>
-
+              </>
+            }
+          >
               {showIncantationBox && (
                 <div className="border border-primary/45 rounded-md bg-primary/10 px-2.5 py-2 text-center">
                   <p className="font-mono italic text-[13.5px] text-primary">
@@ -174,6 +156,12 @@ export const PrieresSection = ({
                       )}
                     </div>
                   )}
+
+                  {textePriere && (
+                    <p className="border-t border-border/50 pt-2 text-sm text-foreground/90 whitespace-pre-line">
+                      {textePriere}
+                    </p>
+                  )}
                 </>
               ) : (
                 <>
@@ -193,23 +181,16 @@ export const PrieresSection = ({
                     </p>
                   )}
 
-                  {(priere.priere_description_courte ?? priere.priere_description) && (
+                  {textePriere && (
                     <p className="border-t border-border/50 pt-2 text-sm text-foreground/90 whitespace-pre-line">
-                      {priere.priere_description_courte ?? priere.priere_description}
+                      {textePriere}
                     </p>
                   )}
 
                   <PaliersDepliable paliers={paliers} niveau={priere.niveau_priere} />
                 </>
               )}
-
-              <ToggleManuel
-                texte={priere.priere_description}
-                isOpen={isManuelOpen(priere.id)}
-                onToggle={() => toggleManuel(priere.id)}
-              />
-            </CardContent>
-          </Card>
+          </ItemFiche>
         );
       })}
     </div>

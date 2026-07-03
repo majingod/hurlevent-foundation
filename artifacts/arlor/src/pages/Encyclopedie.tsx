@@ -1,1334 +1,300 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useSectionsEncyclopedie } from "@/hooks/useSectionsEncyclopedie";
-import { useModeManuel } from "@/hooks/useModeManuel";
-import { useEtatPersistant } from "@/hooks/useEtatPersistant";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  ChevronDown, Shield, Swords, BookOpen, Sparkles, Church, Users, FlaskConical,
-  Gem, Hammer, Skull, Globe, Search, Sparkle, Bomb,
-} from "lucide-react";
-import type { Json } from "@/integrations/supabase/types";
-import AlchimieSection from "@/components/encyclopedie/AlchimieSection";
-import AssemblagesSection from "@/components/encyclopedie/AssemblagesSection";
-import ForgeJoaillerieSection from "@/components/encyclopedie/ForgeJoaillerieSection";
-import BestiaireSection from "@/components/encyclopedie/BestiaireSection";
-import LoreSection from "@/components/encyclopedie/LoreSection";
-import PiegesSection from "@/components/encyclopedie/PiegesSection";
-import EncyclopedieCard from "@/components/encyclopedie/EncyclopedieCard";
-import ReligionDetails from "@/components/shared/ReligionDetails";
-import { ToggleManuel, ManuelGlobalSwitch, useManuelDisclosure } from "@/components/shared/ToggleManuel";
-import { FicheMoteur, type ChampSchema } from "@/components/shared/FicheMoteur";
-import type { BonusNiveau, PalierSort } from "@/utils/calculsMagie";
+import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
+import ErreurChargement from "@/components/shared/ErreurChargement";
+import { useModeAffichage } from "@/contexts/ModeAffichageContext";
+import { FicheMoteur2, type ChampSchema } from "@/components/shared/FicheMoteur2";
+import { EncyclopedieHub, EncyclopedieSwitcher } from "@/components/encyclopedie/EncyclopedieNav";
+import { EncyclopedieRecherche } from "@/components/encyclopedie/EncyclopedieRecherche";
+import { ListeMoteur, type ListeConfig } from "@/components/shared/ListeMoteur";
+import { parseRecetteVerbatim } from "@/utils/alchimie";
 
-/* ── types ── */
+/**
+ * Encyclopédie — page PUBLIQUE du Moteur V2, montée sur la route `/encyclopedie`
+ * (aucun ProtectedRoute : accessible à tous, comme /regles ou /evenements).
+ *
+ * Rend les 14 catégories avec une seule brique Liste (ListeMoteur) + une seule
+ * brique Fiche (FicheMoteur2) ; seule la config (`fiches_listes` /
+ * `fiches_schemas.champs_v2`) change d'une catégorie à l'autre. Lit `champs_v2`,
+ * jamais `champs` (l'ancien Encyclopedie.tsx v1 a été supprimé).
+ */
 
-interface Race {
-  id: string;
-  nom: string | null;
-  nom_latin: string | null;
-  description: string | null;
-  xp_depart: number;
-  esperance_vie: string | null;
-  exigences_costume: string | null;
-  emoji: string | null;
-  nb_traits_raciaux: number;
-}
+// fiches_listes et fiches_schemas.champs_v2 ne sont pas (encore) dans les types
+// générés : on lit ces colonnes additives via un client non typé.
+const sb = supabase as any;
 
-interface Classe {
-  id: string;
-  nom: string | null;
-  emoji: string | null;
-  description: string | null;
-  resume_condense: string | null;
-  pv_depart: number | null;
-  ps_depart: number | null;
-  competences_gratuites: Json | null;
-}
+const CATS = [
+  { cle: "race", label: "Races" },
+  { cle: "trait_racial", label: "Traits raciaux" },
+  { cle: "classe", label: "Classes" },
+  { cle: "competences", label: "Compétences" },
+  { cle: "assemblages", label: "Assemblages" },
+  { cle: "alchimie", label: "Alchimie" },
+  { cle: "sorts", label: "Sorts" },
+  { cle: "prieres", label: "Prières" },
+  { cle: "religions", label: "Religions" },
+  { cle: "bestiaire", label: "Bestiaire" },
+  { cle: "lore", label: "Régions / Lore" },
+  { cle: "forge", label: "Forge" },
+  { cle: "joaillerie", label: "Joaillerie" },
+  { cle: "pieges", label: "Pièges" },
+] as const;
 
-interface Competence {
-  id: string;
-  nom: string | null;
-  description: string | null;
-  categorie: string | null;
-  niveaux: Json | null;
-  est_general: boolean | null;
-  prerequis_labels: Json | null;
-}
+type CatCle = (typeof CATS)[number]["cle"];
 
-interface Sort {
-  id: string;
-  cercle: string;
-  nom: string;
-  niveau: number;
-  description: string | null;
-  description_courte: string | null;
-  type_sort: string | null;
-  zone_effet: string | null;
-  portee: string | null;
-  duree: string | null;
-  paliers: PalierSort[] | null;
-  description_tronc: string | null;
-  bonus_niveau: BonusNiveau | null;
-}
-
-interface Priere {
-  id: string;
-  domaine: string;
-  nom: string;
-  niveau: number;
-  description: string | null;
-  description_courte: string | null;
-  type_priere: string | null;
-  zone_effet: string | null;
-  portee: string | null;
-  duree: string | null;
-  duree_incantation: string | null;
-  paliers: PalierSort[] | null;
-  description_tronc: string | null;
-  bonus_niveau: BonusNiveau | null;
-}
-
-interface Religion {
-  id: string;
-  nom: string | null;
-  description: string | null;
-  description_longue: string | null;
-  domaines_principaux: string[] | null;
-  domaines_proscrits: string[] | null;
-  symbole_sacre: string | null;
-  pouvoir_symbole: string | null;
-  dirigeant: string | null;
-  fondateur: string | null;
-  lore_fiche: string | null;
-  rituels_fiche: string[] | null;
-  lore_manuel: string | null;
-  rituels_manuel: string[] | null;
-}
-
-interface TraitRacial {
-  id: string;
-  nom: string;
-  description: string;
-  texte_manuel: string | null;
-  resume_condense: string | null;
-  cout_xp: number;
-  race_traits: {
-    sous_type: string | null;
-    races: {
-      id: string;
-      nom: string | null;
-      est_jouable: boolean;
-    } | null;
-  }[];
-}
-
-type SectionKey =
-  | "recherche"
-  | "races" | "traits" | "classes" | "competences" | "magie" | "prieres" | "religions"
-  | "alchimie" | "assemblages" | "forge" | "joaillerie" | "bestiaire" | "lore" | "pieges";
-
-const LUCIDE_ICON_MAP: Record<string, React.ElementType> = {
-  Users, Sparkle, Shield, Swords, Sparkles, Church,
-  BookOpen, FlaskConical, Gem, Hammer, Bomb, Skull, Globe, Search,
+const TABLE_SOURCE: Record<CatCle, string> = {
+  race: "races",
+  trait_racial: "traits_raciaux",
+  classe: "classes",
+  competences: "competences",
+  assemblages: "assemblages_runes",
+  alchimie: "recettes_alchimie",
+  sorts: "sorts",
+  prieres: "prieres",
+  religions: "religions",
+  bestiaire: "bestiaire",
+  lore: "lore",
+  forge: "objets_forge",
+  joaillerie: "objets_joaillerie",
+  pieges: "pieges",
 };
 
-const URL_TO_KEY: Record<string, SectionKey> = {
-  "recherche": "recherche",
-  "races": "races",
-  "traits-raciaux": "traits",
-  "classes": "classes",
-  "competences": "competences",
-  "magie": "magie",
-  "prieres": "prieres",
-  "religions": "religions",
-  "monde": "lore",
-  "pieges": "pieges",
-  "alchimie": "alchimie",
-  "runes": "assemblages",
-  "forge": "forge",
-  "joaillerie": "joaillerie",
-  "bestiaire": "bestiaire",
-};
-
-/* Mapping type RPC `rechercher_encyclopedie` → cible de navigation.
- * Source unique de vérité pour routing + URL + label badge. */
-const RPC_TYPE_TO_TARGET: Record<string, { section: SectionKey; urlKey: string; label: string }> = {
-  lore: { section: "lore", urlKey: "monde", label: "Monde de Destéa" },
-  bestiaire: { section: "bestiaire", urlKey: "bestiaire", label: "Bestiaire" },
-  religion: { section: "religions", urlKey: "religions", label: "Religion" },
-  competence: { section: "competences", urlKey: "competences", label: "Compétence" },
-  sort: { section: "magie", urlKey: "magie", label: "Sort" },
-  priere: { section: "prieres", urlKey: "prieres", label: "Prière" },
-};
-
-/* ── helpers ── */
-
-function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
-  return arr.reduce((acc, item) => {
-    const k = key(item);
-    (acc[k] ||= []).push(item);
-    return acc;
-  }, {} as Record<string, T[]>);
-}
-
-const labelCategorie: Record<string, string> = {
-  general: "Générales",
-  guerrier: "Guerrier",
-  voleur: "Voleur",
-  mage: "Mage",
-  pretre: "Prêtre",
-};
-
-function filterByText<T>(arr: T[], q: string, fields: (item: T) => string[]): T[] {
-  if (!q.trim()) return arr;
-  const lc = q.toLowerCase();
-  return arr.filter((item) => fields(item).some((f) => (f ?? "").toLowerCase().includes(lc)));
-}
-
-/* ── component ── */
-
-const Encyclopedie = () => {
-  const { data: sectionData } = useSectionsEncyclopedie();
+export default function Encyclopedie() {
   const [searchParams, setSearchParams] = useSearchParams();
-  // Onglet : un ?tab= explicite (lien profond) prime au montage via l'effet de sync URL→active
-  // ci-dessous ; sinon dernier onglet mémorisé (localStorage) ; sinon Races.
-  const [active, setActive] = useEtatPersistant<SectionKey>("encyclo:tab", "races");
-  const [search, setSearch] = useState("");
-
-  const [races, setRaces] = useState<Race[]>([]);
-  const [traits, setTraits] = useState<TraitRacial[]>([]);
-  const [classes, setClasses] = useState<Classe[]>([]);
-  const [schemaClasse, setSchemaClasse] = useState<ChampSchema[]>([]);
-  const [schemaRace, setSchemaRace] = useState<ChampSchema[]>([]);
-  const [schemaTrait, setSchemaTrait] = useState<ChampSchema[]>([]);
-  const [schemaSort, setSchemaSort] = useState<ChampSchema[]>([]);
-  const [schemaPriere, setSchemaPriere] = useState<ChampSchema[]>([]);
-  const [schemaAssemblages, setSchemaAssemblages] = useState<ChampSchema[]>([]);
-  const [competences, setCompetences] = useState<Competence[]>([]);
-  const [sorts, setSorts] = useState<Sort[]>([]);
-  const [prieres, setPrieres] = useState<Priere[]>([]);
-  const [religions, setReligions] = useState<Religion[]>([]);
-  const [recettes, setRecettes] = useState<any[]>([]);
-  const [ingredients, setIngredients] = useState<any[]>([]);
-  const [assemblages, setAssemblages] = useState<any[]>([]);
-  const [forge, setForge] = useState<any[]>([]);
-  const [joaillerie, setJoaillerie] = useState<any[]>([]);
-  const [reparations, setReparations] = useState<any[]>([]);
-  const [creatures, setCreatures] = useState<any[]>([]);
-  const [loreEntries, setLoreEntries] = useState<any[]>([]);
-  const [pieges, setPieges] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fromUrl = URL_TO_KEY[searchParams.get("tab") ?? ""];
-    if (fromUrl && fromUrl !== active) setActive(fromUrl);
-  }, [searchParams]);
-
-  useEffect(() => {
-    const fetchAll = async () => {
-      const [
-        racesRes, traitsRes, classesRes, compRes, sortsRes, prieresRes, relRes,
-        recettesRes, ingsRes, assRes, forgeRes, joailRes, repRes, bestRes,
-        loreRes, piegesRes,
-      ] = await Promise.all([
-        supabase.from("races").select("*").eq("est_actif", true).eq("est_jouable", true).order("nom"),
-        supabase.from("traits_raciaux").select(`id, nom, description, texte_manuel, resume_condense, cout_xp, est_actif, race_traits(sous_type, races(id, nom, est_jouable))`).eq("est_actif", true).order("nom"),
-        supabase.from("classes").select("id, nom, emoji, pv_depart, ps_depart, description, resume_condense, competences_gratuites, est_actif").eq("est_actif", true).order("nom"),
-        supabase.from("vue_competences_encyclopedie").select("*").eq("est_actif", true).order("categorie").order("nom"),
-        supabase.from("sorts").select("*").eq("est_actif", true).order("cercle").order("niveau").order("nom"),
-        supabase.from("prieres").select("*").eq("est_actif", true).order("domaine").order("niveau").order("nom"),
-        supabase.from("religions").select("*").eq("est_actif", true).order("nom"),
-        supabase.from("recettes_alchimie").select("*").eq("est_actif", true).order("niveau_requis").order("type").order("nom"),
-        supabase.from("ingredients_alchimiques").select("*").order("niveau").order("nom"),
-        supabase.from("assemblages_runes").select("*").eq("est_actif", true).order("nom"),
-        supabase.from("objets_forge").select("*").eq("est_actif", true).order("type").order("temps_fabrication_minutes").order("nom"),
-        supabase.from("objets_joaillerie").select("*").eq("est_actif", true).order("temps_fabrication_minutes").order("nom"),
-        supabase.from("reparations_forge").select("*").eq("est_actif", true).order("categorie").order("nom_affichage"),
-        supabase.from("bestiaire").select("*").eq("est_actif", true).order("categorie").order("nom"),
-        supabase.from("lore").select("id, categorie, nom, sous_titre, embleme, description, ordre").eq("est_actif", true).order("categorie").order("ordre"),
-        supabase.from("pieges").select("*").eq("est_actif", true).order("nom").order("niveau"),
-      ]);
-      setRaces((racesRes.data ?? []) as Race[]);
-      setTraits((traitsRes.data ?? []) as TraitRacial[]);
-      setClasses((classesRes.data ?? []) as Classe[]);
-      setCompetences((compRes.data ?? []) as Competence[]);
-      setSorts((sortsRes.data ?? []) as Sort[]);
-      setPrieres((prieresRes.data ?? []) as Priere[]);
-      setReligions((relRes.data ?? []) as Religion[]);
-      setRecettes(recettesRes.data ?? []);
-      setIngredients(ingsRes.data ?? []);
-      setAssemblages(assRes.data ?? []);
-      setForge(forgeRes.data ?? []);
-      setJoaillerie(joailRes.data ?? []);
-      setReparations(repRes.data ?? []);
-      setCreatures(bestRes.data ?? []);
-      setLoreEntries(loreRes.data ?? []);
-      setPieges(piegesRes.data ?? []);
-      const schemasRes = await supabase
-        .from("fiches_schemas")
-        .select("categorie, champs")
-        .in("categorie", ["classe", "race", "trait_racial", "sorts", "prieres", "assemblages"]);
-      const parCategorie = Object.fromEntries(
-        (schemasRes.data ?? []).map((s: any) => [s.categorie, s.champs])
-      );
-      setSchemaClasse((parCategorie["classe"] as ChampSchema[]) ?? []);
-      setSchemaRace((parCategorie["race"] as ChampSchema[]) ?? []);
-      setSchemaTrait((parCategorie["trait_racial"] as ChampSchema[]) ?? []);
-      setSchemaSort((parCategorie["sorts"] as ChampSchema[]) ?? []);
-      setSchemaPriere((parCategorie["prieres"] as ChampSchema[]) ?? []);
-      setSchemaAssemblages((parCategorie["assemblages"] as ChampSchema[]) ?? []);
-      setLoading(false);
-    };
-    fetchAll();
-  }, []);
-
-  const handleSelectResult = (type: string, _id: string, titre: string) => {
-    const target = RPC_TYPE_TO_TARGET[type];
-    if (!target) return;
-    setActive(target.section);
-    setSearch(titre);
+  const catParam = searchParams.get("cat");
+  const cat = (CATS.find((c) => c.cle === catParam)?.cle ?? null) as CatCle | null;
+  const ficheParam = searchParams.get("fiche");
+  const updateParams = (
+    mut: (p: URLSearchParams) => void,
+    opts?: { replace?: boolean }
+  ) => {
     const next = new URLSearchParams(searchParams);
-    next.set("tab", target.urlKey);
-    setSearchParams(next, { replace: true });
+    mut(next);
+    setSearchParams(next, opts);
   };
-
-  const handleTabClick = (key: SectionKey) => {
-    setActive(key);
-    setSearch(""); // clear search bar on manual tab change
-    const urlKey = Object.entries(URL_TO_KEY).find(([, v]) => v === key)?.[0];
-    if (urlKey) {
-      const next = new URLSearchParams(searchParams);
-      next.set("tab", urlKey);
-      setSearchParams(next, { replace: true });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="container py-12 text-center">
-        <p className="text-muted-foreground">Chargement de l'encyclopédie…</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container py-8 max-w-6xl animate-in fade-in duration-500">
-      <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-8 tracking-tight">
-        Encyclopédie de Destéa
-      </h1>
-
-      {/* Barre d'onglets horizontale — même style que la page Règles */}
-      <div className="overflow-x-auto -mx-2 px-2 mb-6">
-        <div className="inline-flex h-auto bg-card border border-border p-1 rounded-lg w-max">
-          {sectionData?.map(s => {
-            const Icon = LUCIDE_ICON_MAP[s.icon_nom] ?? Globe;
-            const isActive = active === s.cle;
-            return (
-              <button
-                key={s.cle}
-                onClick={() => handleTabClick(s.cle as SectionKey)}
-                className={`flex items-center gap-2 rounded-sm px-3 py-1.5 font-heading text-xs sm:text-sm whitespace-nowrap transition-all duration-200 ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                <span>{s.cle === "magie" ? "Magie Arcane" : s.cle === "prieres" ? "Magie Divine" : s.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {active !== "recherche" && (
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher dans cet onglet…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      )}
-
-      <div>
-        {active === "recherche" && <RechercheSection onSelectResult={handleSelectResult} />}
-        {active === "races" && <RacesSection races={races} searchQuery={search} schema={schemaRace} traits={traits} />}
-        {active === "traits" && <TraitsSection traits={traits} searchQuery={search} races={races} schema={schemaTrait} />}
-        {active === "classes" && <ClassesSection classes={classes} searchQuery={search} schema={schemaClasse} competences={competences} />}
-        {active === "competences" && <CompetencesSection competences={competences} searchQuery={search} />}
-        {active === "magie" && <MagieSection sorts={sorts} searchQuery={search} schema={schemaSort} />}
-        {active === "prieres" && <PrieresSection prieres={prieres} searchQuery={search} schema={schemaPriere} />}
-        {active === "religions" && <ReligionsSection religions={religions} searchQuery={search} />}
-        {active === "alchimie" && <AlchimieSection recettes={recettes} ingredients={ingredients} searchQuery={search} />}
-        {active === "assemblages" && <AssemblagesSection assemblages={assemblages} searchQuery={search} schema={schemaAssemblages} />}
-        {active === "forge" && (
-          <ForgeJoaillerieSection
-            mode="forge"
-            forge={forge}
-            reparations={reparations}
-            searchQuery={search}
-          />
-        )}
-        {active === "joaillerie" && (
-          <ForgeJoaillerieSection
-            mode="joaillerie"
-            joaillerie={joaillerie}
-            searchQuery={search}
-          />
-        )}
-        {active === "pieges" && <PiegesSection pieges={pieges} searchQuery={search} />}
-        {active === "bestiaire" && <BestiaireSection creatures={creatures} searchQuery={search} />}
-        {active === "lore" && <LoreSection loreEntries={loreEntries} searchQuery={search} />}
-      </div>
-    </div>
-  );
-};
-
-const RechercheSection = ({ onSelectResult }: { onSelectResult: (type: string, id: string, titre: string) => void }) => {
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [results, setResults] = useState<Array<{ type: string; id: string; titre: string; sous_titre: string | null; categorie: string | null; snippet: string | null; rang: number; }>>([]);
-  const [searching, setSearching] = useState(false);
+  const cleFiche = (item: any) => (cat === "pieges" ? item?.nom : item?.id);
+  const setCat = (c: CatCle | null) =>
+    updateParams((p) => {
+      if (c) p.set("cat", c);
+      else p.delete("cat");
+      p.delete("fiche");
+    });
+  const goToFiche = (cle: string, key: string) =>
+    updateParams((p) => {
+      p.set("cat", cle);
+      p.set("fiche", key);
+    });
+  const openFiche = (item: any) =>
+    updateParams((p) => {
+      const k = cleFiche(item);
+      if (k != null) p.set("fiche", String(k));
+    });
+  const closeFiche = () =>
+    updateParams((p) => p.delete("fiche"), { replace: true });
+  const { mode, toggleMode } = useModeAffichage();
+  const [schema, setSchema] = useState<ChampSchema[]>([]);
+  const [config, setConfig] = useState<ListeConfig | null>(null);
+  const [rows, setRows] = useState<any[]>([]);
+  const [lookups, setLookups] = useState<Record<string, any[]>>({});
+  const [competencesParId, setCompetencesParId] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  useEffect(() => {
-    if (debouncedQuery.trim().length < 2) {
-      setResults([]);
-      setSearching(false);
+    let annule = false;
+    if (!cat) {
+      setLoading(false);
+      setErreur(null);
+      setSchema([]);
+      setConfig(null);
+      setRows([]);
       return;
     }
-    setSearching(true);
-    supabase.rpc("rechercher_encyclopedie", { p_terme: debouncedQuery }).then(({ data, error }) => {
-      if (error) {
-        console.error("[rechercher_encyclopedie]", error);
-        setResults([]);
-      } else {
-        setResults((data ?? []) as typeof results);
+    setLoading(true);
+    setErreur(null);
+    (async () => {
+      try {
+      const [schemaRes, listeRes] = await Promise.all([
+        sb.from("fiches_schemas").select("champs_v2").eq("categorie", cat).maybeSingle(),
+        sb.from("fiches_listes").select("*").eq("categorie", cat).maybeSingle(),
+      ]);
+
+      const dataRes = await sb.from(TABLE_SOURCE[cat]).select("*").eq("est_actif", true).order("nom");
+      if (schemaRes.error || listeRes.error || dataRes.error) {
+        throw schemaRes.error ?? listeRes.error ?? dataRes.error;
       }
-      setSearching(false);
-    });
-  }, [debouncedQuery]);
+      let donnees: any[] = dataRes.data ?? [];
 
-  return (
-    <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Recherche globale</h2>
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher dans toute l'encyclopédie…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="pl-10"
-          autoFocus
-        />
-      </div>
-      {searching && <p className="text-muted-foreground text-center py-2">Recherche en cours…</p>}
-      {!searching && debouncedQuery.trim().length >= 2 && results.length === 0 && (
-        <p className="text-muted-foreground text-center py-6">Aucun résultat pour « {debouncedQuery} ».</p>
-      )}
-      {!searching && debouncedQuery.trim().length < 2 && (
-        <p className="text-muted-foreground text-center py-6">Saisis au moins 2 caractères pour démarrer la recherche.</p>
-      )}
-      <div className="space-y-3">
-        {results.map((r) => (
-          <Card
-            key={`${r.type}-${r.id}`}
-            className="cursor-pointer border-primary/10 bg-card/50 hover:border-primary/30 transition-all"
-            onClick={() => onSelectResult(r.type, r.id, r.titre)}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex-1 min-w-0">
-                <CardTitle className="font-heading text-lg">{r.titre}</CardTitle>
-                {r.sous_titre && (
-                  <p className="text-sm text-muted-foreground mt-1">{r.sous_titre}</p>
-                )}
-                <Badge variant="secondary" className="mt-2 text-xs">
-                  {RPC_TYPE_TO_TARGET[r.type]?.label ?? r.type}
-                </Badge>
-              </div>
-            </CardHeader>
-            {r.snippet && (
-              <CardContent className="text-sm text-muted-foreground">
-                <div dangerouslySetInnerHTML={{ __html: r.snippet }} />
-              </CardContent>
-            )}
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-};
+      // Pièges : regroupe par nom -> 1 fiche porteuse de `.rows` (lignes triées par niveau).
+      if (cat === "pieges") {
+        const parNom: Record<string, any[]> = {};
+        donnees.forEach((p) => {
+          (parNom[p.nom] ||= []).push(p);
+        });
+        donnees = Object.entries(parNom).map(([nom, lignes]) => {
+          const tri = [...lignes].sort((a, b) => (a.niveau ?? 0) - (b.niveau ?? 0));
+          return { nom, resume_condense: tri[0]?.resume_condense ?? null, rows: tri };
+        });
+      }
 
-const NoResults = () => (
-  <p className="text-muted-foreground text-center py-6">Aucun résultat pour cette recherche.</p>
-);
+      // Lookups FK (forge -> reparations) pour les render "relation" en FK.
+      let lk: Record<string, any[]> = {};
+      if (cat === "forge") {
+        const repRes = await sb.from("reparations_forge").select("*").eq("est_actif", true);
+        lk = { reparations: repRes.data ?? [] };
+      }
 
+      // Alchimie : pré-parse le verbatim en blocs (RecetteSections) injectés dans la fiche.
+      if (cat === "alchimie") {
+        donnees = donnees.map((r) => ({
+          ...r,
+          _sections: parseRecetteVerbatim(r.description_verbatim),
+        }));
+      }
 
-const RacesSection = ({
-  races,
-  searchQuery,
-  schema,
-  traits,
-}: {
-  races: Race[];
-  searchQuery: string;
-  schema: ChampSchema[];
-  traits: TraitRacial[];
-}) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
+      // Classes : résout competence_id -> nom (render liste_competences).
+      let compMap: Record<string, string> = {};
+      if (cat === "classe") {
+        const compRes = await sb.from("competences").select("id, nom").eq("est_actif", true);
+        compMap = Object.fromEntries(
+          (compRes.data ?? []).map((c: any) => [c.id, c.nom ?? ""])
+        );
+      }
 
-  // Traits raciaux permis par race (noms distincts) depuis la relation race_traits.
-  const traitsParRace: Record<string, string[]> = {};
-  for (const t of traits) {
-    for (const rt of t.race_traits ?? []) {
-      const rid = rt.races?.id;
-      if (!rid) continue;
-      if (!traitsParRace[rid]) traitsParRace[rid] = [];
-      if (!traitsParRace[rid].includes(t.nom)) traitsParRace[rid].push(t.nom);
-    }
-  }
+      // Races : injecte les noms de traits permis (relation race_traits) dans chaque entité.
+      if (cat === "race") {
+        const [rtRes, traitsRes] = await Promise.all([
+          sb.from("race_traits").select("race_id, trait_id"),
+          sb.from("traits_raciaux").select("id, nom").eq("est_actif", true),
+        ]);
+        const nomParTrait: Record<string, string> = Object.fromEntries(
+          (traitsRes.data ?? []).map((t: any) => [t.id, t.nom ?? ""])
+        );
+        const traitsParRace: Record<string, string[]> = {};
+        (rtRes.data ?? []).forEach((rt: any) => {
+          const nom = nomParTrait[rt.trait_id];
+          if (!nom) return;
+          (traitsParRace[rt.race_id] ||= []);
+          if (!traitsParRace[rt.race_id].includes(nom)) traitsParRace[rt.race_id].push(nom);
+        });
+        donnees = donnees.map((r) => ({ ...r, traits_permis: traitsParRace[r.id] ?? [] }));
+      }
 
-  const filtered = filterByText(races, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.nom_latin ?? "", r.exigences_costume ?? ""]);
+      if (annule) return;
+      setSchema((schemaRes.data?.champs_v2 ?? []) as ChampSchema[]);
+      setConfig((listeRes.data ?? null) as ListeConfig | null);
+      setRows(donnees);
+      setLookups(lk);
+      setCompetencesParId(compMap);
+      } catch (e) {
+        if (!annule) {
+          console.error("[EncyclopedieV2] chargement catégorie échoué", e);
+          setErreur("Impossible de charger cette catégorie. Vérifie ta connexion et réessaie.");
+        }
+      } finally {
+        if (!annule) setLoading(false);
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [cat, reloadKey]);
 
-  const toggle = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Races de Destéa</h2>
-      <p className="text-sm text-muted-foreground -mt-3">
-        Chaque race offre 1 trait racial gratuit à la création. Traits supplémentaires : 10 XP chacun, uniquement à la création.
-      </p>
-      <ManuelGlobalSwitch
-        allOpen={mode === "integral"}
-        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
-        title="Texte du manuel"
-        subtitle="Intégral (verbatim du manuel) ou abrégé"
-      />
-      {filtered.length === 0 ? (
-        <NoResults />
-      ) : (
-        <div className="grid gap-6">
-          {filtered.map((r) => {
-            const isOpen = expanded.has(r.id);
-            const entite = { ...r, traits_permis: traitsParRace[r.id] ?? [] };
-            return (
-              <div
-                key={r.id}
-                className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
-                onClick={() => toggle(r.id)}
-              >
-                {/* Header — densité carte (moteur) */}
-                <div className="px-6 py-5">
-                  <div className="flex items-start gap-4">
-                    <div className="text-5xl flex-shrink-0 leading-none">{r.emoji}</div>
-                    <div className="flex-grow min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h2 className="text-3xl font-heading font-bold text-gold leading-tight">{r.nom}</h2>
-                          {r.nom_latin && (
-                            <p className="text-sm italic text-foreground/60 mt-0.5">{r.nom_latin}</p>
-                          )}
-                        </div>
-                        <ChevronDown
-                          size={20}
-                          className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <FicheMoteur
-                          schema={schema}
-                          entite={entite as Record<string, any>}
-                          densite="carte"
-                          mode={mode}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Body — densité encyclo (moteur) */}
-                <div
-                  className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{ maxHeight: isOpen ? "3000px" : "0", opacity: isOpen ? 1 : 0 }}
-                >
-                  <div className="px-6 pb-5 border-t border-gold/30 pt-4">
-                    <FicheMoteur
-                      schema={schema}
-                      entite={entite as Record<string, any>}
-                      densite="encyclo"
-                      mode={mode}
-                    />
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-3 flex justify-end border-t border-gold/20">
-                  <span className="text-xs" style={{ color: "#c9a84c" }}>
-                    {isOpen ? "Voir moins" : "Voir plus"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const chipsRacesTrait = (t: TraitRacial, totalRacesJouables: number): string[] => {
-  // Regroupe les sous_types par race JOUABLE (cohérent avec l'encyclo Races).
-  const parRace = new Map<string, Set<string | null>>();
-  for (const rt of t.race_traits ?? []) {
-    const r = rt.races;
-    if (!r?.nom || !r.est_jouable) continue;
-    if (!parRace.has(r.nom)) parRace.set(r.nom, new Set());
-    parRace.get(r.nom)!.add(rt.sous_type);
-  }
-  if (parRace.size === 0) return [];
-  // Toutes les races jouables y ont droit → collapse.
-  if (totalRacesJouables > 0 && parRace.size === totalRacesJouables) return ["Toutes les races"];
-  const chips: string[] = [];
-  for (const [nom, sousTypes] of parRace) {
-    const discriminants = [...sousTypes].filter(Boolean) as string[];
-    // Un seul sous_type discriminant (ex. Chiméride carnivore) → suffixe ; sinon nom seul.
-    if (sousTypes.size === 1 && discriminants.length === 1) {
-      chips.push(`${nom} (${discriminants[0]})`);
-    } else {
-      chips.push(nom);
-    }
-  }
-  return chips.sort((a, b) => a.localeCompare(b, "fr"));
-};
-
-const TraitsSection = ({
-  traits,
-  searchQuery,
-  races,
-  schema,
-}: {
-  traits: TraitRacial[];
-  searchQuery: string;
-  races: Race[];
-  schema: ChampSchema[];
-}) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [raceFiltre, setRaceFiltre] = useEtatPersistant<string | null>("encyclo:traits:race", null);
-  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
-  const toggleExpanded = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
+  // Remonter en haut à chaque changement de vue (ouverture/fermeture de fiche,
+  // changement de catégorie). Sans ça, ouvrir une fiche depuis le bas d'une longue
+  // liste l'affiche scroll resté en bas. La liste se démonte quand une fiche est
+  // ouverte : il n'y a donc pas de position de liste à restaurer.
   useEffect(() => {
-    if (!searchQuery) return;
-    const q = searchQuery.toLowerCase();
-    const matches = traits.filter(t =>
-      t.nom.toLowerCase().includes(q) ||
-      (t.description ?? "").toLowerCase().includes(q)
-    );
-    setExpanded(new Set(matches.map(t => t.id)));
-  }, [searchQuery, traits]);
+    window.scrollTo(0, 0);
+  }, [cat, ficheParam]);
 
-  const filtered = traits.filter(trait => {
-    const matchTexte = !searchQuery ||
-      trait.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      trait.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchRace = !raceFiltre ||
-      trait.race_traits.some(rt => rt.races?.id === raceFiltre);
-    return matchTexte && matchRace;
-  });
+  // Fiche ouverte = dérivée de l'URL (?fiche=clé). Source unique de vérité :
+  // back navigateur/Android ferme la fiche, et un lien ?cat&fiche est partageable.
+  const selItem =
+    ficheParam != null
+      ? (rows.find((r) => String(cleFiche(r)) === ficheParam) ?? null)
+      : null;
+
+  const modeMasque = config?.carte?.mode === "aucun";
+  const modeEffectif: "abrege" | "integral" = modeMasque ? "integral" : mode;
 
   return (
-    <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-gold mb-2">Traits Raciaux</h2>
-      <p className="text-sm text-muted-foreground -mt-1">
-        1 trait racial gratuit à la création. Traits supplémentaires : 10 XP chacun, uniquement à la création.
+    <div className="container py-8 max-w-5xl animate-in fade-in duration-500">
+      {/* Header */}
+      <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-2 tracking-tight">
+        Encyclopédie
+      </h1>
+      <p className="text-sm text-muted-foreground mb-6">
+        Choisis une catégorie pour explorer, ou utilise la recherche pour trouver directement.
       </p>
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setRaceFiltre(null)}
-          className={raceFiltre === null
-            ? "px-3 py-1 rounded-full text-sm font-medium bg-amber-600 text-white"
-            : "px-3 py-1 rounded-full text-sm font-medium bg-stone-700 text-amber-200 hover:bg-stone-600"
-          }
+
+      {/* Navigation groupée : hub (accueil) ou switcher (dans une catégorie) */}
+      {!cat ? (
+        <EncyclopedieRecherche
+          onPick={(cle, id) => goToFiche(cle, id)}
         >
-          Toutes
+          <EncyclopedieHub onPick={(c) => setCat(c as CatCle)} />
+        </EncyclopedieRecherche>
+      ) : (
+        <>
+        <button
+          onClick={() => setCat(null)}
+          className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline mb-3"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Toutes les catégories
         </button>
-        {races.map((race) => (
-          <button
-            key={race.id}
-            onClick={() => setRaceFiltre(race.id)}
-            className={raceFiltre === race.id
-              ? "px-3 py-1 rounded-full text-sm font-medium bg-amber-600 text-white"
-              : "px-3 py-1 rounded-full text-sm font-medium bg-stone-700 text-amber-200 hover:bg-stone-600"
-            }
-          >
-            {race.nom}
-          </button>
-        ))}
-      </div>
-      <ManuelGlobalSwitch
-        allOpen={mode === "integral"}
-        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
-        title="Texte du manuel"
-        subtitle="Intégral (verbatim du manuel) ou abrégé"
-      />
-      {filtered.length === 0 ? (
-        <NoResults />
-      ) : (
-        <div className="grid gap-6">
-          {filtered.map((t) => {
-            const isOpen = expanded.has(t.id);
-            const chips = chipsRacesTrait(t, races.length);
-            return (
-              <div
-                key={t.id}
-                className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
-                onClick={() => toggleExpanded(t.id)}
-              >
-                {/* Header — densité carte (moteur) + puces races */}
-                <div className="px-6 py-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-2xl font-heading font-bold text-gold leading-tight">{t.nom}</h2>
-                    <ChevronDown
-                      size={20}
-                      className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                    />
-                  </div>
-                  {chips.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {chips.map((c) => (
-                        <span
-                          key={c}
-                          className="rounded-full px-2.5 py-0.5 text-xs"
-                          style={{ background: "hsl(0 0% 16%)", color: "hsl(42 75% 52%)" }}
-                        >
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="mt-3">
-                    <FicheMoteur schema={schema} entite={t as Record<string, any>} densite="carte" mode={mode} />
-                  </div>
-                </div>
-                {/* Body — densité encyclo (moteur) */}
-                <div
-                  className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{ maxHeight: isOpen ? "2000px" : "0", opacity: isOpen ? 1 : 0 }}
-                >
-                  <div className="px-6 pb-5 border-t border-gold/30 pt-4">
-                    <FicheMoteur schema={schema} entite={t as Record<string, any>} densite="encyclo" mode={mode} />
-                  </div>
-                </div>
-                {/* Footer */}
-                <div className="px-6 py-3 flex justify-end border-t border-gold/20">
-                  <span className="text-xs" style={{ color: "#c9a84c" }}>
-                    {isOpen ? "Voir moins" : "Voir plus"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
+        <EncyclopedieSwitcher
+          active={cat}
+          onPick={(c) => setCat(c as CatCle)}
+        />
 
-const ClassesSection = ({
-  classes,
-  searchQuery,
-  schema,
-  competences,
-}: {
-  classes: Classe[];
-  searchQuery: string;
-  schema: ChampSchema[];
-  competences: Competence[];
-}) => {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
-  const competencesParId: Record<string, string> = Object.fromEntries(
-    competences.map((c) => [c.id, c.nom ?? ""])
-  );
-  const filtered = filterByText(classes, searchQuery, (c) => [c.nom ?? "", c.description ?? ""]);
-
-  const toggle = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-gold mb-6">Les Classes de Destéa</h2>
-      <ManuelGlobalSwitch
-        allOpen={mode === "integral"}
-        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
-        title="Texte du manuel"
-        subtitle="Intégral (verbatim du manuel) ou abrégé"
-      />
-      {filtered.length === 0 ? (
-        <NoResults />
-      ) : (
-        <div className="grid gap-6">
-          {filtered.map((c) => {
-            const isOpen = expanded.has(c.id);
-            return (
-              <div
-                key={c.id}
-                className="w-full border border-gold/60 rounded-lg bg-card hover:border-gold transition-all duration-300 overflow-hidden shadow-lg cursor-pointer"
-                onClick={() => toggle(c.id)}
-              >
-                {/* Header — densité carte (moteur) */}
-                <div className="px-6 py-5">
-                  <div className="flex items-start gap-4">
-                    <div className="text-5xl flex-shrink-0 leading-none">{c.emoji}</div>
-                    <div className="flex-grow min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h2 className="text-3xl font-heading font-bold text-gold leading-tight">{c.nom}</h2>
-                        <ChevronDown
-                          size={20}
-                          className={`text-gold transition-transform duration-300 mt-1 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <FicheMoteur
-                          schema={schema}
-                          entite={c as Record<string, any>}
-                          densite="carte"
-                          mode={mode}
-                          competencesParId={competencesParId}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Body — densité encyclo (moteur) */}
-                <div
-                  className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{ maxHeight: isOpen ? "2000px" : "0", opacity: isOpen ? 1 : 0 }}
-                >
-                  <div className="px-6 pb-5 border-t border-gold/30 pt-4">
-                    <FicheMoteur
-                      schema={schema}
-                      entite={c as Record<string, any>}
-                      densite="encyclo"
-                      mode={mode}
-                      competencesParId={competencesParId}
-                    />
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-3 flex justify-end border-t border-gold/20">
-                  <span className="text-xs" style={{ color: "#c9a84c" }}>
-                    {isOpen ? "Voir moins" : "Voir plus"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const CATEGORIES = [
-  { key: null, label: 'Toutes' },
-  { key: 'general', label: 'Générale' },
-  { key: 'guerrier', label: 'Guerrier' },
-  { key: 'voleur', label: 'Voleur' },
-  { key: 'mage', label: 'Mage' },
-  { key: 'pretre', label: 'Prêtre' },
-];
-
-const CompetencesSection = ({ competences, searchQuery }: { competences: Competence[]; searchQuery: string }) => {
-  const [categorieActive, setCategorieActive] = useEtatPersistant<string | null>("encyclo:competences:cat", null);
-  const [openItems, setOpenItems] = useState<string[]>([]);
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
-
-  useEffect(() => {
-    if (!searchQuery) return;
-    const q = searchQuery.toLowerCase();
-    const matches = competences.filter(c =>
-      (c.nom ?? "").toLowerCase().includes(q) ||
-      (c.description ?? "").toLowerCase().includes(q)
-    );
-    setOpenItems(matches.map(c => c.id));
-  }, [searchQuery, competences]);
-  const filtered = competences.filter(comp => {
-    const query = searchQuery.toLowerCase();
-    const matchTexte = !searchQuery ||
-      (comp.nom ?? "").toLowerCase().includes(query) ||
-      (comp.description ?? "").toLowerCase().includes(query);
-    const matchCategorie = !categorieActive ||
-      (categorieActive === 'general' ? comp.est_general === true : comp.categorie === categorieActive);
-    return matchTexte && matchCategorie;
-  });
-  const grouped = groupBy(filtered, (c) => c.categorie ?? "autre");
-  const getPrerequisLabels = (prerequisLabels: any, niveauNum: number): string | null => {
-    if (!prerequisLabels || typeof prerequisLabels !== "object") return null;
-    const items = prerequisLabels[String(niveauNum)];
-    if (!Array.isArray(items) || items.length === 0) return null;
-    const txt = items.map((it: any) => it?.label).filter(Boolean).join(", ");
-    return txt || null;
-  };
-  const orderedKeys = ["general", "guerrier", "voleur", "mage", "pretre"];
-  const keys = [...orderedKeys.filter((k) => k in grouped), ...Object.keys(grouped).filter((k) => !orderedKeys.includes(k))];
-
-  // Verbatim concaténé par compétence : tous les niveaux[].description (s87 ①).
-  const construireVerbatim = (niveaux: any[]): string =>
-    niveaux
-      .map((niv: any, i: number) => (niv?.description ? `Niveau ${niv.niveau ?? i + 1} — ${niv.description}` : null))
-      .filter(Boolean)
-      .join("\n\n");
-  const verbatimParComp = new Map<string, string>(
-    filtered.map((c) => [c.id, construireVerbatim(Array.isArray(c.niveaux) ? c.niveaux : [])]),
-  );
-  const idsVerbatim = filtered
-    .filter((c) => (verbatimParComp.get(c.id) ?? "").length > 0)
-    .map((c) => c.id);
-
-  return (
-    <div className="space-y-8">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Compétences</h2>
-      <div className="flex flex-wrap gap-2 mb-4 border-b border-stone-700 pb-3">
-        {CATEGORIES.map(cat => (
-          <button
-            key={String(cat.key)}
-            onClick={() => setCategorieActive(cat.key)}
-            className={categorieActive === cat.key
-              ? "px-4 py-1.5 rounded-md text-sm font-semibold bg-amber-700 text-white border border-amber-500"
-              : "px-4 py-1.5 rounded-md text-sm font-medium bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-            }
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
-      {idsVerbatim.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(idsVerbatim)}
-          onToggle={() => toggleAll(idsVerbatim)}
-          title="Cet onglet"
-          subtitle="Verbatim du manuel pour les compétences"
+      {/* Interrupteur Abrégé ⇄ Intégral (caché si la config n'a pas d'abrégé) */}
+      {!modeMasque && (
+        <BasculeAbregeIntegral
+          mode={mode}
+          onToggle={toggleMode}
+          className="mb-6"
         />
       )}
-      {filtered.length === 0 ? <NoResults /> : keys.map((cat) => (
-        <section key={cat}>
-          <h3 className="font-heading text-lg font-semibold text-primary mb-3">{labelCategorie[cat] ?? cat}</h3>
-          <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
-            {grouped[cat].map((c) => {
-              const niveaux = Array.isArray(c.niveaux) ? c.niveaux : [];
-              return (
-                <AccordionItem key={c.id} value={c.id}>
-                  <AccordionTrigger className="font-heading text-base hover:no-underline text-left">
-                    {c.nom}
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm text-muted-foreground">
-                    {c.description && <p>{c.description}</p>}
-                    {niveaux.length > 0 && (
-                      <div className="space-y-2 mt-2">
-                        {niveaux.map((niv: any, i: number) => (
-                          <div key={i} className="rounded-lg border border-border p-3">
-                            <p className="font-medium text-foreground text-xs mb-1">
-                              Niveau {niv.niveau ?? i + 1}{niv.cout_xp != null && ` — ${niv.cout_xp} XP`}
-                            </p>
-                            {(() => {
-                             const niveauNum = niv.niveau ?? i + 1;
-                             const prerequisText = getPrerequisLabels(c.prerequis_labels, niveauNum);
-                             return prerequisText ? (
-                               <p className="text-xs mt-1 font-medium">⚡ Prérequis : {prerequisText}</p>
-                             ) : null;
-                             })()}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <ToggleManuel
-                      texte={verbatimParComp.get(c.id)}
-                      isOpen={isManuelOpen(c.id)}
-                      onToggle={() => toggleManuel(c.id)}
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
-        </section>
-      ))}
+
+      {loading ? (
+        <p className="text-muted-foreground text-center py-12">Chargement…</p>
+      ) : erreur ? (
+        <ErreurChargement message={erreur} onRetry={() => setReloadKey((k) => k + 1)} />
+      ) : selItem ? (
+        <div>
+          <button
+            onClick={closeFiche}
+            className="inline-flex items-center gap-1.5 text-sm text-gold hover:underline mb-4"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour à la liste
+          </button>
+          <h2 className="font-heading text-2xl font-bold text-gold mb-4">
+            {String(selItem?.nom ?? "")}
+          </h2>
+          <FicheMoteur2
+            schema={schema}
+            entite={selItem}
+            densite="encyclo"
+            mode={modeEffectif}
+            lookups={lookups}
+            competencesParId={competencesParId}
+          />
+        </div>
+      ) : config ? (
+        <ListeMoteur config={config} rows={rows} onOpen={({ item }) => openFiche(item)} />
+      ) : (
+        <p className="text-muted-foreground text-center py-12">
+          Aucune configuration de liste pour « {cat} ».
+        </p>
+      )}
+        </>
+      )}
     </div>
   );
-};
-
-const CERCLES_MAGE = [
-  'Air', 'Altération', 'Charmes', 'Combat', 'Divination', 'Eau', 'Feu',
-  'Illusion', 'Magie Noire', 'Magie Pure', 'Nécromancie', 'Protection', 'Terre',
-];
-const SOUS_ONGLETS_CERCLES = [
-  { key: null, label: 'Tous' },
-  ...CERCLES_MAGE.map(c => ({ key: c, label: c })),
-];
-
-type NiveauMin = 1 | 6 | 11;
-
-function getNiveauMin(niveau: number): NiveauMin {
-  if (niveau <= 5) return 1;
-  if (niveau <= 10) return 6;
-  return 11;
 }
-
-const NIVEAU_MIN_FILTERS: { key: NiveauMin | null; label: string }[] = [
-  { key: null, label: "Tous" },
-  { key: 1, label: "Niveau 1" },
-  { key: 6, label: "Niveau 6" },
-  { key: 11, label: "Niveau 11" },
-];
-
-const MagieSection = ({ sorts, searchQuery, schema }: { sorts: Sort[]; searchQuery: string; schema: ChampSchema[] }) => {
-  const [cercleActif, setCercleActif] = useEtatPersistant<string | null>("encyclo:magie:cercle", null);
-  const [niveauMinActif, setNiveauMinActif] = useEtatPersistant<NiveauMin | null>("encyclo:magie:niveau", null);
-  const [openItems, setOpenItems] = useState<string[]>([]);
-  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
-
-  useEffect(() => {
-    if (!searchQuery) return;
-    const q = searchQuery.toLowerCase();
-    const matches = sorts.filter(s =>
-      s.nom.toLowerCase().includes(q) ||
-      (s.description_courte ?? "").toLowerCase().includes(q) ||
-      (s.description ?? "").toLowerCase().includes(q) ||
-      (s.cercle ?? "").toLowerCase().includes(q)
-    );
-    setOpenItems(matches.map(s => s.id));
-  }, [searchQuery, sorts]);
-
-  const filtered = sorts.filter(sort => {
-    const query = searchQuery.toLowerCase();
-    const matchTexte = !searchQuery ||
-      sort.nom.toLowerCase().includes(query) ||
-      sort.description_courte?.toLowerCase().includes(query) ||
-      sort.description?.toLowerCase().includes(query) ||
-      sort.cercle?.toLowerCase().includes(query);
-    const matchCercle = !cercleActif || sort.cercle === cercleActif;
-    const matchNiveau = niveauMinActif === null || getNiveauMin(sort.niveau) === niveauMinActif;
-    return matchTexte && matchCercle && matchNiveau;
-  });
-
-  const grouped = groupBy(filtered, (s) => s.cercle);
-  const keys = Object.keys(grouped).sort();
-
-  return (
-    <div className="space-y-8">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Cercles de magie et Effets de Sorts</h2>
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
-        {SOUS_ONGLETS_CERCLES.map(sc => (
-          <button
-            key={String(sc.key)}
-            onClick={() => setCercleActif(sc.key)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
-              cercleActif === sc.key
-                ? "bg-amber-700 text-white border border-amber-500"
-                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-            }`}
-          >
-            {sc.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2 mb-4">
-        {NIVEAU_MIN_FILTERS.map(nf => (
-          <button
-            key={String(nf.key)}
-            onClick={() => setNiveauMinActif(nf.key)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-              niveauMinActif === nf.key
-                ? "bg-amber-700 text-white border border-amber-500"
-                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-            }`}
-          >
-            {nf.label}
-          </button>
-        ))}
-      </div>
-      <ManuelGlobalSwitch
-        allOpen={mode === "integral"}
-        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
-        title="Texte du manuel"
-        subtitle="Intégral (verbatim du manuel) ou abrégé"
-      />
-      {filtered.length === 0 ? <NoResults /> : keys.map((cercle) => {
-        const sortsInCercle = grouped[cercle];
-        const byNiveauMin = groupBy(sortsInCercle, (s) => String(getNiveauMin(s.niveau)));
-        const niveauGroups: [NiveauMin, Sort[]][] = ([1, 6, 11] as NiveauMin[])
-          .filter(n => byNiveauMin[String(n)])
-          .map(n => [n, byNiveauMin[String(n)]]);
-        return (
-          <section key={cercle}>
-            <h3 className="font-heading text-lg font-semibold text-primary mb-3">{cercle}</h3>
-            {niveauGroups.map(([nMin, groupSorts]) => (
-              <div key={nMin} className="mb-4">
-                <h4 className="font-heading text-sm font-semibold text-primary/70 mb-2 ml-1">Niveau Minimum : {nMin}</h4>
-                <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
-                  {groupSorts.map((s) => (
-                    <AccordionItem key={s.id} value={s.id}>
-                      <AccordionTrigger className="font-heading text-base hover:no-underline">
-                        <span className="flex items-center gap-2">
-                          {s.nom}
-                          <Badge variant="secondary" className="text-xs">Niv. {s.niveau}</Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <FicheMoteur
-                          schema={schema}
-                          entite={s as unknown as Record<string, any>}
-                          densite="encyclo"
-                          mode={mode}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-            ))}
-          </section>
-        );
-      })}
-    </div>
-  );
-};
-
-const DOMAINES_PRETRE = [
-  'Bénédiction', 'Chaos', 'Connaissance', 'Éléments', 'Guerre', 'Nature', 'Nécromancie', 'Ordre',
-];
-const SOUS_ONGLETS_DOMAINES = [
-  { key: null, label: 'Tous' },
-  ...DOMAINES_PRETRE.map(d => ({ key: d, label: d })),
-];
-
-const PrieresSection = ({ prieres, searchQuery, schema }: { prieres: Priere[]; searchQuery: string; schema: ChampSchema[] }) => {
-  const [domaineActif, setDomaineActif] = useEtatPersistant<string | null>("encyclo:prieres:domaine", null);
-  const [niveauMinActif, setNiveauMinActif] = useEtatPersistant<NiveauMin | null>("encyclo:prieres:niveau", null);
-  const [openItems, setOpenItems] = useState<string[]>([]);
-  const [mode, setMode] = useModeManuel("encyclopedie", "integral");
-
-  useEffect(() => {
-    if (!searchQuery) return;
-    const q = searchQuery.toLowerCase();
-    const matches = prieres.filter(p =>
-      p.nom.toLowerCase().includes(q) ||
-      (p.description_courte ?? "").toLowerCase().includes(q) ||
-      (p.description ?? "").toLowerCase().includes(q) ||
-      (p.domaine ?? "").toLowerCase().includes(q)
-    );
-    setOpenItems(matches.map(p => p.id));
-  }, [searchQuery, prieres]);
-
-  const filtered = prieres.filter(priere => {
-    const query = searchQuery.toLowerCase();
-    const matchTexte = !searchQuery ||
-      priere.nom.toLowerCase().includes(query) ||
-      priere.description_courte?.toLowerCase().includes(query) ||
-      priere.description?.toLowerCase().includes(query) ||
-      priere.domaine?.toLowerCase().includes(query);
-    const matchDomaine = !domaineActif || priere.domaine === domaineActif;
-    const matchNiveau = niveauMinActif === null || getNiveauMin(priere.niveau) === niveauMinActif;
-    return matchTexte && matchDomaine && matchNiveau;
-  });
-
-  const grouped = groupBy(filtered, (p) => p.domaine);
-  const keys = Object.keys(grouped).sort((a, b) => a.localeCompare(b, "fr"));
-
-  return (
-    <div className="space-y-8">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Domaines et Effets de Prières</h2>
-      <div className="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-        {SOUS_ONGLETS_DOMAINES.map(sd => (
-          <button
-            key={String(sd.key)}
-            onClick={() => setDomaineActif(sd.key)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
-              domaineActif === sd.key
-                ? "bg-amber-700 text-white border border-amber-500"
-                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-            }`}
-          >
-            {sd.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
-        {NIVEAU_MIN_FILTERS.map(nf => (
-          <button
-            key={String(nf.key)}
-            onClick={() => setNiveauMinActif(nf.key)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 ${
-              niveauMinActif === nf.key
-                ? "bg-amber-700 text-white border border-amber-500"
-                : "bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-600"
-            }`}
-          >
-            {nf.label}
-          </button>
-        ))}
-      </div>
-      <ManuelGlobalSwitch
-        allOpen={mode === "integral"}
-        onToggle={() => setMode((m) => (m === "integral" ? "abrege" : "integral"))}
-        title="Texte du manuel"
-        subtitle="Intégral (verbatim du manuel) ou abrégé"
-      />
-      {filtered.length === 0 ? <NoResults /> : keys.map((domaine) => {
-        const prieresInDomaine = grouped[domaine];
-        const byNiveauMin = groupBy(prieresInDomaine, (p) => String(getNiveauMin(p.niveau)));
-        const niveauGroups: [NiveauMin, Priere[]][] = ([1, 6, 11] as NiveauMin[])
-          .filter(n => byNiveauMin[String(n)])
-          .map(n => [n, byNiveauMin[String(n)]]);
-        return (
-          <section key={domaine}>
-            <h3 className="font-heading text-lg font-semibold text-primary mb-3">{domaine}</h3>
-            {niveauGroups.map(([nMin, groupPrieres]) => (
-              <div key={nMin} className="mb-4">
-                <h4 className="font-heading text-sm font-semibold text-primary/70 mb-2 ml-1">Niveau Minimum : {nMin}</h4>
-                <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="w-full">
-                  {groupPrieres.map((p) => (
-                    <AccordionItem key={p.id} value={p.id}>
-                      <AccordionTrigger className="font-heading text-base hover:no-underline">
-                        <span className="flex items-center gap-2">
-                          {p.nom}
-                          <Badge variant="secondary" className="text-xs">Niv. {p.niveau}</Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <FicheMoteur
-                          schema={schema}
-                          entite={p as unknown as Record<string, any>}
-                          densite="encyclo"
-                          mode={mode}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-            ))}
-          </section>
-        );
-      })}
-    </div>
-  );
-};
-
-const ReligionsSection = ({ religions, searchQuery }: { religions: Religion[]; searchQuery: string }) => {
-  const { isManuelOpen, toggleManuel, isAllOpen, toggleAll } = useManuelDisclosure();
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggleExpanded = (id: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    if (!searchQuery) return;
-    const matches = filterByText(religions, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.description_longue ?? ""]);
-    setExpanded(new Set(matches.map(r => r.id)));
-  }, [searchQuery, religions]);
-
-  const filtered = filterByText(religions, searchQuery, (r) => [r.nom ?? "", r.description ?? "", r.description_longue ?? ""]);
-  return (
-    <div className="space-y-4">
-      <h2 className="font-heading text-2xl font-bold text-primary mb-4">Religions et Ordres</h2>
-      {filtered.length > 0 && (
-        <ManuelGlobalSwitch
-          allOpen={isAllOpen(filtered.map((r) => r.id))}
-          onToggle={() => toggleAll(filtered.map((r) => r.id))}
-        />
-      )}
-      {filtered.length === 0 ? <NoResults /> : (
-        <div className="space-y-4">
-          {filtered.map((r) => (
-            <EncyclopedieCard
-              key={r.id}
-              id={r.id}
-              isOpen={expanded.has(r.id)}
-              onToggle={() => toggleExpanded(r.id)}
-              maxHeight={isManuelOpen(r.id) ? 20000 : 4000}
-              header={
-                <>
-                  <CardTitle className="font-heading text-xl">{r.nom}</CardTitle>
-                  {r.description && <p className="text-sm text-muted-foreground mt-1">{r.description}</p>}
-                  {r.domaines_principaux && r.domaines_principaux.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {r.domaines_principaux.map((d) => (
-                        <span key={d} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900/50 text-green-300 border border-green-700">
-                          {d}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {r.domaines_proscrits && r.domaines_proscrits.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {r.domaines_proscrits.map((d) => (
-                        <span key={d} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900/50 text-red-400 border border-red-700">
-                          ✗ {d}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </>
-              }
-            >
-              <div className="border-t border-primary/10 pt-3 mt-2">
-                <ReligionDetails
-                  religion={r}
-                  hideDomaines
-                  isManuelOpen={isManuelOpen(r.id)}
-                  onToggleManuel={() => toggleManuel(r.id)}
-                />
-              </div>
-            </EncyclopedieCard>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Encyclopedie;

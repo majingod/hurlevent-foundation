@@ -6,7 +6,8 @@
     "dev": "cd artifacts/arlor && bunx vite --config vite.config.ts --host 0.0.0.0",
     "build": "cd artifacts/arlor && bunx vite build --config vite.config.ts",
     "build:dev": "cd artifacts/arlor && bunx vite build --config vite.config.ts --mode development",
-    "typecheck": "cd artifacts/arlor && bunx tsc -p tsconfig.json --noEmit"
+    "typecheck": "cd artifacts/arlor && bunx tsc -p tsconfig.json --noEmit",
+    "test": "cd artifacts/arlor && bunx vitest run"
   },
   "private": true,
   "devDependencies": {

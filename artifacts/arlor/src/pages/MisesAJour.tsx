@@ -18,7 +18,7 @@ interface Jalon {
 }
 
 // Ordre d'affichage des mois dans la section « Fait » (plus récent d'abord).
-const PERIODES: string[] = ["Juin 2026", "Mai 2026", "Avril 2026 · Mise en route"];
+const PERIODES: string[] = ["Juillet 2026", "Juin 2026", "Mai 2026", "Avril 2026 · Mise en route"];
 
 const JALONS: Jalon[] = [
   // ===== En cours =====
@@ -29,7 +29,86 @@ const JALONS: Jalon[] = [
       "La page que tu lis : un espace de transparence sur l'évolution de la plateforme.",
   },
 
+  // ===== Fait — Juillet 2026 =====
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Fiche de personnage unifiée",
+    description:
+      "Tous les onglets de ta fiche (traits, sorts, prières, compétences, artisanat, pièges, assemblages) partagent désormais la même présentation : même style de carte, même taille de texte, mêmes emplacements pour les titres et les badges. La lecture est plus cohérente d'un onglet à l'autre. Aucun contenu n'a changé — seule l'apparence a été harmonisée.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Recherche par fragment de mot",
+    description:
+      "La recherche de l'encyclopédie trouve maintenant les mots à partir d'un simple fragment, où qu'il se trouve dans le mot : « reat » trouve « créature », « boucl » trouve tous les boucliers, « regen » trouve « régénération ». À combiner avec la recherche sans accents.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Recherche sans accents",
+    description:
+      "La recherche de l'encyclopédie trouve maintenant les résultats même si tu tapes sans accents : « creatures », « depecage » ou « regeneration » donnent les mêmes résultats que « créatures », « dépeçage » ou « régénération ».",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Tableau de bord allégé",
+    description:
+      "Ton tableau de bord va droit au but : tes personnages apparaissent dès le haut de la page, et un petit tableau de bord regroupe en un coup d'œil ton prochain événement, ta banque d'XP et tes notifications — chacun se déplie quand tu veux le détail.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Fiche de personnage : abrégé ou intégral",
+    description:
+      "Ta fiche de personnage propose maintenant le même interrupteur que l'encyclopédie : « abrégé » pour l'essentiel d'un coup d'œil, « intégral » pour le texte complet du manuel — pour tes races, classes, traits, compétences, sorts, prières et assemblages de runes.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Feuille de personnage imprimable",
+    description:
+      "Tu peux imprimer ta fiche en deux versions : « abrégé » — une feuille compacte pensée pour le terrain, qui rassemble tout ton personnage (compétences, magie, artisanat) sur le moins de pages possible — ou « intégral », avec le texte complet du manuel. Un rappel des règles de fouille figure en haut de la feuille.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Forge présentée d'un seul tenant",
+    description:
+      "À la création de personnage comme sur ta fiche, chaque objet de forge affiche désormais sa fabrication ET sa réparation au même endroit, comme dans l'encyclopédie — fini les allers-retours entre deux onglets.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Création alignée sur l'encyclopédie",
+    description:
+      "La création de personnage affiche désormais la version abrégée de l'encyclopédie — le même texte partout — avec l'interrupteur abrégé ↔ intégral pour races, classes, traits, compétences, sorts, prières et assemblages de runes.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Alerte de nouvelle version",
+    description:
+      "Quand une nouvelle version de l'app est prête, un bandeau propose de recharger — fini le « vider le cache » ou réinstaller.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Chargement plus fiable",
+    description:
+      "Si une liste ne se charge pas (souci de réseau), la création de personnage et l'encyclopédie affichent un message clair avec un bouton « Réessayer » au lieu d'une page vide.",
+  },
+
   // ===== Fait — Juin 2026 =====
+  {
+    statut: "fait",
+    periode: "Juin 2026",
+    titre: "Encyclopédie repensée",
+    description:
+      "Navigation regroupée par grands thèmes et recherche globale couvrant toutes les catégories de l'encyclopédie, des règles au bestiaire.",
+  },
   {
     statut: "fait",
     periode: "Juin 2026",
@@ -183,9 +262,9 @@ const JALONS: Jalon[] = [
   },
   {
     statut: "prevu",
-    titre: "Affichage court / complet généralisé",
+    titre: "Abrégé / intégral sur la fiche de personnage",
     description:
-      "Un seul interrupteur court ↔ complet pour les textes de règles, partout sur la plateforme.",
+      "Amener le même interrupteur abrégé ↔ intégral sur la fiche de personnage.",
   },
 ];
 
@@ -316,7 +395,7 @@ export default function MisesAJour() {
         >
           page officielle du GN
         </a>
-        . Dernière mise à jour : 21 juin 2026.
+        . Dernière mise à jour : 1er juillet 2026.
       </p>
     </div>
   );

@@ -18,7 +18,6 @@ import PwaAutoUpdater from "@/components/PwaAutoUpdater";
 import Accueil from "@/pages/Accueil";
 import Regles from "@/pages/Regles";
 import Encyclopedie from "@/pages/Encyclopedie";
-import EncyclopedieV2 from "@/pages/admin/EncyclopedieV2";
 import Evenements from "@/pages/Evenements";
 import Connexion from "@/pages/Connexion";
 import Telechargements from "@/pages/Telechargements";
@@ -170,14 +169,6 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute requiredRole="animateur">
           <AdminEvenements />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/administration/encyclopedie-v2"
-      element={
-        <ProtectedRoute requiredRole="animateur">
-          <EncyclopedieV2 />
         </ProtectedRoute>
       }
     />
