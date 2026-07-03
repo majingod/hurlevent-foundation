@@ -571,6 +571,7 @@ export type Database = {
           description: string | null
           est_publie: boolean | null
           est_termine: boolean | null
+          gel_heures_avant: number | null
           id: string
           lieu: string | null
           max_participants: number | null
@@ -589,6 +590,7 @@ export type Database = {
           description?: string | null
           est_publie?: boolean | null
           est_termine?: boolean | null
+          gel_heures_avant?: number | null
           id?: string
           lieu?: string | null
           max_participants?: number | null
@@ -607,6 +609,7 @@ export type Database = {
           description?: string | null
           est_publie?: boolean | null
           est_termine?: boolean | null
+          gel_heures_avant?: number | null
           id?: string
           lieu?: string | null
           max_participants?: number | null
