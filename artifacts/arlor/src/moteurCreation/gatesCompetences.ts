@@ -15,13 +15,10 @@ import {
   getCompetence,
   getLangueNom,
   getReligionNom,
-  raceEstInapteMagie,
   getSnapshot,
 } from "./snapshot";
 import type {
   Competence,
-  TraitRacial,
-  RaceTrait,
 } from "./snapshot";
 
 export function peutAcheterCompetence(
@@ -392,14 +389,27 @@ export function peutAcheterCompetence(
   }
 
   // 10. prerequis_competences (jsonb)
+  // Forme réelle en prod : OBJET indexé par niveau acheté
+  //   { "1": [ { competence_nom, niveau_min } ], "2": [ … ], … }
+  // (miroir de `prerequis_competences -> p_niveau_desire::text` côté SQL).
+  // On tolère aussi une forme plate (tableau) par prudence.
   if (competence.prerequis_competences) {
-    const prereqList = competence.prerequis_competences as Array<{
-      competence_nom: string;
-      niveau_min: number;
-    }>;
-    const prereqForLevel = prereqList.filter(
-      (p) => p && typeof p === "object"
-    );
+    type Prereq = { competence_nom: string; niveau_min: number };
+    const raw = competence.prerequis_competences as unknown;
+    let prereqForLevel: Prereq[] = [];
+    const estPrereq = (p: unknown): p is Prereq =>
+      p != null && typeof p === "object";
+
+    if (Array.isArray(raw)) {
+      prereqForLevel = raw.filter(estPrereq);
+    } else if (raw && typeof raw === "object") {
+      const forLevel = (raw as Record<string, unknown>)[
+        String(demande.niveauDesire)
+      ];
+      if (Array.isArray(forLevel)) {
+        prereqForLevel = forLevel.filter(estPrereq);
+      }
+    }
 
     if (prereqForLevel && prereqForLevel.length > 0) {
       const manquants: string[] = [];
