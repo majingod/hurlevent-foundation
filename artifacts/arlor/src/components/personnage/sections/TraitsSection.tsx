@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemFiche } from "./ItemFiche";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { Trait } from "./types";
 
@@ -16,14 +16,9 @@ export const TraitsSection = ({ traits }: TraitsSectionProps) => {
       {traits.map((trait) => {
         const texte = mode === "abrege" ? trait.resume_condense : trait.texte_manuel;
         return (
-          <Card key={trait.id}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{trait.nom}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">{texte}</p>
-            </CardContent>
-          </Card>
+          <ItemFiche key={trait.id} titre={trait.nom}>
+            <p className="text-muted-foreground whitespace-pre-line">{texte}</p>
+          </ItemFiche>
         );
       })}
     </div>

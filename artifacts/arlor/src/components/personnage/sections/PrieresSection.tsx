@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ItemFiche } from "./ItemFiche";
 import { Badge } from "@/components/ui/badge";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import { PastilleType } from "@/components/shared/PastilleType";
@@ -59,23 +59,21 @@ export const PrieresSection = ({ prieres }: PrieresSectionProps) => {
         const textePriere = mode === "abrege" ? priere.priere_resume_condense : priere.priere_description;
 
         return (
-          <Card key={priere.id}>
-            <CardContent className="pt-4 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium text-foreground">{priere.nom_personnalise}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs text-muted-foreground">{priere.domaine} • Niveau {priere.niveau_priere}</p>
-                    <PastilleType type={priere.type_priere} />
-                  </div>
-                </div>
+          <ItemFiche
+            key={priere.id}
+            titre={priere.nom_personnalise}
+            sousTitre={<>{priere.domaine} • Niveau {priere.niveau_priere}</>}
+            badges={
+              <>
+                <PastilleType type={priere.type_priere} />
                 {priere.cout_xp_base != null && (
                   <Badge variant="secondary" className="text-xs shrink-0">
                     {calculerCoutPS(calculerCoutXP(priere.zone_choisie ?? "", priere.portee_choisie ?? "", priere.duree_choisie ?? "", priere.niveau_priere, Number(priere.cout_xp_base)))} PS
                   </Badge>
                 )}
-              </div>
-
+              </>
+            }
+          >
               {showIncantationBox && (
                 <div className="border border-primary/45 rounded-md bg-primary/10 px-2.5 py-2 text-center">
                   <p className="font-mono italic text-[13.5px] text-primary">
@@ -192,8 +190,7 @@ export const PrieresSection = ({ prieres }: PrieresSectionProps) => {
                   <PaliersDepliable paliers={paliers} niveau={priere.niveau_priere} />
                 </>
               )}
-            </CardContent>
-          </Card>
+          </ItemFiche>
         );
       })}
     </div>

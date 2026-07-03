@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { ItemFiche } from "./ItemFiche";
 import { Badge } from "@/components/ui/badge";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { ModeAffichage } from "@/contexts/ModeAffichageContext";
@@ -60,17 +60,12 @@ export const CompetencesSection = ({
         );
 
         return (
-          <Card key={comp.competence_id}>
-            <CardContent className="pt-4 space-y-3">
-              {/* Header commun */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{comp.nom}</p>
-                  <p className="text-xs text-muted-foreground">{comp.categorie}</p>
-                </div>
-                {headerBadges}
-              </div>
-
+          <ItemFiche
+            key={comp.competence_id}
+            titre={comp.nom}
+            sousTitre={comp.categorie}
+            badges={headerBadges}
+          >
               {/* PATTERN 1 — simple : sections par niveau acquis */}
               {comp.type_achat === "simple" && (
                 <div className="border-t border-border/50 pt-3 space-y-3 text-sm text-muted-foreground">
@@ -215,8 +210,7 @@ export const CompetencesSection = ({
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </ItemFiche>
         );
       })}
     </div>

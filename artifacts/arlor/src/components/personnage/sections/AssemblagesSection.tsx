@@ -1,3 +1,4 @@
+import { ItemFiche } from "./ItemFiche";
 import { Badge } from "@/components/ui/badge";
 import { EffetBox } from "@/components/shared/EffetBox";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
@@ -21,13 +22,17 @@ export const AssemblagesSection = ({ assemblages }: AssemblagesSectionProps) => 
       {assemblages.map((asm) => {
         const texte = mode === "abrege" ? asm.resume_condense : asm.texte_manuel;
         return (
-          <div key={asm.id} className="p-3 rounded border border-border/50 text-sm space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-medium text-foreground">{asm.nom}</p>
-              {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
-              {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
-              {asm.duree && <Badge variant="outline" className="text-xs">Durée : {asm.duree}</Badge>}
-            </div>
+          <ItemFiche
+            key={asm.id}
+            titre={asm.nom}
+            badges={
+              <>
+                {asm.cout_ps != null && <Badge variant="secondary" className="text-xs">{asm.cout_ps} PS</Badge>}
+                {asm.cible && <Badge variant="outline" className="text-xs">Cible : {asm.cible}</Badge>}
+                {asm.duree && <Badge variant="outline" className="text-xs">Durée : {asm.duree}</Badge>}
+              </>
+            }
+          >
             {asm.runes_requises && asm.runes_requises.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {asm.runes_requises.map((rune, i) => (
@@ -44,7 +49,7 @@ export const AssemblagesSection = ({ assemblages }: AssemblagesSectionProps) => 
               </EffetBox>
             )}
             {texte && <p className="text-muted-foreground whitespace-pre-line">{texte}</p>}
-          </div>
+          </ItemFiche>
         );
       })}
     </div>

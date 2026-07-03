@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemFiche } from "./ItemFiche";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -54,10 +54,11 @@ export const PiegesSection = ({
         const constructionFamille = piegeCatalogueParNomNiveau.get(`${nom}__1`)?.construction ?? null;
         const depliee = piegesDepliees.has(nom);
         return (
-          <Card key={nom}>
-            <CardHeader className="pb-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="font-heading text-base">{nom}</CardTitle>
+          <ItemFiche
+            key={nom}
+            titre={nom}
+            badges={
+              <>
                 {niveaux.map((n) => (
                   <Badge key={n} className="bg-[#6b1f2a] hover:bg-[#6b1f2a] text-white border-transparent text-xs">
                     Niv. {n}
@@ -66,11 +67,11 @@ export const PiegesSection = ({
                 {palierHaut?.niveau_effet != null && (
                   <Badge variant="outline" className="text-xs">Effet de niveau {palierHaut.niveau_effet}</Badge>
                 )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2 text-xs">
+              </>
+            }
+          >
               {palierHaut && (
-                <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2">
+                <div className="space-y-1 rounded border border-border/60 bg-background/40 p-2 text-xs">
                   {palierHaut.cible && (
                     <p><span className="font-medium text-foreground">Cible :</span> {palierHaut.cible}</p>
                   )}
@@ -98,7 +99,7 @@ export const PiegesSection = ({
                     {depliee ? "Masquer le détail par niveau" : "Voir le détail par niveau"}
                   </Button>
                   {depliee && (
-                    <div className="space-y-2 border-l-2 border-border pl-3">
+                    <div className="space-y-2 border-l-2 border-border pl-3 text-xs">
                       {niveaux.map((n) => {
                         const palier = piegeCatalogueParNomNiveau.get(`${nom}__${n}`);
                         if (!palier) return null;
@@ -126,8 +127,7 @@ export const PiegesSection = ({
                   )}
                 </>
               )}
-            </CardContent>
-          </Card>
+          </ItemFiche>
         );
       })}
     </div>

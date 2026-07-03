@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ItemFiche } from "./ItemFiche";
 import { Clock } from "lucide-react";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { ArtisanatEtat, ObjetJoaillerie } from "./types";
@@ -22,10 +22,11 @@ export const JoaillerieSection = ({
   ) : (
     <div className="grid gap-3 sm:grid-cols-2">
       {objetsJoaillerie.map((obj) => (
-        <Card key={obj.id} className="border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{obj.nom}</CardTitle>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
+        <ItemFiche
+          key={obj.id}
+          titre={obj.nom}
+          sousTitre={
+            <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" /> Temps de fabrication : {obj.temps_fabrication_minutes} min
               {(artisanatEtat?.niveau_joaillerie ?? 0) >= 2 && obj.temps_rare_minutes != null && (
                 <>
@@ -33,9 +34,9 @@ export const JoaillerieSection = ({
                   {obj.temps_rare_minutes} min (rare)
                 </>
               )}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-1 text-xs pt-0">
+            </span>
+          }
+        >
             {(mode === "abrege" ? obj.resume_condense : obj.description) && (
               <p className="text-muted-foreground whitespace-pre-line">
                 {mode === "abrege" ? obj.resume_condense : obj.description}
@@ -43,13 +44,12 @@ export const JoaillerieSection = ({
             )}
             {obj.effet && <p><span className="font-medium">Effet :</span> {obj.effet}</p>}
             {obj.materiaux_communs && (
-              <p><span className="text-amber-400 font-medium">Matériaux communs :</span> {obj.materiaux_communs}</p>
+              <p className="text-xs"><span className="text-amber-400 font-medium">Matériaux communs :</span> {obj.materiaux_communs}</p>
             )}
             {(artisanatEtat?.niveau_joaillerie ?? 0) >= 2 && obj.materiaux_rares && (
-              <p><span className="text-purple-400 font-medium">Matériaux rares :</span> {obj.materiaux_rares}</p>
+              <p className="text-xs"><span className="text-purple-400 font-medium">Matériaux rares :</span> {obj.materiaux_rares}</p>
             )}
-          </CardContent>
-        </Card>
+        </ItemFiche>
       ))}
     </div>
   );
