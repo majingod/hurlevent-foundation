@@ -11,7 +11,8 @@
  *  - D. personnage_inapte_magie → raceInapteMagie
  */
 
-import type { SnapshotVisiteur, Classe, Race, Competence } from "./snapshot";
+import type { SnapshotVisiteur, Classe, Race, Competence, Religion } from "./snapshot";
+import { getSnapshot } from "./snapshot";
 
 /**
  * Une compétence acquise localement par le visiteur.
@@ -209,4 +210,171 @@ export function calculerPsMax(
 export function calculerNiveau(): number {
   // niveau = 1 + gn_completes + niveau_correction ; visiteur → 1 + 0 + 0.
   return 1;
+}
+
+// ============================================================
+// P1-c — dérivés MAGIE / ARTISANAT (gates offline)
+//
+// Ports fidèles des vues serveur consommées par les gates :
+//   - vue_cercles_disponibles       → deriverCerclesDisponibles   (§3.1)
+//   - vue_domaines_disponibles      → deriverDomainesDisponibles  (§3.2)
+//   - niveaux artisanat (vue_personnage_etat) → deriverNiveauxArtisanat (§3.3)
+//   - quotas (vue_artisanat_quotas) → quota* (§3.4)
+//
+// Entrée : les compétences acquises (forme camelCase mappée depuis le contrat
+// serveur). Seuls competenceNom / niveauAcquis / choixAchat sont lus, donc tout
+// tableau structurellement compatible convient (ex. AcquisCompetence).
+// ============================================================
+
+export interface AcquisMagieArtisanat {
+  competenceNom: string;
+  niveauAcquis: number;
+  choixAchat: string | null;
+}
+
+/**
+ * CASE max(niveau_acquis) → niveau max (1→5, 2→10, 3→20, autre→null),
+ * miroir commun de vue_cercles_disponibles / vue_domaines_disponibles.
+ */
+function niveauMaxDepuisMax(maxNiveau: number): number | null {
+  switch (maxNiveau) {
+    case 1:
+      return 5;
+    case 2:
+      return 10;
+    case 3:
+      return 20;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Groupe MAX(niveau_acquis) par choixAchat pour une compétence donnée.
+ */
+function maxParChoix(
+  competencesAcquises: AcquisMagieArtisanat[],
+  competenceNom: string
+): Map<string, number> {
+  const parChoix = new Map<string, number>();
+  for (const ac of competencesAcquises) {
+    if (ac.competenceNom === competenceNom && ac.choixAchat != null) {
+      const prev = parChoix.get(ac.choixAchat);
+      if (prev === undefined || ac.niveauAcquis > prev) {
+        parChoix.set(ac.choixAchat, ac.niveauAcquis);
+      }
+    }
+  }
+  return parChoix;
+}
+
+/**
+ * §3.1 vue_cercles_disponibles : cercle → niveau_max_sorts.
+ */
+export function deriverCerclesDisponibles(
+  competencesAcquises: AcquisMagieArtisanat[]
+): Map<string, number | null> {
+  const res = new Map<string, number | null>();
+  for (const [cercle, maxNiv] of maxParChoix(
+    competencesAcquises,
+    "Acquisition de Cercle"
+  )) {
+    res.set(cercle, niveauMaxDepuisMax(maxNiv));
+  }
+  return res;
+}
+
+/**
+ * §3.2 vue_domaines_disponibles : domaine → niveau_max_prieres, EXCLUANT les
+ * domaines proscrits par la religion (`religionId` null → aucune exclusion).
+ */
+export function deriverDomainesDisponibles(
+  competencesAcquises: AcquisMagieArtisanat[],
+  religionId: string | null
+): Map<string, number | null> {
+  const proscrits = domainesProscrits(religionId);
+  const res = new Map<string, number | null>();
+  for (const [domaine, maxNiv] of maxParChoix(
+    competencesAcquises,
+    "Acquisition de Domaine"
+  )) {
+    if (proscrits.includes(domaine)) continue;
+    res.set(domaine, niveauMaxDepuisMax(maxNiv));
+  }
+  return res;
+}
+
+function domainesProscrits(religionId: string | null): string[] {
+  if (!religionId) return [];
+  const snapshot = getSnapshot();
+  const religions = snapshot.tables.religions as Religion[];
+  const religion = religions.find((r) => r.id === religionId);
+  return religion?.domaines_proscrits ?? [];
+}
+
+export interface NiveauxArtisanat {
+  niveauAlchimie: number;
+  niveauRunes: number;
+  niveauPieges: number;
+}
+
+/**
+ * §3.3 niveaux d'artisanat = MAX(niveau_acquis) par nom de compétence, sinon 0.
+ */
+export function deriverNiveauxArtisanat(
+  competencesAcquises: AcquisMagieArtisanat[]
+): NiveauxArtisanat {
+  const maxNom = (nom: string): number => {
+    let m = 0;
+    for (const ac of competencesAcquises) {
+      if (ac.competenceNom === nom && ac.niveauAcquis > m) m = ac.niveauAcquis;
+    }
+    return m;
+  };
+  return {
+    niveauAlchimie: maxNom("Alchimie"),
+    niveauRunes: maxNom("Assemblage de Runes"),
+    niveauPieges: maxNom("Création et désarmement de piège"),
+  };
+}
+
+// ---- Quotas §3.4 (fonctions pures) ----
+
+/** Recettes gratuites par palier : 1→5 (≥1), 2→4 (≥2), 3→3 (≥3), sinon 0. */
+export function quotaRecettesPalier(
+  niveauAlchimie: number,
+  palier: number
+): number {
+  switch (palier) {
+    case 1:
+      return niveauAlchimie >= 1 ? 5 : 0;
+    case 2:
+      return niveauAlchimie >= 2 ? 4 : 0;
+    case 3:
+      return niveauAlchimie >= 3 ? 3 : 0;
+    default:
+      return 0;
+  }
+}
+
+/** Assemblages gratuits (total) : ≥3→5, ≥2→4, ≥1→2, sinon 0. */
+export function quotaAssemblagesTotal(niveauRunes: number): number {
+  if (niveauRunes >= 3) return 5;
+  if (niveauRunes >= 2) return 4;
+  if (niveauRunes >= 1) return 2;
+  return 0;
+}
+
+/** Pièges gratuits par niveau : 1→3 (≥1), 2→2 (≥2), 3→1 (≥3), sinon 0. */
+export function quotaPiegesNiveau(niveauPieges: number, niveau: number): number {
+  switch (niveau) {
+    case 1:
+      return niveauPieges >= 1 ? 3 : 0;
+    case 2:
+      return niveauPieges >= 2 ? 2 : 0;
+    case 3:
+      return niveauPieges >= 3 ? 1 : 0;
+    default:
+      return 0;
+  }
 }

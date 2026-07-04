@@ -4381,6 +4381,7 @@ export type Database = {
       }
       vue_competences_maitre_admin: {
         Row: {
+          choix_achat: string | null
           competence_nom: string | null
           date_demande: string | null
           id: string | null
@@ -4855,12 +4856,12 @@ export type Database = {
           race_description_courte: string | null
           race_emoji: string | null
           race_esperance_vie: string | null
-          race_resume_condense: string | null
           race_exigences_costume: string | null
           race_id: string | null
           race_image_url: string | null
           race_nom: string | null
           race_nom_latin: string | null
+          race_resume_condense: string | null
           religion_id: string | null
           religion_nom: string | null
           traits_raciaux_choisis: Json | null
@@ -5979,6 +5980,7 @@ export type Database = {
           trait_description: string | null
           trait_id: string | null
           trait_nom: string | null
+          trait_resume_condense: string | null
           trait_texte_manuel: string | null
         }
         Relationships: [
@@ -6079,6 +6081,10 @@ export type Database = {
       _purger_profil_interne: {
         Args: { p_profil_id: string }
         Returns: undefined
+      }
+      _snip_contient: {
+        Args: { p_corps: string; p_terme_ua: string }
+        Returns: string
       }
       acheter_assemblage: {
         Args: { p_assemblage_id: string; p_personnage_id: string }
@@ -6347,6 +6353,15 @@ export type Database = {
         Args: { p_personnage_id: string }
         Returns: Json
       }
+      f_unaccent: { Args: { "": string }; Returns: string }
+      fixtures_parite_visiteur: { Args: never; Returns: Json }
+      fixtures_parite_visiteur_type: { Args: { p_type: string }; Returns: Json }
+      fixtures_visiteur_assemblages: { Args: never; Returns: Json }
+      fixtures_visiteur_pieges: { Args: never; Returns: Json }
+      fixtures_visiteur_prieres: { Args: never; Returns: Json }
+      fixtures_visiteur_recettes: { Args: never; Returns: Json }
+      fixtures_visiteur_sorts: { Args: never; Returns: Json }
+      fixtures_visiteur_traits_raciaux: { Args: never; Returns: Json }
       formater_classes_requises_label: {
         Args: { p_classes: string[] }
         Returns: string
@@ -6440,12 +6455,46 @@ export type Database = {
         Args: { p_personnage_id: string }
         Returns: boolean
       }
+      peut_acheter_assemblage: {
+        Args: { p_assemblage_id: string; p_personnage_id: string }
+        Returns: Json
+      }
       peut_acheter_competence: {
         Args: {
           p_choix_achat?: string
           p_competence_id: string
           p_niveau_desire: number
           p_personnage_id: string
+        }
+        Returns: Json
+      }
+      peut_acheter_piege: {
+        Args: { p_personnage_id: string; p_piege_id: string }
+        Returns: Json
+      }
+      peut_acheter_priere: {
+        Args: {
+          p_duree_choisie: string
+          p_niveau_priere: number
+          p_personnage_id: string
+          p_portee_choisie: string
+          p_priere_id: string
+          p_zone_choisie: string
+        }
+        Returns: Json
+      }
+      peut_acheter_recette: {
+        Args: { p_personnage_id: string; p_recette_id: string }
+        Returns: Json
+      }
+      peut_acheter_sort: {
+        Args: {
+          p_duree_choisie: string
+          p_niveau_sort: number
+          p_personnage_id: string
+          p_portee_choisie: string
+          p_sort_id: string
+          p_zone_choisie: string
         }
         Returns: Json
       }
@@ -6579,6 +6628,7 @@ export type Database = {
         }
         Returns: Json
       }
+      snapshot_visiteur: { Args: never; Returns: Json }
       supprimer_stele: { Args: { p_cimetiere_id: string }; Returns: Json }
       transferer_banque_vers_personnage: {
         Args: { p_montant: number; p_personnage_cible_id: string }
