@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import type { Database } from "@/integrations/supabase/types";
 import {
   Card,
@@ -237,11 +237,9 @@ const Etape6_Sorts_V2 = ({
   const { data: cerclesDisponibles, isLoading: loadingCercles, isError: cerclesError, refetch: refetchCercles } = useQuery({
     queryKey: ["cercles-disponibles", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vue_cercles_disponibles")
-        .select("cercle, niveau_max_sorts, personnage_id")
-        .eq("personnage_id", personnageId)
-        .order("cercle");
+      const { data, error } = await clientActif.lireCerclesDisponibles(
+        personnageId,
+      );
       if (error) throw error;
       return (data ?? []) as CercleDispo[];
     },
@@ -252,13 +250,10 @@ const Etape6_Sorts_V2 = ({
   const { data: acquisitionSort, isLoading: loadingAcquisition } = useQuery({
     queryKey: ["acquisition-sort", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_competences")
-        .select("niveau_acquis, competences!inner(nom)")
-        .eq("personnage_id", personnageId)
-        .eq("competences.nom", "Acquisition de Sort")
-        .order("niveau_acquis", { ascending: false })
-        .limit(1);
+      const { data, error } = await clientActif.lireNiveauCompetenceParNom(
+        personnageId,
+        "Acquisition de Sort",
+      );
       if (error) throw error;
       const niveau = data?.[0]?.niveau_acquis ?? 0;
       return niveau;
@@ -275,13 +270,10 @@ const Etape6_Sorts_V2 = ({
     queries: (cerclesDisponibles ?? []).map((c) => ({
       queryKey: ["sorts-cercle", c.cercle, c.niveau_max_sorts],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("sorts")
-          .select("*")
-          .eq("cercle", c.cercle ?? "")
-          .lte("niveau", c.niveau_max_sorts ?? 0)
-          .eq("est_actif", true)
-          .order("nom");
+        const { data, error } = await clientActif.lireSorts(
+          c.cercle ?? "",
+          c.niveau_max_sorts ?? 0,
+        );
         if (error) throw error;
         return (data ?? []) as SortCatalogue[];
       },
@@ -298,13 +290,9 @@ const Etape6_Sorts_V2 = ({
   const { data: sortsAchetes, isLoading: loadingAchats } = useQuery({
     queryKey: ["personnage-sorts", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_sorts")
-        .select(
-          "*, sorts(nom, cercle, zone_effet, portee, duree, cout_xp_base, bonus_niveau, resume_condense, description, description_tronc, paliers, type_sort, effet_instance)",
-        )
-        .eq("personnage_id", personnageId)
-        .order("date_acquisition");
+      const { data, error } = await clientActif.lirePersonnageSorts(
+        personnageId,
+      );
       if (error) throw error;
       return (data ?? []) as unknown as AchatSort[];
     },
@@ -315,7 +303,7 @@ const Etape6_Sorts_V2 = ({
 
   const mutation = useMutation({
     mutationFn: async (params: AcheterSortParams) => {
-      const { data, error } = await supabase.rpc("acheter_sort", params);
+      const { data, error } = await clientActif.acheterSort(params);
       if (error) throw error;
       return data;
     },
@@ -339,7 +327,7 @@ const Etape6_Sorts_V2 = ({
 
   const desacheterMutation = useMutation({
     mutationFn: async (personnageSortId: string) => {
-      const { data, error } = await supabase.rpc("desacheter_sort", {
+      const { data, error } = await clientActif.desacheterSort({
         p_personnage_sort_id: personnageSortId,
       });
       if (error) throw error;
@@ -374,7 +362,7 @@ const Etape6_Sorts_V2 = ({
     void (async () => {
       let apercu: ApercuDesachat;
       try {
-        const { data, error } = await supabase.rpc("desacheter_sort", {
+        const { data, error } = await clientActif.desacheterSort({
           p_personnage_sort_id: ps.id,
           p_dry_run: true,
         });
@@ -420,7 +408,7 @@ const Etape6_Sorts_V2 = ({
         ...(nomTrim !== args.nomActuel ? { p_nom_personnalise: nomTrim } : {}),
       };
 
-      const { data, error } = await supabase.rpc("modifier_sort", params);
+      const { data, error } = await clientActif.modifierSort(params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
@@ -463,7 +451,7 @@ const Etape6_Sorts_V2 = ({
   // que relire etape_creation et resterait bloque sur l'etape courante.
   const avancerMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("avancer_etape", {
+      const { data, error } = await clientActif.avancerEtape({
         p_personnage_id: personnageId,
         p_etape_courante: 6,
       });

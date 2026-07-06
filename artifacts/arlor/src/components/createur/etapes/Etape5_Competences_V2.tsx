@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -736,11 +736,7 @@ const Etape5_Competences_V2 = ({
   const { data: personnage } = useQuery({
     queryKey: ["personnage", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnages")
-        .select("*")
-        .eq("id", personnageId)
-        .single();
+      const { data, error } = await clientActif.lirePersonnage(personnageId);
       if (error) throw error;
       return data as PersonnageRow;
     },
@@ -750,11 +746,9 @@ const Etape5_Competences_V2 = ({
     queryKey: ["classe", personnage?.classe_id],
     queryFn: async () => {
       if (!personnage?.classe_id) return null;
-      const { data, error } = await supabase
-        .from("classes")
-        .select("id, nom")
-        .eq("id", personnage.classe_id)
-        .single();
+      const { data, error } = await clientActif.lireClasse(
+        personnage.classe_id,
+      );
       if (error) throw error;
       return data as Pick<ClasseRow, "id" | "nom">;
     },
@@ -766,11 +760,7 @@ const Etape5_Competences_V2 = ({
   const { data: competences, isLoading: loadingCompetences, isError: competencesError, refetch: refetchCompetences } = useQuery({
     queryKey: ["competences-actives"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("competences")
-        .select("*")
-        .eq("est_actif", true)
-        .order("nom");
+      const { data, error } = await clientActif.lireCompetences();
       if (error) throw error;
       return (data ?? []).map<CompetenceWithNiveaux>((c) => ({
         ...c,
@@ -786,10 +776,9 @@ const Etape5_Competences_V2 = ({
   const { data: achats, isLoading: loadingAchats } = useQuery({
     queryKey: ["personnage-competences", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_competences")
-        .select("*")
-        .eq("personnage_id", personnageId);
+      const { data, error } = await clientActif.lirePersonnageCompetences(
+        personnageId,
+      );
       if (error) throw error;
       return (data ?? []) as PersonnageCompetenceRow[];
     },
@@ -799,10 +788,9 @@ const Etape5_Competences_V2 = ({
   const { data: prerequisMap } = useQuery({
     queryKey: ["prerequis-competences", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc(
-        "verifier_prerequis_competences",
-        { p_personnage_id: personnageId },
-      );
+      const { data, error } = await clientActif.verifierPrerequisCompetences({
+        p_personnage_id: personnageId,
+      });
       if (error) throw error;
       return (data ?? {}) as Record<
         string,
@@ -827,11 +815,7 @@ const Etape5_Competences_V2 = ({
   const { data: langues } = useQuery({
     queryKey: ["langues-actives"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("langues")
-        .select("id, nom, est_ancienne")
-        .eq("est_actif", true)
-        .order("ordre");
+      const { data, error } = await clientActif.lireLangues();
       if (error) throw error;
       return (data ?? []) as Pick<LangueRow, "id" | "nom" | "est_ancienne">[];
     },
@@ -840,12 +824,7 @@ const Etape5_Competences_V2 = ({
   const { data: religions } = useQuery({
     queryKey: ["religions-actives"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("religions")
-        .select(
-          "id, nom, dirigeant, fondateur, symbole_sacre, pouvoir_symbole, domaines_principaux, domaines_proscrits, lore_fiche, rituels_fiche, lore_manuel, rituels_manuel",
-        )
-        .eq("est_actif", true);
+      const { data, error } = await clientActif.lireReligionsFiches();
       if (error) throw error;
       return (data ?? []) as Pick<
         ReligionRow,
@@ -868,11 +847,7 @@ const Etape5_Competences_V2 = ({
   const { data: categoriesCreatures } = useQuery({
     queryKey: ["categories-creatures-actives"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories_creatures")
-        .select("id, nom, ordre")
-        .eq("est_actif", true)
-        .order("ordre");
+      const { data, error } = await clientActif.lireCategoriesCreatures();
       if (error) throw error;
       return (data ?? []) as Pick<CategorieCreatureRow, "id" | "nom" | "ordre">[];
     },
@@ -881,11 +856,7 @@ const Etape5_Competences_V2 = ({
   const { data: famillesCriminelles } = useQuery({
     queryKey: ["familles-criminelles-actives"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("familles_criminelles")
-        .select("id, nom")
-        .eq("est_actif", true)
-        .order("nom");
+      const { data, error } = await clientActif.lireFamillesCriminelles();
       if (error) throw error;
       return (data ?? []) as Pick<FamilleCriminelleRow, "id" | "nom">[];
     },
@@ -894,11 +865,7 @@ const Etape5_Competences_V2 = ({
   const { data: cercles } = useQuery({
     queryKey: ["cercles-actifs"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sorts")
-        .select("cercle")
-        .eq("est_actif", true)
-        .not("cercle", "is", null);
+      const { data, error } = await clientActif.lireSortsCercles();
       if (error) throw error;
       const unique = Array.from(new Set((data ?? []).map((r) => r.cercle as string)));
       unique.sort((a, b) => a.localeCompare(b, "fr"));
@@ -909,11 +876,7 @@ const Etape5_Competences_V2 = ({
   const { data: domaines } = useQuery({
     queryKey: ["domaines-actifs"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("prieres")
-        .select("domaine")
-        .eq("est_actif", true)
-        .not("domaine", "is", null);
+      const { data, error } = await clientActif.lirePrieresDomaines();
       if (error) throw error;
       const unique = Array.from(new Set((data ?? []).map((r) => r.domaine as string)));
       unique.sort((a, b) => a.localeCompare(b, "fr"));
@@ -935,10 +898,11 @@ const Etape5_Competences_V2 = ({
       );
       const map = new Map<string, ApercuRabaisRow>();
       for (const comp of cibles) {
-        const { data, error } = await supabase.rpc(
-          "apercu_rabais_acquisition_competence",
-          { p_personnage_id: personnageId, p_competence_id: comp.id },
-        );
+        const { data, error } =
+          await clientActif.apercuRabaisAcquisitionCompetence({
+            p_personnage_id: personnageId,
+            p_competence_id: comp.id,
+          });
         if (error) throw error;
         for (const r of (data ?? []) as unknown as ApercuRabaisRow[]) {
           map.set(`${comp.id}|${r.choix}|${r.niveau}`, r);
@@ -1509,7 +1473,7 @@ const Etape5_Competences_V2 = ({
 
   const acheterMutation = useMutation({
     mutationFn: async (params: AcheterCompetenceParams) => {
-      const { data, error } = await supabase.rpc("acheter_competence", params);
+      const { data, error } = await clientActif.acheterCompetence(params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
@@ -1533,7 +1497,7 @@ const Etape5_Competences_V2 = ({
 
   const desacheterMutation = useMutation({
     mutationFn: async (params: { p_personnage_competence_id: string }) => {
-      const { data, error } = await supabase.rpc("desacheter_competence", params);
+      const { data, error } = await clientActif.desacheterCompetence(params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
@@ -1572,7 +1536,7 @@ const Etape5_Competences_V2 = ({
   // que relire etape_creation et resterait bloque sur l'etape courante.
   const avancerMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("avancer_etape", {
+      const { data, error } = await clientActif.avancerEtape({
         p_personnage_id: personnageId,
         p_etape_courante: 5,
       });
@@ -1677,7 +1641,7 @@ const Etape5_Competences_V2 = ({
     void (async () => {
       let donnees: Record<string, unknown>;
       try {
-        const { data, error } = await supabase.rpc("desacheter_competence", {
+        const { data, error } = await clientActif.desacheterCompetence({
           p_personnage_competence_id: achat.id,
           p_dry_run: true,
         });

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import ReligionDetails from "@/components/shared/ReligionDetails";
@@ -97,11 +97,9 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const { data: perso } = useQuery({
     queryKey: ["v2-perso-classe", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnages")
-        .select("classe_id, race_id, religion_id, est_croyant, nom")
-        .eq("id", personnageId)
-        .single();
+      const { data, error } = await clientActif.lirePersonnageClasse(
+        personnageId,
+      );
       if (error) throw error;
       return data;
     },
@@ -111,10 +109,9 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     queryKey: ["v2-comp-names-actuelles", personnageId],
     enabled: !!perso?.classe_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_competences")
-        .select("competences(nom)")
-        .eq("personnage_id", personnageId);
+      const { data, error } = await clientActif.lirePersonnageCompetencesNoms(
+        personnageId,
+      );
       if (error) throw error;
       const noms = (data ?? [])
         .map((r: any) => r.competences?.nom)
@@ -126,13 +123,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
   const { data: classes = [], isLoading, isError: classesError, refetch: refetchClasses } = useQuery({
     queryKey: ["v2-classes"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("classes")
-        .select(
-          "id, nom, description, resume_condense, emoji, role_combat, pv_depart, ps_depart, competences_gratuites"
-        )
-        .eq("est_actif", true)
-        .order("nom");
+      const { data, error } = await clientActif.lireClasses();
       if (error) throw error;
       return data ?? [];
     },
@@ -143,11 +134,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     queryKey: ["v2-race-restrictions", raceId],
     enabled: !!raceId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("races")
-        .select("id, nom, restrictions_classes")
-        .eq("id", raceId!)
-        .single();
+      const { data, error } = await clientActif.lireRace(raceId!);
       if (error) throw error;
       return data;
     },
@@ -191,10 +178,9 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     ],
     enabled: tousLesCompetenceIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("competences")
-        .select("id, nom, type_choix, type_achat, niveaux")
-        .in("id", tousLesCompetenceIds);
+      const { data, error } = await clientActif.lireCompetencesParIds(
+        tousLesCompetenceIds,
+      );
       if (error) throw error;
       return (data ?? []).map((c: any) => ({
         id: c.id as string,
@@ -249,13 +235,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     queryKey: ["v2-langues-anciennes"],
     enabled: aBesoinChoixLangueAncienne,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("langues")
-        .select("id, nom, ordre")
-        .eq("est_ancienne", true)
-        .eq("est_actif", true)
-        .order("ordre", { ascending: true })
-        .order("nom");
+      const { data, error } = await clientActif.lireLanguesAnciennes();
       if (error) throw error;
       return data ?? [];
     },
@@ -265,11 +245,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     queryKey: ["v2-religions-full"],
     enabled: aBesoinChoixReligion,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("religions")
-        .select("*")
-        .eq("est_actif", true)
-        .order("nom");
+      const { data, error } = await clientActif.lireReligions();
       if (error) throw error;
       return data ?? [];
     },
@@ -331,7 +307,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     classeId: string,
     choix: Record<string, string>
   ): Promise<ApercuChangementClasse | null> => {
-    const { data, error } = await supabase.rpc("changer_classe_personnage", {
+    const { data, error } = await clientActif.changerClassePersonnage({
       p_personnage_id: personnageId,
       p_classe_id: classeId,
       p_choix_par_competence: choix,
@@ -357,7 +333,7 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     religionChoisie: string | null,
     religionInitiale: string | null
   ): Promise<boolean> => {
-    const { data, error } = await supabase.rpc("sauvegarder_etape_4", {
+    const { data, error } = await clientActif.sauvegarderEtape4({
       p_personnage_id: personnageId,
       p_classe_id: classeId,
       p_choix_par_competence: choixComplets,
@@ -778,8 +754,8 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
                         // edition, ou perso.classe_id cache desync l'apercu).
                         // Fire-and-forget : pas d'attente, pas d'avancement.
                         if (!perso?.classe_id) {
-                          supabase
-                            .rpc("sauvegarder_etape_4", {
+                          clientActif
+                            .sauvegarderEtape4({
                               p_personnage_id: personnageId,
                               p_classe_id: c.id,
                               p_choix_par_competence: null,

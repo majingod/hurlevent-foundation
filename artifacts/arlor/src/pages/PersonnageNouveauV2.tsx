@@ -7,7 +7,7 @@ import {
   Hammer, ClipboardCheck, AlertTriangle, Coins, TrendingUp,
 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
@@ -134,7 +134,7 @@ const PersonnageNouveauV2 = () => {
       setDemarrage(true);
       setErreurDemarrage(null);
 
-      const { data, error } = await supabase.rpc("demarrer_creation_personnage", { p_profil_id: joueurId });
+      const { data, error } = await clientActif.demarrerCreationPersonnage({ p_profil_id: joueurId });
 
       if (annule) return;
 
@@ -187,11 +187,9 @@ const PersonnageNouveauV2 = () => {
       queryKey: ["v2-personnage", personnageId],
       enabled: !!personnageId,
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("personnages")
-          .select("id, nom, etape_creation, xp_total, xp_depense")
-          .eq("id", personnageId!)
-          .single();
+        const { data, error } = await clientActif.lirePersonnageProgression(
+          personnageId!,
+        );
         if (error) throw error;
         return data as PersonnageRow;
       },
@@ -209,7 +207,7 @@ const PersonnageNouveauV2 = () => {
     queryKey: ["etat-edition", personnageId],
     enabled: !!personnageId,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("etat_edition_personnage", {
+      const { data, error } = await clientActif.etatEditionPersonnage({
         p_personnage_id: personnageId!,
       });
       if (error) throw error;
@@ -295,7 +293,7 @@ const PersonnageNouveauV2 = () => {
     if (!personnageId) return { ok: false, bloque: depuis, message: "Personnage introuvable." };
     for (let m = depuis; m < cible; m += 1) {
       if (applicable(m)) continue; // sécurité : ne jamais sauter une étape applicable
-      const { data, error } = await supabase.rpc("avancer_etape", {
+      const { data, error } = await clientActif.avancerEtape({
         p_personnage_id: personnageId,
         p_etape_courante: m,
       });
@@ -406,11 +404,9 @@ const PersonnageNouveauV2 = () => {
     const result = await queryClient.fetchQuery<PersonnageRow>({
       queryKey: ["v2-personnage", personnageId],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("personnages")
-          .select("id, nom, etape_creation, xp_total, xp_depense")
-          .eq("id", personnageId!)
-          .single();
+        const { data, error } = await clientActif.lirePersonnageProgression(
+          personnageId!,
+        );
         if (error) throw error;
         return data as PersonnageRow;
       },

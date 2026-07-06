@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import type { Database } from "@/integrations/supabase/types";
 import {
   Card,
@@ -93,11 +93,9 @@ const Etape8_Assemblages_V2 = ({
   const { data: quotas, isLoading: loadingQuotas } = useQuery({
     queryKey: ["artisanat-quotas", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vue_artisanat_quotas")
-        .select("*")
-        .eq("personnage_id", personnageId)
-        .maybeSingle();
+      const { data, error } = await clientActif.lireArtisanatQuotas(
+        personnageId,
+      );
       if (error) throw error;
       return data as QuotasRow | null;
     },
@@ -112,11 +110,7 @@ const Etape8_Assemblages_V2 = ({
   const { data: assemblages, isLoading: loadingAssemblages, isError: assemblagesError, refetch: refetchAssemblages } = useQuery({
     queryKey: ["assemblages-runes"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("assemblages_runes")
-        .select("*")
-        .eq("est_actif", true)
-        .order("nom");
+      const { data, error } = await clientActif.lireAssemblagesRunes();
       if (error) throw error;
       return (data ?? []) as AssemblageRow[];
     },
@@ -128,10 +122,9 @@ const Etape8_Assemblages_V2 = ({
     useQuery({
       queryKey: ["personnage-assemblages", personnageId],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("personnage_assemblages")
-          .select("*")
-          .eq("personnage_id", personnageId);
+        const { data, error } = await clientActif.lirePersonnageAssemblages(
+          personnageId,
+        );
         if (error) throw error;
         return (data ?? []) as PersonnageAssemblageRow[];
       },
@@ -155,7 +148,7 @@ const Etape8_Assemblages_V2 = ({
       p_personnage_id: string;
       p_assemblage_id: string;
     }) => {
-      const { data, error } = await supabase.rpc("acheter_assemblage", params);
+      const { data, error } = await clientActif.acheterAssemblage(params);
       if (error) throw error;
       return data;
     },
@@ -180,7 +173,7 @@ const Etape8_Assemblages_V2 = ({
     mutationFn: async (params: {
       p_personnage_assemblage_id: string;
     }) => {
-      const { data, error } = await supabase.rpc("desacheter_assemblage", params);
+      const { data, error } = await clientActif.desacheterAssemblage(params);
       if (error) throw error;
       return data;
     },
@@ -202,7 +195,7 @@ const Etape8_Assemblages_V2 = ({
   // que relire etape_creation et resterait bloque sur l'etape courante.
   const avancerMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("avancer_etape", {
+      const { data, error } = await clientActif.avancerEtape({
         p_personnage_id: personnageId,
         p_etape_courante: 8,
       });

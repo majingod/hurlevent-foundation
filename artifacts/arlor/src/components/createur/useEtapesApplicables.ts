@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 
 /**
  * NAV-2 (s175) — applicabilité dynamique des étapes du wizard.
@@ -33,13 +33,10 @@ export function useEtapesApplicables(
   const sortQuery = useQuery({
     queryKey: ["acquisition-sort", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_competences")
-        .select("niveau_acquis, competences!inner(nom)")
-        .eq("personnage_id", personnageId!)
-        .eq("competences.nom", "Acquisition de Sort")
-        .order("niveau_acquis", { ascending: false })
-        .limit(1);
+      const { data, error } = await clientActif.lireNiveauCompetenceParNom(
+        personnageId!,
+        "Acquisition de Sort",
+      );
       if (error) throw error;
       const niveau = data?.[0]?.niveau_acquis ?? 0;
       return niveau;
@@ -52,13 +49,10 @@ export function useEtapesApplicables(
   const priereQuery = useQuery({
     queryKey: ["acquisition-priere", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_competences")
-        .select("niveau_acquis, competences!inner(nom)")
-        .eq("personnage_id", personnageId!)
-        .eq("competences.nom", "Acquisition de Prière")
-        .order("niveau_acquis", { ascending: false })
-        .limit(1);
+      const { data, error } = await clientActif.lireNiveauCompetenceParNom(
+        personnageId!,
+        "Acquisition de Prière",
+      );
       if (error) throw error;
       const niveau = data?.[0]?.niveau_acquis ?? 0;
       return niveau;
@@ -71,11 +65,9 @@ export function useEtapesApplicables(
   const quotasQuery = useQuery({
     queryKey: ["artisanat-quotas", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vue_artisanat_quotas")
-        .select("*")
-        .eq("personnage_id", personnageId!)
-        .maybeSingle();
+      const { data, error } = await clientActif.lireArtisanatQuotas(
+        personnageId!,
+      );
       if (error) throw error;
       return data as { niveau_runes: number | null } | null;
     },

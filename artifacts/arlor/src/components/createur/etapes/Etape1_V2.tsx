@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Loader2, Info, AlertTriangle } from "lucide-react";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,13 +155,7 @@ const Etape1_V2 = ({
   const { data: religions = [], isLoading: loadingReligions } = useQuery({
     queryKey: ["v2-religions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("religions")
-        .select(
-          "id, nom, description, dirigeant, fondateur, symbole_sacre, pouvoir_symbole, domaines_principaux, domaines_proscrits, lore_fiche, rituels_fiche, lore_manuel, rituels_manuel"
-        )
-        .eq("est_actif", true)
-        .order("nom");
+      const { data, error } = await clientActif.lireReligionsCatalogue();
       if (error) throw error;
       return data ?? [];
     },
@@ -170,13 +164,7 @@ const Etape1_V2 = ({
   // Pré-remplir avec les valeurs déjà sauvegardées sur le brouillon
   useEffect(() => {
     const charger = async () => {
-      const { data } = await supabase
-        .from("personnages")
-        .select(
-          "nom, gn_completes, mini_gn_completes, ouvertures_terrain, est_croyant, religion_id, historique, ame_personnage"
-        )
-        .eq("id", personnageId)
-        .single();
+      const { data } = await clientActif.lirePersonnageIdentite(personnageId);
       if (!data) return;
       // Garder les valeurs DB d'origine des 6 champs figés (INV-4) pour le submit campagne.
       valeursFigees.current = {
@@ -221,8 +209,8 @@ const Etape1_V2 = ({
     const figees = modeCampagne ? valeursFigees.current : null;
     const cFiges = compteursFiges ? valeursFigees.current : null;
     const croyant = figees ? figees.est_croyant === true : v.est_croyant === "oui";
-    supabase
-      .rpc("sauvegarder_etape_1", {
+    clientActif
+      .sauvegarderEtape1({
         p_personnage_id: personnageId,
         p_nom: figees ? figees.nom : (v.nom ?? "").trim(),
         p_gn_completes: cFiges ? cFiges.gn_completes : Number(v.gn_completes) || 0,
@@ -335,7 +323,7 @@ const Etape1_V2 = ({
       autosaveTimer.current = null;
     }
     setSubmitting(true);
-    const { data, error } = await supabase.rpc("sauvegarder_etape_1", {
+    const { data, error } = await clientActif.sauvegarderEtape1({
       p_personnage_id: personnageId,
       p_nom: nom,
       p_gn_completes: gnCompletes,
