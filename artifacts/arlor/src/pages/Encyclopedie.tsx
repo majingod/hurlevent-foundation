@@ -48,7 +48,7 @@ const TABLE_SOURCE: Record<CatCle, string> = {
   race: "races",
   trait_racial: "traits_raciaux",
   classe: "classes",
-  competences: "competences",
+  competences: "vue_competences_encyclopedie",
   assemblages: "assemblages_runes",
   alchimie: "recettes_alchimie",
   sorts: "sorts",
