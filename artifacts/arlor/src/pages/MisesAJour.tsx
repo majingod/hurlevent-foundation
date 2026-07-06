@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Prérequis de classe affichés",
+    description:
+      "Les compétences réservées à une classe affichent maintenant clairement leur classe requise (ex. « Classe Prêtre ») dans leurs prérequis — autant dans l'encyclopédie que dans le créateur de personnage, où la puce apparaît en vert si ta classe correspond, en rouge sinon.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Fiche de personnage unifiée",
     description:
       "Tous les onglets de ta fiche (traits, sorts, prières, compétences, artisanat, pièges, assemblages) partagent désormais la même présentation : même style de carte, même taille de texte, mêmes emplacements pour les titres et les badges. La lecture est plus cohérente d'un onglet à l'autre. Aucun contenu n'a changé — seule l'apparence a été harmonisée.",
