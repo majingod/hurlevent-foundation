@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -43,6 +43,7 @@ interface InscriptionAttente {
   race_nom: string | null;
   classe_nom: string | null;
   joueur_nom: string | null;
+  est_termine: boolean | null;
 }
 
 type RpcStandard = { succes?: boolean; erreurs?: { message?: string }[] } | null;
@@ -99,6 +100,23 @@ const AdminApprobations = () => {
       return (data ?? []) as InscriptionAttente[];
     },
   });
+
+  // Groupes par événement, ordre chronologique (terminés d'abord car plus anciens)
+  const groupesPresences = useMemo(() => {
+    const map = new Map<string, { evenement_id: string; titre: string; date: string | null; est_termine: boolean; items: InscriptionAttente[] }>();
+    for (const p of presences ?? []) {
+      const g = map.get(p.evenement_id) ?? {
+        evenement_id: p.evenement_id,
+        titre: p.evenement_titre ?? "Événement",
+        date: p.date_evenement,
+        est_termine: Boolean(p.est_termine),
+        items: [],
+      };
+      g.items.push(p);
+      map.set(p.evenement_id, g);
+    }
+    return Array.from(map.values());
+  }, [presences]);
 
   const nbRaces = races?.length ?? 0;
   const nbPres = presences?.length ?? 0;
@@ -186,19 +204,26 @@ const AdminApprobations = () => {
     }
   };
 
-  const bulkMarquerPresent = async () => {
-    if (!presences || presences.length === 0) return;
+  const bulkMarquerPresent = async (inscriptionIds: string[]) => {
+    if (inscriptionIds.length === 0) return;
     setUpdatingId("bulk");
     try {
-      await Promise.all(
-        presences.map((p) =>
+      const results = await Promise.all(
+        inscriptionIds.map((id) =>
           supabase.rpc("changer_statut_inscription", {
-            p_inscription_id: p.inscription_id,
+            p_inscription_id: id,
             p_nouveau_statut: "present",
           })
         )
       );
-      toast.success(`${presences.length} présence(s) confirmée(s).`);
+      const echecs = results.filter(
+        (r) => r.error || (r.data as unknown as RpcStandard)?.succes === false
+      ).length;
+      if (echecs === 0) {
+        toast.success(`${inscriptionIds.length} présence(s) confirmée(s).`);
+      } else {
+        toast.error(`${inscriptionIds.length - echecs} confirmée(s), ${echecs} échec(s) — voir la liste.`);
+      }
       refetchPres();
     } catch (err) {
       console.error(err);
@@ -400,7 +425,7 @@ const AdminApprobations = () => {
         )
       )}
 
-      {/* ── PRÉSENCES (Modèle A) ── */}
+      {/* ── PRÉSENCES (groupées par événement) ── */}
       {segment === "presences" && (
         loadingPres ? (
           <p className="text-center py-12 text-muted-foreground">Chargement…</p>
@@ -409,60 +434,86 @@ const AdminApprobations = () => {
             <span className="block text-4xl opacity-50 mb-2">📋</span>Aucune présence en attente.
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 flex-wrap rounded-lg border border-dashed border-primary/40 bg-primary/[0.06] px-4 py-3 text-sm">
-              <span><span className="text-primary font-semibold">{nbPres}</span> présence(s) non confirmée(s)</span>
-              <button
-                onClick={bulkMarquerPresent}
-                disabled={updatingId === "bulk"}
-                className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.76rem] font-semibold border border-green-500/50 text-green-400 hover:bg-green-500/10 disabled:opacity-40"
-              >
-                ✓ Tout marquer présent
-              </button>
-            </div>
+          <div className="flex flex-col gap-6">
+            {groupesPresences.map((grp) => (
+              <div key={grp.evenement_id} className="flex flex-col gap-3">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="font-heading text-primary">{grp.titre}</span>
+                  <span className="text-muted-foreground text-xs">
+                    {grp.date ? new Date(grp.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "Date inconnue"} · {grp.items.length} en attente
+                  </span>
+                  {grp.est_termine ? (
+                    <span className="text-[0.66rem] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/40 text-primary">
+                      Terminé — récompense immédiate
+                    </span>
+                  ) : (
+                    <span className="text-[0.66rem] font-semibold px-2.5 py-0.5 rounded-full bg-muted/40 border border-border text-muted-foreground">
+                      À venir
+                    </span>
+                  )}
+                </div>
 
-            {(presences ?? []).map((p) => (
-              <div key={p.inscription_id} className="rounded-lg border border-primary/10 bg-card/50 backdrop-blur-sm p-4">
-                <div className="flex items-start gap-3.5 flex-wrap">
-                  <div className="w-[42px] h-[42px] rounded-lg flex items-center justify-center text-xl shrink-0 bg-secondary/20 border border-secondary/40">
-                    📋
+                {grp.est_termine ? (
+                  <div className="flex items-center gap-3 flex-wrap rounded-lg border border-dashed border-primary/40 bg-primary/[0.06] px-4 py-3 text-sm">
+                    <span><span className="text-primary font-semibold">{grp.items.length}</span> présence(s) non confirmée(s)</span>
+                    <button
+                      onClick={() => bulkMarquerPresent(grp.items.map((i) => i.inscription_id))}
+                      disabled={updatingId === "bulk"}
+                      className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.76rem] font-semibold border border-green-500/50 text-green-400 hover:bg-green-500/10 disabled:opacity-40"
+                    >
+                      ✓ Tout marquer présent ({grp.items.length})
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-[160px]">
-                    <div className="font-semibold flex items-center gap-2.5 flex-wrap">
-                      {p.personnage_nom ?? "Sans personnage"}
-                      <span className="text-[0.66rem] font-semibold px-2.5 py-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/40 text-yellow-500">
-                        Récompense à la clôture
-                      </span>
+                ) : (
+                  <p className="text-xs italic" style={{ color: "hsl(45 90% 60%)" }}>
+                    ⏳ Événement à venir — pas de confirmation groupée avant le jour J.
+                  </p>
+                )}
+
+                {grp.items.map((p) => (
+                  <div key={p.inscription_id} className="rounded-lg border border-primary/10 bg-card/50 backdrop-blur-sm p-4">
+                    <div className="flex items-start gap-3.5 flex-wrap">
+                      <div className="w-[42px] h-[42px] rounded-lg flex items-center justify-center text-xl shrink-0 bg-secondary/20 border border-secondary/40">
+                        📋
+                      </div>
+                      <div className="flex-1 min-w-[160px]">
+                        <div className="font-semibold flex items-center gap-2.5 flex-wrap">
+                          {p.personnage_nom ?? "Sans personnage"}
+                          <span className="text-[0.66rem] font-semibold px-2.5 py-0.5 rounded-full bg-yellow-500/15 border border-yellow-500/40 text-yellow-500">
+                            {grp.est_termine ? "Récompense immédiate" : "Récompense à la clôture"}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Inscrit au <span className="text-foreground font-medium">{p.evenement_titre ?? "événement"}</span>
+                          {p.personnage_niveau != null ? ` · Nv ${p.personnage_niveau}` : ""}
+                          {p.race_nom ? ` · ${p.race_nom}` : ""}
+                          {p.joueur_nom ? ` · joueur ${p.joueur_nom}` : ""}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Inscrit au <span className="text-foreground font-medium">{p.evenement_titre ?? "événement"}</span>
-                      {p.personnage_niveau != null ? ` · Nv ${p.personnage_niveau}` : ""}
-                      {p.race_nom ? ` · ${p.race_nom}` : ""}
-                      {p.joueur_nom ? ` · joueur ${p.joueur_nom}` : ""}
+                    <div className="flex gap-2.5 mt-3.5 flex-wrap">
+                      <button
+                        onClick={() => marquerPresence(p.inscription_id, "present")}
+                        disabled={updatingId === p.inscription_id}
+                        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold border border-green-500/50 text-green-400 hover:bg-green-500/10 disabled:opacity-40"
+                      >
+                        ✓ Présent
+                      </button>
+                      <button
+                        onClick={() => marquerPresence(p.inscription_id, "absent")}
+                        disabled={updatingId === p.inscription_id}
+                        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-40"
+                      >
+                        ✕ Absent
+                      </button>
                     </div>
                   </div>
-                </div>
-                <div className="flex gap-2.5 mt-3.5 flex-wrap">
-                  <button
-                    onClick={() => marquerPresence(p.inscription_id, "present")}
-                    disabled={updatingId === p.inscription_id}
-                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold border border-green-500/50 text-green-400 hover:bg-green-500/10 disabled:opacity-40"
-                  >
-                    ✓ Présent
-                  </button>
-                  <button
-                    onClick={() => marquerPresence(p.inscription_id, "absent")}
-                    disabled={updatingId === p.inscription_id}
-                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-40"
-                  >
-                    ✕ Absent
-                  </button>
-                </div>
+                ))}
               </div>
             ))}
 
             <p className="text-xs text-muted-foreground italic mt-1">
-              L'XP et les niveaux sont versés à la <span className="text-foreground">clôture de l'événement</span> (page Événements), pas ici.{" "}
+              Pour un événement en cours, l'XP est versé à la clôture (page Événements). Pour un événement déjà terminé, la confirmation récompense immédiatement.{" "}
               <button onClick={() => navigate("/administration/evenements")} className="text-primary underline underline-offset-2">
                 Aller aux événements
               </button>
