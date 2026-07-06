@@ -112,13 +112,6 @@ const TYPE_DEFAULTS: Record<TypeEvenement, { xp: number; niveaux: number }> = {
   entretien_terrain: { xp: 10, niveaux: 0 },
 };
 
-const STATUT_LABELS: Record<string, string> = {
-  inscrit: "Inscrit",
-  en_attente: "Inscrit",
-  present: "Présent",
-  absent: "Absent",
-};
-
 const STATUT_OPTIONS: { value: StatutInscription; label: string }[] = [
   { value: "inscrit", label: "Inscrit" },
   { value: "present", label: "Présent" },
@@ -151,6 +144,8 @@ const fromLocalInputValue = (value: string): string | null => {
 interface RpcResult {
   succes?: boolean;
   message?: string;
+  erreurs?: { code: string; message: string }[];
+  donnees?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -674,7 +669,7 @@ const EventCard = ({
         </div>
 
         {showInscriptions && (
-          <InscriptionsList eventId={evt.id} readOnly={variant === "archive"} />
+          <InscriptionsList eventId={evt.id} />
         )}
       </CardContent>
 
@@ -694,7 +689,7 @@ const EventCard = ({
 // Liste des inscriptions
 // ============================================================================
 
-const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: boolean }) => {
+const InscriptionsList = ({ eventId }: { eventId: string }) => {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -729,18 +724,26 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
       inscriptionId: string;
       nouveau: StatutInscription;
     }) => {
+      const statutRpc = nouveau === "inscrit" ? "en_attente" : nouveau;
       const { data, error } = await supabase.rpc("changer_statut_inscription", {
         p_inscription_id: inscriptionId,
-        p_nouveau_statut: nouveau,
+        p_nouveau_statut: statutRpc,
       });
       if (error) throw error;
       return data as RpcResult;
     },
     onSuccess: (data) => {
       if (data?.succes === false) {
-        toast.error(data?.message ?? "Statut non modifié.");
+        toast.error(data?.erreurs?.[0]?.message ?? data?.message ?? "Statut non modifié.");
       } else {
-        toast.success(data?.message ?? "Statut mis à jour.");
+        const d = data?.donnees as { annulation?: boolean; xp_retire?: number; xp?: number } | undefined;
+        if (d?.annulation) {
+          toast.success(`Récompense retirée (−${d.xp_retire} XP).`);
+        } else if (d?.xp) {
+          toast.success(`Présence confirmée (+${d.xp} XP).`);
+        } else {
+          toast.success("Statut mis à jour.");
+        }
         qc.invalidateQueries({ queryKey: ["inscriptions", eventId] });
       }
     },
@@ -782,32 +785,26 @@ const InscriptionsList = ({ eventId, readOnly }: { eventId: string; readOnly: bo
                 </p>
               )}
             </div>
-            {readOnly ? (
-              <Badge variant="outline" className="text-xs shrink-0">
-                {STATUT_LABELS[statutValue] ?? statutValue}
-              </Badge>
-            ) : (
-              <Select
-                value={statutValue}
-                onValueChange={(v) =>
-                  statutMutation.mutate({
-                    inscriptionId: insc.id,
-                    nouveau: v as StatutInscription,
-                  })
-                }
-              >
-                <SelectTrigger className="h-8 w-[120px] shrink-0 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select
+              value={statutValue}
+              onValueChange={(v) =>
+                statutMutation.mutate({
+                  inscriptionId: insc.id,
+                  nouveau: v as StatutInscription,
+                })
+              }
+            >
+              <SelectTrigger className="h-8 w-[120px] shrink-0 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUT_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         );
       })}

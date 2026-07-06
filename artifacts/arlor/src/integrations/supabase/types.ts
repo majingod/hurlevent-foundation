@@ -1275,7 +1275,7 @@ export type Database = {
       }
       journal_audit: {
         Row: {
-          acteur_id: string
+          acteur_id: string | null
           acteur_role: string
           action: string
           cible_id: string
@@ -1285,7 +1285,7 @@ export type Database = {
           id: string
         }
         Insert: {
-          acteur_id: string
+          acteur_id?: string | null
           acteur_role: string
           action: string
           cible_id: string
@@ -1295,7 +1295,7 @@ export type Database = {
           id?: string
         }
         Update: {
-          acteur_id?: string
+          acteur_id?: string | null
           acteur_role?: string
           action?: string
           cible_id?: string
@@ -3041,13 +3041,16 @@ export type Database = {
           etape_creation: number
           famille_criminelle_id: string | null
           gn_completes: number | null
+          gn_declares: number
           historique: string | null
           id: string
           joueur_id: string
           mini_gn_completes: number | null
+          mini_gn_declares: number
           niveau: number | null
           niveau_correction: number
           nom: string | null
+          ouvertures_declares: number
           ouvertures_terrain: number | null
           ps_max: number
           pv_max: number
@@ -3076,13 +3079,16 @@ export type Database = {
           etape_creation?: number
           famille_criminelle_id?: string | null
           gn_completes?: number | null
+          gn_declares?: number
           historique?: string | null
           id: string
           joueur_id: string
           mini_gn_completes?: number | null
+          mini_gn_declares?: number
           niveau?: number | null
           niveau_correction?: number
           nom?: string | null
+          ouvertures_declares?: number
           ouvertures_terrain?: number | null
           ps_max?: number
           pv_max?: number
@@ -3111,13 +3117,16 @@ export type Database = {
           etape_creation?: number
           famille_criminelle_id?: string | null
           gn_completes?: number | null
+          gn_declares?: number
           historique?: string | null
           id?: string
           joueur_id?: string
           mini_gn_completes?: number | null
+          mini_gn_declares?: number
           niveau?: number | null
           niveau_correction?: number
           nom?: string | null
+          ouvertures_declares?: number
           ouvertures_terrain?: number | null
           ps_max?: number
           pv_max?: number
@@ -4928,6 +4937,7 @@ export type Database = {
           date_inscription: string | null
           est_actif: boolean | null
           est_mort: boolean | null
+          est_termine: boolean | null
           est_verrouille: boolean | null
           evenement_id: string | null
           evenement_titre: string | null
@@ -6391,6 +6401,16 @@ export type Database = {
         Args: { p_personnage_id: string }
         Returns: Json
       }
+      journaliser_changement_role: {
+        Args: {
+          p_acteur: string
+          p_ancien: string
+          p_cible: string
+          p_nom: string
+          p_nouveau: string
+        }
+        Returns: undefined
+      }
       log_audit: {
         Args: {
           p_action: string
@@ -6540,8 +6560,11 @@ export type Database = {
       recalculer_xp_valeurs: {
         Args: {
           p_gn_completes: number
+          p_gn_declares?: number
           p_mini_gn_completes: number
+          p_mini_gn_declares?: number
           p_niveau_correction: number
+          p_ouvertures_declares?: number
           p_ouvertures_terrain: number
           p_personnage_id: string
           p_race_id: string
