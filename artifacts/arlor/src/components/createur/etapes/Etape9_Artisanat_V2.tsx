@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import type { Database } from "@/integrations/supabase/types";
 import {
   Card,
@@ -129,11 +129,9 @@ const Etape9_Artisanat_V2 = ({
   const { data: quotas, isLoading: loadingQuotas } = useQuery({
     queryKey: ["artisanat-quotas", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vue_artisanat_quotas")
-        .select("*")
-        .eq("personnage_id", personnageId)
-        .maybeSingle();
+      const { data, error } = await clientActif.lireArtisanatQuotas(
+        personnageId,
+      );
       if (error) throw error;
       return data as QuotasRow | null;
     },
@@ -212,13 +210,9 @@ const Etape9_Artisanat_V2 = ({
   const { data: recettes, isLoading: loadingRecettes } = useQuery({
     queryKey: ["recettes-disponibles", niveauAlchimie],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recettes_alchimie")
-        .select("*")
-        .eq("est_actif", true)
-        .lte("niveau_requis", niveauAlchimie)
-        .order("niveau_requis")
-        .order("nom");
+      const { data, error } = await clientActif.lireRecettesAlchimie(
+        niveauAlchimie,
+      );
       if (error) throw error;
       return (data ?? []) as RecetteRow[];
     },
@@ -230,10 +224,9 @@ const Etape9_Artisanat_V2 = ({
     useQuery({
       queryKey: ["personnage-recettes", personnageId],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("personnage_recettes")
-          .select("*")
-          .eq("personnage_id", personnageId);
+        const { data, error } = await clientActif.lirePersonnageRecettes(
+          personnageId,
+        );
         if (error) throw error;
         return (data ?? []) as PersonnageRecetteRow[];
       },
@@ -245,14 +238,7 @@ const Etape9_Artisanat_V2 = ({
   const { data: objetsForge, isLoading: loadingForge } = useQuery({
     queryKey: ["objets-forge"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("objets_forge")
-        .select(
-          "*, reparation:reparations_forge!reparation_id(nom_affichage, temps_minutes, temps_rare_minutes, materiaux, materiaux_rares)",
-        )
-        .eq("est_actif", true)
-        .order("temps_fabrication_minutes")
-        .order("nom");
+      const { data, error } = await clientActif.lireObjetsForge();
       if (error) throw error;
       return (data ?? []) as ObjetForgeRow[];
     },
@@ -263,12 +249,7 @@ const Etape9_Artisanat_V2 = ({
   const { data: objetsJoaillerie, isLoading: loadingJoaillerie } = useQuery({
     queryKey: ["objets-joaillerie"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("objets_joaillerie")
-        .select("*")
-        .eq("est_actif", true)
-        .order("temps_fabrication_minutes")
-        .order("nom");
+      const { data, error } = await clientActif.lireObjetsJoaillerie();
       if (error) throw error;
       return (data ?? []) as ObjetJoaillerieRow[];
     },
@@ -281,12 +262,7 @@ const Etape9_Artisanat_V2 = ({
     {
       queryKey: ["pieges-catalogue"],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("pieges")
-          .select("*")
-          .eq("est_actif", true)
-          .order("nom")
-          .order("niveau");
+        const { data, error } = await clientActif.lirePieges();
         if (error) throw error;
         return (data ?? []) as PiegeRow[];
       },
@@ -298,10 +274,9 @@ const Etape9_Artisanat_V2 = ({
   const { data: personnagePieges, isLoading: loadingPersoPieges } = useQuery({
     queryKey: ["personnage-pieges", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_pieges")
-        .select("*")
-        .eq("personnage_id", personnageId);
+      const { data, error } = await clientActif.lirePersonnagePieges(
+        personnageId,
+      );
       if (error) throw error;
       return (data ?? []) as PersonnagePiegeRow[];
     },
@@ -357,7 +332,7 @@ const Etape9_Artisanat_V2 = ({
       p_personnage_id: string;
       p_recette_id: string;
     }) => {
-      const { data, error } = await supabase.rpc("acheter_recette", params);
+      const { data, error } = await clientActif.acheterRecette(params);
       if (error) throw error;
       return data;
     },
@@ -382,7 +357,7 @@ const Etape9_Artisanat_V2 = ({
     mutationFn: async (params: {
       p_personnage_recette_id: string;
     }) => {
-      const { data, error } = await supabase.rpc("desacheter_recette", params);
+      const { data, error } = await clientActif.desacheterRecette(params);
       if (error) throw error;
       return data;
     },
@@ -428,7 +403,7 @@ const Etape9_Artisanat_V2 = ({
       p_personnage_id: string;
       p_piege_id: string;
     }) => {
-      const { data, error } = await supabase.rpc("acheter_piege", params);
+      const { data, error } = await clientActif.acheterPiege(params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
@@ -455,7 +430,7 @@ const Etape9_Artisanat_V2 = ({
 
   const desacheterPiegeMutation = useMutation({
     mutationFn: async (params: { p_personnage_piege_id: string }) => {
-      const { data, error } = await supabase.rpc("desacheter_piege", params);
+      const { data, error } = await clientActif.desacheterPiege(params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
@@ -551,7 +526,7 @@ const Etape9_Artisanat_V2 = ({
   // que relire etape_creation et resterait bloque sur l'etape courante.
   const avancerMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("avancer_etape", {
+      const { data, error } = await clientActif.avancerEtape({
         p_personnage_id: personnageId,
         p_etape_courante: 9,
       });

@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import type { Database } from "@/integrations/supabase/types";
 import {
   Card,
@@ -241,11 +241,9 @@ const Etape7_Prieres_V2 = ({
   const { data: personnage, isLoading: loadingPersonnage } = useQuery({
     queryKey: ["personnage-prieres-meta", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnages")
-        .select("id, religion_id")
-        .eq("id", personnageId)
-        .single();
+      const { data, error } = await clientActif.lirePersonnageReligion(
+        personnageId,
+      );
       if (error) throw error;
       return data;
     },
@@ -256,13 +254,10 @@ const Etape7_Prieres_V2 = ({
   const { data: acquisitionPriere, isLoading: loadingAcquisition } = useQuery({
     queryKey: ["acquisition-priere", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_competences")
-        .select("niveau_acquis, competences!inner(nom)")
-        .eq("personnage_id", personnageId)
-        .eq("competences.nom", "Acquisition de Prière")
-        .order("niveau_acquis", { ascending: false })
-        .limit(1);
+      const { data, error } = await clientActif.lireNiveauCompetenceParNom(
+        personnageId,
+        "Acquisition de Prière",
+      );
       if (error) throw error;
       const niveau = data?.[0]?.niveau_acquis ?? 0;
       return niveau;
@@ -281,11 +276,9 @@ const Etape7_Prieres_V2 = ({
   const { data: domainesDisponibles, isLoading: loadingDomaines, isError: domainesError, refetch: refetchDomaines } = useQuery({
     queryKey: ["domaines-disponibles", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vue_domaines_disponibles")
-        .select("domaine, niveau_max_prieres, personnage_id")
-        .eq("personnage_id", personnageId)
-        .order("domaine");
+      const { data, error } = await clientActif.lireDomainesDisponibles(
+        personnageId,
+      );
       if (error) throw error;
       return (data ?? []) as DomaineDispo[];
     },
@@ -297,11 +290,9 @@ const Etape7_Prieres_V2 = ({
     queryKey: ["domaines-proscrits", religionId],
     queryFn: async () => {
       if (!religionId) return [] as string[];
-      const { data, error } = await supabase
-        .from("religions")
-        .select("domaines_proscrits")
-        .eq("id", religionId)
-        .single();
+      const { data, error } = await clientActif.lireReligionProscrits(
+        religionId,
+      );
       if (error) throw error;
       return (data?.domaines_proscrits ?? []) as string[];
     },
@@ -325,13 +316,10 @@ const Etape7_Prieres_V2 = ({
     queries: domainesAffiches.map((d) => ({
       queryKey: ["prieres-domaine", d.domaine, d.niveau_max_prieres],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("prieres")
-          .select("*")
-          .eq("domaine", d.domaine ?? "")
-          .lte("niveau", d.niveau_max_prieres ?? 0)
-          .eq("est_actif", true)
-          .order("nom");
+        const { data, error } = await clientActif.lirePrieres(
+          d.domaine ?? "",
+          d.niveau_max_prieres ?? 0,
+        );
         if (error) throw error;
         return (data ?? []) as PriereCatalogue[];
       },
@@ -348,13 +336,9 @@ const Etape7_Prieres_V2 = ({
   const { data: prieresAchetees, isLoading: loadingAchats } = useQuery({
     queryKey: ["personnage-prieres", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnage_prieres")
-        .select(
-          "*, prieres(nom, domaine, zone_effet, portee, duree, cout_xp_base, bonus_niveau, resume_condense, description, description_tronc, paliers, type_priere, effet_instance)",
-        )
-        .eq("personnage_id", personnageId)
-        .order("date_acquisition");
+      const { data, error } = await clientActif.lirePersonnagePrieres(
+        personnageId,
+      );
       if (error) throw error;
       return (data ?? []) as unknown as AchatPriere[];
     },
@@ -365,7 +349,7 @@ const Etape7_Prieres_V2 = ({
 
   const mutation = useMutation({
     mutationFn: async (params: AcheterPriereParams) => {
-      const { data, error } = await supabase.rpc("acheter_priere", params);
+      const { data, error } = await clientActif.acheterPriere(params);
       if (error) throw error;
       return data;
     },
@@ -389,7 +373,7 @@ const Etape7_Prieres_V2 = ({
 
   const desacheterMutation = useMutation({
     mutationFn: async (personnagePriereId: string) => {
-      const { data, error } = await supabase.rpc("desacheter_priere", {
+      const { data, error } = await clientActif.desacheterPriere({
         p_personnage_priere_id: personnagePriereId,
       });
       if (error) throw error;
@@ -424,7 +408,7 @@ const Etape7_Prieres_V2 = ({
     void (async () => {
       let apercu: ApercuDesachat;
       try {
-        const { data, error } = await supabase.rpc("desacheter_priere", {
+        const { data, error } = await clientActif.desacheterPriere({
           p_personnage_priere_id: pp.id,
           p_dry_run: true,
         });
@@ -469,7 +453,7 @@ const Etape7_Prieres_V2 = ({
         ...(nomTrim !== args.nomActuel ? { p_nom_personnalise: nomTrim } : {}),
       };
 
-      const { data, error } = await supabase.rpc("modifier_priere", params);
+      const { data, error } = await clientActif.modifierPriere(params);
       if (error) throw error;
       const payload = (data ?? {}) as Record<string, any>;
       if (payload.succes !== true) {
@@ -512,7 +496,7 @@ const Etape7_Prieres_V2 = ({
   // que relire etape_creation et resterait bloque sur l'etape courante.
   const avancerMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("avancer_etape", {
+      const { data, error } = await clientActif.avancerEtape({
         p_personnage_id: personnageId,
         p_etape_courante: 7,
       });

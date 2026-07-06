@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Minus } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import {
   Drawer,
   DrawerContent,
@@ -140,7 +140,7 @@ const DrawerAjusterXp = ({
     setBusy(true);
     setErreur(null);
     try {
-      const { data, error } = await supabase.rpc("corriger_xp_personnage", {
+      const { data, error } = await clientActif.corrigerXpPersonnage({
         p_personnage_id: personnageId,
         p_montant: montantSigne,
         p_raison: raison,

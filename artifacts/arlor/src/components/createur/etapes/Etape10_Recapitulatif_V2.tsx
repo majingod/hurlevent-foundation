@@ -3,7 +3,7 @@
 // valider_personnage_final (handler PR #77 préservé verbatim).
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, ScrollText } from "lucide-react";
 import FichePersonnageView from "@/components/personnage/FichePersonnageView";
@@ -50,7 +50,7 @@ const Etape10_Recapitulatif_V2 = ({
 }: Etape10Props) => {
   const finaliserMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("valider_personnage_final", {
+      const { data, error } = await clientActif.validerPersonnageFinal({
         p_personnage_id: personnageId,
       });
       if (error) throw error;

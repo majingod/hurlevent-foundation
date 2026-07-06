@@ -10,7 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import JaugeXP from "@/components/createur/aide/JaugeXP";
@@ -112,14 +112,7 @@ const Etape2_V2 = ({
   const { data: races = [], isLoading: racesLoading, isError: racesError, refetch: refetchRaces } = useQuery({
     queryKey: ["v2-races"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("races")
-        .select(
-          "id, nom, nom_latin, description, resume_condense, xp_depart, emoji, esperance_vie, exigences_costume, restrictions_classes, nb_traits_raciaux, est_jouable",
-        )
-        .eq("est_actif", true)
-        .eq("est_jouable", true)
-        .order("nom");
+      const { data, error } = await clientActif.lireRaces();
       if (error) throw error;
       return (data ?? []) as Race[];
     },
@@ -128,11 +121,7 @@ const Etape2_V2 = ({
   const { data: parametres } = useQuery({
     queryKey: ["v2-parametres-jeu"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("parametres_jeu")
-        .select("lien_facebook, lien_discord, texte_envoi_photos_race")
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await clientActif.lireParametresJeu();
       if (error) throw error;
       return data ?? null;
     },
@@ -142,11 +131,7 @@ const Etape2_V2 = ({
   const { data: perso } = useQuery({
     queryKey: ["v2-perso-race-traits", personnageId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("personnages")
-        .select("race_id, sous_type_chimeride, traits_raciaux_choisis, xp_total")
-        .eq("id", personnageId)
-        .single();
+      const { data, error } = await clientActif.lirePersonnageRace(personnageId);
       if (error) throw error;
       return data;
     },
@@ -165,18 +150,10 @@ const Etape2_V2 = ({
     queryKey: ["v2-traits-par-race", raceId, sousType],
     enabled: !!raceId,
     queryFn: async () => {
-      let q = supabase
-        .from("vue_traits_par_race")
-        .select(
-          "trait_id, sous_type, trait_nom, trait_description, trait_texte_manuel, trait_resume_condense, cout_xp",
-        )
-        .eq("race_id", raceId!);
-      if (sousType) {
-        q = q.or(`sous_type.eq.${sousType},sous_type.is.null`);
-      } else {
-        q = q.is("sous_type", null);
-      }
-      const { data, error } = await q.order("trait_nom");
+      const { data, error } = await clientActif.lireTraitsParRace(
+        raceId!,
+        sousType,
+      );
       if (error) throw error;
       return (data ?? []).map((t: any) => ({
         id: t.trait_id as string,
@@ -368,8 +345,8 @@ const Etape2_V2 = ({
     if (!initFait.current) return;
     if (!raceId) return; // rien a persister tant qu'aucune race n'est choisie
     const sousTypePayload = estChimeride ? sousType : null;
-    supabase
-      .rpc("sauvegarder_etape_2", {
+    clientActif
+      .sauvegarderEtape2({
         p_personnage_id: personnageId,
         p_race_id: raceId,
         p_sous_type_chimeride: sousTypePayload as unknown as string,
@@ -392,8 +369,8 @@ const Etape2_V2 = ({
             };
           }),
         ];
-        supabase
-          .rpc("sauvegarder_etape_3", {
+        clientActif
+          .sauvegarderEtape3({
             p_personnage_id: personnageId,
             p_traits_raciaux_choisis: payloadTraits as unknown as never,
             p_brouillon: true,
@@ -473,7 +450,7 @@ const Etape2_V2 = ({
 
     // 1) Race (avance etape_creation 2→3 côté serveur).
     const sousTypePayload = estChimeride ? sousType : null;
-    const { data: d2, error: e2 } = await supabase.rpc("sauvegarder_etape_2", {
+    const { data: d2, error: e2 } = await clientActif.sauvegarderEtape2({
       p_personnage_id: personnageId,
       p_race_id: raceId,
       p_sous_type_chimeride: sousTypePayload as unknown as string,
@@ -509,7 +486,7 @@ const Etape2_V2 = ({
         return { trait_id: id, est_gratuit: false, xp_depense: t?.cout_xp ?? 0 };
       }),
     ];
-    const { data: d3, error: e3 } = await supabase.rpc("sauvegarder_etape_3", {
+    const { data: d3, error: e3 } = await clientActif.sauvegarderEtape3({
       p_personnage_id: personnageId,
       p_traits_raciaux_choisis: payloadTraits as unknown as never,
     });
