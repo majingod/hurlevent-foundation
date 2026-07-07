@@ -1,4 +1,7 @@
+import { QueryClientProvider } from "@tanstack/react-query";
+
 import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
+import { queryClientVisiteur } from "@/creation/visiteur/queryClientVisiteur";
 import {
   chargerBrouillon,
   estPerime,
@@ -19,27 +22,31 @@ const CreationVisiteur = () => {
   const perime = brouillon ? estPerime(brouillon) : false;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-10">
-      <header className="space-y-2">
-        <h1 className="font-heading text-3xl text-primary">
-          Créateur de personnage — mode visiteur
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Aucun compte requis. Ton brouillon est sauvegardé sur cet appareil et
-          fonctionne même sans réseau.
-        </p>
-      </header>
+    // BUG s312-1 : provider scopé — voir queryClientVisiteur.ts. Sans lui,
+    // toutes les queries/mutations du wizard sont PAUSED en mode avion.
+    <QueryClientProvider client={queryClientVisiteur}>
+      <div className="mx-auto max-w-4xl px-4 pt-10">
+        <header className="space-y-2">
+          <h1 className="font-heading text-3xl text-primary">
+            Créateur de personnage — mode visiteur
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Aucun compte requis. Ton brouillon est sauvegardé sur cet appareil
+            et fonctionne même sans réseau.
+          </p>
+        </header>
 
-      {perime && (
-        <div className="mt-6 rounded border border-primary/35 bg-primary/10 p-4 text-sm text-primary/80">
-          ⚠️ Les règles embarquées dans ce mode datent d'une version précédente
-          du jeu. Ton brouillon reste valide : tout sera revérifié au moment de
-          créer ton vrai personnage avec un compte.
-        </div>
-      )}
+        {perime && (
+          <div className="mt-6 rounded border border-primary/35 bg-primary/10 p-4 text-sm text-primary/80">
+            ⚠️ Les règles embarquées dans ce mode datent d'une version
+            précédente du jeu. Ton brouillon reste valide : tout sera revérifié
+            au moment de créer ton vrai personnage avec un compte.
+          </div>
+        )}
 
-      <PersonnageNouveauV2 modeVisiteur />
-    </div>
+        <PersonnageNouveauV2 modeVisiteur />
+      </div>
+    </QueryClientProvider>
   );
 };
 
