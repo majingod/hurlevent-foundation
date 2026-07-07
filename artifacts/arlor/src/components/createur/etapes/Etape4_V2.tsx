@@ -4,21 +4,8 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
 import { clientActif } from "@/creation/clientActif";
-import { chargerBrouillon } from "@/creation/visiteur/stockageBrouillon";
-import { deriverEtat } from "@/moteurCreation/brouillon/deriver";
-import { changerClasse } from "@/moteurCreation/brouillon/appliquer";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import ReligionDetails from "@/components/shared/ReligionDetails";
 import ModaleChangementClasse, {
   type DChangementClasse,
@@ -46,24 +33,6 @@ interface CompetenceInfo {
   type_choix: string | null;
   type_achat: string | null;
   niveaux_parsed: NiveauInfo[];
-}
-
-// [VIS-1] Détection du mode visiteur par le pathname — MÊME source de vérité que
-// le Proxy `clientActif` (qui route par URL). Choix du pathname plutôt qu'une
-// prop descendue : ça garde le changement CHIRURGICAL (aucune modif de
-// `EtapeProps`, partagée par les 9 écrans) et garantit ZÉRO diff en mode
-// connecté (le prédicat est faux hors `/visiteur`).
-const RE_VISITEUR = /^\/visiteur(\/|$)/;
-
-// [VIS-1] Aperçu LOCAL d'un changement de classe (mode visiteur). Composé des
-// helpers existants (`deriverEtat` + `changerClasse`) — aucune règle inventée :
-// on compare les gratuités et l'XP AVANT/APRÈS le swap de classe.
-interface ApercuVisiteurClasse {
-  classeAvant: string;
-  classeApres: string;
-  retirees: string[];
-  nouvelles: string[];
-  xpRecupere: number;
 }
 
 // Forme du `donnees` renvoye par changer_classe_personnage en dry_run (apercu).
@@ -112,11 +81,6 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     religionChoisie: string | null;
     religionInitiale: string | null;
   } | null>(null);
-
-  // [VIS-1] AlertDialog d'aperçu du changement de classe en mode visiteur.
-  const [apercuVisiteur, setApercuVisiteur] =
-    useState<ApercuVisiteurClasse | null>(null);
-  const [visiteurDialogOpen, setVisiteurDialogOpen] = useState(false);
 
   // Pattern Set manuel (gotcha s152 : Radix Accordion a enfants interactifs proscrit).
   const toggleSet = (
@@ -431,23 +395,6 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
     }
   };
 
-  // [VIS-1] Confirmation de l'AlertDialog visiteur → sauvegarde réelle. La
-  // sauvegarde passe par `clientActif` (routé vers `clientVisiteur`) qui applique
-  // le VRAI `changerClasse` + `sauvegarderEtape4` sur le brouillon local.
-  const onConfirmVisiteur = async () => {
-    if (!pendingCtx) return;
-    setSubmitting(true);
-    const ok = await executerSauvegarde(
-      pendingCtx.classeId,
-      pendingCtx.choixFinaux,
-      pendingCtx.religionChoisie,
-      pendingCtx.religionInitiale
-    );
-    setSubmitting(false);
-    setVisiteurDialogOpen(false);
-    if (ok) onSuccess();
-  };
-
   // Mapping donnees (dry_run) -> forme `d` de la modale
   const previewD = useMemo<DChangementClasse | null>(() => {
     if (!previewDonnees) return null;
@@ -617,59 +564,9 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
       !!perso?.classe_id && classeIdSelectionnee !== perso.classe_id;
 
     if (estChangementClasse) {
-      // [VIS-1] Mode visiteur : le serveur n'est pas juge (dry_run local hollow).
-      // On calcule l'aperçu depuis le brouillon (deriverEtat avant/après swap) et
-      // on demande confirmation via un AlertDialog. Mode connecté : INCHANGÉ.
-      const estVisiteur = RE_VISITEUR.test(window.location.pathname);
-      if (estVisiteur) {
-        const b = chargerBrouillon();
-        if (b) {
-          const avant = deriverEtat(b);
-          const apres = deriverEtat(changerClasse(b, classeIdSelectionnee));
-          const cle = (g: { competenceId: string; niveauAcquis: number; choixAchat: string | null }) =>
-            `${g.competenceId}|${g.niveauAcquis}|${g.choixAchat ?? ""}`;
-          const avantSet = new Set(avant.gratuites.map(cle));
-          const apresSet = new Set(apres.gratuites.map(cle));
-          const uniq = (noms: string[]) => [...new Set(noms.filter(Boolean))];
-          const nomClasse = (id: string) =>
-            (classes.find((c: any) => c.id === id)?.nom as string) ?? "—";
-          setPendingCtx({
-            classeId: classeIdSelectionnee,
-            choixFinaux,
-            religionChoisie,
-            religionInitiale,
-          });
-          setApercuVisiteur({
-            classeAvant: nomClasse(perso?.classe_id ?? ""),
-            classeApres: nomClasse(classeIdSelectionnee),
-            retirees: uniq(
-              avant.gratuites
-                .filter((g) => !apresSet.has(cle(g)))
-                .map((g) => g.competenceNom)
-            ),
-            nouvelles: uniq(
-              apres.gratuites
-                .filter((g) => !avantSet.has(cle(g)))
-                .map((g) => g.competenceNom)
-            ),
-            xpRecupere: Math.max(0, apres.xpDispo - avant.xpDispo),
-          });
-          setVisiteurDialogOpen(true);
-          return;
-        }
-        // Brouillon absent (cas dégénéré) → sauvegarde directe sans aperçu.
-        setSubmitting(true);
-        const okv = await executerSauvegarde(
-          classeIdSelectionnee,
-          choixFinaux,
-          religionChoisie,
-          religionInitiale
-        );
-        setSubmitting(false);
-        if (okv) onSuccess();
-        return;
-      }
-
+      // Aperçu par le dry_run RÉEL du client (visiteur ET connecté empruntent le
+      // même chemin : `changer_classe_personnage(p_dry_run:true)` → cascade
+      // serveur-fidèle → `ModaleChangementClasse`). Aucun diff parallèle local.
       setSubmitting(true);
       const donnees = await callDryRun(classeIdSelectionnee, choixFinaux);
       setSubmitting(false);
@@ -1006,80 +903,6 @@ const Etape4_V2 = ({ personnageId, onSuccess, onPrevious }: EtapeProps) => {
           }}
         />
       )}
-
-      {/* [VIS-1] Aperçu du changement de classe en mode visiteur (moteur local). */}
-      <AlertDialog
-        open={visiteurDialogOpen}
-        onOpenChange={(o) => {
-          if (!submitting) setVisiteurDialogOpen(o);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Changer de classe{apercuVisiteur ? ` : ${apercuVisiteur.classeAvant} → ${apercuVisiteur.classeApres}` : ""} ?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Voici ce que ce changement implique pour ton brouillon. Rien n'est
-              enregistré tant que tu n'as pas confirmé.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {apercuVisiteur && (
-            <div className="space-y-3 text-sm">
-              {apercuVisiteur.retirees.length > 0 && (
-                <div>
-                  <p className="font-semibold text-foreground">
-                    Compétences qui ne seront plus offertes gratuitement
-                  </p>
-                  <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-                    {apercuVisiteur.retirees.map((n) => (
-                      <li key={n}>{n}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {apercuVisiteur.nouvelles.length > 0 && (
-                <div>
-                  <p className="font-semibold text-foreground">
-                    Nouvelles compétences gratuites
-                  </p>
-                  <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-                    {apercuVisiteur.nouvelles.map((n) => (
-                      <li key={n}>{n}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {apercuVisiteur.xpRecupere > 0 && (
-                <p className="text-primary">
-                  XP récupéré : {apercuVisiteur.xpRecupere}
-                </p>
-              )}
-              {apercuVisiteur.retirees.length === 0 &&
-                apercuVisiteur.nouvelles.length === 0 &&
-                apercuVisiteur.xpRecupere === 0 && (
-                  <p className="text-muted-foreground">
-                    Aucune conséquence sur tes acquis.
-                  </p>
-                )}
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={submitting}
-              onClick={(e) => {
-                e.preventDefault();
-                void onConfirmVisiteur();
-              }}
-            >
-              Changer de classe
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

@@ -71,7 +71,6 @@ import {
   appliquerEtape2,
   appliquerEtape3,
   appliquerEtape4,
-  changerClasse,
 } from "@/moteurCreation/brouillon/appliquer";
 import {
   creerBrouillonVide,
@@ -79,6 +78,14 @@ import {
   type BrouillonSort,
   type BrouillonPriere,
 } from "@/moteurCreation/brouillon/types";
+import {
+  calculerPrerequis,
+  cascadeParPrerequis,
+} from "@/moteurCreation/brouillon/prerequis";
+import {
+  calculerCascadeChangementClasse,
+  type ResultatCascade,
+} from "@/moteurCreation/brouillon/cascadeClasse";
 import {
   chargerBrouillon,
   sauverBrouillon,
@@ -394,34 +401,10 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         restantes = payantes.filter((c) => c.instanceId !== ciblePayante.instanceId);
       }
 
-      // ── 3. Boucle prérequis : tant que ça change, on recalcule les prérequis
-      //    (méthode LOCALE `calculerPrerequis`) et on retire les niveaux excédentaires.
-      let changed = true;
-      while (changed) {
-        changed = false;
-        const bWork: BrouillonVisiteur = {
-          ...b,
-          acquisitions: { ...b.acquisitions, competences: restantes },
-        };
-        const prereq = calculerPrerequis(bWork, deriver) as Record<
-          string,
-          { niveau_max_achetable?: number }
-        >;
-        const maxParComp = new Map<string, number>();
-        for (const c of restantes) {
-          maxParComp.set(c.competenceId, Math.max(maxParComp.get(c.competenceId) ?? 0, c.niveauAcquis));
-        }
-        for (const [cid, niv] of maxParComp) {
-          const entree = prereq[cid];
-          if (!entree) continue;
-          const max = entree.niveau_max_achetable ?? 3;
-          if (niv > max) {
-            const avant = restantes.length;
-            restantes = restantes.filter((c) => !(c.competenceId === cid && c.niveauAcquis > max));
-            if (restantes.length !== avant) changed = true;
-          }
-        }
-      }
+      // ── 3. Boucle prérequis (SOURCE UNIQUE `cascadeParPrerequis`, partagée avec
+      //    le changement de classe) : tant que ça change, on recalcule les
+      //    prérequis et on retire les niveaux excédentaires jusqu'à stabilité.
+      restantes = cascadeParPrerequis(b, restantes, deriver);
 
       // Set des compétences RETIRÉES (initial + cascade prérequis).
       const retirees = payantes.filter((c) => !restantes.includes(c));
@@ -1091,6 +1074,30 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       if (!classe) {
         return repErr({ code: "classe_introuvable", message: "La classe sélectionnée n'existe pas", champ: "classe_id" });
       }
+
+      // Délégation serveur (sauvegarder_etape_4, migration 20260617153934) : si une
+      // classe DIFFÉRENTE est déjà posée, on ne fait pas un simple swap — on délègue
+      // à `changer_classe_personnage(p_dry_run:false)` (cascade complète). UN SEUL
+      // chemin : le moteur `calculerCascadeChangementClasse`, comme changerClassePersonnage.
+      if (b.etape4.classeId && b.etape4.classeId !== params.p_classe_id) {
+        const res = calculerCascadeChangementClasse(getSnapshot(), b, params.p_classe_id, choix ?? {}, deriver);
+        if (res.erreurs.length > 0) {
+          return repErr(
+            res.erreurs[0],
+            { personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: b.meta.etapeCourante },
+            res.avertissements,
+          );
+        }
+        const nb = avancerVers(appliquerCascadeClasse(b, params.p_classe_id, choix ?? {}, res), 4, 5);
+        sauverBrouillon(nb);
+        return repOk(
+          { personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante },
+          res.avertissements,
+        );
+      }
+
+      // Sinon (première classe, ou classe identique) : attribution des gratuités
+      // par recompute — choix obligatoire des gratuités à `type_choix` non-null.
       const gratuites = (classe.competences_gratuites as Array<{ competence_id: string; niveau: number }> | null) ?? [];
       for (const gr of gratuites) {
         const comp = getCompetenceCat(gr.competence_id);
@@ -1196,25 +1203,31 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       if (g) return g;
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const avant = classes().find((c) => c.id === b.etape4.classeId);
-      const apres = classes().find((c) => c.id === params.p_classe_id);
-      const xpAvant = deriver(b).xpDispo;
-      const nb = changerClasse(b, params.p_classe_id);
-      const xpApres = deriver(nb).xpDispo;
-      // cf. TROUS_A3II §4 — aperçu de changement de classe non porté (tableaux vides).
-      const donnees = {
-        classe_avant: avant?.nom ?? null,
-        classe_apres: apres?.nom ?? null,
-        perdues: [] as unknown[],
-        dormants: [] as unknown[],
-        offertes: [] as unknown[],
-        multi_choix: [] as unknown[],
-        maitre_en_attente: [] as unknown[],
-        xp_rembourse: Math.max(0, xpApres - xpAvant),
-      };
-      if (params.p_dry_run) return repOk(donnees);
+      const choix = (params.p_choix_par_competence ?? {}) as Record<string, string>;
+
+      // Cascade serveur-fidèle (class-locked / over-cap / cascade / D3 / D6 / D2),
+      // portée par le moteur PUR partagé — aperçu ET application le consomment.
+      const res = calculerCascadeChangementClasse(getSnapshot(), b, params.p_classe_id, choix, deriver);
+
+      // dry_run : préview COMPLET sans appliquer (brouillon inchangé).
+      if (params.p_dry_run) {
+        return repOk(res.donnees, res.avertissements);
+      }
+      // Réel : les erreurs bloquantes (ex. `choix_requis`) empêchent l'application.
+      if (res.erreurs.length > 0) {
+        return repErr(res.erreurs[0], {}, res.avertissements);
+      }
+
+      const nb = appliquerCascadeClasse(b, params.p_classe_id, choix, res);
       sauverBrouillon(nb);
-      return repOk(donnees);
+      const etat = deriver(nb);
+      const donnees = {
+        ...res.donnees,
+        xp_total: etat.xpTotal,
+        xp_depense: etat.xpDepense,
+        xp_restant: etat.xpDispo,
+      };
+      return repOk(donnees, res.avertissements);
     },
 
     async verifierPrerequisCompetences(params) {
@@ -1915,6 +1928,44 @@ function avancerVers(b: BrouillonVisiteur, de: number, vers: number): BrouillonV
   return { ...b, meta: { ...b.meta, etapeCourante: vers } };
 }
 
+/**
+ * Applique la cascade de changement de classe RÉELLE au brouillon (transformation
+ * pure). Retire les achats (phase 1 / cascade + D6), purge sorts/prières (D3),
+ * grave les choix D6 dans `etape4.choixParCompetence` puis bascule sur la nouvelle
+ * classe — les gratuités se recomposent seules à la re-dérivation. Miroir des
+ * phases 6a→6f du serveur, sans grand livre XP (l'XP est re-dérivée).
+ */
+function appliquerCascadeClasse(
+  b: BrouillonVisiteur,
+  nouvelleClasseId: string,
+  choix: Record<string, string>,
+  res: ResultatCascade,
+): BrouillonVisiteur {
+  const aRetirer = new Set<string>([
+    ...res.instanceIdsARetirer,
+    ...res.d6.map((d) => d.instanceId),
+  ]);
+  const competences = b.acquisitions.competences.filter(
+    (c) => !aRetirer.has(c.instanceId),
+  );
+  // Grave les choix D6 : la gratuité dérivée reprend l'instance offerte.
+  const choixParCompetence: Record<string, string> = { ...choix };
+  for (const d of res.d6) {
+    if (d.choixAGraver) choixParCompetence[d.competenceId] = d.choixAGraver;
+  }
+  return {
+    ...b,
+    etape4: { classeId: nouvelleClasseId, choixParCompetence },
+    acquisitions: {
+      ...b.acquisitions,
+      competences,
+      sorts: res.purgeSorts ? [] : b.acquisitions.sorts,
+      prieres: res.purgePrieres ? [] : b.acquisitions.prieres,
+    },
+    meta: { ...b.meta, modifieLe: new Date().toISOString() },
+  };
+}
+
 interface ResultatValidation {
   valide: boolean;
   erreurs: ErrItem[];
@@ -2042,87 +2093,6 @@ function validerEtape(
   function err(code: string, message: string, champ?: string): ResultatValidation {
     return { valide: false, erreurs: [{ code, message, champ }], avertissements: [] };
   }
-}
-
-/**
- * `verifier_prerequis_competences` — version pastille-classe (migration
- * 20260706195514). La classe affiche une pastille (vert/rouge) SANS entrer dans
- * `v_manquants` ni réduire `niveau_max_achetable`.
- */
-function calculerPrerequis(
-  b: BrouillonVisiteur,
-  deriver: (b: BrouillonVisiteur) => EtatDeriveVisiteur,
-): Record<string, unknown> {
-  const etat = deriver(b);
-  const acquis = etat.contextePersonnage.competencesAcquises;
-  const classeNom = etat.contextePersonnage.classeNom;
-  const classeNorm =
-    classeNom === "Guerrier" ? "guerrier"
-    : classeNom === "Voleur" ? "voleur"
-    : classeNom === "Mage" ? "mage"
-    : classeNom === "Prêtre" ? "pretre"
-    : null;
-  const psMax = etat.contextePersonnage.psMax;
-  const snapshot = getSnapshot();
-
-  const niveauActuelParNom = (nom: string): number =>
-    Math.max(0, ...acquis.filter((a) => a.competenceNom === nom).map((a) => a.niveauAcquis));
-
-  const resultat: Record<string, unknown> = {};
-
-  for (const comp of snapshot.tables.competences) {
-    const prereqParNiveau: Record<string, Array<{ label: string; statut: string; competence_id: string | null }>> = {};
-    const raisonsParNiveau: Record<string, string> = {};
-    let niveauMaxAchetable = 3;
-
-    for (let niveau = 1; niveau <= 3; niveau++) {
-      const prereqNiv: Array<{ label: string; statut: string; competence_id: string | null }> = [];
-      const manquants: string[] = [];
-
-      // Prérequis de CLASSE : pastille sans impacter les manquants.
-      const classesReq = comp.classes_requises;
-      if (niveau === 1 && classesReq && classesReq.length > 0) {
-        const acquisClasse = classeNorm != null && classesReq.includes(classeNorm);
-        prereqNiv.push({
-          label: classesReq.join(" ou "),
-          statut: acquisClasse ? "acquis" : "manquant",
-          competence_id: null,
-        });
-      }
-
-      // Prérequis compétences (objet indexé par niveau).
-      const raw = comp.prerequis_competences as unknown;
-      let liste: Array<{ competence_nom: string; niveau_min: number }> = [];
-      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-        const forLevel = (raw as Record<string, unknown>)[String(niveau)];
-        if (Array.isArray(forLevel)) liste = forLevel as Array<{ competence_nom: string; niveau_min: number }>;
-      }
-      for (const pr of liste) {
-        const actuel = niveauActuelParNom(pr.competence_nom);
-        const okPre = actuel >= pr.niveau_min;
-        const label = `${pr.competence_nom} niveau ${pr.niveau_min}`;
-        prereqNiv.push({ label, statut: okPre ? "acquis" : "manquant", competence_id: null });
-        if (!okPre) manquants.push(label);
-      }
-
-      if (prereqNiv.length > 0) prereqParNiveau[String(niveau)] = prereqNiv;
-      if (manquants.length > 0) {
-        raisonsParNiveau[String(niveau)] = `Prérequis manquant(s) : ${manquants.join(", ")}`;
-        if (niveau - 1 < niveauMaxAchetable) niveauMaxAchetable = niveau - 1;
-      }
-    }
-
-    if (niveauMaxAchetable < 3 || Object.keys(prereqParNiveau).length > 0) {
-      resultat[comp.id] = {
-        niveau_max_achetable: niveauMaxAchetable,
-        raisons_par_niveau: raisonsParNiveau,
-        prereqs_par_niveau: prereqParNiveau,
-      };
-    }
-  }
-
-  void psMax; // (les prérequis "special" ps sont hors compétences catalogue standard)
-  return resultat;
 }
 
 /**

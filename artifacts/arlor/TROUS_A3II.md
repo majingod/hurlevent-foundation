@@ -45,16 +45,39 @@ imposé par les acquisitions existantes). Cette borne est calculée côté SQL ;
 ligne on renvoie les choix **courants** du sort/prière comme plancher. `xp_diff`
 (succès) est calculé fidèlement via `calculerCoutXP`.
 
-## 4. `changerClassePersonnage` (dry-run) — aperçu de changement de classe
+## 4. `changerClassePersonnage` — cascade PORTÉE (fix lot 4)
 
-L'écran n'appelle cette RPC qu'en `p_dry_run: true` et consomme l'objet
-`ApercuChangementClasse` complet (`perdues[]`, `dormants[]`, `offertes[]`,
-`multi_choix[]`, `maitre_en_attente[]`…). Cette simulation serveur (quelles
-compétences deviennent dormantes/perdues au changement de classe) n'est pas
-portée par le moteur. Hors ligne on renvoie `classe_avant` / `classe_apres`
-(noms depuis le snapshot), les tableaux **vides**, et `xp_rembourse` = delta d'XP
-re-dérivé entre les deux classes. Le chemin non-dry-run (jamais appelé par les
-écrans) applique réellement le changement (`changerClasse` + `deriverEtat`).
+**Corrigé (lot 4).** L'affirmation précédente (« aperçu non porté, tableaux
+vides ; chemin non-dry-run jamais appelé par les écrans ») était **fausse** :
+`Etape4_V2` atteint bien la RPC (aperçu ET application) dès qu'on change de
+classe en cours de wizard, et `sauvegarder_etape_4` serveur y **délègue**.
+
+Le moteur PUR `moteurCreation/brouillon/cascadeClasse.ts`
+(`calculerCascadeChangementClasse`) porte désormais la cascade serveur-fidèle de
+`changer_classe_personnage` (migration 20260606052624) — source unique consommée
+par l'aperçu (`p_dry_run:true`) ET l'application réelle :
+
+- **class-locked** (1a) : achats à `classes_requises` sans la nouvelle classe → retirés.
+- **over-cap** (1c, D1) : hors-classe niveau > 2 → niveaux excédentaires retirés.
+- **cascade prérequis** (1d) : boucle `cascadeParPrerequis` PARTAGÉE avec le
+  désachat (lot 3) — source unique, pas de copie.
+- **D3 dormance** : chute d'« Acquisition de Sort/Prière » → suppression RÉELLE
+  des sorts/prières achetés (offline il n'y a pas de sommeil réactivable) +
+  `dormants[]` au format serveur pour l'aperçu.
+- **D6** : payante devenue offerte → refund (single) ou sélecteur `multi_choix[]`
+  + gate verbatim `choix_requis` (multiple_choix_distinct) ; le choix est GRAVÉ
+  dans `etape4.choixParCompetence` pour que la gratuité dérivée reprenne la bonne
+  instance.
+- **D2 maître** : décision de scope (Fred s311) — pas de statut local, mais
+  l'AVERTISSEMENT verbatim est porté + `maitre_en_attente[]` rempli pour l'aperçu.
+- **gratuités obsolètes** (D5) : dérivées, elles disparaissent seules à la
+  re-dérivation ; l'aperçu les LISTE (`perdues[].raison = 'gratuite_obsolete'`).
+
+`donnees` complet (`classe_avant/apres`, `perdues`, `dormants`,
+`maitre_en_attente`, `offertes`, `multi_choix`, `xp_rembourse`, + `xp_total/
+xp_depense/xp_restant` après application) — le dialogue `[VIS-1]` d'`Etape4_V2`
+consomme le dry_run RÉEL du client (le diff parallèle `deriverEtat` a été
+supprimé). Couvert par `cascadeClasse.test.ts` (9 tests).
 
 ## 5. `lirePersonnage` (SELECT `*`) — colonnes serveur neutres
 
