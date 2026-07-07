@@ -37,8 +37,10 @@ import { getSnapshot } from "@/moteurCreation/snapshot";
 import { calculerCoutXP } from "@/utils/calculsMagie";
 import {
   deriverEtat,
+  coutAchatCompetence,
   type EtatDeriveVisiteur,
 } from "@/moteurCreation/brouillon/deriver";
+import { calculerLignesRabais } from "@/moteurCreation/rabais";
 import {
   deriverCerclesDisponibles,
   deriverDomainesDisponibles,
@@ -342,8 +344,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       }
 
       // ── 1. Refus gratuité (sémantique serveur : xp_depense=0 ET NON desachat_force).
-      //    En local, xp effectif = 0 pour une gratuité de classe OU un achat à 0 XP.
-      const xpCible = cibleGratuite ? 0 : coutCompetence(cible.competenceId, cible.niveauAcquis);
+      //    xp effectif = 0 pour une gratuité de classe, un achat à 0 XP (« Acquisition
+      //    de Sort/Prière ») OU un achat cercle/domaine dont le rabais annule le coût.
+      const xpCible = cibleGratuite
+        ? 0
+        : coutAchatCompetence(b, cible.competenceId, cible.niveauAcquis, cible.choixAchat);
       if (xpCible === 0 && !comp.desachat_force) {
         return repErr({
           code: "competence_gratuite",
@@ -443,7 +448,9 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       const parNom = new Map<string, { niveaux: number[]; xps: number[] }>();
       for (const c of retirees) {
         const nom = getCompetenceCat(c.competenceId)?.nom ?? "";
-        const xp = coutCompetence(c.competenceId, c.niveauAcquis);
+        // Remboursement = coût EFFECTIF débité (rabais cercle/domaine inclus),
+        // pas le coût catalogue — sinon on rendrait plus que ce qui fut prélevé.
+        const xp = coutAchatCompetence(b, c.competenceId, c.niveauAcquis, c.choixAchat);
         const agg = parNom.get(nom) ?? { niveaux: [], xps: [] };
         agg.niveaux.push(c.niveauAcquis);
         agg.xps.push(xp);
@@ -1583,7 +1590,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           competence_id: c.competenceId,
           niveau_acquis: c.niveauAcquis,
           choix_achat: c.choixAchat,
-          xp_depense: gratuit ? 0 : coutCompetence(c.competenceId, c.niveauAcquis),
+          // xp_depense EFFECTIF (rabais cercle/domaine inclus) → badge « Gratuit »
+          // (xp_depense === 0) fidèle au serveur.
+          xp_depense: gratuit
+            ? 0
+            : coutAchatCompetence(b, c.competenceId, c.niveauAcquis, c.choixAchat),
           appris_via_maitre: false,
           nom_maitre: null,
           statut_maitre: gratuit ? "non_requis" : null,
@@ -1979,57 +1990,43 @@ function calculerPrerequis(
 }
 
 /**
- * `apercu_rabais_acquisition_competence` (migration 20260617185134). Rabais =
- * min(nb items du choix, coût de base). `type_choix ∉ (cercle, domaine)` → `[]`.
+ * `apercu_rabais_acquisition_competence` (migration 20260617185134). Rassemble
+ * les items du choix (sorts pour un cercle, prières pour un domaine) puis délègue
+ * le calcul à `calculerLignesRabais` (moteurCreation/rabais.ts) — LA MÊME fonction
+ * que consomme le débit (`deriver.coutAchatCompetence`), garantissant prix affiché
+ * == prix débité. `type_choix ∉ (cercle, domaine)` → `[]`.
  */
 function calculerRabais(b: BrouillonVisiteur, competenceId: string): unknown[] {
   const comp = getSnapshot().tables.competences.find((c) => c.id === competenceId);
   if (!comp || (comp.type_choix !== "cercle" && comp.type_choix !== "domaine")) return [];
 
   const niveaux = comp.niveaux as Array<{ niveau: number; cout_xp: number }> | null;
-  const base2 = niveaux?.find((n) => n.niveau === 2)?.cout_xp ?? 0;
-  const base3 = niveaux?.find((n) => n.niveau === 3)?.cout_xp ?? 0;
-  const tiers: Array<{ niveau: number; base: number; seuil: number }> = [
-    { niveau: 2, base: base2, seuil: 5 },
-    { niveau: 3, base: base3, seuil: 10 },
-  ];
+  const baseParNiveau = {
+    2: niveaux?.find((n) => n.niveau === 2)?.cout_xp ?? 0,
+    3: niveaux?.find((n) => n.niveau === 3)?.cout_xp ?? 0,
+  };
 
-  // Regroupe le nombre d'items (sorts/prières) par choix (cercle/domaine).
-  const compteParChoix = new Map<string, number[]>(); // choix → niveaux des items
+  // Regroupe les niveaux des items (sorts/prières) par choix (cercle/domaine).
+  const itemsParChoix = new Map<string, number[]>();
   if (comp.type_choix === "cercle") {
     for (const s of b.acquisitions.sorts) {
-      const cercle = (getSnapshot().tables.sorts as Array<Record<string, unknown>>).find((x) => x.id === s.sortId)?.cercle as string | undefined;
+      const cercle = getSortCat(s.sortId)?.cercle;
       if (cercle == null) continue;
-      const arr = compteParChoix.get(cercle) ?? [];
+      const arr = itemsParChoix.get(cercle) ?? [];
       arr.push(s.niveauSort);
-      compteParChoix.set(cercle, arr);
+      itemsParChoix.set(cercle, arr);
     }
   } else {
     for (const p of b.acquisitions.prieres) {
-      const domaine = (getSnapshot().tables.prieres as Array<Record<string, unknown>>).find((x) => x.id === p.priereId)?.domaine as string | undefined;
+      const domaine = getPriereCat(p.priereId)?.domaine;
       if (domaine == null) continue;
-      const arr = compteParChoix.get(domaine) ?? [];
+      const arr = itemsParChoix.get(domaine) ?? [];
       arr.push(p.niveauPriere);
-      compteParChoix.set(domaine, arr);
+      itemsParChoix.set(domaine, arr);
     }
   }
 
-  const rows: unknown[] = [];
-  for (const [choix, niveauxItems] of compteParChoix) {
-    for (const t of tiers) {
-      const nb = niveauxItems.filter((n) => n <= t.seuil).length;
-      const coutFinal = Math.max(t.base - nb, 0);
-      rows.push({
-        choix,
-        niveau: t.niveau,
-        cout_base: t.base,
-        nb,
-        cout_final: coutFinal,
-        rabais: t.base - coutFinal,
-      });
-    }
-  }
-  return rows;
+  return calculerLignesRabais(baseParNiveau, itemsParChoix);
 }
 
 // ============================================================
