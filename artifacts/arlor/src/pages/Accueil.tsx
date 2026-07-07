@@ -60,7 +60,9 @@ const typeLabel = (t: string | null) => {
 const Accueil = () => {
   const { user } = useAuth();
   const { joueurId } = useProfil();
-  const creerLink = user ? "/personnage/nouveau" : "/connexion";
+  // P2-b : déconnecté → porte d'entrée du mode visiteur (essai libre, sans
+  // compte). Connecté → création normale.
+  const creerLink = user ? "/personnage/nouveau" : "/visiteur";
 
   const { data: cartes, loading: cartesLoading } = useCartesAccueil();
 
@@ -178,12 +180,30 @@ const Accueil = () => {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <Button asChild size="lg" className="text-base">
-              <Link to={creerLink}>Créer mon personnage</Link>
+              <Link to={creerLink}>
+                {user
+                  ? "Créer mon personnage"
+                  : "Créer mon personnage — essai libre"}
+              </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="text-base">
               <Link to="/evenements">Voir les événements</Link>
             </Button>
           </div>
+
+          {!user && (
+            <p className="mx-auto max-w-xl text-sm text-muted-foreground">
+              Sans compte ni connexion — ton brouillon est gardé sur ton
+              appareil. Tu pourras te connecter à la fin pour le rendre
+              officiel.{" "}
+              <Link
+                to="/connexion"
+                className="text-primary/60 underline underline-offset-4"
+              >
+                J'ai déjà un compte — se connecter
+              </Link>
+            </p>
+          )}
         </div>
       </section>
 

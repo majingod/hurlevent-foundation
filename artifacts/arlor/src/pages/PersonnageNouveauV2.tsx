@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { clientActif } from "@/creation/clientActif";
+import { PROFIL_VISITEUR_LOCAL } from "@/creation/visiteur/clientVisiteur";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
@@ -70,10 +71,24 @@ export interface EtapeProps {
   onXpGainChange?: (gain: number) => void;
 }
 
-const PersonnageNouveauV2 = () => {
+interface PersonnageNouveauV2Props {
+  /**
+   * Mode visiteur (P2-b) : wizard hors barrière auth, adossé au moteur local
+   * (`clientActif` route vers `clientVisiteur` sur `/visiteur`). Aucune exigence
+   * de compte/profil ; les liens de retour pointent vers l'accueil au lieu du
+   * tableau de bord. Absent (défaut false) = chemin connecté INCHANGÉ.
+   */
+  modeVisiteur?: boolean;
+}
+
+const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props = {}) => {
   const { user, role, loading: authLoading } = useAuth();
   const { joueurId, rechargerProfils } = useProfil();
   const navigate = useNavigate();
+
+  // Destination de tous les retours « sortie de wizard ». En visiteur (pas de
+  // tableau de bord accessible sans compte), on renvoie vers l'accueil.
+  const retourSortie = modeVisiteur ? "/" : "/tableau-de-bord";
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 
@@ -115,7 +130,8 @@ const PersonnageNouveauV2 = () => {
   // 1) Démarrage : soit reprise d'un personnage précis (?id=),
   //    soit création / récupération du brouillon unique.
   useEffect(() => {
-    if (authLoading || !user || !joueurId) return;
+    // Mode visiteur : aucune exigence user/joueurId (route publique, hors auth).
+    if (!modeVisiteur && (authLoading || !user || !joueurId)) return;
     if (personnageId) return; // garde anti double-démarrage
     let annule = false;
 
@@ -134,7 +150,9 @@ const PersonnageNouveauV2 = () => {
       setDemarrage(true);
       setErreurDemarrage(null);
 
-      const { data, error } = await clientActif.demarrerCreationPersonnage({ p_profil_id: joueurId });
+      const { data, error } = await clientActif.demarrerCreationPersonnage({
+        p_profil_id: modeVisiteur ? PROFIL_VISITEUR_LOCAL : joueurId!,
+      });
 
       if (annule) return;
 
@@ -179,7 +197,7 @@ const PersonnageNouveauV2 = () => {
     return () => {
       annule = true;
     };
-  }, [authLoading, user?.id, joueurId, personnageIdParUrl]);
+  }, [authLoading, user?.id, joueurId, personnageIdParUrl, modeVisiteur]);
 
   // 2) État du personnage (XP, étape) — rafraîchi après chaque mutation
   const { data: personnage, error: erreurPersonnage } =
@@ -238,6 +256,9 @@ const PersonnageNouveauV2 = () => {
   // l'éditeur complet pour modifier le perso finalisé en place.
   useEffect(() => {
     if (modeAdmin) return;
+    // Visiteur : pas de fiche read-only (route protégée). On reste dans le
+    // wizard ; la sortie post-finalisation passe par handleEtapeSuccess.
+    if (modeVisiteur) return;
     if (!personnage || personnage.etape_creation <= TOTAL_STEPS) return;
     // Perso finalisé : attendre de connaître l'état avant de décider (la query
     // état est async ; sans cette garde, un perso campagne serait éjecté vers
@@ -248,7 +269,7 @@ const PersonnageNouveauV2 = () => {
       "Ce personnage est finalisé. Utilise « Remodeler » depuis sa fiche pour le modifier.",
     );
     navigate(`/personnage/${personnage.id}`, { replace: true });
-  }, [personnage, navigate, modeAdmin, etatPending, etatEdition]);
+  }, [personnage, navigate, modeAdmin, modeVisiteur, etatPending, etatEdition]);
 
   // 1b) Reprise via ?id= : positionner l'étape initiale, une seule fois
   //     (ne pas écraser la navigation manuelle ensuite).
@@ -434,9 +455,10 @@ const PersonnageNouveauV2 = () => {
     // Personnage finalisé (étape 10 → 11) : sortir du wizard.
     // Le toast de succès est déjà affiché par Etape10_Recapitulatif_V2.
     if ((result.etape_creation ?? 0) > TOTAL_STEPS) {
-      // Nouveau perso finalisé : rafraîchir les compteurs de profils (écran « Qui joue ? »).
-      void rechargerProfils();
-      navigate("/tableau-de-bord");
+      // Nouveau perso finalisé : rafraîchir les compteurs de profils (écran
+      // « Qui joue ? ») — sans objet en visiteur (aucun profil).
+      if (!modeVisiteur) void rechargerProfils();
+      navigate(retourSortie);
       return;
     }
 
@@ -480,7 +502,7 @@ const PersonnageNouveauV2 = () => {
   const enAttenteEtapeInitiale =
     !!personnageId && !etapeInitialisee && !erreurPersonnage;
 
-  if (authLoading || demarrage || enAttenteEtapeInitiale) {
+  if ((!modeVisiteur && authLoading) || demarrage || enAttenteEtapeInitiale) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-white/60">
         <Loader2 className="mr-3 h-5 w-5 animate-spin" />
@@ -504,8 +526,8 @@ const PersonnageNouveauV2 = () => {
         <p className="text-sm">
           {messageErreurFatale ?? "Brouillon introuvable."}
         </p>
-        <Button variant="outline" onClick={() => navigate("/tableau-de-bord")}>
-          Retour au tableau de bord
+        <Button variant="outline" onClick={() => navigate(retourSortie)}>
+          {modeVisiteur ? "Retour à l'accueil" : "Retour au tableau de bord"}
         </Button>
       </div>
     );
