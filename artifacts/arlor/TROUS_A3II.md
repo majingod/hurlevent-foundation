@@ -27,10 +27,14 @@ runes / pièges (niveaux, quotas totaux et utilisés) sont dérivées fidèlemen
   `message_action`) via une logique SQL non portée par le moteur. Hors ligne on
   renvoie `bloque:false`, `xp_rembourse` (delta d'XP dépensée re-dérivé),
   `reprises: []`, `net = xp_rembourse`. Les libellés `message_action` sont neutres.
-- `desacheterCompetence` (dry-run) : `items_detail[]` (détail cascade par type)
-  est renvoyé **vide** ; les compteurs (`count_competences`, `count_sorts`,
-  `count_prieres`, `xp_rembourse`) sont, eux, calculés par re-dérivation réelle
-  (cascade sorts/prières dont le cercle/domaine tombe). La cascade **artisanat**
+- `desacheterCompetence` (dry-run **et** réel) : PORTÉ FIDÈLEMENT (fix s311-B).
+  Refus gratuité (message VERBATIM), cascade niveaux (`type_achat IN
+  (simple, unique_avec_choix, multiple_avec_choix_par_niveau)`), boucle
+  prérequis (via `verifier_prerequis_competences` local), purge sorts/prières
+  (« Acquisition de Sort/Prière » qui tombe → purge totale ; plus cercle/domaine
+  fermé). `items_detail[]`, `count_competences`, `count_competences_distinctes`,
+  `count_sorts`, `count_prieres`, `xp_rembourse`, `cascade`, `competence_cible`
+  ont les mêmes clés/valeurs que le serveur (A6). La cascade **artisanat**
   (recettes/assemblages invalidés par le retrait d'une compétence d'artisanat)
   n'est pas comptée par le serveur dans ces champs et n'est donc pas portée.
 

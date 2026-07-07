@@ -98,7 +98,12 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
 
   // ÉDITION-ADMIN-WIZARD : un admin peut ouvrir l'éditeur complet d'un perso
   // finalisé (?admin=1). Le gate backend est contourné côté serveur (s141).
-  const modeAdmin = role === "admin" && searchParams.get("admin") === "1";
+  // BUG C (s311) : en visiteur, jamais de mode admin/campagne — ces modes
+  // naviguent vers `/personnage/:id` (route protégée) et n'ont aucun sens hors
+  // barrière auth. `modeCampagne` dérive déjà de l'état serveur (« brouillon »
+  // en visiteur → false) ; on neutralise ici la seule autre porte, `modeAdmin`.
+  const modeAdmin =
+    !modeVisiteur && role === "admin" && searchParams.get("admin") === "1";
 
   const [personnageId, setPersonnageId] = useState<string | null>(null);
   const [etape, setEtape] = useState<number>(1);
@@ -107,6 +112,10 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   const [demarrage, setDemarrage] = useState(true);
   const [erreurDemarrage, setErreurDemarrage] = useState<string | null>(null);
   const [xpDrawerOpen, setXpDrawerOpen] = useState(false);
+  // BUG C (s311) : en visiteur, la finalisation ne navigue nulle part (pas de
+  // fiche visiteur, route protégée) — on affiche un panneau de succès en place.
+  const [finalisationVisiteurReussie, setFinalisationVisiteurReussie] =
+    useState(false);
   // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
   // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
   const [etapeInitialisee, setEtapeInitialisee] = useState(false);
@@ -455,9 +464,16 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     // Personnage finalisé (étape 10 → 11) : sortir du wizard.
     // Le toast de succès est déjà affiché par Etape10_Recapitulatif_V2.
     if ((result.etape_creation ?? 0) > TOTAL_STEPS) {
+      // BUG C (s311) : en visiteur, aucune fiche à ouvrir (route protégée) et
+      // aucun profil à rafraîchir. On ne NAVIGUE PAS : le brouillon reste
+      // sauvegardé et un panneau de succès s'affiche en place.
+      if (modeVisiteur) {
+        setFinalisationVisiteurReussie(true);
+        return;
+      }
       // Nouveau perso finalisé : rafraîchir les compteurs de profils (écran
-      // « Qui joue ? ») — sans objet en visiteur (aucun profil).
-      if (!modeVisiteur) void rechargerProfils();
+      // « Qui joue ? »).
+      void rechargerProfils();
       navigate(retourSortie);
       return;
     }
@@ -529,6 +545,35 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
         <Button variant="outline" onClick={() => navigate(retourSortie)}>
           {modeVisiteur ? "Retour à l'accueil" : "Retour au tableau de bord"}
         </Button>
+      </div>
+    );
+  }
+
+  // BUG C (s311) : panneau de succès visiteur post-finalisation. Réutilise le
+  // pattern visuel de l'en-tête de `CreationVisiteur` (font-heading text-primary
+  // + carte bg-card/80 border-primary/20). Le brouillon N'EST PAS supprimé.
+  if (modeVisiteur && finalisationVisiteurReussie) {
+    return (
+      <div className="mx-auto mt-12 max-w-xl px-4">
+        <div className="space-y-5 rounded-lg border border-primary/20 bg-card/80 p-6">
+          <h2 className="font-heading text-2xl text-primary">
+            Ton personnage est prêt !
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Ton brouillon est complet et validé par les règles du jeu. Il reste
+            sauvegardé sur cet appareil. Pour le rendre officiel et le jouer en
+            GN, crée un compte : tu pourras le recréer en quelques minutes avec
+            cette fiche sous les yeux.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => navigate("/connexion")}>
+              Créer un compte
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/")}>
+              Retour à l'accueil
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
