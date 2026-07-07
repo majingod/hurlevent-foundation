@@ -203,6 +203,16 @@ function getCompetenceCat(id: string) {
   return competences().find((c) => c.id === id);
 }
 
+interface PiegeCat {
+  id: string;
+  nom: string | null;
+  niveau: number | null;
+  cout_xp: number | null;
+}
+function getPiegeCat(id: string): PiegeCat | undefined {
+  return (snap().tables.pieges as unknown as PiegeCat[]).find((p) => p.id === id);
+}
+
 /**
  * `type_achat` qui CASCADE en désachat (retrait de tous les niveaux ≥ cible)
  * — miroir du `IN (...)` serveur de `desacheter_competence` (A6).
@@ -238,32 +248,27 @@ function trierPar<T>(rows: T[], ...cles: Array<(r: T) => unknown>): T[] {
 }
 
 // ============================================================
-// Identifiants synthétiques d'acquisition (round-trip désachat)
+// Identité d'acquisition exposée en lecture
 //
-// Hors ligne, il n'y a pas d'id serveur `personnage_<x>_id`. Les lectures d'état
-// exposent un id synthétique déterministe ; les désachats le décodent pour retirer
-// l'item du brouillon. L'id ne quitte jamais le client (produit puis reconsommé).
+// Chaque ligne acquise porte un `instanceId` (uuid local, posé à l'achat). Les
+// lectures exposent `id = instanceId` et les désachats retirent LA ligne portant
+// cet id — fini l'encodage synthétique du catalogue qui effaçait toutes les copies
+// d'un coup. SEULE exception : les compétences GRATUITES de classe sont DÉRIVÉES
+// (hors `acquisitions`, donc sans `instanceId`) ; on leur donne un id synthétique
+// préfixé `pc` via `idComp`, et un désachat qui le reçoit tombe sur le refus de
+// gratuité (jamais sur une suppression de ligne réelle).
 // ============================================================
 
 const SEP = "";
-function idComp(competenceId: string, niveau: number, choix: string | null): string {
+function idGratuite(competenceId: string, niveau: number, choix: string | null): string {
   return ["pc", competenceId, String(niveau), choix ?? ""].join(SEP);
 }
-function decodeIdComp(
+function decodeIdGratuite(
   id: string,
 ): { competenceId: string; niveauAcquis: number; choixAchat: string | null } | null {
   const [p, competenceId, niveau, choix] = id.split(SEP);
   if (p !== "pc") return null;
   return { competenceId, niveauAcquis: Number(niveau), choixAchat: choix === "" ? null : choix };
-}
-const idSort = (sortId: string) => `ps${SEP}${sortId}`;
-const idPriere = (priereId: string) => `pp${SEP}${priereId}`;
-const idPiege = (piegeId: string) => `pt${SEP}${piegeId}`;
-const idRecette = (recetteId: string) => `pr${SEP}${recetteId}`;
-const idAssemblage = (assemblageId: string) => `pa${SEP}${assemblageId}`;
-function decodeId(prefix: string, id: string): string | null {
-  const [p, rest] = id.split(SEP);
-  return p === prefix ? rest : null;
 }
 
 // ============================================================
@@ -320,7 +325,21 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       // → aperçu dry_run reflétant la cascade RÉELLE. Le serveur est la source.
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const cible = decodeIdComp(params.p_personnage_competence_id);
+
+      // ── Cible : `id` reçu = `instanceId` d'une ligne payante OU id synthétique
+      //    d'une gratuité de classe (dérivée, sans instance). On résout d'abord
+      //    l'instance payante ; à défaut, on décode l'id de gratuité.
+      const payantes = b.acquisitions.competences;
+      const ciblePayante = payantes.find(
+        (c) => c.instanceId === params.p_personnage_competence_id,
+      );
+      const cible = ciblePayante
+        ? {
+            competenceId: ciblePayante.competenceId,
+            niveauAcquis: ciblePayante.niveauAcquis,
+            choixAchat: ciblePayante.choixAchat,
+          }
+        : decodeIdGratuite(params.p_personnage_competence_id);
       if (!cible) return repErr({ code: "introuvable", message: "Compétence introuvable." });
 
       const comp = getCompetenceCat(cible.competenceId);
@@ -328,18 +347,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         return repErr({ code: "competence_introuvable", message: "Compétence introuvable" });
       }
 
-      const memeComp = (
-        a: { competenceId: string; niveauAcquis: number; choixAchat: string | null },
-        c: { competenceId: string; niveauAcquis: number; choixAchat: string | null },
-      ) =>
-        a.competenceId === c.competenceId &&
-        a.niveauAcquis === c.niveauAcquis &&
-        a.choixAchat === c.choixAchat;
-
       const etat0 = deriver(b);
-      const cibleGratuite = estGratuite(etat0, cible.competenceId, cible.niveauAcquis, cible.choixAchat);
-      const payantes = b.acquisitions.competences;
-      const presente = cibleGratuite || payantes.some((c) => memeComp(c, cible));
+      const cibleGratuite =
+        !ciblePayante &&
+        estGratuite(etat0, cible.competenceId, cible.niveauAcquis, cible.choixAchat);
+      const presente = ciblePayante != null || cibleGratuite;
       if (!presente) {
         return repErr({ code: "achat_introuvable", message: "Cet achat de compétence n'existe pas" });
       }
@@ -347,9 +359,9 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       // ── 1. Refus gratuité (sémantique serveur : xp_depense=0 ET NON desachat_force).
       //    xp effectif = 0 pour une gratuité de classe, un achat à 0 XP (« Acquisition
       //    de Sort/Prière ») OU un achat cercle/domaine dont le rabais annule le coût.
-      const xpCible = cibleGratuite
-        ? 0
-        : coutAchatCompetence(b, cible.competenceId, cible.niveauAcquis, cible.choixAchat);
+      const xpCible = ciblePayante
+        ? coutAchatCompetence(b, cible.competenceId, cible.niveauAcquis, cible.choixAchat)
+        : 0;
       if (xpCible === 0 && !comp.desachat_force) {
         return repErr({
           code: "competence_gratuite",
@@ -357,8 +369,12 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         });
       }
 
-      // ── 2. Cascade niveaux : retrait initial du set (achats du joueur uniquement,
-      //    les gratuités de classe sont re-dérivées et ne sont jamais « retirées »).
+      // ── 2. Retrait initial (achats du joueur uniquement — les gratuités de classe
+      //    sont re-dérivées et ne sont jamais « retirées »).
+      //    Cascade (`simple`/`unique_avec_choix`/`multiple_avec_choix_par_niveau`) :
+      //    tous les niveaux ≥ cible (même choix). Sinon (`multiple_sans_choix`,
+      //    `multiple_choix_distinct`) : UNE seule ligne — celle de l'`instanceId`
+      //    ciblé, jamais toutes les copies du catalogue (identité d'instance).
       let restantes = payantes;
       if (TYPES_ACHAT_CASCADE.has(comp.type_achat)) {
         restantes = payantes.filter((c) => {
@@ -374,8 +390,8 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           }
           return false;
         });
-      } else {
-        restantes = payantes.filter((c) => !memeComp(c, cible));
+      } else if (ciblePayante) {
+        restantes = payantes.filter((c) => c.instanceId !== ciblePayante.instanceId);
       }
 
       // ── 3. Boucle prérequis : tant que ça change, on recalcule les prérequis
@@ -410,40 +426,23 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       // Set des compétences RETIRÉES (initial + cascade prérequis).
       const retirees = payantes.filter((c) => !restantes.includes(c));
 
-      // ── 4. Purge sorts/prières : si « Acquisition de Sort »/« Acquisition de Prière »
-      //    tombe → purge TOTALE (gate global). On conserve AUSSI la purge par
-      //    cercle/domaine (une « Acquisition de Cercle/Domaine » retirée ferme son
-      //    cercle/domaine → les sorts/prières correspondants tombent).
+      // ── 4. Purge sorts/prières (Lot A — fidélité serveur `desacheter_competence`) :
+      //    `v_purge_sorts := bool_or(c.nom = 'Acquisition de Sort')` sur le SET retiré
+      //    (cascade incluse) → purge TOTALE des sorts SEULEMENT dans ce cas ; idem
+      //    prières. AUCUNE purge par cercle/domaine « fermé » : quand une
+      //    « Acquisition de Cercle/Domaine » redescend d'un niveau, les sorts/prières
+      //    orphelins SURVIVENT au désachat — c'est `validerEtape(6/7)` qui les
+      //    attrape ensuite (« Le sort X appartient au cercle Y, non débloqué » / max).
       const purgeSortsTout = retirees.some(
         (c) => getCompetenceCat(c.competenceId)?.nom === "Acquisition de Sort",
       );
       const purgePrieresTout = retirees.some(
         (c) => getCompetenceCat(c.competenceId)?.nom === "Acquisition de Prière",
       );
-      const bApresComp: BrouillonVisiteur = {
-        ...b,
-        acquisitions: { ...b.acquisitions, competences: restantes },
-      };
-      const etatApres = deriver(bApresComp);
-      const cerclesOk = deriverCerclesDisponibles(etatApres.contexteMagie.competencesAcquises);
-      const domainesOk = deriverDomainesDisponibles(
-        etatApres.contexteMagie.competencesAcquises,
-        etatApres.contexteMagie.religionId ?? null,
-      );
-      const sortGarde = (s: BrouillonVisiteur["acquisitions"]["sorts"][number]) => {
-        if (purgeSortsTout) return false;
-        const max = cerclesOk.get(getSortCat(s.sortId)?.cercle ?? "");
-        return max != null && s.niveauSort <= max;
-      };
-      const priereGardee = (p: BrouillonVisiteur["acquisitions"]["prieres"][number]) => {
-        if (purgePrieresTout) return false;
-        const max = domainesOk.get(getPriereCat(p.priereId)?.domaine ?? "");
-        return max != null && p.niveauPriere <= max;
-      };
-      const sortsGardes = b.acquisitions.sorts.filter(sortGarde);
-      const prieresGardees = b.acquisitions.prieres.filter(priereGardee);
-      const sortsRetires = b.acquisitions.sorts.filter((s) => !sortGarde(s));
-      const prieresRetirees = b.acquisitions.prieres.filter((p) => !priereGardee(p));
+      const sortsGardes = purgeSortsTout ? [] : b.acquisitions.sorts;
+      const prieresGardees = purgePrieresTout ? [] : b.acquisitions.prieres;
+      const sortsRetires = purgeSortsTout ? b.acquisitions.sorts : [];
+      const prieresRetirees = purgePrieresTout ? b.acquisitions.prieres : [];
 
       // ── 5. dry_run FIDÈLE : `donnees` reflète la cascade réelle (mêmes clés que le serveur).
       const parNom = new Map<string, { niveaux: number[]; xps: number[] }>();
@@ -537,7 +536,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         };
         const v = peutAcheterSort(etat.contexteMagie, demande);
         if (!v.peutAcheter) return repErr({ code: v.code, message: v.raison });
-        const item: BrouillonSort = { ...demande, nomPersonnalise: params.p_nom_personnalise };
+        const item: Omit<BrouillonSort, "instanceId"> = { ...demande, nomPersonnalise: params.p_nom_personnalise };
         sauverBrouillon(appliquerAchatSort(b, item));
         return repOk(null);
       });
@@ -546,10 +545,13 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async desacheterSort(params) {
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const sortId = decodeId("ps", params.p_personnage_sort_id);
-      if (!sortId) return repErr({ code: "introuvable", message: "Sort introuvable." });
+      // `id` = `instanceId` de la ligne sort → retrait d'UNE copie (identité
+      //  d'instance ; deux sorts de même `sortId` sont désormais dissociables).
+      const instanceId = params.p_personnage_sort_id;
+      const existant = b.acquisitions.sorts.find((s) => s.instanceId === instanceId);
+      if (!existant) return repErr({ code: "introuvable", message: "Sort introuvable." });
       const xpAvant = deriver(b).xpDepense;
-      const b1 = retirerSort(b, sortId);
+      const b1 = retirerSort(b, instanceId);
       const xpRembourse = xpAvant - deriver(b1).xpDepense;
       // cf. TROUS_A3II §2 : reprise/rabais non portée → aperçu minimal.
       const donnees = {
@@ -558,7 +560,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         net: xpRembourse,
         reprise_totale: false,
         reprises: [] as unknown[],
-        cercle: getSortCat(sortId)?.cercle ?? null,
+        cercle: getSortCat(existant.sortId)?.cercle ?? null,
         message_action: null,
       };
       if (params.p_dry_run) return repOk(donnees);
@@ -569,14 +571,12 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async modifierSort(params) {
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const sortId = decodeId("ps", params.p_personnage_sort_id);
-      const existant = sortId
-        ? b.acquisitions.sorts.find((s) => s.sortId === sortId)
-        : undefined;
-      if (!sortId || !existant) {
+      const instanceId = params.p_personnage_sort_id;
+      const existant = b.acquisitions.sorts.find((s) => s.instanceId === instanceId);
+      if (!existant) {
         return repErr({ code: "sort_introuvable", message: "Sort introuvable" });
       }
-      const cat = getSortCat(sortId);
+      const cat = getSortCat(existant.sortId);
       const base = cat?.cout_xp_base ?? 0;
       const ancienCout = calculerCoutXP(
         existant.zoneChoisie,
@@ -613,7 +613,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         return repErr({ code: "xp_insuffisant", message: "XP insuffisant" }, { plancher });
       }
       sauverBrouillon(
-        applicModifierSort(b, sortId, {
+        applicModifierSort(b, instanceId, {
           niveauSort: params.p_niveau_sort,
           zoneChoisie: params.p_zone_choisie,
           porteeChoisie: params.p_portee_choisie,
@@ -638,7 +638,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         };
         const v = peutAcheterPriere(etat.contexteMagie, demande);
         if (!v.peutAcheter) return repErr({ code: v.code, message: v.raison });
-        const item: BrouillonPriere = { ...demande, nomPersonnalise: params.p_nom_personnalise };
+        const item: Omit<BrouillonPriere, "instanceId"> = { ...demande, nomPersonnalise: params.p_nom_personnalise };
         sauverBrouillon(appliquerAchatPriere(b, item));
         return repOk(null);
       });
@@ -647,10 +647,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async desacheterPriere(params) {
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const priereId = decodeId("pp", params.p_personnage_priere_id);
-      if (!priereId) return repErr({ code: "introuvable", message: "Prière introuvable." });
+      const instanceId = params.p_personnage_priere_id;
+      const existant = b.acquisitions.prieres.find((p) => p.instanceId === instanceId);
+      if (!existant) return repErr({ code: "introuvable", message: "Prière introuvable." });
       const xpAvant = deriver(b).xpDepense;
-      const b1 = retirerPriere(b, priereId);
+      const b1 = retirerPriere(b, instanceId);
       const xpRembourse = xpAvant - deriver(b1).xpDepense;
       const donnees = {
         bloque: false,
@@ -658,7 +659,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         net: xpRembourse,
         reprise_totale: false,
         reprises: [] as unknown[],
-        domaine: getPriereCat(priereId)?.domaine ?? null,
+        domaine: getPriereCat(existant.priereId)?.domaine ?? null,
         message_action: null,
       };
       if (params.p_dry_run) return repOk(donnees);
@@ -669,14 +670,12 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async modifierPriere(params) {
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const priereId = decodeId("pp", params.p_personnage_priere_id);
-      const existant = priereId
-        ? b.acquisitions.prieres.find((p) => p.priereId === priereId)
-        : undefined;
-      if (!priereId || !existant) {
+      const instanceId = params.p_personnage_priere_id;
+      const existant = b.acquisitions.prieres.find((p) => p.instanceId === instanceId);
+      if (!existant) {
         return repErr({ code: "priere_introuvable", message: "Prière introuvable" });
       }
-      const cat = getPriereCat(priereId);
+      const cat = getPriereCat(existant.priereId);
       const base = cat?.cout_xp_base ?? 0;
       const ancienCout = calculerCoutXP(
         existant.zoneChoisie,
@@ -718,7 +717,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         return repErr({ code: "xp_insuffisant", message: "XP insuffisant" }, { plancher });
       }
       sauverBrouillon(
-        applicModifierPriere(b, priereId, {
+        applicModifierPriere(b, instanceId, {
           niveauPriere: params.p_niveau_priere,
           zoneChoisie: params.p_zone_choisie,
           porteeChoisie: params.p_portee_choisie,
@@ -742,9 +741,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async desacheterRecette(params) {
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const recetteId = decodeId("pr", params.p_personnage_recette_id);
-      if (!recetteId) return repErr({ code: "introuvable", message: "Recette introuvable." });
-      sauverBrouillon(retirerRecette(b, recetteId));
+      // `id` = `instanceId` → retrait d'UNE ligne recette (par PK côté serveur).
+      const instanceId = params.p_personnage_recette_id;
+      const existe = b.acquisitions.recettes.some((r) => r.instanceId === instanceId);
+      if (!existe) return repErr({ code: "introuvable", message: "Recette introuvable." });
+      sauverBrouillon(retirerRecette(b, instanceId));
       return repOk(null);
     },
 
@@ -758,12 +759,74 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     },
 
     async desacheterPiege(params) {
+      // Portage FIDÈLE de `desacheter_piege` (migration 20260610065923) : CASCADE
+      // ASCENDANTE — le serveur supprime le palier ciblé + TOUS les paliers ≥ N de
+      // la MÊME FAMILLE (`piege_nom`), rembourse la somme, et renvoie un `donnees`
+      // détaillant les lignes supprimées (mêmes clés que le serveur).
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const piegeId = decodeId("pt", params.p_personnage_piege_id);
-      if (!piegeId) return repErr({ code: "introuvable", message: "Piège introuvable." });
-      sauverBrouillon(retirerPiege(b, piegeId));
-      return repOk(null);
+      const instanceId = params.p_personnage_piege_id;
+      const cible = b.acquisitions.pieges.find((p) => p.instanceId === instanceId);
+      if (!cible) {
+        return repErr({ code: "achat_introuvable", message: "Ce piège n'existe pas dans le personnage" });
+      }
+      const cibleCat = getPiegeCat(cible.piegeId);
+      const nomFamille = cibleCat?.nom ?? "";
+      const niveauCible = cibleCat?.niveau ?? 0;
+
+      // Info dérivée par ligne (est_gratuit / xp effectif), parallèle à l'ordre du
+      // brouillon — même source que `lirePersonnagePieges` (ce que l'écran affiche).
+      const etatAvant = deriver(b);
+      const infoParInstance = new Map<string, { niveau: number; xp: number }>();
+      b.acquisitions.pieges.forEach((p, i) => {
+        const derive = etatAvant.contextePiege.piegesAcquis[i];
+        const cat = getPiegeCat(p.piegeId);
+        infoParInstance.set(p.instanceId, {
+          niveau: derive?.niveauAcquis ?? cat?.niveau ?? 0,
+          xp: derive?.estGratuit ? 0 : cat?.cout_xp ?? 0,
+        });
+      });
+
+      // Cascade : palier ciblé + paliers supérieurs de la même famille.
+      const aRetirer = b.acquisitions.pieges.filter((p) => {
+        const cat = getPiegeCat(p.piegeId);
+        return (cat?.nom ?? "") === nomFamille && (cat?.niveau ?? 0) >= niveauCible;
+      });
+      const idsRetirees = new Set(aRetirer.map((p) => p.instanceId));
+      const b1: BrouillonVisiteur = {
+        ...b,
+        acquisitions: {
+          ...b.acquisitions,
+          pieges: b.acquisitions.pieges.filter((p) => !idsRetirees.has(p.instanceId)),
+        },
+        meta: { ...b.meta, modifieLe: new Date().toISOString() },
+      };
+      const etatApres = deriver(b1);
+
+      // `lignes_supprimees` ORDER BY niveau_acquis DESC (comme le serveur).
+      const lignesSupprimees = aRetirer
+        .map((p) => {
+          const info = infoParInstance.get(p.instanceId)!;
+          return {
+            personnage_piege_id: p.instanceId,
+            niveau_acquis: info.niveau,
+            xp_rembourse: info.xp,
+          };
+        })
+        .sort((x, y) => y.niveau_acquis - x.niveau_acquis);
+      // Remboursement = delta de dérivation (cohérent avec l'économie XP re-dérivée).
+      const xpRembourse = etatAvant.xpDepense - etatApres.xpDepense;
+      const donnees = {
+        piege_nom: nomFamille,
+        lignes_supprimees: lignesSupprimees,
+        nb_paliers_supprimes: aRetirer.length,
+        xp_rembourse: xpRembourse,
+        xp_total: etatApres.xpTotal,
+        xp_depense: etatApres.xpDepense,
+        xp_restant: etatApres.xpDispo,
+      };
+      sauverBrouillon(b1);
+      return repOk(donnees);
     },
 
     async acheterAssemblage(params) {
@@ -778,9 +841,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async desacheterAssemblage(params) {
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
-      const assemblageId = decodeId("pa", params.p_personnage_assemblage_id);
-      if (!assemblageId) return repErr({ code: "introuvable", message: "Assemblage introuvable." });
-      sauverBrouillon(retirerAssemblage(b, assemblageId));
+      // `id` = `instanceId` → retrait d'UNE ligne assemblage (par PK côté serveur).
+      const instanceId = params.p_personnage_assemblage_id;
+      const existe = b.acquisitions.assemblages.some((a) => a.instanceId === instanceId);
+      if (!existe) return repErr({ code: "introuvable", message: "Assemblage introuvable." });
+      sauverBrouillon(retirerAssemblage(b, instanceId));
       return repOk(null);
     },
 
@@ -1621,26 +1686,41 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       const b = chargerBrouillon();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
-      const rows = etat.contextePersonnage.competencesAcquises.map((c) => {
-        const gratuit = estGratuite(etat, c.competenceId, c.niveauAcquis, c.choixAchat);
-        return {
-          id: idComp(c.competenceId, c.niveauAcquis, c.choixAchat),
-          personnage_id: PERSONNAGE_LOCAL_ID,
-          competence_id: c.competenceId,
-          niveau_acquis: c.niveauAcquis,
-          choix_achat: c.choixAchat,
-          // xp_depense EFFECTIF (rabais cercle/domaine inclus) → badge « Gratuit »
-          // (xp_depense === 0) fidèle au serveur.
-          xp_depense: gratuit
-            ? 0
-            : coutAchatCompetence(b, c.competenceId, c.niveauAcquis, c.choixAchat),
-          appris_via_maitre: false,
-          nom_maitre: null,
-          statut_maitre: gratuit ? "non_requis" : null,
-          date_acquisition: b.meta.creeLe,
-          rabais_items: null,
-        };
-      });
+      // Deux sources d'identité, dans l'ordre du serveur (achats du joueur, puis
+      // gratuités de classe) :
+      //  - PAYANTES : lignes du brouillon → `id = instanceId` (une par copie, donc
+      //    deux « Développement Spirituel » sont désormais dissociables).
+      //  - GRATUITÉS : dérivées (hors `acquisitions`) → id synthétique `pc…` ; un
+      //    désachat qui le reçoit tombe sur le refus de gratuité.
+      const payantes = b.acquisitions.competences.map((c) => ({
+        id: c.instanceId,
+        personnage_id: PERSONNAGE_LOCAL_ID,
+        competence_id: c.competenceId,
+        niveau_acquis: c.niveauAcquis,
+        choix_achat: c.choixAchat,
+        // xp_depense EFFECTIF (rabais cercle/domaine inclus) → badge « Gratuit »
+        // (xp_depense === 0) fidèle au serveur.
+        xp_depense: coutAchatCompetence(b, c.competenceId, c.niveauAcquis, c.choixAchat),
+        appris_via_maitre: false,
+        nom_maitre: null,
+        statut_maitre: null as string | null,
+        date_acquisition: b.meta.creeLe,
+        rabais_items: null,
+      }));
+      const gratuites = etat.gratuites.map((c) => ({
+        id: idGratuite(c.competenceId, c.niveauAcquis, c.choixAchat),
+        personnage_id: PERSONNAGE_LOCAL_ID,
+        competence_id: c.competenceId,
+        niveau_acquis: c.niveauAcquis,
+        choix_achat: c.choixAchat,
+        xp_depense: 0,
+        appris_via_maitre: false,
+        nom_maitre: null,
+        statut_maitre: "non_requis" as string | null,
+        date_acquisition: b.meta.creeLe,
+        rabais_items: null,
+      }));
+      const rows = [...payantes, ...gratuites];
       return { data: rows as unknown as never, error: null };
     },
 
@@ -1682,7 +1762,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         const cat = getSortCat(s.sortId);
         const catFull = (snap().tables.sorts as Array<Record<string, unknown>>).find((x) => x.id === s.sortId);
         return {
-          id: idSort(s.sortId),
+          id: s.instanceId,
           personnage_id: PERSONNAGE_LOCAL_ID,
           sort_id: s.sortId,
           niveau_sort: s.niveauSort,
@@ -1725,7 +1805,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         const cat = getPriereCat(p.priereId);
         const catFull = (snap().tables.prieres as Array<Record<string, unknown>>).find((x) => x.id === p.priereId);
         return {
-          id: idPriere(p.priereId),
+          id: p.instanceId,
           personnage_id: PERSONNAGE_LOCAL_ID,
           priere_id: p.priereId,
           niveau_priere: p.niveauPriere,
@@ -1768,7 +1848,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         const item = b.acquisitions.pieges[i];
         const cat = item ? (snap().tables.pieges as Array<Record<string, unknown>>).find((x) => x.id === item.piegeId) : undefined;
         return {
-          id: item ? idPiege(item.piegeId) : idPiege(String(i)),
+          id: item?.instanceId ?? "",
           personnage_id: PERSONNAGE_LOCAL_ID,
           piege_id: item?.piegeId ?? "",
           piege_nom: p.piegeNom,
@@ -1789,10 +1869,10 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       const b = chargerBrouillon();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
-      const rows = etat.contexteRecette.recettesAcquises.map((r) => {
+      const rows = etat.contexteRecette.recettesAcquises.map((r, i) => {
         const cat = (snap().tables.recettes_alchimie as Array<Record<string, unknown>>).find((x) => x.id === r.recetteId);
         return {
-          id: idRecette(r.recetteId),
+          id: b.acquisitions.recettes[i]?.instanceId ?? "",
           personnage_id: PERSONNAGE_LOCAL_ID,
           recette_id: r.recetteId,
           est_gratuit: r.estGratuit,
@@ -1809,10 +1889,10 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       const b = chargerBrouillon();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
-      const rows = etat.contexteAssemblage.assemblagesAcquis.map((a) => {
+      const rows = etat.contexteAssemblage.assemblagesAcquis.map((a, i) => {
         const cat = (snap().tables.assemblages_runes as Array<Record<string, unknown>>).find((x) => x.id === a.assemblageId);
         return {
-          id: idAssemblage(a.assemblageId),
+          id: b.acquisitions.assemblages[i]?.instanceId ?? "",
           personnage_id: PERSONNAGE_LOCAL_ID,
           assemblage_id: a.assemblageId,
           est_gratuit: a.estGratuit,

@@ -84,14 +84,15 @@ function construireBrouillonComplet(): BrouillonVisiteur {
     acquisitions: {
       competences: [
         // Compétence payante simple (Botte Secrète niv 1 = 9 XP).
-        { competenceId: COMP_BOTTE, niveauAcquis: 1, choixAchat: null },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_BOTTE, niveauAcquis: 1, choixAchat: null },
         // Acquisition de Cercle « Feu » niveau 2 : base 10, RABAIS = 1 sort Feu
         // déjà possédé (niveau ≤ 5) → coût effectif 9. (gratuité Mage = provenance.)
-        { competenceId: COMP_CERCLE, niveauAcquis: 2, choixAchat: "Feu" },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_CERCLE, niveauAcquis: 2, choixAchat: "Feu" },
       ],
       // 1 sort Feu (sert aussi de matière au rabais du cercle ci-dessus).
       sorts: [
         {
+          instanceId: crypto.randomUUID(),
           sortId: SORT_FEU,
           niveauSort: 1,
           zoneChoisie: ZONE,
@@ -101,6 +102,7 @@ function construireBrouillonComplet(): BrouillonVisiteur {
       ],
       prieres: [
         {
+          instanceId: crypto.randomUUID(),
           priereId: PRIERE,
           niveauPriere: 1,
           zoneChoisie: ZONE,
@@ -108,9 +110,9 @@ function construireBrouillonComplet(): BrouillonVisiteur {
           dureeChoisie: DUREE,
         },
       ],
-      pieges: [{ piegeId: PIEGE }],
-      recettes: [{ recetteId: RECETTE }],
-      assemblages: [{ assemblageId: ASSEMBLAGE }],
+      pieges: [{ instanceId: crypto.randomUUID(), piegeId: PIEGE }],
+      recettes: [{ instanceId: crypto.randomUUID(), recetteId: RECETTE }],
+      assemblages: [{ instanceId: crypto.randomUUID(), assemblageId: ASSEMBLAGE }],
     },
   };
 }
@@ -237,11 +239,16 @@ describe("remboursement de désachat fidèle au rabais (TOP 1b)", () => {
     expect(itemCercle.xp_total).toBe(XP_CERCLE_RABAIS); // 9, jamais 10
 
     // La part « compétence » du remboursement = 9 : c'est ce montant réduit, pas le
-    // plein tarif, qui remonte dans xp_rembourse (le reste = sort/prière balayés en
-    // cascade par la fermeture du cercle/domaine dans ce brouillon minimal).
+    // plein tarif, qui remonte dans xp_rembourse. NB (Lot A) : le sort Feu n'est PLUS
+    // balayé par la « fermeture » du cercle — le serveur ne purge que sur chute
+    // d'« Acquisition de Sort/Prière » ; le sort orphelin survit ici, seul l'item
+    // compétence figure dans le détail.
+    expect(rep.donnees.items_detail.every((i) => i.type === "competence")).toBe(true);
     const partComp = rep.donnees.items_detail
       .filter((i) => i.type === "competence")
       .reduce((s, i) => s + i.xp_total, 0);
     expect(partComp).toBe(XP_CERCLE_RABAIS); // 9
+    // Remboursement total = uniquement la compétence (aucun sort/prière balayé).
+    expect(rep.donnees.xp_rembourse).toBe(XP_CERCLE_RABAIS);
   });
 });

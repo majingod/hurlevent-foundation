@@ -33,6 +33,15 @@ function maintenantIso(): string {
   return new Date().toISOString();
 }
 
+/**
+ * Identité d'instance posée À L'ACHAT (uuid local). `crypto.randomUUID()` est un
+ * global standard (navigateur + Node ≥ 19) — pas d'accès React/localStorage/window,
+ * l'invariant « TS pur » du modèle est préservé.
+ */
+function nouvelInstanceId(): string {
+  return crypto.randomUUID();
+}
+
 /** Renvoie une copie du brouillon avec `modifieLe` rafraîchi + patch appliqué. */
 function patch(
   b: BrouillonVisiteur,
@@ -56,23 +65,12 @@ function patchAcquisitions(
 // Compétences
 // ============================================================
 
-/** Identité d'une compétence acquise = (competenceId, niveauAcquis, choixAchat). */
-function memeCompetence(
-  a: { competenceId: string; niveauAcquis: number; choixAchat: string | null },
-  b: { competenceId: string; niveauAcquis: number; choixAchat: string | null }
-): boolean {
-  return (
-    a.competenceId === b.competenceId &&
-    a.niveauAcquis === b.niveauAcquis &&
-    a.choixAchat === b.choixAchat
-  );
-}
-
 export function appliquerAchatCompetence(
   b: BrouillonVisiteur,
   demande: DemandeAchatCompetence
 ): BrouillonVisiteur {
   const nouvelle = {
+    instanceId: nouvelInstanceId(),
     competenceId: demande.competenceId,
     niveauAcquis: demande.niveauDesire,
     choixAchat: demande.choixAchat,
@@ -82,17 +80,14 @@ export function appliquerAchatCompetence(
   });
 }
 
+/** Retire LA ligne compétence désignée par son `instanceId` (une seule copie). */
 export function retirerCompetence(
   b: BrouillonVisiteur,
-  demande: {
-    competenceId: string;
-    niveauAcquis: number;
-    choixAchat: string | null;
-  }
+  instanceId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
     competences: b.acquisitions.competences.filter(
-      (c) => !memeCompetence(c, demande)
+      (c) => c.instanceId !== instanceId
     ),
   });
 }
@@ -103,31 +98,32 @@ export function retirerCompetence(
 
 export function appliquerAchatSort(
   b: BrouillonVisiteur,
-  demande: BrouillonSort
+  demande: Omit<BrouillonSort, "instanceId">
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    sorts: [...b.acquisitions.sorts, { ...demande }],
+    sorts: [...b.acquisitions.sorts, { ...demande, instanceId: nouvelInstanceId() }],
   });
 }
 
+/** Retire LA ligne sort désignée par son `instanceId` (une seule copie). */
 export function retirerSort(
   b: BrouillonVisiteur,
-  sortId: string
+  instanceId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    sorts: b.acquisitions.sorts.filter((s) => s.sortId !== sortId),
+    sorts: b.acquisitions.sorts.filter((s) => s.instanceId !== instanceId),
   });
 }
 
-/** Remplace les choix zone/portée/durée/niveau d'un sort déjà présent. */
+/** Remplace les choix zone/portée/durée/niveau du sort désigné par `instanceId`. */
 export function modifierSort(
   b: BrouillonVisiteur,
-  sortId: string,
-  choix: Partial<Omit<BrouillonSort, "sortId">>
+  instanceId: string,
+  choix: Partial<Omit<BrouillonSort, "instanceId" | "sortId">>
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
     sorts: b.acquisitions.sorts.map((s) =>
-      s.sortId === sortId ? { ...s, ...choix } : s
+      s.instanceId === instanceId ? { ...s, ...choix } : s
     ),
   });
 }
@@ -138,31 +134,32 @@ export function modifierSort(
 
 export function appliquerAchatPriere(
   b: BrouillonVisiteur,
-  demande: BrouillonPriere
+  demande: Omit<BrouillonPriere, "instanceId">
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    prieres: [...b.acquisitions.prieres, { ...demande }],
+    prieres: [...b.acquisitions.prieres, { ...demande, instanceId: nouvelInstanceId() }],
   });
 }
 
+/** Retire LA ligne prière désignée par son `instanceId` (une seule copie). */
 export function retirerPriere(
   b: BrouillonVisiteur,
-  priereId: string
+  instanceId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    prieres: b.acquisitions.prieres.filter((p) => p.priereId !== priereId),
+    prieres: b.acquisitions.prieres.filter((p) => p.instanceId !== instanceId),
   });
 }
 
-/** Remplace les choix zone/portée/durée/niveau d'une prière déjà présente. */
+/** Remplace les choix zone/portée/durée/niveau de la prière désignée par `instanceId`. */
 export function modifierPriere(
   b: BrouillonVisiteur,
-  priereId: string,
-  choix: Partial<Omit<BrouillonPriere, "priereId">>
+  instanceId: string,
+  choix: Partial<Omit<BrouillonPriere, "instanceId" | "priereId">>
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
     prieres: b.acquisitions.prieres.map((p) =>
-      p.priereId === priereId ? { ...p, ...choix } : p
+      p.instanceId === instanceId ? { ...p, ...choix } : p
     ),
   });
 }
@@ -176,16 +173,17 @@ export function appliquerAchatPiege(
   piegeId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    pieges: [...b.acquisitions.pieges, { piegeId }],
+    pieges: [...b.acquisitions.pieges, { instanceId: nouvelInstanceId(), piegeId }],
   });
 }
 
+/** Retire LA ligne piège désignée par son `instanceId` (une seule copie). */
 export function retirerPiege(
   b: BrouillonVisiteur,
-  piegeId: string
+  instanceId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    pieges: b.acquisitions.pieges.filter((p) => p.piegeId !== piegeId),
+    pieges: b.acquisitions.pieges.filter((p) => p.instanceId !== instanceId),
   });
 }
 
@@ -194,16 +192,17 @@ export function appliquerAchatRecette(
   recetteId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    recettes: [...b.acquisitions.recettes, { recetteId }],
+    recettes: [...b.acquisitions.recettes, { instanceId: nouvelInstanceId(), recetteId }],
   });
 }
 
+/** Retire LA ligne recette désignée par son `instanceId` (une seule copie). */
 export function retirerRecette(
   b: BrouillonVisiteur,
-  recetteId: string
+  instanceId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    recettes: b.acquisitions.recettes.filter((r) => r.recetteId !== recetteId),
+    recettes: b.acquisitions.recettes.filter((r) => r.instanceId !== instanceId),
   });
 }
 
@@ -212,17 +211,21 @@ export function appliquerAchatAssemblage(
   assemblageId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
-    assemblages: [...b.acquisitions.assemblages, { assemblageId }],
+    assemblages: [
+      ...b.acquisitions.assemblages,
+      { instanceId: nouvelInstanceId(), assemblageId },
+    ],
   });
 }
 
+/** Retire LA ligne assemblage désignée par son `instanceId` (une seule copie). */
 export function retirerAssemblage(
   b: BrouillonVisiteur,
-  assemblageId: string
+  instanceId: string
 ): BrouillonVisiteur {
   return patchAcquisitions(b, {
     assemblages: b.acquisitions.assemblages.filter(
-      (a) => a.assemblageId !== assemblageId
+      (a) => a.instanceId !== instanceId
     ),
   });
 }

@@ -93,11 +93,11 @@ describe("recompute from scratch", () => {
       niveauDesire: 1,
       choixAchat: null,
     });
-    const abcSansB = retirerCompetence(abc, {
-      competenceId: bComp.id,
-      niveauAcquis: 1,
-      choixAchat: null,
-    });
+    // Identité d'instance : on retire LA ligne B par son instanceId (posé à l'achat).
+    const instanceB = abc.acquisitions.competences.find(
+      (c) => c.competenceId === bComp.id,
+    )!.instanceId;
+    const abcSansB = retirerCompetence(abc, instanceB);
 
     let ac = appliquerAchatCompetence(base, {
       competenceId: a.id,
