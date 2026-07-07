@@ -59,6 +59,17 @@ export interface ValeursXp {
   xpDispo: number;
 }
 
+/**
+ * Un trait racial acquis localement par le visiteur (ordre = ordre de choix).
+ * `estGratuit` = provenance (les N premiers choisis, N = races.nb_traits_raciaux),
+ * miroir de la boucle indexée de `sauvegarder_etape_3` (v_index < v_nb_traits_gratuits_race).
+ */
+export interface TraitAcquis {
+  traitId: string;
+  nom: string;
+  estGratuit: boolean;
+}
+
 // ============================================================
 // D. raceInapteMagie (annexe D)
 // ============================================================

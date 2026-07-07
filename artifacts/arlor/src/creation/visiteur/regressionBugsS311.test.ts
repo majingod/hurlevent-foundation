@@ -44,7 +44,8 @@ const CLASSE_GUERRIER = idClasse("Guerrier");
 const CLASSE_MAGE = idClasse("Mage");
 const RACE_HUMAIN = idRace("Humain");
 
-const TRAIT_HUMAIN = "4675941e-481c-410d-a14f-9c2672d219ba"; // Coup du destin (gratuit)
+const TRAIT_HUMAIN = "4675941e-481c-410d-a14f-9c2672d219ba"; // Coup du destin (10 XP, gratuit si seul choisi)
+const TRAIT_HUMAIN2 = "fad7ba5d-df90-4f24-88b4-987eb9a4891f"; // Fortuné (10 XP)
 
 // Ancres compétences (ids réels s311).
 const COMP_CERCLE = "9fc3a181-4e29-4d94-8639-65b9a9a7c787"; // Acquisition de Cercle (choix « Feu »)
@@ -250,5 +251,96 @@ describe("BUG C — état post-finalisation du brouillon visiteur", () => {
     // Rouvrir la lecture ne casse rien (support de l'affichage du panneau/récap).
     const { data } = await clientVisiteur.lirePersonnage(PERSONNAGE_LOCAL_ID);
     expect((data as unknown as { etape_creation: number }).etape_creation).toBe(11);
+  });
+});
+
+// ============================================================
+// VIS-3 — coût des traits raciaux absent de la dérivation XP
+//
+// `deriver.ts` ne sommait jamais le coût des traits raciaux choisis dans
+// `autresDepensesXp` → un joueur prenant un trait payant voyait « 0 dépensés »
+// dès l'étape suivante. Règle serveur (sauvegarder_etape_3, migration
+// 20260617043319) : les N premiers traits CHOISIS DANS L'ORDRE (N =
+// races.nb_traits_raciaux) sont gratuits, les suivants coûtent
+// traits_raciaux.cout_xp — peu importe LEQUEL des traits est en 2e position.
+// ============================================================
+describe("VIS-3 — coût des traits raciaux dans la dérivation XP", () => {
+  // Humain : nb_traits_raciaux = 1. TRAIT_HUMAIN (Coup du destin) et
+  // TRAIT_HUMAIN2 (Fortuné) coûtent chacun 10 XP.
+  async function wizardEtape3Traits(
+    traits: Array<{ trait_id: string; est_gratuit: boolean; xp_depense: number }>,
+  ): Promise<void> {
+    await clientVisiteur.demarrerCreationPersonnage({});
+    await clientVisiteur.sauvegarderEtape1({
+      p_personnage_id: PERSONNAGE_LOCAL_ID, p_nom: "Aldric",
+      p_gn_completes: 0, p_mini_gn_completes: 0, p_ouvertures_terrain: 0,
+      p_est_croyant: false, p_religion_id: nul,
+    });
+    await clientVisiteur.sauvegarderEtape2({ p_personnage_id: PERSONNAGE_LOCAL_ID, p_race_id: RACE_HUMAIN });
+    await clientVisiteur.sauvegarderEtape3({
+      p_personnage_id: PERSONNAGE_LOCAL_ID,
+      p_traits_raciaux_choisis: traits,
+    });
+  }
+
+  async function xpDepense(): Promise<number> {
+    const { data } = await clientVisiteur.lirePersonnage(PERSONNAGE_LOCAL_ID);
+    return (data as unknown as { xp_depense: number }).xp_depense;
+  }
+
+  it("1 seul trait choisi (quota Humain = 1) → gratuit, xpDepense inchangé", async () => {
+    await wizardEtape3Traits([{ trait_id: TRAIT_HUMAIN, est_gratuit: true, xp_depense: 0 }]);
+    expect(await xpDepense()).toBe(0);
+  });
+
+  it("2 traits choisis → le 2e de la liste coûte +10 (BUG VIS-3 : restait à 0)", async () => {
+    await wizardEtape3Traits([
+      { trait_id: TRAIT_HUMAIN, est_gratuit: true, xp_depense: 0 },
+      { trait_id: TRAIT_HUMAIN2, est_gratuit: false, xp_depense: 10 },
+    ]);
+    expect(await xpDepense()).toBe(10);
+  });
+
+  it("ordre inverse [TRAIT_HUMAIN2, TRAIT_HUMAIN] → toujours +10 (le 2e paie, peu importe lequel)", async () => {
+    await wizardEtape3Traits([
+      { trait_id: TRAIT_HUMAIN2, est_gratuit: true, xp_depense: 0 },
+      { trait_id: TRAIT_HUMAIN, est_gratuit: false, xp_depense: 10 },
+    ]);
+    expect(await xpDepense()).toBe(10);
+  });
+
+  it("le +10 persiste à travers sauvegarderEtape4 + achat de compétence", async () => {
+    await wizardEtape3Traits([
+      { trait_id: TRAIT_HUMAIN, est_gratuit: true, xp_depense: 0 },
+      { trait_id: TRAIT_HUMAIN2, est_gratuit: false, xp_depense: 10 },
+    ]);
+    await clientVisiteur.sauvegarderEtape4({
+      p_personnage_id: PERSONNAGE_LOCAL_ID, p_classe_id: CLASSE_GUERRIER,
+      p_choix_par_competence: null as unknown as Record<string, string>,
+    });
+    const avantAchat = await xpDepense();
+    expect(avantAchat).toBe(10);
+
+    const achat = env((await clientVisiteur.acheterCompetence({
+      p_personnage_id: PERSONNAGE_LOCAL_ID, p_competence_id: COMP_BOTTE, p_niveau_desire: 1,
+    })).data);
+    expect(achat.succes, JSON.stringify(achat.erreurs)).toBe(true);
+
+    // Botte Secrète niv1 = 9 XP (cf. BUG B ci-dessus) : le compteur global
+    // reste cohérent d'étape en étape (10 traits + 9 compétence = 19).
+    expect(await xpDepense()).toBe(19);
+  });
+
+  it("rechargement localStorage (re-parse du brouillon persisté) → xpDepense identique", async () => {
+    await wizardEtape3Traits([
+      { trait_id: TRAIT_HUMAIN, est_gratuit: true, xp_depense: 0 },
+      { trait_id: TRAIT_HUMAIN2, est_gratuit: false, xp_depense: 10 },
+    ]);
+    const avant = await xpDepense();
+    expect(avant).toBe(10);
+
+    // `chargerBrouillon` re-parse le JSON stocké à chaque appel (aucun cache
+    // mémoire) : relire le personnage rejoue fidèlement un rechargement.
+    expect(await xpDepense()).toBe(avant);
   });
 });

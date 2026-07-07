@@ -40,6 +40,7 @@ import {
   type EtatCreationVisiteur,
   type CompetenceAcquiseLocale,
   type NiveauxArtisanat,
+  type TraitAcquis,
 } from "../deriveurs";
 import type {
   ContextePersonnage,
@@ -52,7 +53,7 @@ import type {
   RecetteAcquise,
   AssemblageAcquis,
 } from "../types";
-import type { BrouillonVisiteur } from "./types";
+import type { BrouillonVisiteur, BrouillonEtape3 } from "./types";
 
 // ============================================================
 // Sortie
@@ -87,6 +88,9 @@ export interface EtatDeriveVisiteur {
 
   /** Compétences GRATUITES de classe effectivement dérivées (provenance). */
   gratuites: AcquisCompetence[];
+
+  /** Traits raciaux acquis (ordre de choix, provenance gratuit/payant). */
+  traitsAcquis: TraitAcquis[];
 }
 
 // ============================================================
@@ -142,6 +146,11 @@ interface AssemblageRow {
   id: string;
   cout_xp: number | null;
 }
+interface TraitRacialRow {
+  id: string;
+  nom: string | null;
+  cout_xp: number | null;
+}
 
 function getSort(id: string): SortRow | undefined {
   return (getSnapshot().tables.sorts as SortRow[]).find((s) => s.id === id);
@@ -161,6 +170,16 @@ function getAssemblage(id: string): AssemblageRow | undefined {
   return (getSnapshot().tables.assemblages_runes as AssemblageRow[]).find(
     (a) => a.id === id
   );
+}
+function getTraitRacial(id: string): TraitRacialRow | undefined {
+  return (getSnapshot().tables.traits_raciaux as TraitRacialRow[]).find(
+    (t) => t.id === id
+  );
+}
+
+/** `p_traits_raciaux_choisis` est brut (`{ trait_id, … }`) — jamais camelCase. */
+function traitId(choix: BrouillonEtape3["traitsRaciauxChoisis"][number]): string {
+  return choix.trait_id ?? "";
 }
 
 /** Mappe une compétence acquise locale vers la shape `AcquisCompetence` des gates. */
@@ -286,6 +305,20 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
     assemblagesAcquis.push({ assemblageId: item.assemblageId, estGratuit });
   });
 
+  // 5bis) Traits raciaux : les N premiers choisis (ordre) sont gratuits
+  //       (N = races.nb_traits_raciaux), les suivants coûtent cout_xp.
+  //       Source de vérité : sauvegarder_etape_3 (serveur).
+  const race = snapshot.tables.races.find((r) => r.id === raceId);
+  const nbTraitsGratuits = race?.nb_traits_raciaux ?? 0;
+  const traitsAcquis: TraitAcquis[] = [];
+  const coutsTraits: number[] = [];
+  b.etape3.traitsRaciauxChoisis.forEach((choix, index) => {
+    const trait = getTraitRacial(traitId(choix));
+    const estGratuit = index < nbTraitsGratuits;
+    coutsTraits.push(estGratuit ? 0 : trait?.cout_xp ?? 0);
+    traitsAcquis.push({ traitId: traitId(choix), nom: trait?.nom ?? "", estGratuit });
+  });
+
   // 6) XP total / dépensé / dispo — `calculerXp` importée, avec toutes les
   //    dépenses hors compétences dans `autresDepensesXp`.
   const autresDepensesXp = [
@@ -293,6 +326,7 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
     ...coutsPieges,
     ...coutsRecettes,
     ...coutsAssemblages,
+    ...coutsTraits,
   ];
   const { xpTotal, xpDepense, xpDispo } = calculerXp(snapshot, {
     ...etatAvecGratuites,
@@ -368,5 +402,6 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
     niveauxArtisanat,
     quotas,
     gratuites,
+    traitsAcquis,
   };
 }
