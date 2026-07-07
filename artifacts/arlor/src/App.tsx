@@ -29,6 +29,7 @@ import MisesAJour from "@/pages/MisesAJour";
 // Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
 import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
+import CreationVisiteur from "@/pages/CreationVisiteur";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 import PersonnageJournal from "@/pages/PersonnageJournal";
 import Cimetiere from "@/pages/Cimetiere";
@@ -83,6 +84,10 @@ const AppRoutes = () => (
     <Route path="/faq" element={<Faq />} />
     <Route path="/mises-a-jour" element={<MisesAJour />} />
     <Route path="/connexion" element={<Connexion />} />
+
+    {/* Route PUBLIQUE (hors ProtectedRoute) : créateur en mode visiteur,
+        sans compte ni réseau (P2-b). */}
+    <Route path="/visiteur" element={<CreationVisiteur />} />
 
     <Route
       path="/tableau-de-bord"
@@ -218,7 +223,13 @@ const App = () => {
   const { loading, user, bootLent } = useAuth();
   const { loadingProfils, profilActif } = useProfil();
 
-  if (loading || (user && loadingProfils)) {
+  // P2-b : la route visiteur vit HORS de la barrière auth. Sans cette garde,
+  // le gate spinner bloque l'affichage hors ligne (gotcha s307 : écran blanc)
+  // tant que la session Supabase n'a pas résolu — ce qui n'arrive jamais sans
+  // réseau. On lit le pathname brut (le Proxy `clientActif` fait de même).
+  const estRouteVisiteur = /^\/visiteur(\/|$)/.test(window.location.pathname);
+
+  if (!estRouteVisiteur && (loading || (user && loadingProfils))) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-black px-6">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
@@ -241,7 +252,8 @@ const App = () => {
   }
 
   // « Sans skip » : connecté + aucun profil choisi cette session -> écran « Qui joue ? ».
-  const doitChoisirProfil = !!user && !profilActif;
+  // Jamais sur la route visiteur (publique, aucun profil requis).
+  const doitChoisirProfil = !estRouteVisiteur && !!user && !profilActif;
 
   return (
     <QueryClientProvider client={queryClient}>

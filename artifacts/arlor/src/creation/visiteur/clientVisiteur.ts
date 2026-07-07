@@ -89,6 +89,13 @@ import {
 /** Id local unique : toute méthode qui reçoit un autre id renvoie PERSONNAGE_INCONNU. */
 export const PERSONNAGE_LOCAL_ID = "visiteur-local";
 
+/**
+ * Profil factice passé à `demarrerCreationPersonnage` en mode visiteur. Le client
+ * visiteur IGNORE ce paramètre (`_params`) — il n'existe que pour satisfaire la
+ * signature partagée `ClientCreation`. UUID nul (jamais écrit, jamais lu).
+ */
+export const PROFIL_VISITEUR_LOCAL = "00000000-0000-0000-0000-000000000000";
+
 /** Dépendances injectables (test-only). Défauts = comportement prod. */
 export interface DepsVisiteur {
   /** Dérivation du brouillon. Défaut : `deriverEtat` (recompute from scratch). */
