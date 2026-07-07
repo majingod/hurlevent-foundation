@@ -28,6 +28,7 @@ import { calculerCoutXP } from "@/utils/calculsMagie";
 import { getSnapshot } from "../snapshot";
 import type { Competence } from "../snapshot";
 import { appliquerGratuites } from "../gratuites";
+import { coutApresRabais, SEUIL_RABAIS_PAR_NIVEAU } from "../rabais";
 import {
   calculerXp,
   calculerPvMax,
@@ -113,7 +114,7 @@ function getCompetence(id: string): Competence | undefined {
   return getSnapshot().tables.competences.find((c) => c.id === id);
 }
 
-/** Coût XP d'une compétence à un niveau donné = `niveaux[niveau].cout_xp`. */
+/** Coût XP CATALOGUE d'une compétence à un niveau donné = `niveaux[niveau].cout_xp`. */
 function coutCompetence(competenceId: string, niveau: number): number {
   const niveaux = getCompetence(competenceId)?.niveaux as
     | Array<{ niveau: number; cout_xp: number }>
@@ -123,13 +124,69 @@ function coutCompetence(competenceId: string, niveau: number): number {
   return def?.cout_xp ?? 0;
 }
 
+/**
+ * Niveaux des items (sorts/prières) DÉJÀ possédés dans un cercle/domaine — la
+ * matière du rabais d'« Acquisition de Cercle/Domaine ». Reprend l'assiette de
+ * l'aperçu (`clientVisiteur.calculerRabais`) : TOUS les items du brouillon pour
+ * ce choix, comptés par le niveau d'instance choisi. Le moteur recompute
+ * intégralement à chaque appel — il n'y a pas de grand livre offline —, donc
+ * « items déjà acquis au moment de l'achat » = les items présents du choix ;
+ * aperçu et débit consomment ainsi exactement le même comptage.
+ */
+function niveauxItemsRabais(
+  b: BrouillonVisiteur,
+  typeChoix: "cercle" | "domaine",
+  choix: string
+): number[] {
+  if (typeChoix === "cercle") {
+    return b.acquisitions.sorts
+      .filter((s) => getSort(s.sortId)?.cercle === choix)
+      .map((s) => s.niveauSort);
+  }
+  return b.acquisitions.prieres
+    .filter((p) => getPriere(p.priereId)?.domaine === choix)
+    .map((p) => p.niveauPriere);
+}
+
+/**
+ * Coût XP EFFECTIF d'un achat de compétence par le joueur = coût catalogue,
+ * MOINS le rabais « Acquisition de Cercle/Domaine » (niveaux 2/3) porté par
+ * `coutApresRabais` (source unique, cf. `moteurCreation/rabais.ts`). C'est le
+ * montant que le serveur débite ET stocke dans `xp_depense`.
+ *
+ * Exporté : le désachat et les lectures d'XP dépensée (badge « Gratuit »)
+ * doivent consommer CE coût, pas le coût catalogue, sous peine de rembourser /
+ * afficher plus que ce qui a été réellement débité.
+ */
+export function coutAchatCompetence(
+  b: BrouillonVisiteur,
+  competenceId: string,
+  niveauAcquis: number,
+  choixAchat: string | null
+): number {
+  const base = coutCompetence(competenceId, niveauAcquis);
+  const typeChoix = getCompetence(competenceId)?.type_choix;
+  if (
+    choixAchat != null &&
+    (niveauAcquis === 2 || niveauAcquis === 3) &&
+    (typeChoix === "cercle" || typeChoix === "domaine")
+  ) {
+    const seuil = SEUIL_RABAIS_PAR_NIVEAU[niveauAcquis];
+    const niveauxItems = niveauxItemsRabais(b, typeChoix, choixAchat);
+    return coutApresRabais(base, niveauxItems, seuil);
+  }
+  return base;
+}
+
 interface SortRow {
   id: string;
   cout_xp_base: number | null;
+  cercle: string | null;
 }
 interface PriereRow {
   id: string;
   cout_xp_base: number | null;
+  domaine: string | null;
 }
 interface PiegeRow {
   id: string;
@@ -231,13 +288,20 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
     );
   }
 
-  // 2) État de base = achats PAYANTS de compétences (coût lu sur la donnée).
+  // 2) État de base = achats PAYANTS de compétences. Le coût effectif inclut le
+  //    rabais « Acquisition de Cercle/Domaine » (niv 2/3) — même montant que le
+  //    serveur débite et stocke dans `xp_depense`.
   const competencesPayantes: CompetenceAcquiseLocale[] =
     b.acquisitions.competences.map((c) => ({
       competenceId: c.competenceId,
       niveauAcquis: c.niveauAcquis,
       choixAchat: c.choixAchat,
-      xpDepense: coutCompetence(c.competenceId, c.niveauAcquis),
+      xpDepense: coutAchatCompetence(
+        b,
+        c.competenceId,
+        c.niveauAcquis,
+        c.choixAchat
+      ),
     }));
 
   const base: EtatCreationVisiteur = {
@@ -246,6 +310,11 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
     religionId: b.etape1.religionId,
     estCroyant: b.etape1.estCroyant,
     competencesAcquises: competencesPayantes,
+    // Compteurs déclarés étape 1 → comptés dans `xp_total` (annexe A serveur).
+    // UNE source : le brouillon ; `calculerXp` applique la formule.
+    gnCompletes: b.etape1.gnCompletes,
+    miniGnCompletes: b.etape1.miniGnCompletes,
+    ouverturesTerrain: b.etape1.ouverturesTerrain,
   };
 
   // 3) Gratuités de classe : `appliquerGratuites` purge/reconstruit tout seul

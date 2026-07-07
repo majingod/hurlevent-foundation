@@ -51,6 +51,15 @@ export interface EtatCreationVisiteur {
    * quand même (recompute complet). Défaut : aucune.
    */
   autresDepensesXp?: number[];
+  /**
+   * Compteurs d'expérience DÉCLARÉS à l'étape 1 (miroir de `personnages.
+   * gn_declares` / `mini_gn_declares` / `ouvertures_declares`, alimentés à la
+   * création par `gn_completes` / `mini_gn_completes` / `ouvertures_terrain`).
+   * Le serveur les compte dans `xp_total` (annexe A). Défaut : 0.
+   */
+  gnCompletes?: number;
+  miniGnCompletes?: number;
+  ouverturesTerrain?: number;
 }
 
 export interface ValeursXp {
@@ -133,11 +142,12 @@ function getCompetenceById(
  *   xp_total   = v_dep + v_gn + v_gains
  *   xp_depense = v_dep_xp - v_remb
  *
- * Pour un VISITEUR à la création : gn_completes = mini_gn_completes =
- * ouvertures_terrain = 0 et l'historique_xp est vide (v_gains = 0). Donc
- *   v_gn = 0*15 + 0*15 + 0*10 = 0  → xpTotal = xp_depart.
- * Les dépenses locales tiennent lieu de v_dep_xp ; un retrait local retire
- * simplement l'item (recompute), ce qui joue le rôle de v_remb.
+ * Pour un VISITEUR à la création : l'historique_xp est vide (v_gains = 0), mais
+ * les compteurs déclarés à l'étape 1 (gn/mini/ouvertures) SONT comptés par le
+ * serveur — ils promettent « +15/+15/+10 XP » à l'écran. Ils sont fournis par
+ * l'appelant (défaut 0 si l'étape 1 n'est pas renseignée). Les dépenses locales
+ * tiennent lieu de v_dep_xp ; un retrait local retire simplement l'item
+ * (recompute), ce qui joue le rôle de v_remb.
  */
 export function calculerXp(
   snapshot: SnapshotVisiteur,
@@ -146,10 +156,11 @@ export function calculerXp(
   const race = getRace(snapshot, etat.raceId);
   const vDep = race?.xp_depart ?? 0;
 
-  // Compteurs de jeu à 0 pour un visiteur (formule complète, commentée ci-dessus).
-  const gnCompletes = 0;
-  const miniGnCompletes = 0;
-  const ouverturesTerrain = 0;
+  // Compteurs déclarés à l'étape 1, comptés par le serveur (annexe A) :
+  //   v_gn = gn*15 + mini*15 + ouvertures*10.
+  const gnCompletes = etat.gnCompletes ?? 0;
+  const miniGnCompletes = etat.miniGnCompletes ?? 0;
+  const ouverturesTerrain = etat.ouverturesTerrain ?? 0;
   const vGn = gnCompletes * 15 + miniGnCompletes * 15 + ouverturesTerrain * 10;
   const vGains = 0; // historique_xp vide pour un visiteur
 
