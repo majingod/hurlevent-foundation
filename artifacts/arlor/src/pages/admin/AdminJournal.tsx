@@ -97,11 +97,12 @@ export default function AdminJournal() {
   const { data: rows, isLoading } = useQuery({
     queryKey: ["admin-journal-staff"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("vue_journal_staff")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(300);
+      if (error) throw error;
       return (data ?? []) as StaffRow[];
     },
   });
