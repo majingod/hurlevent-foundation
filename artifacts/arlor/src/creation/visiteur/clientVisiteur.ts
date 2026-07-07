@@ -52,7 +52,6 @@ import {
 } from "@/moteurCreation/gatesArtisanat";
 import {
   appliquerAchatCompetence,
-  retirerCompetence,
   appliquerAchatSort,
   retirerSort,
   modifierSort as applicModifierSort,
@@ -201,6 +200,16 @@ function getCompetenceCat(id: string) {
   return competences().find((c) => c.id === id);
 }
 
+/**
+ * `type_achat` qui CASCADE en désachat (retrait de tous les niveaux ≥ cible)
+ * — miroir du `IN (...)` serveur de `desacheter_competence` (A6).
+ */
+const TYPES_ACHAT_CASCADE = new Set([
+  "simple",
+  "unique_avec_choix",
+  "multiple_avec_choix_par_niveau",
+]);
+
 /** Coût XP d'une compétence à un niveau = `niveaux[niveau].cout_xp` (même donnée que le gate). */
 function coutCompetence(competenceId: string, niveau: number): number {
   const niveaux = getCompetenceCat(competenceId)?.niveaux as
@@ -303,44 +312,208 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     },
 
     async desacheterCompetence(params) {
+      // Portage FIDÈLE de `desacheter_competence` (A6, migration 20260610065923) :
+      // refus gratuité → cascade niveaux → boucle prérequis → purge sorts/prières
+      // → aperçu dry_run reflétant la cascade RÉELLE. Le serveur est la source.
       const b = chargerBrouillon();
       if (!b) return repBrouillonAbsent();
       const cible = decodeIdComp(params.p_personnage_competence_id);
       if (!cible) return repErr({ code: "introuvable", message: "Compétence introuvable." });
 
-      // Retrait + cascade sorts/prières dont le cercle/domaine tombe.
-      const xpAvant = deriver(b).xpDepense;
-      const b1 = retirerCompetence(b, cible);
-      const etat1 = deriver(b1);
-      const cerclesOk = deriverCerclesDisponibles(etat1.contexteMagie.competencesAcquises);
-      const domainesOk = deriverDomainesDisponibles(
-        etat1.contexteMagie.competencesAcquises,
-        etat1.contexteMagie.religionId ?? null,
+      const comp = getCompetenceCat(cible.competenceId);
+      if (!comp) {
+        return repErr({ code: "competence_introuvable", message: "Compétence introuvable" });
+      }
+
+      const memeComp = (
+        a: { competenceId: string; niveauAcquis: number; choixAchat: string | null },
+        c: { competenceId: string; niveauAcquis: number; choixAchat: string | null },
+      ) =>
+        a.competenceId === c.competenceId &&
+        a.niveauAcquis === c.niveauAcquis &&
+        a.choixAchat === c.choixAchat;
+
+      const etat0 = deriver(b);
+      const cibleGratuite = estGratuite(etat0, cible.competenceId, cible.niveauAcquis, cible.choixAchat);
+      const payantes = b.acquisitions.competences;
+      const presente = cibleGratuite || payantes.some((c) => memeComp(c, cible));
+      if (!presente) {
+        return repErr({ code: "achat_introuvable", message: "Cet achat de compétence n'existe pas" });
+      }
+
+      // ── 1. Refus gratuité (sémantique serveur : xp_depense=0 ET NON desachat_force).
+      //    En local, xp effectif = 0 pour une gratuité de classe OU un achat à 0 XP.
+      const xpCible = cibleGratuite ? 0 : coutCompetence(cible.competenceId, cible.niveauAcquis);
+      if (xpCible === 0 && !comp.desachat_force) {
+        return repErr({
+          code: "competence_gratuite",
+          message: "Une compétence acquise gratuitement (de classe) ne peut pas être désachetée",
+        });
+      }
+
+      // ── 2. Cascade niveaux : retrait initial du set (achats du joueur uniquement,
+      //    les gratuités de classe sont re-dérivées et ne sont jamais « retirées »).
+      let restantes = payantes;
+      if (TYPES_ACHAT_CASCADE.has(comp.type_achat)) {
+        restantes = payantes.filter((c) => {
+          if (c.competenceId !== cible.competenceId) return true;
+          if (c.niveauAcquis < cible.niveauAcquis) return true;
+          // multiple_avec_choix_par_niveau : borné au même choix (sauf choix cible null → tous).
+          if (
+            comp.type_achat === "multiple_avec_choix_par_niveau" &&
+            cible.choixAchat != null &&
+            c.choixAchat !== cible.choixAchat
+          ) {
+            return true;
+          }
+          return false;
+        });
+      } else {
+        restantes = payantes.filter((c) => !memeComp(c, cible));
+      }
+
+      // ── 3. Boucle prérequis : tant que ça change, on recalcule les prérequis
+      //    (méthode LOCALE `calculerPrerequis`) et on retire les niveaux excédentaires.
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const bWork: BrouillonVisiteur = {
+          ...b,
+          acquisitions: { ...b.acquisitions, competences: restantes },
+        };
+        const prereq = calculerPrerequis(bWork, deriver) as Record<
+          string,
+          { niveau_max_achetable?: number }
+        >;
+        const maxParComp = new Map<string, number>();
+        for (const c of restantes) {
+          maxParComp.set(c.competenceId, Math.max(maxParComp.get(c.competenceId) ?? 0, c.niveauAcquis));
+        }
+        for (const [cid, niv] of maxParComp) {
+          const entree = prereq[cid];
+          if (!entree) continue;
+          const max = entree.niveau_max_achetable ?? 3;
+          if (niv > max) {
+            const avant = restantes.length;
+            restantes = restantes.filter((c) => !(c.competenceId === cid && c.niveauAcquis > max));
+            if (restantes.length !== avant) changed = true;
+          }
+        }
+      }
+
+      // Set des compétences RETIRÉES (initial + cascade prérequis).
+      const retirees = payantes.filter((c) => !restantes.includes(c));
+
+      // ── 4. Purge sorts/prières : si « Acquisition de Sort »/« Acquisition de Prière »
+      //    tombe → purge TOTALE (gate global). On conserve AUSSI la purge par
+      //    cercle/domaine (une « Acquisition de Cercle/Domaine » retirée ferme son
+      //    cercle/domaine → les sorts/prières correspondants tombent).
+      const purgeSortsTout = retirees.some(
+        (c) => getCompetenceCat(c.competenceId)?.nom === "Acquisition de Sort",
       );
-      const sortsGardes = b1.acquisitions.sorts.filter((s) => {
+      const purgePrieresTout = retirees.some(
+        (c) => getCompetenceCat(c.competenceId)?.nom === "Acquisition de Prière",
+      );
+      const bApresComp: BrouillonVisiteur = {
+        ...b,
+        acquisitions: { ...b.acquisitions, competences: restantes },
+      };
+      const etatApres = deriver(bApresComp);
+      const cerclesOk = deriverCerclesDisponibles(etatApres.contexteMagie.competencesAcquises);
+      const domainesOk = deriverDomainesDisponibles(
+        etatApres.contexteMagie.competencesAcquises,
+        etatApres.contexteMagie.religionId ?? null,
+      );
+      const sortGarde = (s: BrouillonVisiteur["acquisitions"]["sorts"][number]) => {
+        if (purgeSortsTout) return false;
         const max = cerclesOk.get(getSortCat(s.sortId)?.cercle ?? "");
         return max != null && s.niveauSort <= max;
-      });
-      const prieresGardees = b1.acquisitions.prieres.filter((p) => {
-        const dom = getPriereCat(p.priereId)?.domaine ?? "";
-        const max = domainesOk.get(dom);
+      };
+      const priereGardee = (p: BrouillonVisiteur["acquisitions"]["prieres"][number]) => {
+        if (purgePrieresTout) return false;
+        const max = domainesOk.get(getPriereCat(p.priereId)?.domaine ?? "");
         return max != null && p.niveauPriere <= max;
-      });
-      const countSorts = b1.acquisitions.sorts.length - sortsGardes.length;
-      const countPrieres = b1.acquisitions.prieres.length - prieresGardees.length;
-      const b2: BrouillonVisiteur = {
-        ...b1,
-        acquisitions: { ...b1.acquisitions, sorts: sortsGardes, prieres: prieresGardees },
       };
-      const xpRembourse = xpAvant - deriver(b2).xpDepense;
+      const sortsGardes = b.acquisitions.sorts.filter(sortGarde);
+      const prieresGardees = b.acquisitions.prieres.filter(priereGardee);
+      const sortsRetires = b.acquisitions.sorts.filter((s) => !sortGarde(s));
+      const prieresRetirees = b.acquisitions.prieres.filter((p) => !priereGardee(p));
+
+      // ── 5. dry_run FIDÈLE : `donnees` reflète la cascade réelle (mêmes clés que le serveur).
+      const parNom = new Map<string, { niveaux: number[]; xps: number[] }>();
+      for (const c of retirees) {
+        const nom = getCompetenceCat(c.competenceId)?.nom ?? "";
+        const xp = coutCompetence(c.competenceId, c.niveauAcquis);
+        const agg = parNom.get(nom) ?? { niveaux: [], xps: [] };
+        agg.niveaux.push(c.niveauAcquis);
+        agg.xps.push(xp);
+        parNom.set(nom, agg);
+      }
+      const itemsComp = [...parNom.entries()]
+        .sort((x, y) => cmp(x[0], y[0]))
+        .map(([nom, agg]) => ({
+          type: "competence",
+          type_label: "Compétence",
+          nom,
+          quantite: agg.niveaux.length,
+          xp_unitaire: Math.min(...agg.xps),
+          xp_total: agg.xps.reduce((a, n) => a + n, 0),
+          niveaux: [...agg.niveaux].sort((a, n) => a - n),
+        }));
+      const xpSort = (s: BrouillonVisiteur["acquisitions"]["sorts"][number]) =>
+        calculerCoutXP(s.zoneChoisie, s.porteeChoisie, s.dureeChoisie, s.niveauSort, getSortCat(s.sortId)?.cout_xp_base ?? 0);
+      const xpPriere = (p: BrouillonVisiteur["acquisitions"]["prieres"][number]) =>
+        calculerCoutXP(p.zoneChoisie, p.porteeChoisie, p.dureeChoisie, p.niveauPriere, getPriereCat(p.priereId)?.cout_xp_base ?? 0);
+      const itemsSorts = sortsRetires
+        .map((s) => ({
+          type: "sort",
+          type_label: "Sort",
+          nom: s.nomPersonnalise ?? getSortCat(s.sortId)?.nom ?? "",
+          quantite: 1,
+          xp_unitaire: xpSort(s),
+          xp_total: xpSort(s),
+        }))
+        .sort((x, y) => cmp(x.nom, y.nom));
+      const itemsPrieres = prieresRetirees
+        .map((p) => ({
+          type: "priere",
+          type_label: "Prière",
+          nom: p.nomPersonnalise ?? getPriereCat(p.priereId)?.nom ?? "",
+          quantite: 1,
+          xp_unitaire: xpPriere(p),
+          xp_total: xpPriere(p),
+        }))
+        .sort((x, y) => cmp(x.nom, y.nom));
+
+      const xpComp = itemsComp.reduce((a, it) => a + it.xp_total, 0);
+      const xpSorts = itemsSorts.reduce((a, it) => a + it.xp_total, 0);
+      const xpPrieres = itemsPrieres.reduce((a, it) => a + it.xp_total, 0);
+      const countComp = retirees.length;
+      const countCompDistinctes = itemsComp.length;
+      const cascade = countCompDistinctes > 1 || purgeSortsTout || purgePrieresTout;
       const donnees = {
-        count_competences: 1,
-        count_sorts: countSorts,
-        count_prieres: countPrieres,
-        xp_rembourse: xpRembourse,
-        items_detail: [] as unknown[], // cf. TROUS_A3II §2 (dry-run détail non porté)
+        cascade,
+        competence_cible: comp.nom,
+        count_competences: countComp,
+        count_competences_distinctes: countCompDistinctes,
+        count_sorts: sortsRetires.length,
+        count_prieres: prieresRetirees.length,
+        xp_rembourse: xpComp + xpSorts + xpPrieres,
+        items_detail: [...itemsComp, ...itemsSorts, ...itemsPrieres],
       };
+
       if (params.p_dry_run) return repOk(donnees); // aperçu : pas de sauvegarde
+
+      const b2: BrouillonVisiteur = {
+        ...b,
+        acquisitions: {
+          ...b.acquisitions,
+          competences: restantes,
+          sorts: sortsGardes,
+          prieres: prieresGardees,
+        },
+        meta: { ...b.meta, modifieLe: new Date().toISOString() },
+      };
       sauverBrouillon(b2);
       return repOk(donnees);
     },
