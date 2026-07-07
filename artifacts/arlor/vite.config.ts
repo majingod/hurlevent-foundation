@@ -56,6 +56,15 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
+        // P2-b : le mode visiteur (route publique `/visiteur`) rend le client
+        // `clientVisiteur` atteignable depuis le graphe de l'app (via le Proxy
+        // `clientActif`). Il embarque le snapshot des règles (JSON bundlé) → le
+        // chunk principal dépasse la limite workbox par défaut (2 MiB) et, sans
+        // ce relèvement, l'app shell NE SERAIT PAS précaché → plus d'offline.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // SPA hors ligne : toute navigation profonde (`/visiteur`, refresh…) doit
+        // retomber sur `index.html` servi par le SW (le serveur est injoignable).
+        navigateFallback: "index.html",
       },
     }),
     {
