@@ -85,8 +85,21 @@ export interface BrouillonEtape4 {
 // Acquisitions — listes de CHOIX bruts (aucun coût, aucune gratuité stockés)
 // ============================================================
 
+/**
+ * IDENTITÉ D'INSTANCE (lot désachats fidèles).
+ *
+ * Chaque acquisition porte un `instanceId` (uuid local, `crypto.randomUUID()`)
+ * posé À L'ACHAT par les applicateurs. C'est la SOURCE UNIQUE d'identité d'une
+ * ligne acquise, UNIFORME sur les 6 familles — même celles sans doublon possible
+ * aujourd'hui. Les lectures exposent `id = instanceId`, les désachats retirent
+ * la ligne DÉSIGNÉE (et non toutes les copies du catalogue), fidèle au serveur
+ * qui supprime une ligne `personnage_*` par sa PK.
+ */
+
 /** Choix brut d'achat de compétence. Aligné sur `DemandeAchatCompetence`. */
 export interface BrouillonCompetence {
+  /** Identité de la ligne acquise (uuid local, posé à l'achat). */
+  instanceId: string;
   competenceId: string;
   niveauAcquis: number;
   choixAchat: string | null;
@@ -94,6 +107,8 @@ export interface BrouillonCompetence {
 
 /** Choix brut d'achat de sort. Aligné sur `DemandeAchatSort`. */
 export interface BrouillonSort {
+  /** Identité de la ligne acquise (uuid local, posé à l'achat). */
+  instanceId: string;
   sortId: string;
   niveauSort: number;
   zoneChoisie: string;
@@ -105,6 +120,8 @@ export interface BrouillonSort {
 
 /** Choix brut d'achat de prière. Aligné sur `DemandeAchatPriere`. */
 export interface BrouillonPriere {
+  /** Identité de la ligne acquise (uuid local, posé à l'achat). */
+  instanceId: string;
   priereId: string;
   niveauPriere: number;
   zoneChoisie: string;
@@ -116,16 +133,22 @@ export interface BrouillonPriere {
 
 /** Choix brut d'achat de piège (RPC `acheter_piege` : `p_piege_id` seul). */
 export interface BrouillonPiege {
+  /** Identité de la ligne acquise (uuid local, posé à l'achat). */
+  instanceId: string;
   piegeId: string;
 }
 
 /** Choix brut d'achat de recette (RPC `acheter_recette` : `p_recette_id` seul). */
 export interface BrouillonRecette {
+  /** Identité de la ligne acquise (uuid local, posé à l'achat). */
+  instanceId: string;
   recetteId: string;
 }
 
 /** Choix brut d'achat d'assemblage (RPC `acheter_assemblage` : `p_assemblage_id`). */
 export interface BrouillonAssemblage {
+  /** Identité de la ligne acquise (uuid local, posé à l'achat). */
+  instanceId: string;
   assemblageId: string;
 }
 
@@ -165,8 +188,12 @@ export interface BrouillonMeta {
  * `pvMax`, `psMax`, gratuités, quotas…) — vérifié par test structurel.
  */
 export interface BrouillonVisiteur {
-  /** Littéral `1` : garde de version pour le stockage (schéma inconnu → jeté). */
-  schemaVersion: 1;
+  /**
+   * Version de schéma (garde de stockage). `2` depuis l'ajout des `instanceId`
+   * d'acquisition ; un brouillon `1` (sans `instanceId`) est migré au chargement
+   * (`stockageBrouillon.migrerVersV2`). Un schéma inconnu → jeté.
+   */
+  schemaVersion: 2;
   meta: BrouillonMeta;
   etape1: BrouillonEtape1;
   etape2: BrouillonEtape2;
@@ -190,7 +217,7 @@ function maintenantIso(): string {
 export function creerBrouillonVide(): BrouillonVisiteur {
   const now = maintenantIso();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     meta: {
       creeLe: now,
       modifieLe: now,

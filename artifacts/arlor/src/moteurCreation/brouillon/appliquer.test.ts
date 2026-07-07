@@ -34,7 +34,7 @@ describe("applicateurs immuables", () => {
     expect(b2.meta.modifieLe).not.toBe(""); // rafraîchi
   });
 
-  it("modifierSort remplace les choix zone/portée/durée", () => {
+  it("modifierSort remplace les choix zone/portée/durée (ciblé par instanceId)", () => {
     let b = appliquerAchatSort(creerBrouillonVide(), {
       sortId: "s1",
       niveauSort: 1,
@@ -42,13 +42,16 @@ describe("applicateurs immuables", () => {
       porteeChoisie: "P1",
       dureeChoisie: "D1",
     });
-    b = modifierSort(b, "s1", {
+    const instanceId = b.acquisitions.sorts[0].instanceId;
+    expect(instanceId).toBeTruthy(); // uuid local posé à l'achat
+    b = modifierSort(b, instanceId, {
       zoneChoisie: "Z2",
       porteeChoisie: "P2",
       dureeChoisie: "D2",
       niveauSort: 2,
     });
     expect(b.acquisitions.sorts[0]).toEqual({
+      instanceId,
       sortId: "s1",
       niveauSort: 2,
       zoneChoisie: "Z2",
