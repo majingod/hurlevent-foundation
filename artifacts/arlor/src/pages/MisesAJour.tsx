@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Essaie le créateur de personnage — sans compte, même sans réseau",
+    description:
+      "Tu peux maintenant essayer le créateur de personnage sans créer de compte : un bouton « Créer mon personnage — essai libre » t'attend sur l'accueil. Ça marche même hors ligne (en forêt, en sous-sol…) : ton brouillon est sauvegardé sur ton appareil et reprend là où tu étais. Toutes les règles du jeu s'appliquent (coûts XP, prérequis, classes) — avec un aperçu clair avant tout changement de classe ou désachat. À la fin, ton personnage est validé, prêt à être recréé en quelques minutes quand tu ouvres un vrai compte.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Prérequis de classe affichés",
     description:
       "Les compétences réservées à une classe affichent maintenant clairement leur classe requise (ex. « Classe Prêtre ») dans leurs prérequis — autant dans l'encyclopédie que dans le créateur de personnage, où la puce apparaît en vert si ta classe correspond, en rouge sinon.",
@@ -261,11 +268,6 @@ const JALONS: Jalon[] = [
     statut: "prevu",
     titre: "Personnages portés disparus",
     description: "Repérer les personnages absents depuis plusieurs GN consécutifs.",
-  },
-  {
-    statut: "prevu",
-    titre: "Mode visiteur",
-    description: "Essayer la création de personnage sans avoir à créer de compte.",
   },
   {
     statut: "prevu",
