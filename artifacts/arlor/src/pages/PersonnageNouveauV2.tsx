@@ -9,10 +9,22 @@ import {
 
 import { clientActif } from "@/creation/clientActif";
 import { PROFIL_VISITEUR_LOCAL } from "@/creation/visiteur/clientVisiteur";
+import { effacerBrouillon } from "@/creation/visiteur/stockageBrouillon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import StepperEtapes, { type EtapeDef } from "@/components/createur/StepperEtapes";
 import DrawerAjusterXp from "@/components/createur/DrawerAjusterXp";
 import { useEtapesApplicables } from "@/components/createur/useEtapesApplicables";
@@ -194,6 +206,17 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
         return;
       }
 
+      // TOP 5d — visiteur avec un brouillon FINALISÉ : `demarrer` refuse
+      // (`FINALISE_EXISTANT`) plutôt que d'écraser le personnage prêt. Au simple
+      // affichage du récap, on n'affiche donc PAS une erreur : on bascule sur le
+      // panneau de fin de parcours (d'où l'utilisateur peut recommencer via une
+      // suppression explicite).
+      if (modeVisiteur && code === "FINALISE_EXISTANT") {
+        setFinalisationVisiteurReussie(true);
+        setDemarrage(false);
+        return;
+      }
+
       const msg =
         (payload.message as string | undefined) ??
         `Démarrage refusé${code ? ` (${code})` : ""}.`;
@@ -258,6 +281,32 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   // ÉDITION-ADMIN-WIZARD : sortie propre de l'éditeur admin (retour fiche).
   const terminerEditionAdmin = () => {
     if (personnageId) navigate(`/personnage/${personnageId}`);
+  };
+
+  // TOP 5d — « Recommencer un nouveau personnage » (visiteur finalisé) :
+  // suppression explicite du brouillon finalisé puis redémarrage de la création
+  // à zéro. `demarrer` recrée alors un brouillon vide (plus de refus, le slot
+  // est libre) et l'effet de positionnement affiche l'étape 1.
+  const recommencerVisiteur = async () => {
+    effacerBrouillon();
+    const { data, error } = await clientActif.demarrerCreationPersonnage({
+      p_profil_id: PROFIL_VISITEUR_LOCAL,
+    });
+    const payload = (data ?? {}) as Record<string, any>;
+    const personnage_id = payload.donnees?.personnage_id as string | undefined;
+    if (error || payload.succes !== true || !personnage_id) {
+      toast.error(
+        error?.message ??
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          "Impossible de redémarrer la création.",
+      );
+      return;
+    }
+    setFinalisationVisiteurReussie(false);
+    setEtapeInitialisee(false);
+    setEtape(1);
+    setEtapeCibleInitiale(1);
+    setPersonnageId(personnage_id);
   };
 
   // Redirect automatique : si le personnage est finalisé (etape_creation > TOTAL_STEPS),
@@ -527,31 +576,12 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     );
   }
 
-  const messageErreurFatale =
-    erreurDemarrage ??
-    (personnageIdParUrl && erreurPersonnage
-      ? `Personnage introuvable ou inaccessible : ${erreurPersonnage.message}`
-      : null);
-
-  if (messageErreurFatale || !personnageId) {
-    return (
-      <div className="mx-auto mt-12 max-w-xl space-y-4 rounded-lg border border-red-700/50 bg-red-950/30 p-6 text-red-100">
-        <h2 className="text-xl font-heading text-red-200">
-          Création indisponible
-        </h2>
-        <p className="text-sm">
-          {messageErreurFatale ?? "Brouillon introuvable."}
-        </p>
-        <Button variant="outline" onClick={() => navigate(retourSortie)}>
-          {modeVisiteur ? "Retour à l'accueil" : "Retour au tableau de bord"}
-        </Button>
-      </div>
-    );
-  }
-
   // BUG C (s311) : panneau de succès visiteur post-finalisation. Réutilise le
   // pattern visuel de l'en-tête de `CreationVisiteur` (font-heading text-primary
   // + carte bg-card/80 border-primary/20). Le brouillon N'EST PAS supprimé.
+  // TOP 5d : ce panneau est aussi affiché au simple ré-affichage d'un brouillon
+  // finalisé (`demarrer` refuse `FINALISE_EXISTANT`) → il précède le rendu
+  // d'erreur fatale, car dans ce cas `personnageId` reste nul.
   if (modeVisiteur && finalisationVisiteurReussie) {
     return (
       <div className="mx-auto mt-12 max-w-xl px-4">
@@ -573,7 +603,64 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
               Retour à l'accueil
             </Button>
           </div>
+          {/* TOP 5d — 3e action discrète : suppression explicite du personnage
+              finalisé + redémarrage à zéro (AlertDialog destructif maison). */}
+          <div className="pt-1">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Recommencer un nouveau personnage
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Recommencer à zéro ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Ton personnage finalisé sera définitivement supprimé de cet
+                    appareil. Cette action est irréversible.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      void recommencerVisiteur();
+                    }}
+                  >
+                    Supprimer et recommencer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  const messageErreurFatale =
+    erreurDemarrage ??
+    (personnageIdParUrl && erreurPersonnage
+      ? `Personnage introuvable ou inaccessible : ${erreurPersonnage.message}`
+      : null);
+
+  if (messageErreurFatale || !personnageId) {
+    return (
+      <div className="mx-auto mt-12 max-w-xl space-y-4 rounded-lg border border-red-700/50 bg-red-950/30 p-6 text-red-100">
+        <h2 className="text-xl font-heading text-red-200">
+          Création indisponible
+        </h2>
+        <p className="text-sm">
+          {messageErreurFatale ?? "Brouillon introuvable."}
+        </p>
+        <Button variant="outline" onClick={() => navigate(retourSortie)}>
+          {modeVisiteur ? "Retour à l'accueil" : "Retour au tableau de bord"}
+        </Button>
       </div>
     );
   }

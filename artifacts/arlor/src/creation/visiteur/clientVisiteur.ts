@@ -34,7 +34,8 @@ import type {
 } from "../types";
 
 import { getSnapshot } from "@/moteurCreation/snapshot";
-import { calculerCoutXP } from "@/utils/calculsMagie";
+import { calculerCoutXP, calculerDureeIncantation } from "@/utils/calculsMagie";
+import { genererFormuleMagique } from "@/moteurCreation/formuleMagique";
 import {
   deriverEtat,
   coutAchatCompetence,
@@ -617,7 +618,10 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           zoneChoisie: params.p_zone_choisie,
           porteeChoisie: params.p_portee_choisie,
           dureeChoisie: params.p_duree_choisie,
-          nomPersonnalise: params.p_nom_personnalise,
+          // COALESCE(p_nom_personnalise, nom_personnalise) — l'écran omet le
+          // param quand le nom est inchangé : param absent/null → on conserve
+          // le nom existant (sinon le spread l'écraserait avec undefined).
+          nomPersonnalise: params.p_nom_personnalise ?? existant.nomPersonnalise,
         }),
       );
       return repOk({ xp_diff: diff });
@@ -719,7 +723,8 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           zoneChoisie: params.p_zone_choisie,
           porteeChoisie: params.p_portee_choisie,
           dureeChoisie: params.p_duree_choisie,
-          nomPersonnalise: params.p_nom_personnalise,
+          // COALESCE(p_nom_personnalise, nom_personnalise) — cf. modifierSort.
+          nomPersonnalise: params.p_nom_personnalise ?? existant.nomPersonnalise,
         }),
       );
       return repOk({ xp_diff: diff });
@@ -788,6 +793,17 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async demarrerCreationPersonnage(_params) {
       // Migration 20260607223650. Business : `brouillon_existant`.
       const existant = chargerBrouillon();
+      // TOP 5d — protection du personnage finalisé. Le serveur crée un NOUVEAU
+      // personnage et conserve l'ancien ; hors ligne, le slot localStorage est
+      // unique et on ne peut pas dupliquer. On REFUSE donc d'écraser un
+      // brouillon finalisé (etapeCourante >= 11). Décision maison validée s311 :
+      // le vidage explicite reste possible via l'écran de fin de parcours.
+      if (existant && existant.meta.etapeCourante >= 11) {
+        return repErr({
+          code: "FINALISE_EXISTANT",
+          message: "Un personnage finalisé existe déjà sur cet appareil.",
+        });
+      }
       if (existant && existant.meta.etapeCourante < 11) {
         return repErr(
           { code: "brouillon_existant", message: "Vous avez déjà un personnage en cours de création." },
@@ -1545,6 +1561,29 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       if (!b) return { data: null, error: null };
       const etat = deriver(b);
       const na = etat.niveauxArtisanat;
+      // Compteurs « utilisés » = items GRATUITS acquis, ventilés comme la vue
+      // serveur `vue_artisanat_quotas` (audit s311 TOP 4) :
+      //  - pièges : count(personnage_pieges WHERE niveau_acquis=N AND est_gratuit)
+      //  - recettes : count(personnage_recettes JOIN recettes_alchimie
+      //               WHERE niveau_requis=palier AND est_gratuit)
+      //  - assemblages : count(personnage_assemblages WHERE est_gratuit)
+      const recettesCat = snap().tables.recettes_alchimie as Array<{
+        id: string;
+        niveau_requis: number | null;
+      }>;
+      const piegesGratuitsNiv = (niveau: number) =>
+        etat.contextePiege.piegesAcquis.filter(
+          (p) => p.niveauAcquis === niveau && p.estGratuit,
+        ).length;
+      const recettesGratuitesPalier = (palier: number) =>
+        etat.contexteRecette.recettesAcquises.filter(
+          (r) =>
+            r.estGratuit &&
+            (recettesCat.find((x) => x.id === r.recetteId)?.niveau_requis ?? 0) === palier,
+        ).length;
+      const assemblagesGratuits = etat.contexteAssemblage.assemblagesAcquis.filter(
+        (a) => a.estGratuit,
+      ).length;
       // cf. TROUS_A3II §1 — forge/joaillerie posés à neutre.
       const row = {
         personnage_id: PERSONNAGE_LOCAL_ID,
@@ -1563,13 +1602,13 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         quota_alchimie_majeure_total: etat.quotas.recettesParPalier[3],
         quota_assemblages_total: etat.quotas.assemblagesTotal,
         quota_recettes_total: null,
-        quota_pieges_niv1_utilises: null,
-        quota_pieges_amelioration_niv2_utilises: null,
-        quota_pieges_amelioration_niv3_utilises: null,
-        quota_alchimie_mineure_utilises: null,
-        quota_alchimie_intermediaire_utilises: null,
-        quota_alchimie_majeure_utilises: null,
-        quota_assemblages_utilises: null,
+        quota_pieges_niv1_utilises: piegesGratuitsNiv(1),
+        quota_pieges_amelioration_niv2_utilises: piegesGratuitsNiv(2),
+        quota_pieges_amelioration_niv3_utilises: piegesGratuitsNiv(3),
+        quota_alchimie_mineure_utilises: recettesGratuitesPalier(1),
+        quota_alchimie_intermediaire_utilises: recettesGratuitesPalier(2),
+        quota_alchimie_majeure_utilises: recettesGratuitesPalier(3),
+        quota_assemblages_utilises: assemblagesGratuits,
       };
       return { data: row as unknown as never, error: null };
     },
@@ -1652,7 +1691,16 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           duree_choisie: s.dureeChoisie,
           nom_personnalise: s.nomPersonnalise ?? null,
           statut: "achete",
-          formule_magique: null,
+          // Le serveur stocke `generer_formule_magique(cercle, zone, portee,
+          // duree, niveau)` à l'achat/modif ; le port `genererFormuleMagique`
+          // est identique (mot manquant → null) → on le rebranche (audit s311).
+          formule_magique: genererFormuleMagique(
+            cat?.cercle ?? null,
+            s.zoneChoisie,
+            s.porteeChoisie,
+            s.dureeChoisie,
+            s.niveauSort,
+          ),
           date_acquisition: b.meta.creeLe,
           xp_depense: calculerCoutXP(s.zoneChoisie, s.porteeChoisie, s.dureeChoisie, s.niveauSort, cat?.cout_xp_base ?? 0),
           sorts: catFull
@@ -1686,7 +1734,15 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           duree_choisie: p.dureeChoisie,
           nom_personnalise: p.nomPersonnalise ?? null,
           statut: "achete",
-          duree_incantation_calculee: null,
+          // Le serveur stocke `calculer_duree_incantation_priere(portee, zone,
+          // duree, niveau)` à l'achat/modif ; le port `calculerDureeIncantation`
+          // est identique → on le rebranche (audit s311 TOP 5b).
+          duree_incantation_calculee: calculerDureeIncantation(
+            p.porteeChoisie,
+            p.zoneChoisie,
+            p.dureeChoisie,
+            p.niveauPriere,
+          ),
           date_acquisition: b.meta.creeLe,
           xp_depense: calculerCoutXP(p.zoneChoisie, p.porteeChoisie, p.dureeChoisie, p.niveauPriere, cat?.cout_xp_base ?? 0),
           prieres: catFull

@@ -14,6 +14,7 @@ export type RaceTrait = Database["public"]["Tables"]["race_traits"]["Row"];
 export type TraitRacial = Database["public"]["Tables"]["traits_raciaux"]["Row"];
 export type Religion = Database["public"]["Tables"]["religions"]["Row"];
 export type Langue = Database["public"]["Tables"]["langues"]["Row"];
+export type ReparationForge = Database["public"]["Tables"]["reparations_forge"]["Row"];
 
 /**
  * Forme structurelle du snapshot visiteur offline chargé depuis
@@ -33,6 +34,7 @@ export interface SnapshotVisiteur {
     competences: Competence[];
     religions: Religion[];
     langues: Langue[];
+    reparations_forge: ReparationForge[];
     [table: string]: unknown[];
   };
 }
