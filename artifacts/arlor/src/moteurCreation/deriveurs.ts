@@ -26,6 +26,14 @@ export interface CompetenceAcquiseLocale {
   xpDepense: number;
   apprisViaMaitre?: boolean;
   statutMaitre?: string;
+  /**
+   * PROVENANCE (pas coût) : `true` ssi cette ligne est une gratuité de classe
+   * posée par `appliquerGratuites`. C'est le SEUL critère de « gratuité de
+   * classe » — jamais `xpDepense === 0`, car un achat PAYANT peut coûter 0 XP
+   * par design (« Acquisition de Sort »/« Acquisition de Prière »). Absent =
+   * achat du joueur.
+   */
+  estGratuiteClasse?: boolean;
 }
 
 /**

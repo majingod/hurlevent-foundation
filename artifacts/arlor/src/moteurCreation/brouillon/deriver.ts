@@ -85,7 +85,7 @@ export interface EtatDeriveVisiteur {
   niveauxArtisanat: NiveauxArtisanat;
   quotas: QuotasArtisanat;
 
-  /** Compétences GRATUITES effectivement dérivées (xp_depense === 0). */
+  /** Compétences GRATUITES de classe effectivement dérivées (provenance). */
   gratuites: AcquisCompetence[];
 }
 
@@ -347,8 +347,10 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
     assemblagesTotal: quotaAssemblages,
   };
 
+  // Gratuités = PROVENANCE (flag posé par `appliquerGratuites`), jamais coût 0 :
+  // un achat payant à 0 XP (« Acquisition de Sort ») n'est PAS une gratuité.
   const gratuites: AcquisCompetence[] = etatAvecGratuites.competencesAcquises
-    .filter((c) => c.xpDepense === 0)
+    .filter((c) => c.estGratuiteClasse === true)
     .map(versAcquisCompetence);
 
   return {

@@ -45,10 +45,13 @@ function getCompetenceById(
  * Sémantique portée de l'annexe E :
  *  1. Classe manquante → erreur `classe_manquante` « Le personnage n'a pas de classe. »
  *  2. Purge des gratuités obsolètes : IMPLICITE ici. On recompute « from
- *     scratch » en repartant des seuls achats PAYANTS (xp_depense > 0) ; toute
- *     gratuité précédente (xp_depense === 0) est donc écartée puis reconstruite
- *     pour la classe courante — un changement de classe local purge de fait les
- *     anciennes gratuités, comme le fait le DELETE serveur.
+ *     scratch » en repartant des seuls ACHATS DU JOUEUR (toute ligne SANS le
+ *     flag de provenance `estGratuiteClasse`) ; toute gratuité de classe
+ *     précédente (`estGratuiteClasse === true`) est donc écartée puis
+ *     reconstruite pour la classe courante — un changement de classe local
+ *     purge de fait les anciennes gratuités, comme le fait le DELETE serveur.
+ *     ⚠️ On NE purge PAS sur `xpDepense === 0` : un achat payant à 0 XP
+ *     (« Acquisition de Sort/Prière ») serait alors jeté à tort (bug s311-A).
  *  3. Par gratuité :
  *     - compétence introuvable → erreur `competence_introuvable` (continue) ;
  *     - `type_choix` non-null sans choix → fallback religion = `etat.religionId`
@@ -57,7 +60,7 @@ function getCompetenceById(
  *     - `type_choix === 'religion'` avec choix → l'état adopte la religion
  *       (`religionId`, `estCroyant = true`) ;
  *     - insertion idempotente `{ xp_depense: 0, appris_via_maitre: false,
- *       statut_maitre: 'non_requis', choix_achat }`.
+ *       statut_maitre: 'non_requis', choix_achat, estGratuiteClasse: true }`.
  */
 export function appliquerGratuites(
   snapshot: SnapshotVisiteur,
@@ -76,12 +79,13 @@ export function appliquerGratuites(
     };
   }
 
-  // Recompute « from scratch » : on ne garde que les achats payants, ce qui
-  // purge implicitement les gratuités obsolètes (xp_depense === 0).
+  // Recompute « from scratch » : on ne garde que les ACHATS DU JOUEUR (lignes
+  // sans le flag de provenance), ce qui purge les gratuités de classe
+  // obsolètes tout en préservant les achats payants à 0 XP.
   let etat: EtatCreationVisiteur = {
     ...etatInitial,
     competencesAcquises: etatInitial.competencesAcquises.filter(
-      (c) => c.xpDepense > 0
+      (c) => !c.estGratuiteClasse
     ),
   };
 
@@ -128,6 +132,7 @@ export function appliquerGratuites(
       xpDepense: 0,
       apprisViaMaitre: false,
       statutMaitre: "non_requis",
+      estGratuiteClasse: true,
     };
     const dejaPresent = etat.competencesAcquises.some(
       (c) =>
