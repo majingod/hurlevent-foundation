@@ -19,6 +19,7 @@ import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
 import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
+import { xpDisponibleJaugeEtape2 } from "./Etape2_V2.calc";
 
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
 const NON_RACES_ID = "4d7e2226-76cb-4b94-9df4-b8f12ff486e1";
@@ -514,7 +515,7 @@ const Etape2_V2 = ({
   return (
     <div className="space-y-6">
       <JaugeXP
-        xpDisponible={xpDisponible}
+        xpDisponible={xpDisponibleJaugeEtape2(xpDisponible, xpTraits, xpTraitsPersistes)}
         coutEnCours={
           xpTraits - xpTraitsPersistes !== 0
             ? {
