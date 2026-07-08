@@ -2,6 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { clientActif, estModeVisiteur } from "@/creation/clientActif";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -79,11 +80,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: fiche, isLoading: ficheLoading } = useQuery({
     queryKey: ["fiche-personnage", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vue_fiche_personnage")
-        .select("*")
-        .eq("id", personnageId!)
-        .single();
+      const { data } = await clientActif.lireFichePersonnage(personnageId!);
       return data as FichePersonnage;
     },
     enabled: !!personnageId,
@@ -96,12 +93,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: competences } = useQuery({
     queryKey: ["competences-personnage", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vue_competences_personnage")
-        .select("*")
-        .eq("personnage_id", personnageId!)
-        .order("categorie")
-        .order("nom");
+      const { data } = await clientActif.lireFicheCompetences(personnageId!);
       return (data ?? []) as Competence[];
     },
     enabled: !!personnageId,
@@ -111,12 +103,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: sorts } = useQuery({
     queryKey: ["sorts-personnage", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vue_sorts_personnage")
-        .select("*")
-        .eq("personnage_id", personnageId!)
-        .order("cercle")
-        .order("nom_personnalise");
+      const { data } = await clientActif.lireFicheSorts(personnageId!);
       return (data ?? []) as Sort[];
     },
     enabled: !!personnageId,
@@ -126,12 +113,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: prieres } = useQuery({
     queryKey: ["prieres-personnage", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vue_prieres_personnage")
-        .select("*")
-        .eq("personnage_id", personnageId!)
-        .order("domaine")
-        .order("nom_personnalise");
+      const { data } = await clientActif.lireFichePrieres(personnageId!);
       return (data ?? []) as Priere[];
     },
     enabled: !!personnageId,
@@ -141,11 +123,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: assemblages } = useQuery({
     queryKey: ["assemblages-personnage", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vue_assemblages_personnage")
-        .select("*")
-        .eq("personnage_id", personnageId!)
-        .order("nom");
+      const { data } = await clientActif.lireFicheAssemblages(personnageId!);
       return (data ?? []) as Assemblage[];
     },
     enabled: !!personnageId,
@@ -157,12 +135,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: recettes } = useQuery({
     queryKey: ["recettes-personnage", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("personnage_recettes")
-        .select(
-          "id, personnage_id, xp_depense, recettes_alchimie(nom, type, niveau_requis, description, effet, formule, ingredients, description_verbatim, resume_condense)"
-        )
-        .eq("personnage_id", personnageId!);
+      const { data } = await clientActif.lireFicheRecettes(personnageId!);
       const rows = (data ?? []).map((r) => ({
         id: r.id,
         personnage_id: r.personnage_id,
@@ -182,11 +155,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: artisanatEtat } = useQuery({
     queryKey: ["artisanat-etat", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("vue_artisanat_etat")
-        .select("niveau_alchimie, niveau_forge, niveau_joaillerie, niveau_pieges, niveau_runes")
-        .eq("personnage_id", personnageId!)
-        .maybeSingle();
+      const { data } = await clientActif.lireFicheArtisanatEtat(personnageId!);
       return (data as ArtisanatEtat) ?? null;
     },
     enabled: !!personnageId,
@@ -195,12 +164,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: manipulations } = useQuery({
     queryKey: ["manipulations-alchimiques", artisanatEtat?.niveau_alchimie],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("ingredients_alchimiques")
-        .select("id, nom, niveau, manipulations")
-        .lte("niveau", artisanatEtat?.niveau_alchimie ?? 0)
-        .order("niveau")
-        .order("nom");
+      const { data } = await clientActif.lireFicheManipulations(artisanatEtat?.niveau_alchimie ?? 0);
       return (data ?? []) as ManipulationAlchimique[];
     },
     enabled: !!(artisanatEtat?.niveau_alchimie && artisanatEtat.niveau_alchimie >= 1),
@@ -212,14 +176,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: objetsForge } = useQuery({
     queryKey: ["objets-forge-fiche"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("objets_forge")
-        .select(
-          "id, nom, description, resume_condense, type, cout_xp, temps_fabrication_minutes, materiaux_communs, materiaux_rares, non_reparable, reparation:reparations_forge!reparation_id(nom_affichage, temps_minutes, materiaux)"
-        )
-        .eq("est_actif", true)
-        .order("temps_fabrication_minutes")
-        .order("nom");
+      const { data } = await clientActif.lireFicheObjetsForge();
       return (data ?? []) as ObjetForge[];
     },
     enabled: !!(artisanatEtat?.niveau_forge && artisanatEtat.niveau_forge >= 1),
@@ -228,12 +185,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: objetsJoaillerie } = useQuery({
     queryKey: ["objets-joaillerie"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("objets_joaillerie")
-        .select("id, nom, description, resume_condense, effet, cout_xp, temps_fabrication_minutes, temps_rare_minutes, materiaux_communs, materiaux_rares")
-        .eq("est_actif", true)
-        .order("temps_fabrication_minutes")
-        .order("nom");
+      const { data } = await clientActif.lireFicheObjetsJoaillerie();
       return (data ?? []) as ObjetJoaillerie[];
     },
     enabled: !!(artisanatEtat?.niveau_joaillerie && artisanatEtat.niveau_joaillerie >= 1),
@@ -243,13 +195,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: piegesCatalogue } = useQuery({
     queryKey: ["pieges-catalogue-fiche", artisanatEtat?.niveau_pieges],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("pieges")
-        .select("*")
-        .eq("est_actif", true)
-        .lte("niveau", artisanatEtat?.niveau_pieges ?? 0)
-        .order("nom")
-        .order("niveau");
+      const { data } = await clientActif.lireFichePiegesCatalogue(artisanatEtat?.niveau_pieges ?? 0);
       return (data ?? []) as PiegeRow[];
     },
     enabled: !!(artisanatEtat?.niveau_pieges && artisanatEtat.niveau_pieges >= 1),
@@ -258,10 +204,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: personnagePieges } = useQuery({
     queryKey: ["personnage-pieges-fiche", personnageId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("personnage_pieges")
-        .select("*")
-        .eq("personnage_id", personnageId!);
+      const { data } = await clientActif.lireFichePieges(personnageId!);
       return (data ?? []) as PersonnagePiegeRow[];
     },
     enabled: !!personnageId && !!(artisanatEtat?.niveau_pieges && artisanatEtat.niveau_pieges >= 1),
@@ -270,9 +213,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: langues } = useQuery({
     queryKey: ["langues-fiche"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("langues")
-        .select("id, nom");
+      const { data, error } = await clientActif.lireFicheLangues();
       if (error) throw error;
       return (data ?? []) as Pick<LangueRow, "id" | "nom">[];
     },
@@ -281,11 +222,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   const { data: religions } = useQuery({
     queryKey: ["religions-fiche"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("religions")
-        .select(
-          "id, nom, dirigeant, fondateur, symbole_sacre, pouvoir_symbole, domaines_principaux, domaines_proscrits, lore_fiche, rituels_fiche, lore_manuel, rituels_manuel"
-        );
+      const { data, error } = await clientActif.lireFicheReligions();
       if (error) throw error;
       return (data ?? []) as ReligionRow[];
     },
@@ -621,12 +558,14 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         <TabsContent value="infos" className="space-y-4 mt-6">
           <RaceClasseCard fiche={fiche} />
           <InfosCard fiche={fiche} xpDisponible={xpDisponible} />
-          <BanqueXpCard
-            joueurId={fiche.joueur_id}
-            personnageId={fiche.id}
-            personnageNom={fiche.nom}
-            isOwner={peutEditer}
-          />
+          {!estModeVisiteur() && (
+            <BanqueXpCard
+              joueurId={fiche.joueur_id}
+              personnageId={fiche.id}
+              personnageNom={fiche.nom}
+              isOwner={peutEditer}
+            />
+          )}
           {(() => {
             const maReligion = fiche.religion_id
               ? religions?.find((r) => r.id === fiche.religion_id)

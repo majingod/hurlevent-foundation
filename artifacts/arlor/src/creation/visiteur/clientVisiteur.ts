@@ -1915,6 +1915,65 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       });
       return { data: rows as unknown as never, error: null };
     },
+
+    // HL-RECAP lot 3 : sera dérivé du brouillon (adaptateurFiche). Stub =
+    // fiche indisponible hors connexion (comportement identique à avant ce lot).
+
+    async lireFichePersonnage() {
+      return { data: null, error: null };
+    },
+
+    async lireFicheCompetences() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheSorts() {
+      return { data: [], error: null };
+    },
+
+    async lireFichePrieres() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheAssemblages() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheRecettes() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheArtisanatEtat() {
+      return { data: null, error: null };
+    },
+
+    async lireFichePieges() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheManipulations() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheObjetsForge() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheObjetsJoaillerie() {
+      return { data: [], error: null };
+    },
+
+    async lireFichePiegesCatalogue() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheLangues() {
+      return { data: [], error: null };
+    },
+
+    async lireFicheReligions() {
+      return { data: [], error: null };
+    },
   };
 }
 

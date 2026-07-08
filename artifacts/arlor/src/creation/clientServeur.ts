@@ -481,4 +481,128 @@ export const clientServeur: ClientCreation = {
       .select("*")
       .eq("personnage_id", personnageId);
   },
+
+  // HL-RECAP (s313) : lectures de la fiche au format des vues d'affichage.
+  // Serveur = requêtes historiques de FichePersonnageView déplacées verbatim ;
+  // visiteur = adaptateur brouillon (lot 3).
+
+  async lireFichePersonnage(personnageId) {
+    return await supabase
+      .from("vue_fiche_personnage")
+      .select("*")
+      .eq("id", personnageId)
+      .single();
+  },
+
+  async lireFicheCompetences(personnageId) {
+    return await supabase
+      .from("vue_competences_personnage")
+      .select("*")
+      .eq("personnage_id", personnageId)
+      .order("categorie")
+      .order("nom");
+  },
+
+  async lireFicheSorts(personnageId) {
+    return await supabase
+      .from("vue_sorts_personnage")
+      .select("*")
+      .eq("personnage_id", personnageId)
+      .order("cercle")
+      .order("nom_personnalise");
+  },
+
+  async lireFichePrieres(personnageId) {
+    return await supabase
+      .from("vue_prieres_personnage")
+      .select("*")
+      .eq("personnage_id", personnageId)
+      .order("domaine")
+      .order("nom_personnalise");
+  },
+
+  async lireFicheAssemblages(personnageId) {
+    return await supabase
+      .from("vue_assemblages_personnage")
+      .select("*")
+      .eq("personnage_id", personnageId)
+      .order("nom");
+  },
+
+  async lireFicheRecettes(personnageId) {
+    return await supabase
+      .from("personnage_recettes")
+      .select(
+        "id, personnage_id, xp_depense, recettes_alchimie(nom, type, niveau_requis, description, effet, formule, ingredients, description_verbatim, resume_condense)"
+      )
+      .eq("personnage_id", personnageId);
+  },
+
+  async lireFicheArtisanatEtat(personnageId) {
+    return await supabase
+      .from("vue_artisanat_etat")
+      .select("niveau_alchimie, niveau_forge, niveau_joaillerie, niveau_pieges, niveau_runes")
+      .eq("personnage_id", personnageId)
+      .maybeSingle();
+  },
+
+  async lireFichePieges(personnageId) {
+    return await supabase
+      .from("personnage_pieges")
+      .select("*")
+      .eq("personnage_id", personnageId);
+  },
+
+  async lireFicheManipulations(niveauMax) {
+    return await supabase
+      .from("ingredients_alchimiques")
+      .select("id, nom, niveau, manipulations")
+      .lte("niveau", niveauMax)
+      .order("niveau")
+      .order("nom");
+  },
+
+  async lireFicheObjetsForge() {
+    return await supabase
+      .from("objets_forge")
+      .select(
+        "id, nom, description, resume_condense, type, cout_xp, temps_fabrication_minutes, materiaux_communs, materiaux_rares, non_reparable, reparation:reparations_forge!reparation_id(nom_affichage, temps_minutes, materiaux)"
+      )
+      .eq("est_actif", true)
+      .order("temps_fabrication_minutes")
+      .order("nom");
+  },
+
+  async lireFicheObjetsJoaillerie() {
+    return await supabase
+      .from("objets_joaillerie")
+      .select("id, nom, description, resume_condense, effet, cout_xp, temps_fabrication_minutes, temps_rare_minutes, materiaux_communs, materiaux_rares")
+      .eq("est_actif", true)
+      .order("temps_fabrication_minutes")
+      .order("nom");
+  },
+
+  async lireFichePiegesCatalogue(niveauMax) {
+    return await supabase
+      .from("pieges")
+      .select("*")
+      .eq("est_actif", true)
+      .lte("niveau", niveauMax)
+      .order("nom")
+      .order("niveau");
+  },
+
+  async lireFicheLangues() {
+    return await supabase
+      .from("langues")
+      .select("id, nom");
+  },
+
+  async lireFicheReligions() {
+    return await supabase
+      .from("religions")
+      .select(
+        "id, nom, dirigeant, fondateur, symbole_sacre, pouvoir_symbole, domaines_principaux, domaines_proscrits, lore_fiche, rituels_fiche, lore_manuel, rituels_manuel"
+      );
+  },
 };
