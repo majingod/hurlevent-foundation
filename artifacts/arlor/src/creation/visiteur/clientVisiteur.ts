@@ -90,6 +90,7 @@ import {
   chargerBrouillon,
   sauverBrouillon,
 } from "./stockageBrouillon";
+import * as adaptateurFiche from "@/moteurCreation/brouillon/adaptateurFiche";
 
 // ============================================================
 // Constantes & couture
@@ -1662,14 +1663,15 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       const assemblagesGratuits = etat.contexteAssemblage.assemblagesAcquis.filter(
         (a) => a.estGratuit,
       ).length;
-      // cf. TROUS_A3II §1 — forge/joaillerie posés à neutre.
+      // TROUS_A3II §1 comblé (HL-RECAP lot 3) : forge/joaillerie dérivés du
+      // brouillon (miroir `vue_personnage_etat`), plus de valeur neutre.
       const row = {
         personnage_id: PERSONNAGE_LOCAL_ID,
         niveau_alchimie: na.niveauAlchimie,
         niveau_runes: na.niveauRunes,
         niveau_pieges: na.niveauPieges,
-        niveau_forge: null,
-        niveau_joaillerie: null,
+        niveau_forge: na.niveauForge,
+        niveau_joaillerie: na.niveauJoaillerie,
         a_forge_legendaire: false,
         a_joaillerie_legendaire: false,
         quota_pieges_niv1_total: etat.quotas.piegesParNiveau[1],
@@ -1916,63 +1918,138 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       return { data: rows as unknown as never, error: null };
     },
 
-    // HL-RECAP lot 3 : sera dérivé du brouillon (adaptateurFiche). Stub =
-    // fiche indisponible hors connexion (comportement identique à avant ce lot).
+    // HL-RECAP lot 3 : lectures de la fiche dérivées du brouillon via l'adaptateur
+    // PUR (`moteurCreation/brouillon/adaptateurFiche`). Squelette uniforme des
+    // lectures existantes : guard + chargerBrouillon + deriver + appel adaptateur.
+    // Les catalogues (sans perso) sont des lectures snapshot pures.
 
-    async lireFichePersonnage() {
-      return { data: null, error: null };
+    async lireFichePersonnage(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: null, error: null };
+      const row = adaptateurFiche.fichePersonnage(
+        snap(),
+        b,
+        deriver(b),
+        PERSONNAGE_LOCAL_ID,
+        PROFIL_VISITEUR_LOCAL,
+      );
+      return { data: row as unknown as never, error: null };
     },
 
-    async lireFicheCompetences() {
-      return { data: [], error: null };
+    async lireFicheCompetences(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: [] as unknown as never, error: null };
+      const rows = adaptateurFiche.ficheCompetences(
+        snap(),
+        b,
+        deriver(b),
+        PERSONNAGE_LOCAL_ID,
+        idGratuite,
+      );
+      return { data: rows as unknown as never, error: null };
     },
 
-    async lireFicheSorts() {
-      return { data: [], error: null };
+    async lireFicheSorts(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: [] as unknown as never, error: null };
+      const rows = adaptateurFiche.ficheSorts(snap(), b, PERSONNAGE_LOCAL_ID);
+      return { data: rows as unknown as never, error: null };
     },
 
-    async lireFichePrieres() {
-      return { data: [], error: null };
+    async lireFichePrieres(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: [] as unknown as never, error: null };
+      const rows = adaptateurFiche.fichePrieres(snap(), b, PERSONNAGE_LOCAL_ID);
+      return { data: rows as unknown as never, error: null };
     },
 
-    async lireFicheAssemblages() {
-      return { data: [], error: null };
+    async lireFicheAssemblages(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: [] as unknown as never, error: null };
+      const rows = adaptateurFiche.ficheAssemblages(
+        snap(),
+        b,
+        deriver(b),
+        PERSONNAGE_LOCAL_ID,
+      );
+      return { data: rows as unknown as never, error: null };
     },
 
-    async lireFicheRecettes() {
-      return { data: [], error: null };
+    async lireFicheRecettes(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: [] as unknown as never, error: null };
+      const rows = adaptateurFiche.ficheRecettes(
+        snap(),
+        b,
+        deriver(b),
+        PERSONNAGE_LOCAL_ID,
+      );
+      return { data: rows as unknown as never, error: null };
     },
 
-    async lireFicheArtisanatEtat() {
-      return { data: null, error: null };
+    async lireFicheArtisanatEtat(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: null, error: null };
+      const row = adaptateurFiche.ficheArtisanatEtat(deriver(b));
+      return { data: row as unknown as never, error: null };
     },
 
-    async lireFichePieges() {
-      return { data: [], error: null };
+    async lireFichePieges(personnageId) {
+      const g = guardPerso(personnageId);
+      if (g) return g as unknown as Reponse<never>;
+      const b = chargerBrouillon();
+      if (!b) return { data: [] as unknown as never, error: null };
+      const rows = adaptateurFiche.fichePieges(
+        snap(),
+        b,
+        deriver(b),
+        PERSONNAGE_LOCAL_ID,
+      );
+      return { data: rows as unknown as never, error: null };
     },
 
-    async lireFicheManipulations() {
-      return { data: [], error: null };
+    async lireFicheManipulations(niveauMax) {
+      const rows = adaptateurFiche.ficheManipulations(snap(), niveauMax);
+      return { data: rows as unknown as never, error: null };
     },
 
     async lireFicheObjetsForge() {
-      return { data: [], error: null };
+      const rows = adaptateurFiche.ficheObjetsForge(snap());
+      return { data: rows as unknown as never, error: null };
     },
 
     async lireFicheObjetsJoaillerie() {
-      return { data: [], error: null };
+      const rows = adaptateurFiche.ficheObjetsJoaillerie(snap());
+      return { data: rows as unknown as never, error: null };
     },
 
-    async lireFichePiegesCatalogue() {
-      return { data: [], error: null };
+    async lireFichePiegesCatalogue(niveauMax) {
+      const rows = adaptateurFiche.fichePiegesCatalogue(snap(), niveauMax);
+      return { data: rows as unknown as never, error: null };
     },
 
     async lireFicheLangues() {
-      return { data: [], error: null };
+      const rows = adaptateurFiche.ficheLangues(snap());
+      return { data: rows as unknown as never, error: null };
     },
 
     async lireFicheReligions() {
-      return { data: [], error: null };
+      const rows = adaptateurFiche.ficheReligions(snap());
+      return { data: rows as unknown as never, error: null };
     },
   };
 }

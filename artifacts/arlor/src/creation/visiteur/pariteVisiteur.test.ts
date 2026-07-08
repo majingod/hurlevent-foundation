@@ -69,7 +69,7 @@ function etatBase(): EtatDeriveVisiteur {
     pvMax: 0,
     psMax: 0,
     raceInapteMagie: false,
-    niveauxArtisanat: { niveauAlchimie: 0, niveauRunes: 0, niveauPieges: 0 },
+    niveauxArtisanat: { niveauAlchimie: 0, niveauRunes: 0, niveauPieges: 0, niveauForge: 0, niveauJoaillerie: 0 },
     quotas: { piegesParNiveau: { 1: 0, 2: 0, 3: 0 }, recettesParPalier: { 1: 0, 2: 0, 3: 0 }, assemblagesTotal: 0 },
     gratuites: [],
   };
