@@ -15,6 +15,13 @@ export type TraitRacial = Database["public"]["Tables"]["traits_raciaux"]["Row"];
 export type Religion = Database["public"]["Tables"]["religions"]["Row"];
 export type Langue = Database["public"]["Tables"]["langues"]["Row"];
 export type ReparationForge = Database["public"]["Tables"]["reparations_forge"]["Row"];
+export type SectionRegle = Database["public"]["Tables"]["sections_regles"]["Row"];
+export type EffetCombat = Database["public"]["Tables"]["effets_combat"]["Row"];
+export type Creature = Database["public"]["Tables"]["bestiaire"]["Row"];
+export type Lore = Database["public"]["Tables"]["lore"]["Row"];
+export type FicheSchema = Database["public"]["Tables"]["fiches_schemas"]["Row"];
+export type FicheListe = Database["public"]["Tables"]["fiches_listes"]["Row"];
+export type CompetenceEncyclopedie = Database["public"]["Views"]["vue_competences_encyclopedie"]["Row"];
 
 /**
  * Forme structurelle du snapshot visiteur offline chargé depuis
@@ -35,7 +42,17 @@ export interface SnapshotVisiteur {
     religions: Religion[];
     langues: Langue[];
     reparations_forge: ReparationForge[];
-    [table: string]: unknown[];
+    // Extension hors-ligne (lot A0, s312) : optionnelles tant que le JSON
+    // committé reste en 18 clés — présentes dès qu'un prebuild/refresh
+    // régénère le snapshot à 25 clés.
+    sections_regles?: SectionRegle[];
+    effets_combat?: EffetCombat[];
+    bestiaire?: Creature[];
+    lore?: Lore[];
+    fiches_schemas?: FicheSchema[];
+    fiches_listes?: FicheListe[];
+    vue_competences_encyclopedie?: CompetenceEncyclopedie[];
+    [table: string]: unknown[] | undefined;
   };
 }
 
