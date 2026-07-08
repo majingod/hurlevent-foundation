@@ -6,12 +6,31 @@ import type { ClientCreation } from "./types";
 const RE_VISITEUR = /^\/visiteur(\/|$)/;
 
 /**
+ * Cible de build hors-ligne (`vite.hors-ligne.config.ts` pose ce flag via
+ * `define`). Le HTML autonome sert le wizard sous `HashRouter` : le pathname
+ * réel est `/index-hors-ligne.html` (ou un chemin `file://`), jamais
+ * `/visiteur` — le routing vit dans le hash. Le regex `RE_VISITEUR` sur le
+ * pathname ne matcherait donc jamais → il faut forcer `clientVisiteur`.
+ */
+const CIBLE_HORS_LIGNE = import.meta.env.VITE_CIBLE_HORS_LIGNE === "1";
+
+/**
  * Pur + testable : quel client pour ce pathname ?
  *
- * `/visiteur` (et tout sous-chemin `/visiteur/...`) → `clientVisiteur` (moteur
- * local, 100 % hors ligne). Tout le reste → `clientServeur` (passe-plat supabase).
+ * En cible hors-ligne (`cibleHorsLigne`) → TOUJOURS `clientVisiteur`, quel que
+ * soit le pathname (le HashRouter du build autonome ne l'expose pas).
+ * Sinon : `/visiteur` (et tout sous-chemin `/visiteur/...`) → `clientVisiteur`
+ * (moteur local, 100 % hors ligne) ; tout le reste → `clientServeur`
+ * (passe-plat supabase).
+ *
+ * `cibleHorsLigne` est un paramètre injectable (défaut = flag de build) pour
+ * rester testable sans mocker `import.meta.env`.
  */
-export function clientPourPathname(pathname: string): ClientCreation {
+export function clientPourPathname(
+  pathname: string,
+  cibleHorsLigne: boolean = CIBLE_HORS_LIGNE,
+): ClientCreation {
+  if (cibleHorsLigne) return clientVisiteur;
   return RE_VISITEUR.test(pathname) ? clientVisiteur : clientServeur;
 }
 

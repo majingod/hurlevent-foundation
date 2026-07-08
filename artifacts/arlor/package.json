@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "node scripts/snapshot-visiteur.mjs --prebuild && vite build --config vite.config.ts",
+    "build:hors-ligne": "vite build --config vite.hors-ligne.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
@@ -65,11 +66,14 @@
     "vaul": "^1.1.2",
     "vite": "catalog:",
     "vite-plugin-pwa": "catalog:",
+    "vite-plugin-singlefile": "^2.3.3",
     "workbox-window": "catalog:",
     "wouter": "catalog:",
     "zod": "catalog:"
   },
   "dependencies": {
+    "@fontsource/cinzel": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@supabase/supabase-js": "^2.105.3",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.15.0",

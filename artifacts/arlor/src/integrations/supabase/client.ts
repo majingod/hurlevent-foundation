@@ -1,8 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Cible hors-ligne (lot A1, s312) : le build autonome n'a AUCUN env Supabase.
+// Ce module est dans le graphe (clientActif importe clientServeur) même si le
+// flag force clientVisiteur ; sans URL/clé, `createClient` lève
+// « supabaseUrl is required. » au chargement → l'app autonome planterait à
+// l'ouverture. Fallback neutre et non résolvable (jamais « supabase.co ») : le
+// client existe mais aucune requête n'est émise en mode visiteur/hors-ligne.
+// Sur le site (env présent), le fallback n'est jamais utilisé — zéro impact.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://hors-ligne.invalid";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "hors-ligne";
 
 // AUDIT-ADMIN-MODE-ROLE : canal « admin mode ».
 // Quand actif, le fetch ci-dessous ajoute le header x-hv-canal:admin, lu par
