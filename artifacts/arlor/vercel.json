@@ -14,6 +14,13 @@
       "headers": [
         { "key": "Cache-Control", "value": "no-cache" }
       ]
+    },
+    {
+      "source": "/hurlevent-hors-ligne.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"hurlevent-hors-ligne.html\"" }
+      ]
     }
   ]
 }

@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Le créateur hors ligne se télécharge en un clic",
+    description:
+      "Sur la page Téléchargements, un seul fichier à récupérer qui fonctionne sans réseau : les données du jeu sont à jour à chaque téléchargement, et un récapitulatif complet du personnage est inclus.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Essaie le créateur de personnage — sans compte, même sans réseau",
     description:
       "Tu peux maintenant essayer le créateur de personnage sans créer de compte : un bouton « Créer mon personnage — essai libre » t'attend sur l'accueil. Ça marche même hors ligne (en forêt, en sous-sol…) : ton brouillon est sauvegardé sur ton appareil et reprend là où tu étais. Toutes les règles du jeu s'appliquent (coûts XP, prérequis, classes) — avec un aperçu clair avant tout changement de classe ou désachat. À la fin, ton personnage est validé, prêt à être recréé en quelques minutes quand tu ouvres un vrai compte.",

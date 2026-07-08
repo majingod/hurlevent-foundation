@@ -11,6 +11,7 @@ import {
   BookOpen,
   ChevronDown,
   ExternalLink,
+  WifiOff,
 } from "lucide-react";
 
 /**
@@ -199,7 +200,35 @@ export default function Telechargements() {
         </CardContent>
       </Card>
 
-      {/* Carte 3 — espace extensible */}
+      {/* Carte 3 — Créateur hors ligne */}
+      <Card className="mb-4 bg-card border-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 font-heading text-lg">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/40 bg-primary/10">
+              <WifiOff className="h-5 w-5 text-primary" />
+            </span>
+            Créateur de personnage hors ligne
+          </CardTitle>
+          <p className="pt-2 text-sm text-muted-foreground">
+            Un seul fichier à télécharger, qui s'ouvre dans n'importe quel navigateur — même en
+            pleine forêt, sans réseau. Idéal pour bâtir un personnage sur le terrain ou le montrer
+            à un ami sans compte. Contient les données du jeu à jour au moment du téléchargement
+            (~4-5 Mo). Ton brouillon est sauvegardé dans le navigateur où tu l'ouvres.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <a
+            href="/hurlevent-hors-ligne.html"
+            download
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Download className="h-[18px] w-[18px]" />
+            Télécharger le fichier
+          </a>
+        </CardContent>
+      </Card>
+
+      {/* Carte 4 — espace extensible */}
       <div className="flex items-center gap-3 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
         <BookOpen className="h-[18px] w-[18px] shrink-0" />
         <span>Espace extensible : futures ressources (fiches, aides de jeu, calendriers…).</span>
