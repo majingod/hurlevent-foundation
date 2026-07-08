@@ -14,3 +14,25 @@ export function xpDisponibleJaugeEtape2(
 ): number {
   return xpDisponibleBandeau + (xpTraits - xpTraitsPersistes);
 }
+
+/**
+ * BUG s313 : en CRÉATION, `xp_total` avant sauvegarde de la race = les XP
+ * DÉCLARÉS à l'étape 1 (GN/mini/ouvertures), ADDITIFS à `xp_depart`. L'ancienne
+ * formule `xp_depart − xp_total` les retranchait → l'étape 2 affichait
+ * `xp_depart` seul, et les XP de GN « disparaissaient » jusqu'à l'étape suivante.
+ * On projette donc le départ COMPLET tant qu'aucune race n'est persistée
+ * (création). Dès qu'une race est enregistrée (édition admin d'un perso ayant
+ * accumulé de l'XP de jeu, `xp_total` reflète déjà `xp_depart`), on conserve
+ * STRICTEMENT le comportement d'origine → zéro régression admin.
+ */
+export function gainDepartProjete(
+  raceDejaPersistee: boolean,
+  xpDepartCible: number,
+  xpTotalServeur: number,
+): number {
+  return raceDejaPersistee
+    ? xpDepartCible > xpTotalServeur
+      ? xpDepartCible - xpTotalServeur
+      : 0
+    : xpDepartCible;
+}

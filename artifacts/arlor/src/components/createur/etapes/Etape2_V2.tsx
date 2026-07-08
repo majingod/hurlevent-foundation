@@ -19,7 +19,7 @@ import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
 import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
-import { xpDisponibleJaugeEtape2 } from "./Etape2_V2.calc";
+import { gainDepartProjete, xpDisponibleJaugeEtape2 } from "./Etape2_V2.calc";
 
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
 const NON_RACES_ID = "4d7e2226-76cb-4b94-9df4-b8f12ff486e1";
@@ -218,13 +218,16 @@ const Etape2_V2 = ({
   }, [achetes, traits]);
 
   // Projection de l'XP de départ de la race AVANT sauvegarde (maquette : la
-  // jauge montre xp_depart dès la sélection). On ne projette QUE si l'XP serveur
-  // n'a pas déjà dépassé ce départ (création) — en édition admin d'un perso
-  // ayant accumulé de l'XP de jeu, xp_total serveur fait foi (gain = 0).
+  // jauge montre le total dès la sélection). Voir gainDepartProjete
+  // (Etape2_V2.calc.ts, BUG s313) pour la logique création vs. admin.
   const xpTotalServeur = (perso?.xp_total as number | null) ?? 0;
   const xpDepartCible = raceSelectionnee?.xp_depart ?? 0;
-  const gainProjete =
-    xpDepartCible > xpTotalServeur ? xpDepartCible - xpTotalServeur : 0;
+  const raceDejaPersistee = ((perso?.race_id as string | null) ?? null) != null;
+  const gainProjete = gainDepartProjete(
+    raceDejaPersistee,
+    xpDepartCible,
+    xpTotalServeur,
+  );
 
   useEffect(() => {
     onXpGainChange?.(gainProjete);
