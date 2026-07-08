@@ -2,21 +2,20 @@
 /**
  * snapshot-visiteur.mjs — script de RÉGÉNÉRATION du snapshot visiteur offline.
  *
- * ⚠️ NÉCESSITE LE RÉSEAU (accès Supabase) — NON exécuté dans ce lot.
- *    L'environnement CC ne peut pas joindre Supabase (egress). Le
- *    snapshot committé (src/data/snapshotVisiteur.json) a été capturé en
- *    prod par l'orchestrateur via la RPC public.snapshot_visiteur()
- *    (voir supabase/migrations/20260703182834_visiteur_snapshot_rpc.sql).
- *    Ce script reste la source de RÉGÉNÉRATION quand le réseau est dispo.
- *
  * Un SEUL appel `supabase.rpc('snapshot_visiteur')` renvoie tout le jsonb
- * `{manifest:{genere_le,comptes}, tables:{…17 tables…}}` — la RPC est
+ * `{manifest:{genere_le,comptes}, tables:{…25 tables…}}` — la RPC est
  * SECURITY INVOKER, donc l'appelant anon voit exactement ce que la RLS lui
  * montre (parité stricte avec ce que l'app peut lire).
  *
  * Après réception : les MÊMES garde-fous anti-stub que la version précédente
  * (comptes recalculés depuis tables[t].length, planchers de réalité, ids de
  * `races` = UUID) — un snapshot factice reste IMPOSSIBLE à écrire.
+ *
+ * Mode `--prebuild` (PREBUILD Vercel) : tolérant aux pannes réseau. En cas
+ * d'échec (réseau, garde-fou, env manquante), le script logue un warning et
+ * sort en code 0 pour laisser le build continuer sur le JSON déjà committé
+ * (fallback silencieux). Sans `--prebuild`, comportement historique inchangé
+ * (échec → exit 1, utile en local/CI pour forcer une régénération correcte).
  */
 
 import fs from 'fs';
@@ -27,6 +26,36 @@ import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const PREBUILD = process.argv.includes('--prebuild');
+
+// En mode --prebuild, tout échec est un fallback tolérant (warning + exit 0)
+// pour laisser le build Vercel continuer sur le JSON déjà committé. Sans le
+// flag, comportement historique : échec → exit 1.
+function fail(raison) {
+  if (PREBUILD) {
+    console.warn(`⚠️ prebuild snapshot: fallback sur le JSON committé (${raison})`);
+    process.exit(0);
+  }
+  console.error(`❌ ${raison}`);
+  process.exit(1);
+}
+
+// ============================================================
+// Clés attendues (18 legacy + 7 extension hors-ligne = 25)
+// ============================================================
+
+const TABLES_LEGACY = [
+  'races', 'race_traits', 'traits_raciaux', 'classes', 'competences', 'sorts',
+  'prieres', 'religions', 'langues', 'familles_criminelles', 'categories_creatures',
+  'assemblages_runes', 'recettes_alchimie', 'pieges', 'objets_forge',
+  'objets_joaillerie', 'reparations_forge', 'parametres_jeu',
+];
+const TABLES_HORS_LIGNE = [
+  'sections_regles', 'effets_combat', 'bestiaire', 'lore', 'fiches_schemas',
+  'fiches_listes', 'vue_competences_encyclopedie',
+];
+const TABLES_ATTENDUES = [...TABLES_LEGACY, ...TABLES_HORS_LIGNE];
 
 // ============================================================
 // Chargement des variables d'environnement
@@ -57,10 +86,9 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ ERREUR : Variables d\'environnement manquantes');
   console.error('Requis : VITE_SUPABASE_URL + (VITE_SUPABASE_ANON_KEY ou VITE_SUPABASE_PUBLISHABLE_KEY)');
   console.error('Fallback : artifacts/arlor/.env');
-  process.exit(1);
+  fail('variables d\'environnement manquantes');
 }
 
 // ============================================================
@@ -74,12 +102,10 @@ async function exportSnapshot() {
 
   const { data, error } = await supabase.rpc('snapshot_visiteur');
   if (error) {
-    console.error('❌ Erreur RPC snapshot_visiteur :', error.message);
-    process.exit(1);
+    return fail(`erreur RPC snapshot_visiteur : ${error.message}`);
   }
   if (!data || typeof data !== 'object' || !data.tables) {
-    console.error('❌ Réponse RPC invalide : racine { manifest, tables } attendue.');
-    process.exit(1);
+    return fail('réponse RPC invalide : racine { manifest, tables } attendue.');
   }
 
   const tables = data.tables;
@@ -115,9 +141,25 @@ async function exportSnapshot() {
     competences: 50,
     sorts: 50,
     prieres: 50,
+    // Extension hors-ligne (comptes prod du 2026-07-07 : 52/33/6/18/14/14/91) —
+    // planchers conservateurs.
+    sections_regles: 40,
+    effets_combat: 25,
+    bestiaire: 4,
+    lore: 10,
+    fiches_schemas: 10,
+    fiches_listes: 10,
+    vue_competences_encyclopedie: 80,
   };
 
   const violations = [];
+
+  // 0. Les 25 clés attendues doivent toutes être présentes.
+  for (const t of TABLES_ATTENDUES) {
+    if (!tableNames.includes(t)) {
+      violations.push(`Clé « ${t} » absente de la réponse RPC (25 attendues, ${tableNames.length} reçues).`);
+    }
+  }
 
   // 1. Aucune table ne doit être vide.
   for (const t of tableNames) {
@@ -143,16 +185,15 @@ async function exportSnapshot() {
   }
 
   if (violations.length > 0) {
-    console.error('\n❌ REFUS D\'ÉCRITURE — garde-fous anti-stub déclenchés :');
+    console.error('\n❌ Garde-fous anti-stub déclenchés :');
     for (const v of violations) console.error(`   • ${v}`);
-    console.error('\nAucun fichier écrit. Corrige l\'accès aux données réelles et relance.');
-    process.exit(1);
+    return fail(`garde-fous anti-stub : ${violations.length} violation(s), aucun fichier écrit`);
   }
 
-  console.log('\n✅ Garde-fous anti-stub : OK (aucune table vide, planchers respectés, ids races = UUID).');
+  console.log('\n✅ Garde-fous anti-stub : OK (25 clés, aucune table vide, planchers respectés, ids races = UUID).');
 
   // ============================================================
-  // Écriture du fichier JSON (pretty 2 espaces)
+  // Écriture atomique du fichier JSON (pretty 2 espaces)
   // ============================================================
 
   const outputDir = path.join(__dirname, '..', 'src', 'data');
@@ -161,16 +202,22 @@ async function exportSnapshot() {
   }
 
   const outputPath = path.join(outputDir, 'snapshotVisiteur.json');
-  fs.writeFileSync(outputPath, JSON.stringify(snapshot, null, 2) + '\n', 'utf-8');
+  const tmpPath = `${outputPath}.tmp`;
+  const contenu = JSON.stringify(snapshot, null, 2) + '\n';
+  fs.writeFileSync(tmpPath, contenu, 'utf-8');
+  fs.renameSync(tmpPath, outputPath);
 
   console.log('\n✅ Snapshot généré :', outputPath);
   console.log('\n📈 Comptes exportés (recalculés depuis le contenu) :');
   Object.entries(snapshot.manifest.comptes).forEach(([t, count]) => {
     console.log(`  ${t}: ${count}`);
   });
+
+  console.log(
+    `\n✅ snapshot régénéré : ${tableNames.length} clés, ${Buffer.byteLength(contenu, 'utf-8')} octets, genere_le=${snapshot.manifest.genere_le}`
+  );
 }
 
 exportSnapshot().catch(err => {
-  console.error('❌ Erreur lors de l\'export:', err);
-  process.exit(1);
+  fail(`erreur réseau/inattendue : ${err.message ?? err}`);
 });

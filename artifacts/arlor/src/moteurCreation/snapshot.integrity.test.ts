@@ -23,6 +23,28 @@ const PLANCHERS: Record<string, number> = {
   prieres: 50,
 };
 
+// Extension hors-ligne (lot A0, s312) : 7 clés optionnelles tant que le JSON
+// committé reste en 18 clés (races/classes/.../parametres_jeu). Dès qu'un
+// prebuild/refresh régénère le snapshot à 25 clés, ces garde-fous s'activent.
+const CLES_HORS_LIGNE = [
+  "sections_regles",
+  "effets_combat",
+  "bestiaire",
+  "lore",
+  "fiches_schemas",
+  "fiches_listes",
+  "vue_competences_encyclopedie",
+] as const;
+const PLANCHERS_HORS_LIGNE: Record<string, number> = {
+  sections_regles: 40,
+  effets_combat: 25,
+  bestiaire: 4,
+  lore: 10,
+  fiches_schemas: 10,
+  fiches_listes: 10,
+  vue_competences_encyclopedie: 80,
+};
+
 describe("snapshot visiteur — intégrité anti-stub", () => {
   const tables = snapshot.tables as Record<string, unknown[]>;
   const comptes = snapshot.manifest.comptes as Record<string, number>;
@@ -72,6 +94,25 @@ describe("snapshot visiteur — intégrité anti-stub", () => {
     for (const r of races) {
       expect(r, `race ${JSON.stringify(r.nom)}`).toHaveProperty("xp_depart");
       expect(r).toHaveProperty("nb_traits_raciaux");
+    }
+  });
+
+  it("extension hors-ligne (25 clés) : si une clé est présente, les 7 le sont et respectent leurs planchers", () => {
+    const presentes = CLES_HORS_LIGNE.filter((c) => c in tables);
+
+    if (presentes.length === 0) {
+      // JSON committé à 18 clés : rien à vérifier, le garde-fou reste inactif.
+      return;
+    }
+
+    for (const cle of CLES_HORS_LIGNE) {
+      expect(tables, `clé « ${cle} » manquante alors que « ${presentes[0]} » est présente`).toHaveProperty(cle);
+    }
+    for (const cle of CLES_HORS_LIGNE) {
+      const n = (tables[cle] ?? []).length;
+      expect(n, `table « ${cle} » sous le plancher ${PLANCHERS_HORS_LIGNE[cle]}`).toBeGreaterThanOrEqual(
+        PLANCHERS_HORS_LIGNE[cle]
+      );
     }
   });
 });
