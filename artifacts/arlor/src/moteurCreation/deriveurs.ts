@@ -346,10 +346,17 @@ export interface NiveauxArtisanat {
   niveauAlchimie: number;
   niveauRunes: number;
   niveauPieges: number;
+  niveauForge: number;
+  niveauJoaillerie: number;
 }
 
 /**
  * §3.3 niveaux d'artisanat = MAX(niveau_acquis) par nom de compétence, sinon 0.
+ *
+ * Forge/Joaillerie : miroir EXACT de `vue_personnage_etat` (CASE max(niveau_acquis)
+ * sur les noms 'Forge' / 'Joaillerie', noms vérifiés au catalogue snapshot). Sans
+ * eux, la fiche hors ligne ne débloque jamais les sections Forge/Joaillerie
+ * (`lireFicheArtisanatEtat` les gate à `>= 1`).
  */
 export function deriverNiveauxArtisanat(
   competencesAcquises: AcquisMagieArtisanat[]
@@ -365,6 +372,8 @@ export function deriverNiveauxArtisanat(
     niveauAlchimie: maxNom("Alchimie"),
     niveauRunes: maxNom("Assemblage de Runes"),
     niveauPieges: maxNom("Création et désarmement de piège"),
+    niveauForge: maxNom("Forge"),
+    niveauJoaillerie: maxNom("Joaillerie"),
   };
 }
 
