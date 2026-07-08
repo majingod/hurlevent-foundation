@@ -15,6 +15,7 @@ export type TraitRacial = Database["public"]["Tables"]["traits_raciaux"]["Row"];
 export type Religion = Database["public"]["Tables"]["religions"]["Row"];
 export type Langue = Database["public"]["Tables"]["langues"]["Row"];
 export type ReparationForge = Database["public"]["Tables"]["reparations_forge"]["Row"];
+export type IngredientAlchimique = Database["public"]["Tables"]["ingredients_alchimiques"]["Row"];
 export type SectionRegle = Database["public"]["Tables"]["sections_regles"]["Row"];
 export type EffetCombat = Database["public"]["Tables"]["effets_combat"]["Row"];
 export type Creature = Database["public"]["Tables"]["bestiaire"]["Row"];
@@ -42,6 +43,7 @@ export interface SnapshotVisiteur {
     religions: Religion[];
     langues: Langue[];
     reparations_forge: ReparationForge[];
+    ingredients_alchimiques: IngredientAlchimique[];
     // Extension hors-ligne (lot A0, s312) : optionnelles tant que le JSON
     // committé reste en 18 clés — présentes dès qu'un prebuild/refresh
     // régénère le snapshot à 25 clés.

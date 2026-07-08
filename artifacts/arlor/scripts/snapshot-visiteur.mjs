@@ -3,7 +3,7 @@
  * snapshot-visiteur.mjs — script de RÉGÉNÉRATION du snapshot visiteur offline.
  *
  * Un SEUL appel `supabase.rpc('snapshot_visiteur')` renvoie tout le jsonb
- * `{manifest:{genere_le,comptes}, tables:{…25 tables…}}` — la RPC est
+ * `{manifest:{genere_le,comptes}, tables:{…26 tables…}}` — la RPC est
  * SECURITY INVOKER, donc l'appelant anon voit exactement ce que la RLS lui
  * montre (parité stricte avec ce que l'app peut lire).
  *
@@ -42,14 +42,14 @@ function fail(raison) {
 }
 
 // ============================================================
-// Clés attendues (18 legacy + 7 extension hors-ligne = 25)
+// Clés attendues (19 legacy + 7 extension hors-ligne = 26)
 // ============================================================
 
 const TABLES_LEGACY = [
   'races', 'race_traits', 'traits_raciaux', 'classes', 'competences', 'sorts',
   'prieres', 'religions', 'langues', 'familles_criminelles', 'categories_creatures',
   'assemblages_runes', 'recettes_alchimie', 'pieges', 'objets_forge',
-  'objets_joaillerie', 'reparations_forge', 'parametres_jeu',
+  'objets_joaillerie', 'reparations_forge', 'parametres_jeu', 'ingredients_alchimiques',
 ];
 const TABLES_HORS_LIGNE = [
   'sections_regles', 'effets_combat', 'bestiaire', 'lore', 'fiches_schemas',
@@ -141,6 +141,7 @@ async function exportSnapshot() {
     competences: 50,
     sorts: 50,
     prieres: 50,
+    ingredients_alchimiques: 20,
     // Extension hors-ligne (comptes prod du 2026-07-07 : 52/33/6/18/14/14/91) —
     // planchers conservateurs.
     sections_regles: 40,
