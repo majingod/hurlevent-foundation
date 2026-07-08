@@ -30,8 +30,15 @@ export function clientPourPathname(
   pathname: string,
   cibleHorsLigne: boolean = CIBLE_HORS_LIGNE,
 ): ClientCreation {
-  if (cibleHorsLigne) return clientVisiteur;
-  return RE_VISITEUR.test(pathname) ? clientVisiteur : clientServeur;
+  return estModeVisiteur(pathname, cibleHorsLigne) ? clientVisiteur : clientServeur;
+}
+
+/** Vrai si le client actif est le visiteur (URL /visiteur ou build autonome). */
+export function estModeVisiteur(
+  pathname: string = window.location.pathname,
+  cibleHorsLigne: boolean = CIBLE_HORS_LIGNE,
+): boolean {
+  return cibleHorsLigne || RE_VISITEUR.test(pathname);
 }
 
 /**

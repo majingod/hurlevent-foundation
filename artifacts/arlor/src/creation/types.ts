@@ -85,6 +85,45 @@ export type LigneObjetForge = RowT<"objets_forge"> & {
   > | null;
 };
 
+/** Ligne `personnage_recettes` jointe au catalogue `recettes_alchimie` (fiche). */
+export type LigneRecetteFiche = Pick<
+  RowT<"personnage_recettes">,
+  "id" | "personnage_id" | "xp_depense"
+> & {
+  recettes_alchimie: Pick<
+    RowT<"recettes_alchimie">,
+    | "nom"
+    | "type"
+    | "niveau_requis"
+    | "description"
+    | "effet"
+    | "formule"
+    | "ingredients"
+    | "description_verbatim"
+    | "resume_condense"
+  > | null;
+};
+
+/** Ligne `objets_forge` (fiche) jointe à sa réparation — jeu de colonnes réduit. */
+export type LigneObjetForgeFiche = Pick<
+  RowT<"objets_forge">,
+  | "id"
+  | "nom"
+  | "description"
+  | "resume_condense"
+  | "type"
+  | "cout_xp"
+  | "temps_fabrication_minutes"
+  | "materiaux_communs"
+  | "materiaux_rares"
+  | "non_reparable"
+> & {
+  reparation: Pick<
+    RowT<"reparations_forge">,
+    "nom_affichage" | "temps_minutes" | "materiaux"
+  > | null;
+};
+
 /** Niveau max d'une compétence par nom (`personnage_competences` + `competences!inner`). */
 export type NiveauCompetence = {
   niveau_acquis: number;
@@ -580,4 +619,123 @@ export interface ClientCreation {
   lirePersonnageAssemblages(
     personnageId: string,
   ): Promise<Reponse<RowT<"personnage_assemblages">[]>>;
+
+  // HL-RECAP (s313) : lectures de la fiche au format des vues d'affichage.
+  // Serveur = requêtes historiques de FichePersonnageView déplacées verbatim ;
+  // visiteur = adaptateur brouillon (lot 3).
+
+  /** SELECT: vue_fiche_personnage (*, .eq id, .single) */
+  lireFichePersonnage(
+    personnageId: string,
+  ): Promise<Reponse<RowV<"vue_fiche_personnage">>>;
+
+  /** SELECT: vue_competences_personnage (*, .eq personnage_id, .order categorie/nom) */
+  lireFicheCompetences(
+    personnageId: string,
+  ): Promise<Reponse<RowV<"vue_competences_personnage">[]>>;
+
+  /** SELECT: vue_sorts_personnage (*, .eq personnage_id, .order cercle/nom_personnalise) */
+  lireFicheSorts(
+    personnageId: string,
+  ): Promise<Reponse<RowV<"vue_sorts_personnage">[]>>;
+
+  /** SELECT: vue_prieres_personnage (*, .eq personnage_id, .order domaine/nom_personnalise) */
+  lireFichePrieres(
+    personnageId: string,
+  ): Promise<Reponse<RowV<"vue_prieres_personnage">[]>>;
+
+  /** SELECT: vue_assemblages_personnage (*, .eq personnage_id, .order nom) */
+  lireFicheAssemblages(
+    personnageId: string,
+  ): Promise<Reponse<RowV<"vue_assemblages_personnage">[]>>;
+
+  /**
+   * SELECT: personnage_recettes (id/personnage_id/xp_depense, jointure
+   * recettes_alchimie, .eq personnage_id). Le `.map()`/`.sort()` de mise en
+   * forme restent dans le composant appelant.
+   */
+  lireFicheRecettes(
+    personnageId: string,
+  ): Promise<Reponse<LigneRecetteFiche[]>>;
+
+  /** SELECT: vue_artisanat_etat (niveaux, .eq personnage_id, .maybeSingle) */
+  lireFicheArtisanatEtat(
+    personnageId: string,
+  ): Promise<
+    Reponse<
+      Pick<
+        RowV<"vue_artisanat_etat">,
+        | "niveau_alchimie"
+        | "niveau_forge"
+        | "niveau_joaillerie"
+        | "niveau_pieges"
+        | "niveau_runes"
+      >
+    >
+  >;
+
+  /** SELECT: personnage_pieges (*, .eq personnage_id) */
+  lireFichePieges(
+    personnageId: string,
+  ): Promise<Reponse<RowT<"personnage_pieges">[]>>;
+
+  /** SELECT: ingredients_alchimiques (id/nom/niveau/manipulations, .lte niveau, .order niveau/nom) */
+  lireFicheManipulations(
+    niveauMax: number,
+  ): Promise<
+    Reponse<Pick<RowT<"ingredients_alchimiques">, "id" | "nom" | "niveau" | "manipulations">[]>
+  >;
+
+  /** SELECT: objets_forge (colonnes fiche, jointure reparation, .eq est_actif, .order) */
+  lireFicheObjetsForge(): Promise<Reponse<LigneObjetForgeFiche[]>>;
+
+  /** SELECT: objets_joaillerie (colonnes fiche, .eq est_actif, .order) */
+  lireFicheObjetsJoaillerie(): Promise<
+    Reponse<
+      Pick<
+        RowT<"objets_joaillerie">,
+        | "id"
+        | "nom"
+        | "description"
+        | "resume_condense"
+        | "effet"
+        | "cout_xp"
+        | "temps_fabrication_minutes"
+        | "temps_rare_minutes"
+        | "materiaux_communs"
+        | "materiaux_rares"
+      >[]
+    >
+  >;
+
+  /** SELECT: pieges (*, .eq est_actif, .lte niveau, .order nom/niveau) */
+  lireFichePiegesCatalogue(
+    niveauMax: number,
+  ): Promise<Reponse<RowT<"pieges">[]>>;
+
+  /** SELECT: langues (id/nom, sans filtre) */
+  lireFicheLangues(): Promise<
+    Reponse<Pick<RowT<"langues">, "id" | "nom">[]>
+  >;
+
+  /** SELECT: religions (colonnes fiche, sans filtre) */
+  lireFicheReligions(): Promise<
+    Reponse<
+      Pick<
+        RowT<"religions">,
+        | "id"
+        | "nom"
+        | "dirigeant"
+        | "fondateur"
+        | "symbole_sacre"
+        | "pouvoir_symbole"
+        | "domaines_principaux"
+        | "domaines_proscrits"
+        | "lore_fiche"
+        | "rituels_fiche"
+        | "lore_manuel"
+        | "rituels_manuel"
+      >[]
+    >
+  >;
 }

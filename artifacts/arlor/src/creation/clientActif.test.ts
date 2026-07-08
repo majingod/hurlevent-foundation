@@ -10,7 +10,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   setProfilActifHeader: () => {},
 }));
 
-import { clientPourPathname } from "./clientActif";
+import { clientPourPathname, estModeVisiteur } from "./clientActif";
 import { clientServeur } from "./clientServeur";
 import { clientVisiteur } from "./visiteur/clientVisiteur";
 
@@ -48,5 +48,23 @@ describe("clientPourPathname — cible hors-ligne (flag VITE_CIBLE_HORS_LIGNE)",
 
   it("flag absent → aiguillage URL habituel (serveur hors /visiteur)", () => {
     expect(clientPourPathname("/personnage/nouveau", false)).toBe(clientServeur);
+  });
+});
+
+describe("estModeVisiteur — prédicat exporté", () => {
+  it("route /visiteur, flag absent → true", () => {
+    expect(estModeVisiteur("/visiteur", false)).toBe(true);
+  });
+
+  it("route /visiteur/creer (sous-chemin), flag absent → true", () => {
+    expect(estModeVisiteur("/visiteur/creer", false)).toBe(true);
+  });
+
+  it("route /personnage/x, flag absent → false", () => {
+    expect(estModeVisiteur("/personnage/x", false)).toBe(false);
+  });
+
+  it("route /personnage/x, flag hors-ligne posé → true", () => {
+    expect(estModeVisiteur("/personnage/x", true)).toBe(true);
   });
 });
