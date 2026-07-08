@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 
+import { ModeAffichageProvider } from "@/contexts/ModeAffichageContext";
 import AccueilHorsLigne from "@/pages/AccueilHorsLigne";
 import CreationVisiteur from "@/pages/CreationVisiteur";
 import "./polices.ts";
@@ -23,11 +24,13 @@ import "./index.css";
  * HashRouter le pathname n'est jamais `/visiteur`.
  */
 createRoot(document.getElementById("root")!).render(
-  <HashRouter>
-    <Routes>
-      <Route path="/" element={<AccueilHorsLigne />} />
-      <Route path="/visiteur" element={<CreationVisiteur />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  </HashRouter>,
+  <ModeAffichageProvider>
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<AccueilHorsLigne />} />
+        <Route path="/visiteur" element={<CreationVisiteur />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </HashRouter>
+  </ModeAffichageProvider>,
 );
