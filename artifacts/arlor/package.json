@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "node scripts/snapshot-visiteur.mjs --prebuild && vite build --config vite.config.ts",
+    "build": "node scripts/snapshot-visiteur.mjs --prebuild && vite build --config vite.config.ts && vite build --config vite.hors-ligne.config.ts && node scripts/publier-hors-ligne.mjs",
     "build:hors-ligne": "vite build --config vite.hors-ligne.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",

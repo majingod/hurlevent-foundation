@@ -65,6 +65,9 @@ export default defineConfig({
         // SPA hors ligne : toute navigation profonde (`/visiteur`, refresh…) doit
         // retomber sur `index.html` servi par le SW (le serveur est injoignable).
         navigateFallback: "index.html",
+        // Le fichier autonome doit être servi TEL QUEL (téléchargement), jamais
+        // remplacé par le shell SPA par le service worker.
+        navigateFallbackDenylist: [/^\/hurlevent-hors-ligne\.html$/],
       },
     }),
     {
