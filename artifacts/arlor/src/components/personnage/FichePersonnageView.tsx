@@ -502,18 +502,19 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             {fiche.race_nom} {fiche.race_nom_latin && <span className="italic">({fiche.race_nom_latin})</span>} • {fiche.classe_nom} • Niveau {fiche.niveau}
           </p>
         </div>
-        {mode === 'route' && (
-          <div className="flex gap-2 flex-wrap sm:justify-end">
-            <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
-              <Printer className="h-4 w-4" />
-              Imprimer (Abrégé)
-            </Button>
-            <Button onClick={() => triggerPrint('manuel')} variant="outline" size="sm" className="gap-2">
-              <Printer className="h-4 w-4" />
-              Imprimer (Intégral)
-            </Button>
-          </div>
-        )}
+        {/* Impression dispo dans les 2 modes : fiche connectée (route) ET récap du
+            wizard visiteur (wizard-preview, y compris hors ligne). FicheImprimable est
+            props-driven (aucun fetch) → fonctionne offline. Pas de gate volontairement. */}
+        <div className="flex gap-2 flex-wrap sm:justify-end">
+          <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
+            <Printer className="h-4 w-4" />
+            Imprimer (Abrégé)
+          </Button>
+          <Button onClick={() => triggerPrint('manuel')} variant="outline" size="sm" className="gap-2">
+            <Printer className="h-4 w-4" />
+            Imprimer (Intégral)
+          </Button>
+        </div>
       </div>
 
       {/* s299 — rappel fouille tout en haut, puis bascule canon, visibles dans
@@ -825,27 +826,27 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
         </>
       )}
 
-      {mode === 'route' && (
-        <FicheImprimable
-          printMode={printMode}
-          fiche={fiche}
-          xpDisponible={xpDisponible}
-          traits={traits}
-          competencesGroupees={competencesGroupees}
-          sorts={sorts ?? []}
-          prieres={prieres ?? []}
-          assemblages={assemblages ?? []}
-          recettes={recettes ?? []}
-          manipulations={manipulations ?? []}
-          objetsForge={objetsForge ?? []}
-          objetsJoaillerie={objetsJoaillerie ?? []}
-          artisanatEtat={artisanatEtat ?? null}
-          piegesCatalogue={piegesCatalogue ?? []}
-          personnagePieges={personnagePieges ?? []}
-          langues={langues}
-          religions={religions}
-        />
-      )}
+      {/* Monté dans les 2 modes (route + wizard-preview visiteur). `.fp-root` est
+          display:none hors impression → ne pollue pas le récap à l'écran. */}
+      <FicheImprimable
+        printMode={printMode}
+        fiche={fiche}
+        xpDisponible={xpDisponible}
+        traits={traits}
+        competencesGroupees={competencesGroupees}
+        sorts={sorts ?? []}
+        prieres={prieres ?? []}
+        assemblages={assemblages ?? []}
+        recettes={recettes ?? []}
+        manipulations={manipulations ?? []}
+        objetsForge={objetsForge ?? []}
+        objetsJoaillerie={objetsJoaillerie ?? []}
+        artisanatEtat={artisanatEtat ?? null}
+        piegesCatalogue={piegesCatalogue ?? []}
+        personnagePieges={personnagePieges ?? []}
+        langues={langues}
+        religions={religions}
+      />
     </div>
   );
 };
