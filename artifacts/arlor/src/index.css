@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+/* Fontes auto-hébergées : voir `src/polices.ts`, importé par les points
+   d'entrée (`main.tsx` / `main-hors-ligne.tsx`). L'@import Google Fonts a été
+   retiré (appel réseau à chaque chargement — incompatible hors-ligne). */
 
 @tailwind base;
 @tailwind components;

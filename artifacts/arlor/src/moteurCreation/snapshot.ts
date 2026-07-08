@@ -2,7 +2,7 @@
  * Loader typé du snapshot visiteur + helpers pour gatesCompetences
  */
 
-import snapshot from "@/data/snapshotVisiteur.json";
+import snapshotJsonImporte from "@/data/snapshotVisiteur.json";
 import type {
   Database,
 } from "@/integrations/supabase/types";
@@ -56,19 +56,40 @@ export interface SnapshotVisiteur {
   };
 }
 
+/**
+ * Source active du snapshot visiteur, résolue à CHAQUE accès.
+ *
+ * Par défaut : le JSON bundlé au build (prebuild A0 — `snapshotJsonImporte`).
+ * En cible hors-ligne, le lot A5 injectera des « données fraîches » au moment
+ * du téléchargement en remplaçant un marqueur du HTML par
+ * `window.__SNAPSHOT_HORS_LIGNE__ = {…}` (script exécuté AVANT le point
+ * d'entrée). Sans marqueur rempli, `__SNAPSHOT_HORS_LIGNE__` est absent et le
+ * snapshot bundlé sert tel quel.
+ *
+ * Résolu à l'appel (et non capturé au chargement du module) pour que l'override
+ * soit honoré quel que soit l'ordre d'exécution — et testable (poser puis
+ * retirer le global entre deux appels).
+ */
+function snapshotActif(): typeof snapshotJsonImporte {
+  return (
+    (globalThis as { __SNAPSHOT_HORS_LIGNE__?: typeof snapshotJsonImporte })
+      .__SNAPSHOT_HORS_LIGNE__ ?? snapshotJsonImporte
+  );
+}
+
 export function getCompetence(id: string): Competence | undefined {
-  const competences = snapshot.tables.competences as Competence[];
+  const competences = snapshotActif().tables.competences as Competence[];
   return competences.find((c) => c.id === id);
 }
 
 export function getLangueNom(id: string): string | undefined {
-  const langues = snapshot.tables.langues as Langue[];
+  const langues = snapshotActif().tables.langues as Langue[];
   const langue = langues.find((l) => l.id === id);
   return langue?.nom ?? undefined;
 }
 
 export function getReligionNom(id: string): string | undefined {
-  const religions = snapshot.tables.religions as Religion[];
+  const religions = snapshotActif().tables.religions as Religion[];
   const religion = religions.find((r) => r.id === id);
   return religion?.nom ?? undefined;
 }
@@ -80,5 +101,5 @@ export function getReligionNom(id: string): string | undefined {
  * `SnapshotVisiteur` (le contenu correspond à cette forme à l'exécution).
  */
 export function getSnapshot(): SnapshotVisiteur {
-  return snapshot as unknown as SnapshotVisiteur;
+  return snapshotActif() as unknown as SnapshotVisiteur;
 }

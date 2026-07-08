@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hurlevent — Version hors-ligne</title>
+    <meta name="theme-color" content="#0a0a0a" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #0a0a0a;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <!--
+      Marqueur du lot A5 : au moment du téléchargement, le site remplacera le
+      contenu de ce <script> par `window.__SNAPSHOT_HORS_LIGNE__ = {…}` (données
+      fraîches). Il DOIT survivre au build tel quel — laissé vide ici, le
+      snapshot bundlé (prebuild A0) sert par défaut. Voir `moteurCreation/snapshot.ts`.
+    -->
+    <script id="donnees-fraiches">/*__DONNEES_FRAICHES__*/</script>
+    <script type="module" src="/src/main-hors-ligne.tsx"></script>
+  </body>
+</html>

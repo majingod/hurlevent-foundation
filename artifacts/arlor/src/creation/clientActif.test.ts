@@ -31,3 +31,22 @@ describe("clientPourPathname — aiguillage URL du guichet de création", () => 
     expect(clientPourPathname("/personnage/nouveau")).toBe(clientServeur);
   });
 });
+
+describe("clientPourPathname — cible hors-ligne (flag VITE_CIBLE_HORS_LIGNE)", () => {
+  // Le build autonome sert le wizard sous HashRouter : le pathname n'est jamais
+  // `/visiteur`. Le flag (injecté ici en paramètre plutôt que via
+  // `import.meta.env`) force `clientVisiteur` quel que soit le pathname.
+  it("flag posé → clientVisiteur même sur un pathname connecté", () => {
+    expect(clientPourPathname("/personnage/nouveau", true)).toBe(clientVisiteur);
+  });
+
+  it("flag posé → clientVisiteur sur le pathname du HTML autonome", () => {
+    expect(clientPourPathname("/index-hors-ligne.html", true)).toBe(
+      clientVisiteur,
+    );
+  });
+
+  it("flag absent → aiguillage URL habituel (serveur hors /visiteur)", () => {
+    expect(clientPourPathname("/personnage/nouveau", false)).toBe(clientServeur);
+  });
+});
