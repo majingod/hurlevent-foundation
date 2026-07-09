@@ -221,9 +221,9 @@ describe("parité structurelle (colonnes du SQL embarqué)", () => {
       "religion_id", "gn_completes", "mini_gn_completes", "ouvertures_terrain",
       "traits_raciaux_choisis", "est_actif", "est_mort", "race_nom",
       "race_nom_latin", "classe_nom", "religion_nom", "race_emoji",
-      "race_description", "race_description_courte", "race_esperance_vie",
+      "race_description", "race_esperance_vie",
       "race_exigences_costume", "race_image_url", "classe_emoji",
-      "classe_description", "classe_description_courte", "classe_role_combat",
+      "classe_description", "classe_role_combat",
       "race_resume_condense", "classe_resume_condense",
     ]);
   });
@@ -246,7 +246,7 @@ describe("parité structurelle (colonnes du SQL embarqué)", () => {
     attendreColonnes((data as Record<string, unknown>[])[0], [
       "id", "personnage_id", "nom_personnalise", "formule_magique", "niveau_sort",
       "zone_choisie", "portee_choisie", "duree_choisie", "cercle", "cout_xp_base",
-      "sort_nom_base", "sort_description", "sort_description_courte", "paliers",
+      "sort_nom_base", "sort_description", "paliers",
       "description_tronc", "bonus_niveau", "effet_instance", "type_sort",
       "sort_resume_condense",
     ]);
@@ -258,7 +258,7 @@ describe("parité structurelle (colonnes du SQL embarqué)", () => {
     attendreColonnes((data as Record<string, unknown>[])[0], [
       "id", "personnage_id", "nom_personnalise", "niveau_priere", "zone_choisie",
       "portee_choisie", "duree_choisie", "domaine", "priere_description",
-      "duree_incantation", "cout_xp_base", "priere_description_courte",
+      "duree_incantation", "cout_xp_base",
       "duree_incantation_calculee", "paliers", "description_tronc", "bonus_niveau",
       "effet_instance", "type_priere", "priere_resume_condense",
     ]);
