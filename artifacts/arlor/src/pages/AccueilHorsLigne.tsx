@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { getSnapshot } from "@/moteurCreation/snapshot";
+import { URL_SITE } from "@/lib/liens";
 
 /**
  * Page d'accueil de la cible HORS-LIGNE (`main-hors-ligne.tsx`, `#/`).
@@ -10,9 +11,6 @@ import { getSnapshot } from "@/moteurCreation/snapshot";
  * et ce qui exige Internet (compte, inscriptions, mes personnages), puis mène
  * au wizard (`#/visiteur`).
  */
-
-/** Site officiel — compte, inscriptions et gestion des personnages en ligne. */
-const URL_SITE = "https://gnhurlevent.my.canva.site";
 
 /** `2026-07-03T22:20:11…+00:00` → `3 juillet 2026`. */
 function formaterDateFr(iso: string): string {
