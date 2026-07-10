@@ -34,6 +34,7 @@ import type {
 } from "../types";
 
 import { getSnapshot } from "@/moteurCreation/snapshot";
+import { TABLE_SOURCE_ENCYCLOPEDIE } from "../encyclopedie";
 import { calculerCoutXP, calculerDureeIncantation } from "@/utils/calculsMagie";
 import { genererFormuleMagique } from "@/moteurCreation/formuleMagique";
 import {
@@ -1555,6 +1556,54 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireAssemblagesRunes() {
       const rows = (snap().tables.assemblages_runes as Array<Record<string, unknown>>).filter((a) => a.est_actif === true);
       return { data: trierPar(rows, (a) => a.nom) as unknown as never, error: null };
+    },
+
+    async lireFicheSchemaChampsV2(categorie) {
+      const rows = (snap().tables.fiches_schemas ?? []) as Array<Record<string, unknown>>;
+      const r = rows.find((f) => f.categorie === categorie);
+      return { data: r ? ({ champs_v2: r.champs_v2 } as never) : null, error: null };
+    },
+
+    async lireFicheListe(categorie) {
+      const rows = (snap().tables.fiches_listes ?? []) as Array<Record<string, unknown>>;
+      const r = rows.find((f) => f.categorie === categorie);
+      return { data: (r ?? null) as never, error: null };
+    },
+
+    async lireCatalogueEncyclopedie(categorie) {
+      const table = TABLE_SOURCE_ENCYCLOPEDIE[categorie];
+      const rows = ((snap().tables[table] ?? []) as Array<Record<string, unknown>>)
+        .filter((r) => r.est_actif === true);
+      return { data: trierPar(rows, (r) => r.nom) as never, error: null };
+    },
+
+    async lireSectionsRegles(categories) {
+      const voulu = new Set(categories);
+      const rows = ((snap().tables.sections_regles ?? []) as Array<Record<string, unknown>>)
+        .filter((s) => s.est_actif === true && voulu.has(String(s.categorie)));
+      return {
+        data: trierPar(rows, (s) => s.categorie, (s) => s.ordre) as never,
+        error: null,
+      };
+    },
+
+    async lireEffetsCombat() {
+      // Miroir serveur : PAS de filtre est_actif (la colonne n'existe pas).
+      const rows = ((snap().tables.effets_combat ?? []) as Array<Record<string, unknown>>);
+      return { data: trierPar(rows, (e) => e.nom) as never, error: null };
+    },
+
+    async lireReparationsForge() {
+      // Miroir serveur : filtre est_actif, SANS order (Encyclopedie.tsx l.146).
+      const rows = ((snap().tables.reparations_forge ?? []) as Array<Record<string, unknown>>)
+        .filter((r) => r.est_actif === true);
+      return { data: rows as never, error: null };
+    },
+
+    async lireRaceTraits() {
+      const rows = ((snap().tables.race_traits ?? []) as Array<Record<string, unknown>>)
+        .map((rt) => ({ race_id: String(rt.race_id), trait_id: String(rt.trait_id) }));
+      return { data: rows as never, error: null };
     },
 
     async lireParametresJeu() {

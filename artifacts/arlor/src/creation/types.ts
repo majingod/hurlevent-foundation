@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import type { CategorieEncyclopedie } from "./encyclopedie";
 
 /**
  * Guichet unique de la création de personnage (mode visiteur — P2).
@@ -512,6 +513,37 @@ export interface ClientCreation {
 
   /** SELECT: assemblages_runes (*, .eq est_actif, .order nom) */
   lireAssemblagesRunes(): Promise<Reponse<RowT<"assemblages_runes">[]>>;
+
+  /** SELECT: fiches_schemas (champs_v2, .eq categorie, .maybeSingle) */
+  lireFicheSchemaChampsV2(
+    categorie: CategorieEncyclopedie,
+  ): Promise<Reponse<{ champs_v2: unknown } | null>>;
+
+  /** SELECT: fiches_listes (*, .eq categorie, .maybeSingle) */
+  lireFicheListe(
+    categorie: CategorieEncyclopedie,
+  ): Promise<Reponse<RowT<"fiches_listes"> | null>>;
+
+  /** SELECT: TABLE_SOURCE_ENCYCLOPEDIE[categorie] (*, .eq est_actif, .order nom) — 14 catégories */
+  lireCatalogueEncyclopedie(
+    categorie: CategorieEncyclopedie,
+  ): Promise<Reponse<Record<string, unknown>[]>>;
+
+  /** SELECT: sections_regles (*, .in categorie, .eq est_actif, .order categorie puis ordre) */
+  lireSectionsRegles(
+    categories: string[],
+  ): Promise<Reponse<RowT<"sections_regles">[]>>;
+
+  /** SELECT: effets_combat (*, .order nom — PAS de colonne est_actif) */
+  lireEffetsCombat(): Promise<Reponse<RowT<"effets_combat">[]>>;
+
+  /** SELECT: reparations_forge (*, .eq est_actif — sans order, miroir Encyclopedie.tsx) */
+  lireReparationsForge(): Promise<Reponse<RowT<"reparations_forge">[]>>;
+
+  /** SELECT: race_traits (race_id, trait_id — sans filtre ni order, miroir Encyclopedie.tsx) */
+  lireRaceTraits(): Promise<
+    Reponse<Array<{ race_id: string; trait_id: string }>>
+  >;
 
   /** SELECT: parametres_jeu (liens/texte, .limit 1, .maybeSingle) */
   lireParametresJeu(): Promise<

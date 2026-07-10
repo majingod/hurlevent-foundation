@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ClientCreation } from "./types";
+import { TABLE_SOURCE_ENCYCLOPEDIE } from "./encyclopedie";
 
 /**
  * Implémentation serveur du guichet `ClientCreation` : passe-plat strict vers
@@ -368,6 +369,58 @@ export const clientServeur: ClientCreation = {
       .select("*")
       .eq("est_actif", true)
       .order("nom");
+  },
+
+  async lireFicheSchemaChampsV2(categorie) {
+    return await supabase
+      .from("fiches_schemas")
+      .select("champs_v2")
+      .eq("categorie", categorie)
+      .maybeSingle();
+  },
+
+  async lireFicheListe(categorie) {
+    return await supabase
+      .from("fiches_listes")
+      .select("*")
+      .eq("categorie", categorie)
+      .maybeSingle();
+  },
+
+  async lireCatalogueEncyclopedie(categorie) {
+    return (await supabase
+      .from(TABLE_SOURCE_ENCYCLOPEDIE[categorie] as never)
+      .select("*")
+      .eq("est_actif", true)
+      .order("nom")) as never;
+  },
+
+  async lireSectionsRegles(categories) {
+    return await supabase
+      .from("sections_regles")
+      .select("*")
+      .in("categorie", categories)
+      .eq("est_actif", true)
+      .order("categorie")
+      .order("ordre");
+  },
+
+  async lireEffetsCombat() {
+    return await supabase
+      .from("effets_combat")
+      .select("*")
+      .order("nom", { ascending: true });
+  },
+
+  async lireReparationsForge() {
+    return await supabase
+      .from("reparations_forge")
+      .select("*")
+      .eq("est_actif", true);
+  },
+
+  async lireRaceTraits() {
+    return await supabase.from("race_traits").select("race_id, trait_id");
   },
 
   async lireParametresJeu() {
