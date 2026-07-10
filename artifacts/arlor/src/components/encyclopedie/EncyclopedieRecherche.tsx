@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { estModeVisiteur } from "@/creation/clientActif";
 import { CATS_ENCYCLO } from "@/components/encyclopedie/EncyclopedieNav";
 import { useNavigate } from "react-router-dom";
 
@@ -56,6 +57,8 @@ export function EncyclopedieRecherche({
   }, [query]);
 
   useEffect(() => {
+    // [HL-A2] Lot 3 remplacera cette garde par la recherche locale (snapshot).
+    if (estModeVisiteur()) { setResults([]); setSearching(false); return; }
     if (debounced.trim().length < 2) {
       setResults([]);
       setErreur(false);
@@ -95,16 +98,19 @@ export function EncyclopedieRecherche({
 
   return (
     <div>
-      <div className="relative mb-1">
-        <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Rechercher dans l'encyclopédie"
-          placeholder="Rechercher dans toute l'encyclopédie…"
-          className="w-full rounded-lg border border-border bg-card pl-10 pr-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
-        />
-      </div>
+      {/* [HL-A2] Lot 3 : recherche locale hors-ligne */}
+      {!estModeVisiteur() && (
+        <div className="relative mb-1">
+          <span aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Rechercher dans l'encyclopédie"
+            placeholder="Rechercher dans toute l'encyclopédie…"
+            className="w-full rounded-lg border border-border bg-card pl-10 pr-3 py-2.5 text-sm text-foreground outline-none focus:border-gold"
+          />
+        </div>
+      )}
 
       {searching && (
         <p className="text-muted-foreground text-center py-3 text-sm">Recherche en cours…</p>

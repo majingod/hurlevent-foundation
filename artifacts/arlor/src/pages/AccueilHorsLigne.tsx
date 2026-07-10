@@ -51,7 +51,7 @@ const AccueilHorsLigne = () => {
             </h2>
             <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
               <li>Créer un personnage de A à Z</li>
-              <li>Toutes les règles de création embarquées</li>
+              <li>Consulter les règles du jeu et l'encyclopédie complètes</li>
               <li>
                 Brouillon sauvegardé sur cet appareil (aucun réseau requis)
               </li>
@@ -80,12 +80,24 @@ const AccueilHorsLigne = () => {
           </div>
         </section>
 
-        <div className="mt-10">
+        <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link
             to="/visiteur"
             className="inline-flex items-center rounded-lg bg-primary px-6 py-3 font-heading text-base text-primary-foreground transition hover:bg-primary/90"
           >
             Créer mon personnage
+          </Link>
+          <Link
+            to="/regles"
+            className="inline-flex items-center rounded-lg border border-primary/40 px-6 py-3 font-heading text-base text-primary transition hover:bg-primary/10"
+          >
+            Règles du jeu
+          </Link>
+          <Link
+            to="/encyclopedie"
+            className="inline-flex items-center rounded-lg border border-primary/40 px-6 py-3 font-heading text-base text-primary transition hover:bg-primary/10"
+          >
+            Encyclopédie
           </Link>
         </div>
       </div>

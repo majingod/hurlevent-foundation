@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { clientActif } from "@/creation/clientActif";
+import { TABLE_SOURCE_ENCYCLOPEDIE } from "@/creation/encyclopedie";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
 import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
@@ -20,10 +21,6 @@ import { parseRecetteVerbatim } from "@/utils/alchimie";
  * `fiches_schemas.champs_v2`) change d'une catégorie à l'autre. Lit `champs_v2`,
  * jamais `champs` (l'ancien Encyclopedie.tsx v1 a été supprimé).
  */
-
-// fiches_listes et fiches_schemas.champs_v2 ne sont pas (encore) dans les types
-// générés : on lit ces colonnes additives via un client non typé.
-const sb = supabase as any;
 
 const CATS = [
   { cle: "race", label: "Races" },
@@ -44,22 +41,9 @@ const CATS = [
 
 type CatCle = (typeof CATS)[number]["cle"];
 
-const TABLE_SOURCE: Record<CatCle, string> = {
-  race: "races",
-  trait_racial: "traits_raciaux",
-  classe: "classes",
-  competences: "vue_competences_encyclopedie",
-  assemblages: "assemblages_runes",
-  alchimie: "recettes_alchimie",
-  sorts: "sorts",
-  prieres: "prieres",
-  religions: "religions",
-  bestiaire: "bestiaire",
-  lore: "lore",
-  forge: "objets_forge",
-  joaillerie: "objets_joaillerie",
-  pieges: "pieges",
-};
+// Mapping catégorie → table : source unique dans creation/encyclopedie.ts
+// (partagée avec le contrat clientActif depuis [HL-A2] Lot 1).
+const TABLE_SOURCE = TABLE_SOURCE_ENCYCLOPEDIE;
 
 export default function Encyclopedie() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -118,11 +102,11 @@ export default function Encyclopedie() {
     (async () => {
       try {
       const [schemaRes, listeRes] = await Promise.all([
-        sb.from("fiches_schemas").select("champs_v2").eq("categorie", cat).maybeSingle(),
-        sb.from("fiches_listes").select("*").eq("categorie", cat).maybeSingle(),
+        clientActif.lireFicheSchemaChampsV2(cat),
+        clientActif.lireFicheListe(cat),
       ]);
 
-      const dataRes = await sb.from(TABLE_SOURCE[cat]).select("*").eq("est_actif", true).order("nom");
+      const dataRes = await clientActif.lireCatalogueEncyclopedie(cat);
       if (schemaRes.error || listeRes.error || dataRes.error) {
         throw schemaRes.error ?? listeRes.error ?? dataRes.error;
       }
@@ -143,7 +127,7 @@ export default function Encyclopedie() {
       // Lookups FK (forge -> reparations) pour les render "relation" en FK.
       let lk: Record<string, any[]> = {};
       if (cat === "forge") {
-        const repRes = await sb.from("reparations_forge").select("*").eq("est_actif", true);
+        const repRes = await clientActif.lireReparationsForge();
         lk = { reparations: repRes.data ?? [] };
       }
 
@@ -158,7 +142,8 @@ export default function Encyclopedie() {
       // Classes : résout competence_id -> nom (render liste_competences).
       let compMap: Record<string, string> = {};
       if (cat === "classe") {
-        const compRes = await sb.from("competences").select("id, nom").eq("est_actif", true);
+        // lireCompetences = surensemble (*, est_actif, order nom) : suffisant pour id→nom.
+        const compRes = await clientActif.lireCompetences();
         compMap = Object.fromEntries(
           (compRes.data ?? []).map((c: any) => [c.id, c.nom ?? ""])
         );
@@ -167,8 +152,9 @@ export default function Encyclopedie() {
       // Races : injecte les noms de traits permis (relation race_traits) dans chaque entité.
       if (cat === "race") {
         const [rtRes, traitsRes] = await Promise.all([
-          sb.from("race_traits").select("race_id, trait_id"),
-          sb.from("traits_raciaux").select("id, nom").eq("est_actif", true),
+          clientActif.lireRaceTraits(),
+          // Catalogue trait_racial = surensemble (*, est_actif, order nom) : suffisant pour id→nom.
+          clientActif.lireCatalogueEncyclopedie("trait_racial"),
         ]);
         const nomParTrait: Record<string, string> = Object.fromEntries(
           (traitsRes.data ?? []).map((t: any) => [t.id, t.nom ?? ""])
