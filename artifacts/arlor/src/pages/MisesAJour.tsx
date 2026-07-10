@@ -33,6 +33,20 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Emporte ton brouillon : le code de reprise",
+    description:
+      "Ton brouillon d'essai libre vit sur ton appareil — et un téléphone peut l'oublier. Depuis le récapitulatif, génère un code de reprise : colle-le dans tes notes ou envoie-le-toi par message, puis colle-le sur n'importe quel appareil (site ou fichier hors-ligne) pour reprendre exactement où tu étais. Un fichier .json est aussi proposé quand ton navigateur le permet. Avant de remplacer un brouillon existant, un aperçu te montre toujours ce que tu t'apprêtes à écraser.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Plus jamais coincé hors ligne",
+    description:
+      "Si tu ouvres l'application sans réseau et que tes profils ne se chargent pas, un lien « Continuer hors ligne en mode visiteur » t'emmène directement au créateur de personnage, aux règles et à l'encyclopédie — qui fonctionnent sans connexion.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Les règles et l'encyclopédie voyagent avec toi",
     description:
       "Le fichier hors-ligne ne se limite plus à la création de personnage : il embarque maintenant toutes les règles du jeu et l'encyclopédie complète (races, classes, sorts, prières, bestiaire, artisanat…), avec la recherche qui fonctionne sans réseau — accents ou pas. Re-télécharge le fichier depuis la page Téléchargements pour en profiter : en forêt, en déplacement, tout le manuel vivant est dans ta poche.",
