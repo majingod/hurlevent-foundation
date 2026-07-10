@@ -6,6 +6,7 @@ import {
   chargerBrouillon,
   estPerime,
 } from "@/creation/visiteur/stockageBrouillon";
+import { BlocReprendre } from "@/creation/visiteur/BlocsCodeReprise";
 
 /**
  * Page PUBLIQUE du créateur en mode visiteur (P2-b).
@@ -35,6 +36,10 @@ const CreationVisiteur = () => {
             et fonctionne même sans réseau.
           </p>
         </header>
+
+        <div className="mt-6">
+          <BlocReprendre />
+        </div>
 
         {perime && (
           <div className="mt-6 rounded border border-primary/35 bg-primary/10 p-4 text-sm text-primary/80">

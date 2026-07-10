@@ -75,6 +75,7 @@
     "@fontsource/cinzel": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
     "@supabase/supabase-js": "^2.105.3",
+    "fflate": "^0.8.3",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.15.0",
     "remark-gfm": "^4.0.1",
