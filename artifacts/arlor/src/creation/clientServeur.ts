@@ -405,6 +405,12 @@ export const clientServeur: ClientCreation = {
       .order("ordre");
   },
 
+  async rechercherEncyclopedie(terme) {
+    return (await supabase.rpc("rechercher_encyclopedie", {
+      p_terme: terme,
+    })) as never;
+  },
+
   async lireEffetsCombat() {
     return await supabase
       .from("effets_combat")
