@@ -13,8 +13,9 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { clientVisiteur, PERSONNAGE_LOCAL_ID } from "./clientVisiteur";
-import { chargerBrouillon, CLE_BROUILLON } from "./stockageBrouillon";
+import { chargerBrouillon, sauverBrouillon, CLE_BROUILLON } from "./stockageBrouillon";
 import { getSnapshot } from "@/moteurCreation/snapshot";
+import { deriverEtat } from "@/moteurCreation/brouillon/deriver";
 
 // ── localStorage stub (config vitest = node) ──
 function installerLocalStorage(): void {
@@ -227,6 +228,112 @@ describe("cycle de vie — sauvegarderEtape4", () => {
     // Prêtre a une gratuité « Connaissances des Religions » (type_choix = religion).
     const r = env((await clientVisiteur.sauvegarderEtape4({ p_personnage_id: PERSONNAGE_LOCAL_ID, p_classe_id: CLASSE_PRETRE })).data);
     expect(r.erreurs[0].message).toBe("Choix de religion manquant pour Connaissances des Religions");
+  });
+});
+
+// ============================================================
+// §D.2 — sauvegarderEtape4, branche CHANGEMENT DE CLASSE (s322) — repro Fred.
+// Miroir client de `attribuer_competences_gratuites_classe` appelée après la
+// cascade (migrations 20260710163901/163941/164108) : source unique de
+// « gratuite + choix + religion », comme la branche non-changement ci-dessus.
+// ============================================================
+describe("cycle de vie — sauvegarderEtape4 (changement de classe, s322)", () => {
+  const CLASSE_MAGE = idClasse("Mage");
+  const DECRYPTAGE = "0b0fba09-77d5-4078-946f-9add150f695d"; // Mage, gratuité type_choix=langue_ancienne
+  const LANGUE_A = "073762ec-4a6a-4767-85ba-2adf33c9679d"; // L'Ancien Commun
+  const ACQ_CERCLE = "9fc3a181-4e29-4d94-8639-65b9a9a7c787"; // Mage, prereq Linguistique (gratuité Mage)
+  const ACQ_SORT = "d9a446cc-abdd-40d1-be68-42240b7c9bae"; // Mage, prereq Acquisition de Cercle, niv1 = 0 XP
+  const CONNAISSANCES_RELIGIONS = "c821b270-d314-4092-9899-2fd80925e873"; // Prêtre, gratuité type_choix=religion
+
+  async function jusquGuerrier() {
+    await demarrer();
+    await clientVisiteur.sauvegarderEtape4({ p_personnage_id: PERSONNAGE_LOCAL_ID, p_classe_id: CLASSE_GUERRIER });
+  }
+
+  it("repro Fred (s322) : Guerrier → Mage avec choix de langue → succès, gratuité Décryptage posée au bon choix", async () => {
+    await jusquGuerrier();
+    const r = env(
+      (
+        await clientVisiteur.sauvegarderEtape4({
+          p_personnage_id: PERSONNAGE_LOCAL_ID,
+          p_classe_id: CLASSE_MAGE,
+          p_choix_par_competence: { [DECRYPTAGE]: LANGUE_A },
+        })
+      ).data,
+    );
+    expect(r.succes).toBe(true);
+    const apres = chargerBrouillon()!;
+    const grat = deriverEtat(apres).gratuites.find((g) => g.competenceId === DECRYPTAGE);
+    expect(grat).toBeDefined();
+    expect(grat?.choixAchat).toBe(LANGUE_A);
+  });
+
+  it("repro Fred (s322), sans choix : choix_manquant (attribuer_competences_gratuites_classe, source unique)", async () => {
+    await jusquGuerrier();
+    const r = env(
+      (
+        await clientVisiteur.sauvegarderEtape4({
+          p_personnage_id: PERSONNAGE_LOCAL_ID,
+          p_classe_id: CLASSE_MAGE,
+          p_choix_par_competence: {},
+        })
+      ).data,
+    );
+    expect(r.succes).toBe(false);
+    expect(r.erreurs[0]).toEqual({
+      code: "choix_manquant",
+      message: 'Un choix de type "langue_ancienne" est obligatoire pour Décryptage',
+      champ: "choix_par_competence",
+    });
+  });
+
+  it("protection des achats à 0 XP (volet serveur s311-A) : Acquisition de Sort survit au changement de classe", async () => {
+    await jusquGuerrier();
+    const avant = chargerBrouillon()!;
+    sauverBrouillon({
+      ...avant,
+      acquisitions: {
+        ...avant.acquisitions,
+        competences: [
+          ...avant.acquisitions.competences,
+          { instanceId: "iid-test-acq-cercle", competenceId: ACQ_CERCLE, niveauAcquis: 1, choixAchat: "Terre" },
+          { instanceId: "iid-test-acq-sort", competenceId: ACQ_SORT, niveauAcquis: 1, choixAchat: null },
+        ],
+      },
+    });
+
+    const r = env(
+      (
+        await clientVisiteur.sauvegarderEtape4({
+          p_personnage_id: PERSONNAGE_LOCAL_ID,
+          p_classe_id: CLASSE_MAGE,
+          p_choix_par_competence: { [DECRYPTAGE]: LANGUE_A },
+        })
+      ).data,
+    );
+    expect(r.succes).toBe(true);
+    const apres = chargerBrouillon()!;
+    expect(apres.acquisitions.competences.some((c) => c.instanceId === "iid-test-acq-sort")).toBe(true);
+  });
+
+  it("religion (Prêtre) : gratuité posée, religionId/estCroyant synchronisés (miroir B2)", async () => {
+    await jusquGuerrier();
+    const r = env(
+      (
+        await clientVisiteur.sauvegarderEtape4({
+          p_personnage_id: PERSONNAGE_LOCAL_ID,
+          p_classe_id: CLASSE_PRETRE,
+          p_choix_par_competence: { [CONNAISSANCES_RELIGIONS]: RELIGION },
+        })
+      ).data,
+    );
+    expect(r.succes).toBe(true);
+    const apres = chargerBrouillon()!;
+    const etat = deriverEtat(apres);
+    const grat = etat.gratuites.find((g) => g.competenceId === CONNAISSANCES_RELIGIONS);
+    expect(grat).toBeDefined();
+    expect(grat?.choixAchat).toBe(RELIGION);
+    expect(etat.contexteMagie.religionId).toBe(RELIGION);
   });
 });
 
