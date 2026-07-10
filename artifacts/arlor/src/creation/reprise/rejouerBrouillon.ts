@@ -96,6 +96,99 @@ export interface ResultatRejeu {
 }
 
 // ============================================================
+// Plan de rejeu (source unique de l'ordre)
+// ============================================================
+
+/**
+ * Une action atomique du plan de rejeu. Les étapes 1→4 n'ont pas d'identité de
+ * ligne ; chaque achat en porte une (`instanceId` de l'acquisition ciblée).
+ */
+export type ActionRejeu =
+  | { type: "etape1" | "etape2" | "etape3" | "etape4" }
+  | {
+      type: "competence" | "sort" | "priere" | "recette" | "assemblage" | "piege";
+      instanceId: string;
+    };
+
+/**
+ * PLAN de rejeu — fonction PURE, SOURCE UNIQUE de l'ordre topologique. Produit la
+ * liste ordonnée des actions que `rejouerBrouillon` exécute telle quelle :
+ *
+ *   étapes 1-4 → pour chaque compétence (ordre brouillon), pré-rejeu des
+ *   sorts/prières du même choix dont le niveau ≤ k−1 AVANT chaque palier
+ *   d'Acquisition de Cercle/Domaine niv 2/3, puis la compétence → sorts restants
+ *   → prières restantes → recettes → assemblages → pièges (ordre brouillon).
+ *
+ * Le rabais serveur se calcule au moment de l'achat ; pré-rejouer les items
+ * éligibles avant le palier maximise la concordance des XP débités (cf. en-tête
+ * de module). Marquer un item « tenté » à la planification garantit qu'il n'est
+ * ni re-planifié devant un palier ultérieur ni rejoué dans la passe « restants ».
+ */
+export function planifierRejeu(
+  brouillon: BrouillonVisiteur,
+  catalogue: CatalogueRejeu,
+): ActionRejeu[] {
+  const plan: ActionRejeu[] = [
+    { type: "etape1" },
+    { type: "etape2" },
+    { type: "etape3" },
+    { type: "etape4" },
+  ];
+
+  const sortsTentes = new Set<string>();
+  const prieresTentes = new Set<string>();
+
+  for (const comp of brouillon.acquisitions.competences) {
+    const typeChoix = catalogue.typeChoixCompetence(comp.competenceId);
+    const k = comp.niveauAcquis;
+    const choix = comp.choixAchat;
+    if (choix != null && (k === 2 || k === 3)) {
+      if (typeChoix === "cercle") {
+        for (const s of brouillon.acquisitions.sorts) {
+          if (sortsTentes.has(s.instanceId)) continue;
+          if (catalogue.cercleDuSort(s.sortId) === choix && s.niveauSort <= k - 1) {
+            sortsTentes.add(s.instanceId);
+            plan.push({ type: "sort", instanceId: s.instanceId });
+          }
+        }
+      } else if (typeChoix === "domaine") {
+        for (const p of brouillon.acquisitions.prieres) {
+          if (prieresTentes.has(p.instanceId)) continue;
+          if (
+            catalogue.domaineDeLaPriere(p.priereId) === choix &&
+            p.niveauPriere <= k - 1
+          ) {
+            prieresTentes.add(p.instanceId);
+            plan.push({ type: "priere", instanceId: p.instanceId });
+          }
+        }
+      }
+    }
+    plan.push({ type: "competence", instanceId: comp.instanceId });
+  }
+
+  for (const s of brouillon.acquisitions.sorts) {
+    if (sortsTentes.has(s.instanceId)) continue;
+    plan.push({ type: "sort", instanceId: s.instanceId });
+  }
+  for (const p of brouillon.acquisitions.prieres) {
+    if (prieresTentes.has(p.instanceId)) continue;
+    plan.push({ type: "priere", instanceId: p.instanceId });
+  }
+  for (const r of brouillon.acquisitions.recettes) {
+    plan.push({ type: "recette", instanceId: r.instanceId });
+  }
+  for (const a of brouillon.acquisitions.assemblages) {
+    plan.push({ type: "assemblage", instanceId: a.instanceId });
+  }
+  for (const pg of brouillon.acquisitions.pieges) {
+    plan.push({ type: "piege", instanceId: pg.instanceId });
+  }
+
+  return plan;
+}
+
+// ============================================================
 // Lecture du retour standard `{succes, erreurs, donnees}`
 // ============================================================
 
@@ -271,135 +364,86 @@ export async function rejouerBrouillon(
     echecs,
   });
 
-  // ── 2. Étapes 1 → 4 (un échec = STOP : tout ce qui suit en dépend) ───────
-  const etapes: Array<{
-    fait: FaitRejeu;
-    invoke: () => Promise<Reponse<Json>>;
-  }> = [
-    { fait: { type: "etape1" }, invoke: () => client.sauvegarderEtape1(paramsEtape1(brouillon, personnageId)) },
-    { fait: { type: "etape2" }, invoke: () => client.sauvegarderEtape2(paramsEtape2(brouillon, personnageId)) },
-    { fait: { type: "etape3" }, invoke: () => client.sauvegarderEtape3(paramsEtape3(brouillon, personnageId)) },
-    { fait: { type: "etape4" }, invoke: () => client.sauvegarderEtape4(paramsEtape4(brouillon, personnageId)) },
-  ];
-  for (const etape of etapes) {
-    const issue = await executer(etape.invoke);
-    if (issue.statut === "ok") {
-      reussir(etape.fait);
-      continue;
-    }
-    const { code, message } =
-      issue.statut === "refus"
-        ? { code: issue.code, message: issue.message }
-        : { code: "exception", message: issue.message };
-    echecs.push({ ...etape.fait, code, message });
-    return partiel();
-  }
-
-  // ── 3. Achats (ordre topologique) ────────────────────────────────────────
+  // ── 2. Exécution du plan (SOURCE UNIQUE de l'ordre : `planifierRejeu`) ────
   //
-  // Un achat journalise son issue et signale s'il faut poursuivre : `true` =
-  // continuer (succès OU refus best-effort), `false` = arrêt (exception réseau).
-  const acheter = async (
-    fait: FaitRejeu,
+  // Index d'instance → ligne du brouillon, pour reconstruire les params `p_*`
+  // à partir de l'`instanceId` porté par chaque action du plan.
+  const parInstance = <T extends { instanceId: string }>(liste: T[]) =>
+    new Map(liste.map((x) => [x.instanceId, x]));
+  const competences = parInstance(brouillon.acquisitions.competences);
+  const sorts = parInstance(brouillon.acquisitions.sorts);
+  const prieres = parInstance(brouillon.acquisitions.prieres);
+  const recettes = parInstance(brouillon.acquisitions.recettes);
+  const assemblages = parInstance(brouillon.acquisitions.assemblages);
+  const pieges = parInstance(brouillon.acquisitions.pieges);
+
+  // Un échec journalise son issue et signale s'il faut poursuivre : `true` =
+  // continuer (succès OU refus best-effort d'un achat), `false` = arrêt
+  // (exception réseau, OU refus d'une étape 1→4 : tout ce qui suit en dépend).
+  const jouer = async (
+    action: ActionRejeu,
     invoke: () => Promise<Reponse<Json>>,
+    stopSurRefus: boolean,
   ): Promise<boolean> => {
     const issue = await executer(invoke);
     if (issue.statut === "ok") {
-      reussir(fait);
+      reussir(action);
       return true;
     }
     if (issue.statut === "refus") {
-      echecs.push({ ...fait, code: issue.code, message: issue.message });
-      return true;
+      echecs.push({ ...action, code: issue.code, message: issue.message });
+      return !stopSurRefus;
     }
-    echecs.push({ ...fait, code: "exception", message: issue.message });
+    echecs.push({ ...action, code: "exception", message: issue.message });
     return false;
   };
 
-  // Suivi des sorts/prières DÉJÀ tentés (rejoués en amont d'un palier) pour ne
-  // pas les rejouer dans la passe « restants ».
-  const sortsTentes = new Set<string>();
-  const prieresTentes = new Set<string>();
-
-  const jouerSort = (s: BrouillonSort): Promise<boolean> => {
-    sortsTentes.add(s.instanceId);
-    return acheter(
-      { type: "sort", instanceId: s.instanceId },
-      () => client.acheterSort(paramsSort(s, personnageId)),
-    );
-  };
-  const jouerPriere = (p: BrouillonPriere): Promise<boolean> => {
-    prieresTentes.add(p.instanceId);
-    return acheter(
-      { type: "priere", instanceId: p.instanceId },
-      () => client.acheterPriere(paramsPriere(p, personnageId)),
-    );
-  };
-
-  // 3a. Compétences dans l'ordre du brouillon, avec pré-rejeu des items éligibles
-  //     au rabais AVANT chaque palier d'acquisition niv 2/3.
-  for (const comp of brouillon.acquisitions.competences) {
-    const typeChoix = catalogue.typeChoixCompetence(comp.competenceId);
-    const k = comp.niveauAcquis;
-    const choix = comp.choixAchat;
-    if (choix != null && (k === 2 || k === 3)) {
-      if (typeChoix === "cercle") {
-        for (const s of brouillon.acquisitions.sorts) {
-          if (sortsTentes.has(s.instanceId)) continue;
-          if (catalogue.cercleDuSort(s.sortId) === choix && s.niveauSort <= k - 1) {
-            if (!(await jouerSort(s))) return partiel();
-          }
-        }
-      } else if (typeChoix === "domaine") {
-        for (const p of brouillon.acquisitions.prieres) {
-          if (prieresTentes.has(p.instanceId)) continue;
-          if (
-            catalogue.domaineDeLaPriere(p.priereId) === choix &&
-            p.niveauPriere <= k - 1
-          ) {
-            if (!(await jouerPriere(p))) return partiel();
-          }
-        }
+  for (const action of planifierRejeu(brouillon, catalogue)) {
+    let ok: boolean;
+    switch (action.type) {
+      case "etape1":
+        ok = await jouer(action, () => client.sauvegarderEtape1(paramsEtape1(brouillon, personnageId)), true);
+        break;
+      case "etape2":
+        ok = await jouer(action, () => client.sauvegarderEtape2(paramsEtape2(brouillon, personnageId)), true);
+        break;
+      case "etape3":
+        ok = await jouer(action, () => client.sauvegarderEtape3(paramsEtape3(brouillon, personnageId)), true);
+        break;
+      case "etape4":
+        ok = await jouer(action, () => client.sauvegarderEtape4(paramsEtape4(brouillon, personnageId)), true);
+        break;
+      case "competence": {
+        const c = competences.get(action.instanceId)!;
+        ok = await jouer(action, () => client.acheterCompetence(paramsCompetence(c, personnageId)), false);
+        break;
+      }
+      case "sort": {
+        const s = sorts.get(action.instanceId)!;
+        ok = await jouer(action, () => client.acheterSort(paramsSort(s, personnageId)), false);
+        break;
+      }
+      case "priere": {
+        const p = prieres.get(action.instanceId)!;
+        ok = await jouer(action, () => client.acheterPriere(paramsPriere(p, personnageId)), false);
+        break;
+      }
+      case "recette": {
+        const r = recettes.get(action.instanceId)!;
+        ok = await jouer(action, () => client.acheterRecette({ p_personnage_id: personnageId, p_recette_id: r.recetteId }), false);
+        break;
+      }
+      case "assemblage": {
+        const a = assemblages.get(action.instanceId)!;
+        ok = await jouer(action, () => client.acheterAssemblage({ p_personnage_id: personnageId, p_assemblage_id: a.assemblageId }), false);
+        break;
+      }
+      case "piege": {
+        const pg = pieges.get(action.instanceId)!;
+        ok = await jouer(action, () => client.acheterPiege({ p_personnage_id: personnageId, p_piege_id: pg.piegeId }), false);
+        break;
       }
     }
-    const ok = await acheter(
-      { type: "competence", instanceId: comp.instanceId },
-      () => client.acheterCompetence(paramsCompetence(comp, personnageId)),
-    );
-    if (!ok) return partiel();
-  }
-
-  // 3b. Sorts puis prières RESTANTS (ordre du brouillon).
-  for (const s of brouillon.acquisitions.sorts) {
-    if (sortsTentes.has(s.instanceId)) continue;
-    if (!(await jouerSort(s))) return partiel();
-  }
-  for (const p of brouillon.acquisitions.prieres) {
-    if (prieresTentes.has(p.instanceId)) continue;
-    if (!(await jouerPriere(p))) return partiel();
-  }
-
-  // 3c. Artisanat : recettes → assemblages → pièges (ordre du brouillon ;
-  //     l'ordre est signifiant — gratuités par quota positionnelles).
-  for (const r of brouillon.acquisitions.recettes) {
-    const ok = await acheter(
-      { type: "recette", instanceId: r.instanceId },
-      () => client.acheterRecette({ p_personnage_id: personnageId, p_recette_id: r.recetteId }),
-    );
-    if (!ok) return partiel();
-  }
-  for (const a of brouillon.acquisitions.assemblages) {
-    const ok = await acheter(
-      { type: "assemblage", instanceId: a.instanceId },
-      () => client.acheterAssemblage({ p_personnage_id: personnageId, p_assemblage_id: a.assemblageId }),
-    );
-    if (!ok) return partiel();
-  }
-  for (const pg of brouillon.acquisitions.pieges) {
-    const ok = await acheter(
-      { type: "piege", instanceId: pg.instanceId },
-      () => client.acheterPiege({ p_personnage_id: personnageId, p_piege_id: pg.piegeId }),
-    );
     if (!ok) return partiel();
   }
 

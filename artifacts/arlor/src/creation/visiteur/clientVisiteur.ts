@@ -112,6 +112,17 @@ export const PROFIL_VISITEUR_LOCAL = "00000000-0000-0000-0000-000000000000";
 export interface DepsVisiteur {
   /** Dérivation du brouillon. Défaut : `deriverEtat` (recompute from scratch). */
   deriver?: (b: BrouillonVisiteur) => EtatDeriveVisiteur;
+  /**
+   * Lecture du brouillon. Défaut : slot `localStorage` (`chargerBrouillon`).
+   * Injecté pour instancier un client EN MÉMOIRE (pré-vol VIS-6 Lot 2) qui ne
+   * touche jamais le slot `localStorage`.
+   */
+  charger?: () => BrouillonVisiteur | null;
+  /**
+   * Écriture du brouillon. Défaut : slot `localStorage` (`sauverBrouillon`).
+   * Un pré-vol injecte une écriture EN MÉMOIRE (aucun effet sur `localStorage`).
+   */
+  sauver?: (b: BrouillonVisiteur) => void;
 }
 
 // ============================================================
@@ -287,6 +298,10 @@ function decodeIdGratuite(
 
 export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
   const deriver = deps.deriver ?? deriverEtat;
+  // Couture de persistance : par défaut le slot `localStorage`. Un client en
+  // mémoire (pré-vol) injecte `charger`/`sauver` no-op → aucune écriture du slot.
+  const charger = deps.charger ?? chargerBrouillon;
+  const sauver = deps.sauver ?? sauverBrouillon;
 
   /** Coût effectif payé pour une compétence acquise (0 si gratuité de classe). */
   function estGratuite(etat: EtatDeriveVisiteur, competenceId: string, niveau: number, choix: string | null): boolean {
@@ -305,7 +320,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
   ): Reponse<Json> {
     const g = guardPerso(personnageId);
     if (g) return g;
-    const b = chargerBrouillon();
+    const b = charger();
     if (!b) return repBrouillonAbsent();
     return corps(b, deriver(b));
   }
@@ -324,7 +339,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         };
         const v = peutAcheterCompetence(etat.contextePersonnage, demande);
         if (!v.peutAcheter) return repErr({ message: v.raison });
-        sauverBrouillon(appliquerAchatCompetence(b, demande));
+        sauver(appliquerAchatCompetence(b, demande));
         return repOk(null);
       });
     },
@@ -333,7 +348,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       // Portage FIDÈLE de `desacheter_competence` (A6, migration 20260610065923) :
       // refus gratuité → cascade niveaux → boucle prérequis → purge sorts/prières
       // → aperçu dry_run reflétant la cascade RÉELLE. Le serveur est la source.
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
 
       // ── Cible : `id` reçu = `instanceId` d'une ligne payante OU id synthétique
@@ -507,7 +522,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         },
         meta: { ...b.meta, modifieLe: new Date().toISOString() },
       };
-      sauverBrouillon(b2);
+      sauver(b2);
       return repOk(donnees);
     },
 
@@ -523,13 +538,13 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         const v = peutAcheterSort(etat.contexteMagie, demande);
         if (!v.peutAcheter) return repErr({ code: v.code, message: v.raison });
         const item: Omit<BrouillonSort, "instanceId"> = { ...demande, nomPersonnalise: params.p_nom_personnalise };
-        sauverBrouillon(appliquerAchatSort(b, item));
+        sauver(appliquerAchatSort(b, item));
         return repOk(null);
       });
     },
 
     async desacheterSort(params) {
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       // `id` = `instanceId` de la ligne sort → retrait d'UNE copie (identité
       //  d'instance ; deux sorts de même `sortId` sont désormais dissociables).
@@ -550,12 +565,12 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         message_action: null,
       };
       if (params.p_dry_run) return repOk(donnees);
-      sauverBrouillon(b1);
+      sauver(b1);
       return repOk(donnees);
     },
 
     async modifierSort(params) {
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       const instanceId = params.p_personnage_sort_id;
       const existant = b.acquisitions.sorts.find((s) => s.instanceId === instanceId);
@@ -598,7 +613,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       if (diff > 0 && etat.xpDispo < diff) {
         return repErr({ code: "xp_insuffisant", message: "XP insuffisant" }, { plancher });
       }
-      sauverBrouillon(
+      sauver(
         applicModifierSort(b, instanceId, {
           niveauSort: params.p_niveau_sort,
           zoneChoisie: params.p_zone_choisie,
@@ -625,13 +640,13 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         const v = peutAcheterPriere(etat.contexteMagie, demande);
         if (!v.peutAcheter) return repErr({ code: v.code, message: v.raison });
         const item: Omit<BrouillonPriere, "instanceId"> = { ...demande, nomPersonnalise: params.p_nom_personnalise };
-        sauverBrouillon(appliquerAchatPriere(b, item));
+        sauver(appliquerAchatPriere(b, item));
         return repOk(null);
       });
     },
 
     async desacheterPriere(params) {
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       const instanceId = params.p_personnage_priere_id;
       const existant = b.acquisitions.prieres.find((p) => p.instanceId === instanceId);
@@ -649,12 +664,12 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         message_action: null,
       };
       if (params.p_dry_run) return repOk(donnees);
-      sauverBrouillon(b1);
+      sauver(b1);
       return repOk(donnees);
     },
 
     async modifierPriere(params) {
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       const instanceId = params.p_personnage_priere_id;
       const existant = b.acquisitions.prieres.find((p) => p.instanceId === instanceId);
@@ -702,7 +717,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       if (diff > 0 && etat.xpDispo < diff) {
         return repErr({ code: "xp_insuffisant", message: "XP insuffisant" }, { plancher });
       }
-      sauverBrouillon(
+      sauver(
         applicModifierPriere(b, instanceId, {
           niveauPriere: params.p_niveau_priere,
           zoneChoisie: params.p_zone_choisie,
@@ -719,19 +734,19 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       return orchestrer(params.p_personnage_id, (b, etat) => {
         const v = peutAcheterRecette(etat.contexteRecette, params.p_recette_id);
         if (!v.peutAcheter) return repErr({ code: v.code, message: v.raison });
-        sauverBrouillon(appliquerAchatRecette(b, params.p_recette_id));
+        sauver(appliquerAchatRecette(b, params.p_recette_id));
         return repOk(null);
       });
     },
 
     async desacheterRecette(params) {
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       // `id` = `instanceId` → retrait d'UNE ligne recette (par PK côté serveur).
       const instanceId = params.p_personnage_recette_id;
       const existe = b.acquisitions.recettes.some((r) => r.instanceId === instanceId);
       if (!existe) return repErr({ code: "introuvable", message: "Recette introuvable." });
-      sauverBrouillon(retirerRecette(b, instanceId));
+      sauver(retirerRecette(b, instanceId));
       return repOk(null);
     },
 
@@ -739,7 +754,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       return orchestrer(params.p_personnage_id, (b, etat) => {
         const v = peutAcheterPiege(etat.contextePiege, params.p_piege_id);
         if (!v.peutAcheter) return repErr({ code: v.code, message: v.raison });
-        sauverBrouillon(appliquerAchatPiege(b, params.p_piege_id));
+        sauver(appliquerAchatPiege(b, params.p_piege_id));
         return repOk(null);
       });
     },
@@ -749,7 +764,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       // ASCENDANTE — le serveur supprime le palier ciblé + TOUS les paliers ≥ N de
       // la MÊME FAMILLE (`piege_nom`), rembourse la somme, et renvoie un `donnees`
       // détaillant les lignes supprimées (mêmes clés que le serveur).
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       const instanceId = params.p_personnage_piege_id;
       const cible = b.acquisitions.pieges.find((p) => p.instanceId === instanceId);
@@ -811,7 +826,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         xp_depense: etatApres.xpDepense,
         xp_restant: etatApres.xpDispo,
       };
-      sauverBrouillon(b1);
+      sauver(b1);
       return repOk(donnees);
     },
 
@@ -819,19 +834,19 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       return orchestrer(params.p_personnage_id, (b, etat) => {
         const v = peutAcheterAssemblage(etat.contexteAssemblage, params.p_assemblage_id);
         if (!v.peutAcheter) return repErr({ code: v.code, message: v.raison });
-        sauverBrouillon(appliquerAchatAssemblage(b, params.p_assemblage_id));
+        sauver(appliquerAchatAssemblage(b, params.p_assemblage_id));
         return repOk(null);
       });
     },
 
     async desacheterAssemblage(params) {
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       // `id` = `instanceId` → retrait d'UNE ligne assemblage (par PK côté serveur).
       const instanceId = params.p_personnage_assemblage_id;
       const existe = b.acquisitions.assemblages.some((a) => a.instanceId === instanceId);
       if (!existe) return repErr({ code: "introuvable", message: "Assemblage introuvable." });
-      sauverBrouillon(retirerAssemblage(b, instanceId));
+      sauver(retirerAssemblage(b, instanceId));
       return repOk(null);
     },
 
@@ -843,7 +858,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
 
     async demarrerCreationPersonnage(_params) {
       // Migration 20260607223650. Business : `brouillon_existant`.
-      const existant = chargerBrouillon();
+      const existant = charger();
       // TOP 5d — protection du personnage finalisé. Le serveur crée un NOUVEAU
       // personnage et conserve l'ancien ; hors ligne, le slot localStorage est
       // unique et on ne peut pas dupliquer. On REFUSE donc d'écraser un
@@ -862,14 +877,14 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         );
       }
       const b = creerBrouillonVide();
-      sauverBrouillon(b);
+      sauver(b);
       return repOk({ personnage_id: PERSONNAGE_LOCAL_ID, etape_creation: 1 });
     },
 
     async sauvegarderEtape1(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
 
       const payload = {
@@ -886,7 +901,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       // p_brouillon : sauvegarde partielle SANS validation (migration 20260619030657).
       if (params.p_brouillon) {
         const nb = appliquerEtape1(b, payload);
-        sauverBrouillon(nb);
+        sauver(nb);
         return repOk({
           personnage_id: PERSONNAGE_LOCAL_ID,
           brouillon: true,
@@ -913,14 +928,14 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
 
       const nb0 = appliquerEtape1(b, payload);
       const nb = avancerVers(nb0, 1, 2);
-      sauverBrouillon(nb);
+      sauver(nb);
       return repOk({ personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante });
     },
 
     async sauvegarderEtape2(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
 
       const payload = {
@@ -929,7 +944,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       };
       if (params.p_brouillon) {
         const nb = appliquerEtape2(b, payload);
-        sauverBrouillon(nb);
+        sauver(nb);
         return repOk({ personnage_id: PERSONNAGE_LOCAL_ID, brouillon: true, etape_creation_apres: nb.meta.etapeCourante });
       }
 
@@ -955,14 +970,14 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       }
 
       const nb = avancerVers(appliquerEtape2(b, payload), 2, 3);
-      sauverBrouillon(nb);
+      sauver(nb);
       return repOk({ personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante });
     },
 
     async sauvegarderEtape3(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
 
       const traits = (params.p_traits_raciaux_choisis ?? []) as Array<{
@@ -975,7 +990,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
 
       if (params.p_brouillon) {
         const nb = appliquerEtape3(b, payload);
-        sauverBrouillon(nb);
+        sauver(nb);
         return repOk({
           personnage_id: PERSONNAGE_LOCAL_ID,
           brouillon: true,
@@ -1044,7 +1059,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       }
 
       const nb = avancerVers(appliquerEtape3(b, payload), 3, 4);
-      sauverBrouillon(nb);
+      sauver(nb);
       return repOk({
         personnage_id: PERSONNAGE_LOCAL_ID,
         etape_creation_apres: nb.meta.etapeCourante,
@@ -1055,7 +1070,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async sauvegarderEtape4(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
 
       const choix = (params.p_choix_par_competence ?? undefined) as
@@ -1065,7 +1080,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
 
       if (params.p_brouillon) {
         const nb = appliquerEtape4(b, payload);
-        sauverBrouillon(nb);
+        sauver(nb);
         return repOk({ personnage_id: PERSONNAGE_LOCAL_ID, brouillon: true, etape_creation_apres: nb.meta.etapeCourante });
       }
 
@@ -1092,7 +1107,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           );
         }
         const nb = avancerVers(appliquerCascadeClasse(b, params.p_classe_id, choix ?? {}, res), 4, 5);
-        sauverBrouillon(nb);
+        sauver(nb);
         return repOk(
           { personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante },
           res.avertissements,
@@ -1117,14 +1132,14 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       }
 
       const nb = avancerVers(appliquerEtape4(b, payload), 4, 5);
-      sauverBrouillon(nb);
+      sauver(nb);
       return repOk({ personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante });
     },
 
     async avancerEtape(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
 
       const etape = params.p_etape_courante;
@@ -1137,7 +1152,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         return repErr(val.erreurs[0], { personnage_id: PERSONNAGE_LOCAL_ID }, val.avertissements);
       }
       const nb = avancerVers(b, etape, etape + 1);
-      sauverBrouillon(nb);
+      sauver(nb);
       return repOk(
         { personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante },
         val.avertissements,
@@ -1147,7 +1162,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async etatEditionPersonnage(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       // Visiteur en création → toujours l'état "brouillon" (wizard).
       return rep({
         etat: b ? "brouillon" : null,
@@ -1167,7 +1182,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async validerPersonnageFinal(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) {
         return rep({
           valide: false,
@@ -1192,7 +1207,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         ...b,
         meta: { ...b.meta, etapeCourante: 11 },
       };
-      sauverBrouillon(marque);
+      sauver(marque);
       return rep({ valide: true, est_verrouille: true, erreurs: [], avertissements });
     },
 
@@ -1204,7 +1219,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async changerClassePersonnage(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return repBrouillonAbsent();
       const choix = (params.p_choix_par_competence ?? {}) as Record<string, string>;
 
@@ -1222,7 +1237,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       }
 
       const nb = appliquerCascadeClasse(b, params.p_classe_id, choix, res);
-      sauverBrouillon(nb);
+      sauver(nb);
       const etat = deriver(nb);
       const donnees = {
         ...res.donnees,
@@ -1236,7 +1251,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async verifierPrerequisCompetences(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return rep({ erreur: "Personnage introuvable" });
       return rep(calculerPrerequis(b, deriver));
     },
@@ -1244,7 +1259,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async apercuRabaisAcquisitionCompetence(params) {
       const g = guardPerso(params.p_personnage_id);
       if (g) return g;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return rep([]);
       return rep(calculerRabais(b, params.p_competence_id));
     },
@@ -1258,7 +1273,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnage(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: { message: "Personnage introuvable." } };
       const etat = deriver(b);
       // cf. TROUS_A3II §5 — colonnes serveur neutres.
@@ -1288,7 +1303,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageIdentite(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: { message: "Personnage introuvable." } };
       return {
         data: {
@@ -1308,7 +1323,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageRace(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: { message: "Personnage introuvable." } };
       return {
         data: {
@@ -1324,7 +1339,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageClasse(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: { message: "Personnage introuvable." } };
       return {
         data: {
@@ -1341,7 +1356,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageReligion(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: { message: "Personnage introuvable." } };
       return {
         data: { id: PERSONNAGE_LOCAL_ID, religion_id: b.etape1.religionId } as unknown as never,
@@ -1352,7 +1367,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageProgression(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: { message: "Personnage introuvable." } };
       const etat = deriver(b);
       return {
@@ -1663,7 +1678,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireDomainesDisponibles(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       const map = deriverDomainesDisponibles(
@@ -1681,7 +1696,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireCerclesDisponibles(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       const map = deriverCerclesDisponibles(etat.contexteMagie.competencesAcquises);
@@ -1696,7 +1711,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireArtisanatQuotas(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: null };
       const etat = deriver(b);
       const na = etat.niveauxArtisanat;
@@ -1758,7 +1773,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageCompetences(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       // Deux sources d'identité, dans l'ordre du serveur (achats du joueur, puis
@@ -1802,7 +1817,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageCompetencesNoms(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       const rows: CompetenceNom[] = etat.contextePersonnage.competencesAcquises.map((c) => ({
@@ -1814,7 +1829,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireNiveauCompetenceParNom(personnageId, nomCompetence) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       const niveaux = etat.contextePersonnage.competencesAcquises
@@ -1831,7 +1846,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageSorts(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows: LigneSortAcquis[] = b.acquisitions.sorts.map((s) => {
         const cat = getSortCat(s.sortId);
@@ -1874,7 +1889,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnagePrieres(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows: LignePriereAcquise[] = b.acquisitions.prieres.map((p) => {
         const cat = getPriereCat(p.priereId);
@@ -1916,7 +1931,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnagePieges(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       const rows = etat.contextePiege.piegesAcquis.map((p, i) => {
@@ -1941,7 +1956,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageRecettes(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       const rows = etat.contexteRecette.recettesAcquises.map((r, i) => {
@@ -1961,7 +1976,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lirePersonnageAssemblages(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const etat = deriver(b);
       const rows = etat.contexteAssemblage.assemblagesAcquis.map((a, i) => {
@@ -1986,7 +2001,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFichePersonnage(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: null };
       const row = adaptateurFiche.fichePersonnage(
         snap(),
@@ -2001,7 +2016,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFicheCompetences(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows = adaptateurFiche.ficheCompetences(
         snap(),
@@ -2016,7 +2031,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFicheSorts(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows = adaptateurFiche.ficheSorts(snap(), b, PERSONNAGE_LOCAL_ID);
       return { data: rows as unknown as never, error: null };
@@ -2025,7 +2040,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFichePrieres(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows = adaptateurFiche.fichePrieres(snap(), b, PERSONNAGE_LOCAL_ID);
       return { data: rows as unknown as never, error: null };
@@ -2034,7 +2049,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFicheAssemblages(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows = adaptateurFiche.ficheAssemblages(
         snap(),
@@ -2048,7 +2063,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFicheRecettes(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows = adaptateurFiche.ficheRecettes(
         snap(),
@@ -2062,7 +2077,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFicheArtisanatEtat(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: null, error: null };
       const row = adaptateurFiche.ficheArtisanatEtat(deriver(b));
       return { data: row as unknown as never, error: null };
@@ -2071,7 +2086,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
     async lireFichePieges(personnageId) {
       const g = guardPerso(personnageId);
       if (g) return g as unknown as Reponse<never>;
-      const b = chargerBrouillon();
+      const b = charger();
       if (!b) return { data: [] as unknown as never, error: null };
       const rows = adaptateurFiche.fichePieges(
         snap(),

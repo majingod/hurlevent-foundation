@@ -29,6 +29,7 @@ import MisesAJour from "@/pages/MisesAJour";
 // Pages joueur
 import TableauDeBord from "@/pages/TableauDeBord";
 import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
+import RepriseEssai from "@/pages/RepriseEssai";
 import CreationVisiteur from "@/pages/CreationVisiteur";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 import PersonnageJournal from "@/pages/PersonnageJournal";
@@ -102,6 +103,15 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <PersonnageNouveauV2 />
+        </ProtectedRoute>
+      }
+    />
+    {/* [VIS-6] Lot 2 — reprise du brouillon visiteur (même garde auth). */}
+    <Route
+      path="/reprise-essai"
+      element={
+        <ProtectedRoute>
+          <RepriseEssai />
         </ProtectedRoute>
       }
     />
