@@ -1,5 +1,19 @@
 # TROUS_A3II — champs non reproductibles hors ligne (`clientVisiteur`)
 
+> ## ⚠️ STATUT s322 (2026-07-10) — AUDIT CLOS
+> Re-mesure complète en s322 (code réel + base) :
+> - **§1 (quotas forge/joaillerie) : CORRIGÉ.** `deriverNiveauxArtisanat` dérive désormais
+>   `niveauForge`/`niveauJoaillerie` et `clientVisiteur.lireArtisanatQuotas` les renvoie.
+>   Restent neutres : `a_forge_legendaire`, `a_joaillerie_legendaire`, `quota_recettes_total`
+>   — **0 consommateur écran** (grep s322), sans effet visible.
+> - **§2 (désachat sorts/prières : `reprises`/`message_action` neutres) : APPROXIMATION
+>   ACCEPTÉE.** `xp_rembourse` est exact ; seul le détail cosmétique des reprises manque au
+>   dialogue de confirmation. Portage SQL non trivial, valeur faible — documenté, pas de suite.
+> - **§3 (plancher `acquis_regression`) : INATTEIGNABLE en visiteur.** Le plancher provient
+>   d'acquis confirmés à un GN ; un brouillon visiteur n'en possède jamais.
+> - **§4 : corrigé antérieurement** (voir note d'origine).
+> Le trou d'affichage des pastilles `special` ([VIS-3]) est fermé dans la PR qui ajoute ce bloc.
+
 Ce document liste, conformément au **§5** du cahier des charges P2-a3-ii, les
 méthodes du guichet `ClientCreation` dont une partie du retour **ne peut pas être
 produite fidèlement hors ligne** (colonne absente du `getSnapshot()`, logique

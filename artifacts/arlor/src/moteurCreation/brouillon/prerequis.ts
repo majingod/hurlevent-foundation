@@ -47,6 +47,16 @@ export function calculerPrerequis(
   const niveauActuelParNom = (nom: string): number =>
     Math.max(0, ...acquis.filter((a) => a.competenceNom === nom).map((a) => a.niveauAcquis));
 
+  // `formater_prereq_label` (migration 20260530203835) : "Niv N" sauf cible
+  // mono-niveau (nom seul). Réservé aux 3 branches "special" ci-dessous —
+  // le cas général garde son formateur existant (INCHANGÉ).
+  const formaterPrereqLabelSpecial = (nom: string, niveauMin: number): string => {
+    const cible = snapshot.tables.competences.find((c) => c.nom === nom);
+    const niveaux = cible?.niveaux;
+    const nbNiveaux = Array.isArray(niveaux) ? niveaux.length : 0;
+    return nbNiveaux <= 1 ? nom : `${nom} Niv ${niveauMin}`;
+  };
+
   const resultat: Record<string, unknown> = {};
 
   for (const comp of snapshot.tables.competences) {
@@ -69,19 +79,50 @@ export function calculerPrerequis(
         });
       }
 
-      // Prérequis compétences (objet indexé par niveau).
-      const raw = comp.prerequis_competences as unknown;
-      let liste: Array<{ competence_nom: string; niveau_min: number }> = [];
-      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-        const forLevel = (raw as Record<string, unknown>)[String(niveau)];
-        if (Array.isArray(forLevel)) liste = forLevel as Array<{ competence_nom: string; niveau_min: number }>;
-      }
-      for (const pr of liste) {
-        const actuel = niveauActuelParNom(pr.competence_nom);
-        const okPre = actuel >= pr.niveau_min;
-        const label = `${pr.competence_nom} niveau ${pr.niveau_min}`;
-        prereqNiv.push({ label, statut: okPre ? "acquis" : "manquant", competence_id: null });
-        if (!okPre) manquants.push(label);
+      // Prérequis compétences — 3 branches EXCLUSIVES "special" (mêmes cas que
+      // `assembler_prerequis_labels`, migration 20260706195514 : le cas général
+      // structuré n'est PAS émis pour ces niveaux-là), sinon cas général
+      // (objet indexé par niveau).
+      if (comp.nom === "Dépeçage" && niveau === 1) {
+        const items = [
+          {
+            label: `${formaterPrereqLabelSpecial("Connaissances des Créatures", 1)} (famille appropriée)`,
+            acquis: niveauActuelParNom("Connaissances des Créatures") >= 1,
+          },
+          {
+            label: formaterPrereqLabelSpecial("Premiers Soins", 1),
+            acquis: niveauActuelParNom("Premiers Soins") >= 1,
+          },
+        ];
+        for (const it of items) {
+          prereqNiv.push({ label: it.label, statut: it.acquis ? "acquis" : "manquant", competence_id: null });
+          if (!it.acquis) manquants.push(it.label);
+        }
+      } else if (comp.nom === "Dépeçage" && niveau === 2) {
+        const label = `${formaterPrereqLabelSpecial("Connaissances des Créatures", 2)} (famille appropriée)`;
+        const acquis = niveauActuelParNom("Connaissances des Créatures") >= 2;
+        prereqNiv.push({ label, statut: acquis ? "acquis" : "manquant", competence_id: null });
+        if (!acquis) manquants.push(label);
+      } else if (comp.nom === "Développement Spirituel Supérieur" && niveau === 1) {
+        const label = "20 PS via Développement Spirituel";
+        const acquis = psMax >= 20;
+        prereqNiv.push({ label, statut: acquis ? "acquis" : "manquant", competence_id: null });
+        if (!acquis) manquants.push(label);
+      } else {
+        // Prérequis compétences (objet indexé par niveau).
+        const raw = comp.prerequis_competences as unknown;
+        let liste: Array<{ competence_nom: string; niveau_min: number }> = [];
+        if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+          const forLevel = (raw as Record<string, unknown>)[String(niveau)];
+          if (Array.isArray(forLevel)) liste = forLevel as Array<{ competence_nom: string; niveau_min: number }>;
+        }
+        for (const pr of liste) {
+          const actuel = niveauActuelParNom(pr.competence_nom);
+          const okPre = actuel >= pr.niveau_min;
+          const label = `${pr.competence_nom} niveau ${pr.niveau_min}`;
+          prereqNiv.push({ label, statut: okPre ? "acquis" : "manquant", competence_id: null });
+          if (!okPre) manquants.push(label);
+        }
       }
 
       if (prereqNiv.length > 0) prereqParNiveau[String(niveau)] = prereqNiv;
@@ -100,7 +141,6 @@ export function calculerPrerequis(
     }
   }
 
-  void psMax; // (les prérequis "special" ps sont hors compétences catalogue standard)
   return resultat;
 }
 
