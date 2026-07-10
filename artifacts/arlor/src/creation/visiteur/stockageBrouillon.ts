@@ -79,20 +79,14 @@ function supprimerBrut(cle: string): void {
 }
 
 /**
- * Charge le brouillon persisté, ou `null` si absent / illisible / schéma inconnu.
- * Le schéma inconnu est JETÉ silencieusement (pas de crash).
+ * Valide/migre une donnée brute déjà parsée (JSON.parse) en `BrouillonVisiteur`.
+ * `null` = forme illisible ou schéma inconnu (jeté silencieusement, pas de crash).
+ *
+ * Source unique de la garde de version : appelée par `chargerBrouillon` (slot
+ * `localStorage`) ET par `interpreterTexteColle` (code de reprise / fichier
+ * `.json` collé) — un brouillon v1 est migré dans les deux cas.
  */
-export function chargerBrouillon(): BrouillonVisiteur | null {
-  const brut = lireBrut(CLE_BROUILLON);
-  if (brut === null) return null;
-
-  let parse: unknown;
-  try {
-    parse = JSON.parse(brut);
-  } catch {
-    return null; // JSON corrompu → on jette.
-  }
-
+export function interpreterBrouillonBrut(parse: unknown): BrouillonVisiteur | null {
   if (parse == null || typeof parse !== "object") {
     return null; // pas un objet → on jette.
   }
@@ -109,6 +103,24 @@ export function chargerBrouillon(): BrouillonVisiteur | null {
   }
 
   return parse as BrouillonVisiteur;
+}
+
+/**
+ * Charge le brouillon persisté, ou `null` si absent / illisible / schéma inconnu.
+ * Le schéma inconnu est JETÉ silencieusement (pas de crash).
+ */
+export function chargerBrouillon(): BrouillonVisiteur | null {
+  const brut = lireBrut(CLE_BROUILLON);
+  if (brut === null) return null;
+
+  let parse: unknown;
+  try {
+    parse = JSON.parse(brut);
+  } catch {
+    return null; // JSON corrompu → on jette.
+  }
+
+  return interpreterBrouillonBrut(parse);
 }
 
 /** Sauve le brouillon (slot unique, écrase le précédent). */

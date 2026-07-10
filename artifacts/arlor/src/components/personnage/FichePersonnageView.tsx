@@ -49,6 +49,7 @@ import RappelFouille from "./RappelFouille";
 import { FicheImprimable } from "./FicheImprimable";
 import BoutonRemodeler from "@/components/personnage/BoutonRemodeler";
 import ReligionDetails from "@/components/shared/ReligionDetails";
+import { BlocEmporter } from "@/creation/visiteur/BlocsCodeReprise";
 
 type LangueRow = Database["public"]["Tables"]["langues"]["Row"];
 type ReligionRow = Database["public"]["Tables"]["religions"]["Row"];
@@ -534,6 +535,10 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           </p>
         )}
       </div>
+
+      {/* HL-A3 (s321) : code de reprise — visiteur seulement, sous le CTA
+          « créez un compte » ci-dessus (inchangé). */}
+      {estModeVisiteur() && <BlocEmporter />}
 
       {/* s299 — rappel fouille tout en haut, puis bascule canon, visibles dans
           TOUS les modes (route ET embarqué wizard/admin). */}
