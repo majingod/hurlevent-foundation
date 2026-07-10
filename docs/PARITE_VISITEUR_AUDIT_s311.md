@@ -1,5 +1,14 @@
 # Audit de parité wizard serveur ↔ moteur visiteur (s311)
 
+> ⚠️ **INSTANTANÉ PÉRIMÉ (annoté s321)** — cet audit décrit l'état s311.
+> Depuis : les 6 💥 « lectures » sont TOUS corrigés (re-mesuré s319) ;
+> lectures catalogue verrouillées par `pariteLecturesCatalogues.test.ts` (#670),
+> encyclo/règles par `pariteLecturesEncyclopedie.test.ts` (#672), état-perso par
+> `pariteLecturesEtatPerso.test.ts` (s321). Les lignes ⚠️ restantes =
+> **divergences assumées, à NE PAS tester** (tri `localeCompare` vs PostgREST,
+> `lireRaces`/`lireClasses` lignes complètes, dédoublonnage
+> `lireSortsCercles`/`lirePrieresDomaines`).
+
 > **Audit en lecture seule** — aucun correctif appliqué ; les fixes seront des lots séparés.
 >
 > **Périmètre** : les **68 méthodes** de l'interface `ClientCreation`
