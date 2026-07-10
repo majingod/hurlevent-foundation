@@ -3,6 +3,7 @@ import { useProfil } from "@/contexts/ProfilContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { clientActif, estModeVisiteur } from "@/creation/clientActif";
+import { URL_SITE } from "@/lib/liens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -502,19 +503,36 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
             {fiche.race_nom} {fiche.race_nom_latin && <span className="italic">({fiche.race_nom_latin})</span>} • {fiche.classe_nom} • Niveau {fiche.niveau}
           </p>
         </div>
-        {/* Impression dispo dans les 2 modes : fiche connectée (route) ET récap du
-            wizard visiteur (wizard-preview, y compris hors ligne). FicheImprimable est
-            props-driven (aucun fetch) → fonctionne offline. Pas de gate volontairement. */}
-        <div className="flex gap-2 flex-wrap sm:justify-end">
-          <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
-            <Printer className="h-4 w-4" />
-            Imprimer (Abrégé)
-          </Button>
-          <Button onClick={() => triggerPrint('manuel')} variant="outline" size="sm" className="gap-2">
-            <Printer className="h-4 w-4" />
-            Imprimer (Intégral)
-          </Button>
-        </div>
+        {/* Impression réservée aux comptes connectés (fiche route ET récap du
+            wizard connecté /createur). En MODE VISITEUR (URL /visiteur ou build
+            hors-ligne), décision s320 : pas de bouton Imprimer — on pousse vers
+            la création de compte sur le site (sauvegarde en ligne). Inverse
+            partiellement [P4] s314. L'onglet Export reste gardé mode==='route'. */}
+        {!estModeVisiteur() ? (
+          <div className="flex gap-2 flex-wrap sm:justify-end">
+            <Button onClick={() => triggerPrint('fiche')} variant="outline" size="sm" className="gap-2">
+              <Printer className="h-4 w-4" />
+              Imprimer (Abrégé)
+            </Button>
+            <Button onClick={() => triggerPrint('manuel')} variant="outline" size="sm" className="gap-2">
+              <Printer className="h-4 w-4" />
+              Imprimer (Intégral)
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground sm:max-w-xs sm:text-right">
+            Pour sauvegarder ou imprimer votre personnage, créez un compte sur{" "}
+            <a
+              href={URL_SITE}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary underline underline-offset-2"
+            >
+              le site officiel
+            </a>
+            .
+          </p>
+        )}
       </div>
 
       {/* s299 — rappel fouille tout en haut, puis bascule canon, visibles dans
