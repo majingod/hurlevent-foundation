@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { clientActif, estModeVisiteur } from "@/creation/clientActif";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -115,7 +116,8 @@ const Regles = () => {
 
   // Appel RPC quand debouncedRecherche change
   useEffect(() => {
-    if (debouncedRecherche.trim().length < 2 || activeCat === "lexique") {
+    // [HL-A2] Lot 3 remplacera estModeVisiteur() par la recherche locale (snapshot).
+    if (debouncedRecherche.trim().length < 2 || activeCat === "lexique" || estModeVisiteur()) {
       setSearchResults([]);
       setSearching(false);
       return;
@@ -139,14 +141,8 @@ const Regles = () => {
   useEffect(() => {
     (async () => {
       const [secRes, effetsRes] = await Promise.all([
-        supabase
-          .from("sections_regles")
-          .select("*")
-          .in("categorie", CATEGORIES.map((c) => c.key))
-          .eq("est_actif", true)
-          .order("categorie")
-          .order("ordre"),
-        supabase.from("effets_combat").select("*").order("nom", { ascending: true }),
+        clientActif.lireSectionsRegles(CATEGORIES.map((c) => c.key)),
+        clientActif.lireEffetsCombat(),
       ]);
       if (secRes.data) setSections(secRes.data as SectionRegle[]);
       if (effetsRes.data) setEffets(effetsRes.data as EffetCombat[]);
@@ -221,7 +217,7 @@ const Regles = () => {
 
         {CATEGORIES.map((c) => (
           <TabsContent key={c.key} value={c.key} className="mt-0 space-y-4">
-            {c.key !== "lexique" && recherche.trim().length >= 2 ? (
+            {c.key !== "lexique" && recherche.trim().length >= 2 && !estModeVisiteur() ? (
               <>
                 {searching && (
                   <p className="text-muted-foreground text-center py-2">Recherche en cours…</p>
