@@ -35,6 +35,7 @@ import type {
 
 import { getSnapshot } from "@/moteurCreation/snapshot";
 import { TABLE_SOURCE_ENCYCLOPEDIE } from "../encyclopedie";
+import { rechercherEncyclopedieLocale } from "./rechercheEncyclopedieLocale";
 import { calculerCoutXP, calculerDureeIncantation } from "@/utils/calculsMagie";
 import { genererFormuleMagique } from "@/moteurCreation/formuleMagique";
 import {
@@ -1583,6 +1584,16 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         .filter((s) => s.est_actif === true && voulu.has(String(s.categorie)));
       return {
         data: trierPar(rows, (s) => s.categorie, (s) => s.ordre) as never,
+        error: null,
+      };
+    },
+
+    async rechercherEncyclopedie(terme) {
+      return {
+        data: rechercherEncyclopedieLocale(
+          snap().tables as Record<string, Array<Record<string, unknown>> | undefined>,
+          terme,
+        ) as never,
         error: null,
       };
     },

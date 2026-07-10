@@ -1,5 +1,6 @@
 import type { Database } from "@/integrations/supabase/types";
 import type { CategorieEncyclopedie } from "./encyclopedie";
+import type { ResultatRechercheEncyclopedie } from "./visiteur/rechercheEncyclopedieLocale";
 
 /**
  * Guichet unique de la création de personnage (mode visiteur — P2).
@@ -533,6 +534,11 @@ export interface ClientCreation {
   lireSectionsRegles(
     categories: string[],
   ): Promise<Reponse<RowT<"sections_regles">[]>>;
+
+  /** RPC: rechercher_encyclopedie(p_terme) — recherche plein-texte 15 branches, rang+titre, limit 50 */
+  rechercherEncyclopedie(
+    terme: string,
+  ): Promise<Reponse<ResultatRechercheEncyclopedie[]>>;
 
   /** SELECT: effets_combat (*, .order nom — PAS de colonne est_actif) */
   lireEffetsCombat(): Promise<Reponse<RowT<"effets_combat">[]>>;
