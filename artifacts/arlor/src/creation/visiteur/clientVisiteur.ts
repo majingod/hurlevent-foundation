@@ -43,6 +43,8 @@ import {
   coutAchatCompetence,
   type EtatDeriveVisiteur,
 } from "@/moteurCreation/brouillon/deriver";
+import { appliquerGratuites } from "@/moteurCreation/gratuites";
+import type { EtatCreationVisiteur } from "@/moteurCreation/deriveurs";
 import { calculerLignesRabais } from "@/moteurCreation/rabais";
 import {
   deriverCerclesDisponibles,
@@ -1106,7 +1108,30 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
             res.avertissements,
           );
         }
-        const nb = avancerVers(appliquerCascadeClasse(b, params.p_classe_id, choix ?? {}, res), 4, 5);
+        const casse = appliquerCascadeClasse(b, params.p_classe_id, choix ?? {}, res);
+
+        // FIX s322 (miroir serveur, migrations 163901/163941) : la cascade ne pose
+        // ni ne valide le choix des gratuités AJOUTÉES par la nouvelle classe —
+        // source unique de « gratuite + choix + religion », comme le serveur qui
+        // délègue désormais à `attribuer_competences_gratuites_classe(p_choix)`
+        // après la cascade. Portage : `appliquerGratuites` (purge par flag incluse).
+        const etatBase: EtatCreationVisiteur = {
+          raceId: casse.etape2.raceId || null,
+          classeId: casse.etape4.classeId || null,
+          religionId: casse.etape1.religionId,
+          estCroyant: casse.etape1.estCroyant,
+          competencesAcquises: [],
+        };
+        const { erreurs: erreursGratuites } = appliquerGratuites(getSnapshot(), etatBase, choix ?? {});
+        if (erreursGratuites.length > 0) {
+          return repErr(
+            { ...erreursGratuites[0], champ: "choix_par_competence" },
+            { personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: b.meta.etapeCourante },
+            res.avertissements,
+          );
+        }
+
+        const nb = avancerVers(casse, 4, 5);
         sauver(nb);
         return repOk(
           { personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante },
