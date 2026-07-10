@@ -437,6 +437,19 @@ export default function QuiJoue() {
           )}
         </div>
 
+        {/* [VIS-7] Échappatoire hors-ligne : grille vide = chargement réseau échoué.
+            Lien DUR (pas de navigate) : estRouteVisiteur vit au-dessus du Router. */}
+        {profils.length === 0 && (
+          <div style={{ textAlign: "center", marginTop: 24 }}>
+            <p style={{ fontFamily: T.inter, color: T.parcheminDim, fontSize: 14, textAlign: "center" }}>
+              Impossible de charger tes profils — pas de connexion ?
+            </p>
+            <a href="/visiteur" style={{ color: T.or, textDecoration: "underline", fontSize: 14 }}>
+              Continuer hors ligne en mode visiteur
+            </a>
+          </div>
+        )}
+
         {/* Bouton gestion */}
         <div style={{ textAlign: "center", marginTop: 36 }}>
           <button

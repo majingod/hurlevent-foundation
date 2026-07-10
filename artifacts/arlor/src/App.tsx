@@ -245,6 +245,13 @@ const App = () => {
             >
               Réessayer
             </button>
+            {/* [VIS-7] Échappatoire hors-ligne : lien DUR (pas de navigate), estRouteVisiteur vit au-dessus du Router. */}
+            <a
+              href="/visiteur"
+              className="text-sm text-gold underline underline-offset-2"
+            >
+              Continuer hors ligne en mode visiteur
+            </a>
           </div>
         )}
       </div>
