@@ -33,6 +33,20 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Les règles et l'encyclopédie voyagent avec toi",
+    description:
+      "Le fichier hors-ligne ne se limite plus à la création de personnage : il embarque maintenant toutes les règles du jeu et l'encyclopédie complète (races, classes, sorts, prières, bestiaire, artisanat…), avec la recherche qui fonctionne sans réseau — accents ou pas. Re-télécharge le fichier depuis la page Téléchargements pour en profiter : en forêt, en déplacement, tout le manuel vivant est dans ta poche.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Sauvegarder son personnage passe par ton compte",
+    description:
+      "En mode essai libre (sans compte) et dans le fichier hors-ligne, les boutons d'impression du récapitulatif ont été remplacés par un rappel : crée un compte sur le site pour enregistrer ton personnage, l'imprimer et le retrouver partout. Les joueurs connectés ne perdent rien — impression et export restent au même endroit sur ta fiche.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Le créateur hors ligne se télécharge en un clic",
     description:
       "Sur la page Téléchargements, un seul fichier à récupérer qui fonctionne sans réseau : les données du jeu sont à jour à chaque téléchargement, et un récapitulatif complet du personnage est inclus.",
