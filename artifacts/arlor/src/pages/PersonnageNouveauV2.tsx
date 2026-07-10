@@ -591,12 +591,16 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
           </h2>
           <p className="text-sm text-muted-foreground">
             Ton brouillon est complet et validé par les règles du jeu. Il reste
-            sauvegardé sur cet appareil. Pour le rendre officiel et le jouer en
-            GN, crée un compte : tu pourras le recréer en quelques minutes avec
-            cette fiche sous les yeux.
+            sauvegardé sur cet appareil : ta fiche, ton code de reprise et ton
+            fichier restent consultables à tout moment. Pour le jouer en GN,
+            crée un compte — Hurlevent te proposera de le transformer
+            automatiquement en vrai personnage.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate("/connexion")}>
+            <Button onClick={() => navigate("/visiteur/fiche")}>
+              Voir ma fiche
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/connexion")}>
               Créer un compte
             </Button>
             <Button variant="outline" onClick={() => navigate("/")}>

@@ -31,6 +31,7 @@ import TableauDeBord from "@/pages/TableauDeBord";
 import PersonnageNouveauV2 from "@/pages/PersonnageNouveauV2";
 import RepriseEssai from "@/pages/RepriseEssai";
 import CreationVisiteur from "@/pages/CreationVisiteur";
+import FicheVisiteur from "@/pages/FicheVisiteur";
 import PersonnageFiche from "@/pages/PersonnageFiche";
 import PersonnageJournal from "@/pages/PersonnageJournal";
 import Cimetiere from "@/pages/Cimetiere";
@@ -89,6 +90,9 @@ const AppRoutes = () => (
     {/* Route PUBLIQUE (hors ProtectedRoute) : créateur en mode visiteur,
         sans compte ni réseau (P2-b). */}
     <Route path="/visiteur" element={<CreationVisiteur />} />
+    {/* Route PUBLIQUE : fiche consultable du personnage visiteur finalisé
+        (s322) — garde son propre écran, ré-exportable à tout moment. */}
+    <Route path="/visiteur/fiche" element={<FicheVisiteur />} />
 
     <Route
       path="/tableau-de-bord"
