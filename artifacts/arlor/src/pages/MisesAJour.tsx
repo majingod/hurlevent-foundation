@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Ton personnage d'essai devient un vrai personnage",
+    description:
+      "Vous avez bâti un personnage en essai libre ? À votre première connexion, Hurlevent vous propose de le transformer en vrai personnage — vérification des règles à l'appui.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Emporte ton brouillon : le code de reprise",
     description:
       "Ton brouillon d'essai libre vit sur ton appareil — et un téléphone peut l'oublier. Depuis le récapitulatif, génère un code de reprise : colle-le dans tes notes ou envoie-le-toi par message, puis colle-le sur n'importe quel appareil (site ou fichier hors-ligne) pour reprendre exactement où tu étais. Un fichier .json est aussi proposé quand ton navigateur le permet. Avant de remplacer un brouillon existant, un aperçu te montre toujours ce que tu t'apprêtes à écraser.",

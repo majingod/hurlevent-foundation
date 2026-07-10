@@ -45,6 +45,7 @@ import { ModalesInscription } from "@/components/evenements/ModalesInscription";
 import { useInscriptionEvenements } from "@/hooks/useInscriptionEvenements";
 import CarteNotifications from "@/components/notifications/CarteNotifications";
 import { useNotifications } from "@/hooks/useNotifications";
+import BanniereRepriseBrouillon from "@/components/tableauDeBord/BanniereRepriseBrouillon";
 
 interface PersonnageResume {
   id: string;
@@ -389,6 +390,9 @@ const TableauDeBord = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* [VIS-6] Lot 2 — invite de reprise du brouillon visiteur (auto-masquée). */}
+      <BanniereRepriseBrouillon />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-heading text-gold">Tableau de bord</h1>
