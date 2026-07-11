@@ -33,6 +33,20 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Mode visiteur et hors-ligne : ta fiche reste consultable",
+    description:
+      "Mode visiteur et hors-ligne : après avoir finalisé ton personnage d'essai, tu peux maintenant revoir sa fiche à tout moment (« Voir ma fiche »), y récupérer ton code de reprise ou ton fichier, et l'imprimer.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
+    titre: "Corrigé : changer de classe à l'étape 4",
+    description:
+      "Corrigé : changer de classe à l'étape 4 (ex. vers Mage ou Prêtre) bloquait avec une erreur de choix manquant même après avoir choisi. C'est réglé, en ligne comme en mode visiteur.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Ton personnage d'essai devient un vrai personnage",
     description:
       "Vous avez bâti un personnage en essai libre ? À votre première connexion, Hurlevent vous propose de le transformer en vrai personnage — vérification des règles à l'appui.",

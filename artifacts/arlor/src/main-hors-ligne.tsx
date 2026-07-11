@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { ModeAffichageProvider } from "@/contexts/ModeAffichageContext";
 import AccueilHorsLigne from "@/pages/AccueilHorsLigne";
 import CreationVisiteur from "@/pages/CreationVisiteur";
+import FicheVisiteur from "@/pages/FicheVisiteur";
 import Encyclopedie from "@/pages/Encyclopedie";
 import Regles from "@/pages/Regles";
 import "./polices.ts";
@@ -57,6 +58,7 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/" element={<AccueilHorsLigne />} />
         <Route path="/visiteur" element={<CreationVisiteur />} />
+        <Route path="/visiteur/fiche" element={<FicheVisiteur />} />
         <Route
           path="/regles"
           element={
