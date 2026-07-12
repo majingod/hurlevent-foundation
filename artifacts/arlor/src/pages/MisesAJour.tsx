@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Encyclopédie : religions et prières fidèles au manuel corrigé",
+    description:
+      "Grand audit de conformité mot à mot avec le manuel corrigé : les 15 cultes (histoires, serments et rituels) et les 121 prières ont été vérifiés intégralement. Une soixantaine de coquilles et quelques phrases altérées ont été corrigées — notamment les trois « voies » de la Pinte Sauvage. Ce que tu lis dans l'encyclopédie pour bâtir ton personnage est le texte officiel.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Mode visiteur et hors-ligne : ta fiche reste consultable",
     description:
       "Mode visiteur et hors-ligne : après avoir finalisé ton personnage d'essai, tu peux maintenant revoir sa fiche à tout moment (« Voir ma fiche »), y récupérer ton code de reprise ou ton fichier, et l'imprimer.",
