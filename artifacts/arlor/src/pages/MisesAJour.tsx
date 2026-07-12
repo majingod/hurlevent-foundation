@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Encyclopédie — textes des compétences fidèles au manuel",
+    description:
+      "35 descriptions de niveaux de compétences ont été resynchronisées mot à mot avec le manuel corrigé. Notamment : Combat à deux armes (armes courtes 45 cm, arme longue jusqu'à 110 cm au niveau 3), Discours du Commandement (rayon 10 pieds, 1 attaque ignorée par combat), Bénédiction (le pouvoir du symbole sacré est décrit au niveau 3), Dépeçage 2 (famille exacte requise), Pistage (Chiméride), Premiers Soins (« panser »), Berserk, Canalisation, Hypnose et une vingtaine d'autres corrections de coquilles.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Encyclopédie : religions et prières fidèles au manuel corrigé",
     description:
       "Grand audit de conformité mot à mot avec le manuel corrigé : les 15 cultes (histoires, serments et rituels) et les 121 prières ont été vérifiés intégralement. Une soixantaine de coquilles et quelques phrases altérées ont été corrigées — notamment les trois « voies » de la Pinte Sauvage. Ce que tu lis dans l'encyclopédie pour bâtir ton personnage est le texte officiel.",
