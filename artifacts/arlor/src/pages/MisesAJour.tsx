@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Encyclopédie — assemblages de runes et alchimie fidèles au manuel",
+    description:
+      "Les 15 assemblages de runes et les 40 recettes d'alchimie ont été resynchronisés mot à mot avec le manuel corrigé : 33 coquilles et phrases altérées corrigées, dont « points de spiritualité » (accord, corrigé partout), l'Encre d'Activation Runique (le barème d'activations selon la valeur de la pierre est restauré), le Remède curatif (le Palos est activé par un souffle volontaire) et la Potion de peau de marbre.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Encyclopédie — textes des compétences fidèles au manuel",
     description:
       "35 descriptions de niveaux de compétences ont été resynchronisées mot à mot avec le manuel corrigé. Notamment : Combat à deux armes (armes courtes 45 cm, arme longue jusqu'à 110 cm au niveau 3), Discours du Commandement (rayon 10 pieds, 1 attaque ignorée par combat), Bénédiction (le pouvoir du symbole sacré est décrit au niveau 3), Dépeçage 2 (famille exacte requise), Pistage (Chiméride), Premiers Soins (« panser »), Berserk, Canalisation, Hypnose et une vingtaine d'autres corrections de coquilles.",
