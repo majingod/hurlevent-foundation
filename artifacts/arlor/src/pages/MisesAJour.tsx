@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Encyclopédie fidèle au manuel — races, bestiaire, pièges et lore",
+    description:
+      "Correction de 13 divergences avec le Manuel corrigé 2026 : descriptions du bestiaire (habileté), constructions de pièges (goujon, catalyseur, fiole d'encre réutilisable), exigences de costume et fiche du Royaume de Torekh.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Encyclopédie — assemblages de runes et alchimie fidèles au manuel",
     description:
       "Les 15 assemblages de runes et les 40 recettes d'alchimie ont été resynchronisés mot à mot avec le manuel corrigé : 33 coquilles et phrases altérées corrigées, dont « points de spiritualité » (accord, corrigé partout), l'Encre d'Activation Runique (le barème d'activations selon la valeur de la pierre est restauré), le Remède curatif (le Palos est activé par un souffle volontaire) et la Potion de peau de marbre.",
