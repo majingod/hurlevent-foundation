@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Encyclopédie — Monde de Destéa",
+    description:
+      "6 nouveaux lieux ajoutés (Fort-aux-Fous, Château Danos, Fort Gronde, Cité-Forêt de Melchior, Fort-Aro, Sil'dor) et plusieurs fiches existantes corrigées selon le manuel (dont la Forteresse Écarlate, entièrement réécrite).",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Encyclopédie fidèle au manuel — races, bestiaire, pièges et lore",
     description:
       "Correction de 13 divergences avec le Manuel corrigé 2026 : descriptions du bestiaire (habileté), constructions de pièges (goujon, catalyseur, fiole d'encre réutilisable), exigences de costume et fiche du Royaume de Torekh.",
