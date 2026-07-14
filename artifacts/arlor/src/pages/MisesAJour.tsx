@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Encyclopédie — sections de règles fidèles au manuel",
+    description:
+      "Les 52 sections de règles (règlements généraux, combat, magie, artisanat, objets en jeu, création de sorts) ont été auditées mot à mot et fait par fait contre le Manuel corrigé 2026. 2 coquilles corrigées (compétence « Mineur », runes tirées du langage nain et du nain ancien) et 9 précisions de règles ajoutées : exception de l'acte héroïque (potion ou soin sur soi), seul un rappel à la vie pendant un coup de grâce, port du torse requis pour les accessoires d'armure, aucune limite au nombre de compétences de niveau 3, temps des renforcements de forge, prospection minière et botanique, détail des cartes d'expédition d'herbes, propriétés des métaux hors cumul d'effets, ingrédients en gras des pièges.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Encyclopédie — Monde de Destéa",
     description:
       "6 nouveaux lieux ajoutés (Fort-aux-Fous, Château Danos, Fort Gronde, Cité-Forêt de Melchior, Fort-Aro, Sil'dor) et plusieurs fiches existantes corrigées selon le manuel (dont la Forteresse Écarlate, entièrement réécrite).",
