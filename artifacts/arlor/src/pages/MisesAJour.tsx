@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Acceptation des conditions d'utilisation",
+    description:
+      "À votre prochaine connexion, une fenêtre unique vous demandera de confirmer avoir lu et accepté les conditions d'utilisation. Une seule confirmation par compte : c'est le titulaire du compte qui accepte, pour tous les profils de sa famille. Les nouveaux comptes cochent la case directement à l'inscription.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Conditions d'utilisation et mentions légales",
     description:
       "Deux nouvelles pages au bas du site : les Conditions d'utilisation de la plateforme et les Mentions légales (qui contacter au sujet de vos renseignements). La Politique de confidentialité a aussi été précisée : durées de conservation réelles et stockage local du navigateur.",

@@ -1511,6 +1511,7 @@ export type Database = {
       }
       parametres_jeu: {
         Row: {
+          cgu_version_en_vigueur: string | null
           created_at: string | null
           description_gn: string | null
           email_contact: string | null
@@ -1524,6 +1525,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          cgu_version_en_vigueur?: string | null
           created_at?: string | null
           description_gn?: string | null
           email_contact?: string | null
@@ -1537,6 +1539,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          cgu_version_en_vigueur?: string | null
           created_at?: string | null
           description_gn?: string | null
           email_contact?: string | null
@@ -2906,6 +2909,8 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          cgu_acceptee_le: string | null
+          cgu_version_acceptee: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -2917,6 +2922,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          cgu_acceptee_le?: string | null
+          cgu_version_acceptee?: string | null
           created_at?: string | null
           email?: string | null
           id: string
@@ -2928,6 +2935,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          cgu_acceptee_le?: string | null
+          cgu_version_acceptee?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -4938,6 +4947,10 @@ export type Database = {
       _snip_contient: {
         Args: { p_corps: string; p_terme_ua: string }
         Returns: string
+      }
+      accepter_cgu: {
+        Args: { p_version: string }
+        Returns: Json
       }
       acheter_assemblage: {
         Args: { p_assemblage_id: string; p_personnage_id: string }
