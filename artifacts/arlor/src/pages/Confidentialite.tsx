@@ -1,6 +1,10 @@
+import { Link } from "react-router-dom";
+
 /**
  * Page « Politique de confidentialité » (publique, route /confidentialite).
  * Conforme Loi 25. Contenu figé s254 (contenu_pages_publiques_s255.md) — reproduit verbatim.
+ * Enrichie s334 (audit Loi 25) : hors-Québec précisé, durées de conservation réelles,
+ * témoins/stockage local, contact du responsable (voir /mentions-legales).
  * Gabarit visuel calqué sur pages/Telechargements.tsx (tokens réels).
  */
 export default function Confidentialite() {
@@ -9,7 +13,7 @@ export default function Confidentialite() {
       <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary mb-2">
         Politique de confidentialité de la plateforme d'Hurlevent
       </h1>
-      <p className="text-sm text-muted-foreground mb-6">Dernière mise à jour : 20 juin 2026.</p>
+      <p className="text-sm text-muted-foreground mb-6">Dernière mise à jour : 14 juillet 2026.</p>
 
       <div className="space-y-4 text-muted-foreground leading-relaxed">
         <p>
@@ -67,11 +71,10 @@ export default function Confidentialite() {
         </ul>
         <p>Aucun fichier téléversé n'est utilisé actuellement sur la plateforme.</p>
         <p>
-          Certains renseignements peuvent être stockés ou traités à l'extérieur du Québec selon
-          les services utilisés. Lorsque cela s'applique, des mesures de protection appropriées
-          sont prises. Selon le contexte, une communication hors Québec peut exiger une évaluation
-          des facteurs relatifs à la vie privée et une entente écrite afin d'assurer une protection
-          adéquate.
+          Ces fournisseurs conservent les données sur des serveurs situés à l'extérieur du
+          Québec, notamment aux États-Unis. En utilisant la plateforme, l'utilisateur consent à
+          cette communication hors Québec, encadrée par les mesures de protection de ces
+          fournisseurs.
         </p>
 
         <h2 className="font-heading text-xl text-primary pt-4">4. Autorisation sur l'univers du jeu</h2>
@@ -96,6 +99,19 @@ export default function Confidentialite() {
           est nécessaire au fonctionnement de la plateforme, à la sécurité, à l'administration ou au
           suivi du jeu.
         </p>
+        <p>En pratique :</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Les notifications sont supprimées automatiquement après 90 jours.</li>
+          <li>
+            Après la suppression définitive d'un compte, le journal d'activité associé est
+            conservé 24 mois à des fins de sécurité et de suivi, puis anonymisé : les noms et
+            identifiants en sont retirés et seules des statistiques anonymes subsistent.
+          </li>
+          <li>
+            Le mémorial public des personnages décédés (cimetière) peut afficher le nom de profil
+            choisi par le joueur, lorsqu'une stèle est créée.
+          </li>
+        </ul>
 
         <h2 className="font-heading text-xl text-primary pt-4">6. Suppression définitive par l'utilisateur</h2>
         <p>
@@ -142,7 +158,45 @@ export default function Confidentialite() {
           .
         </p>
 
-        <h2 className="font-heading text-xl text-primary pt-4">10. Modifications</h2>
+        <h2 className="font-heading text-xl text-primary pt-4">10. Témoins et stockage local</h2>
+        <p>
+          La plateforme n'utilise aucun témoin (cookie) publicitaire ni outil de mesure
+          d'audience.
+        </p>
+        <p>
+          Le navigateur de l'utilisateur conserve localement certains éléments nécessaires au
+          fonctionnement : la session de connexion, les brouillons de création de personnage et
+          des préférences d'affichage. Ces éléments restent sur l'appareil de l'utilisateur, ne
+          sont pas transmis à des tiers et peuvent être effacés en vidant les données de
+          navigation.
+        </p>
+
+        <h2 className="font-heading text-xl text-primary pt-4">11. Vos droits et contact</h2>
+        <p>
+          L'utilisateur peut consulter et corriger la plupart de ses renseignements directement
+          dans l'application. Pour toute demande d'accès, de rectification ou toute question sur
+          la présente politique :{" "}
+          <a
+            href="mailto:badfred50@gmail.com"
+            className="text-primary underline underline-offset-4 hover:text-primary/80"
+          >
+            badfred50@gmail.com
+          </a>{" "}
+          (voir aussi les{" "}
+          <Link
+            to="/mentions-legales"
+            className="text-primary underline underline-offset-4 hover:text-primary/80"
+          >
+            mentions légales
+          </Link>
+          ).
+        </p>
+        <p>
+          L'équipe d'animation a accès aux renseignements nécessaires à la gestion du jeu ; ses
+          actions sensibles sont journalisées.
+        </p>
+
+        <h2 className="font-heading text-xl text-primary pt-4">12. Modifications</h2>
         <p>
           Cette politique peut être mise à jour si les fonctionnalités de la plateforme ou les
           services utilisés changent.
