@@ -10,6 +10,7 @@ import { useModeStaff } from "@/contexts/ModeStaffContext";
 import QuiJoue from "@/components/profil/QuiJoue";
 import Navbar from "@/components/Navbar";
 import ScrollToTop from "@/components/ScrollToTop";
+import CguGate from "@/components/CguGate";
 import Footer from "@/components/Footer";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PwaAutoUpdater from "@/components/PwaAutoUpdater";
@@ -288,6 +289,7 @@ const App = () => {
         <PwaAutoUpdater />
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <ScrollToTop />
+          <CguGate />
           {doitChoisirProfil ? (
             <QuiJoue />
           ) : (

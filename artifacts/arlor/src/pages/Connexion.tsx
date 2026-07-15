@@ -1,20 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
 const Connexion = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+
+  // s334 [CGU-CONSENT] : version en vigueur des conditions (source unique : parametres_jeu).
+  const [cguAccepte, setCguAccepte] = useState(false);
+  const [cguVersion, setCguVersion] = useState<string | null>(null);
+  useEffect(() => {
+    supabase
+      .from("parametres_jeu")
+      .select("cgu_version_en_vigueur")
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setCguVersion(data?.cgu_version_en_vigueur ?? null));
+  }, []);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -45,11 +58,25 @@ const Connexion = () => {
       toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas.", variant: "destructive" });
       return;
     }
+    if (!cguAccepte) {
+      toast({
+        title: "Conditions d'utilisation",
+        description: "Veuillez lire et accepter les conditions d'utilisation pour créer un compte.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: window.location.origin,
+        // s334 [CGU-CONSENT] : le trigger creer_profil_nouveau_joueur copie cette valeur
+        // dans profiles.cgu_version_acceptee. Si la version n'a pas pu être chargée,
+        // la garde CguGate rattrapera le consentement à la première connexion.
+        ...(cguVersion ? { data: { cgu_version_acceptee: cguVersion } } : {}),
+      },
     });
     setLoading(false);
     if (error) {
@@ -105,7 +132,26 @@ const Connexion = () => {
                   <Label htmlFor="signup-confirm">Confirmer le mot de passe</Label>
                   <Input id="signup-confirm" type="password" value={signupConfirm} onChange={(e) => setSignupConfirm(e.target.value)} required />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={cguAccepte}
+                    onCheckedChange={(v) => setCguAccepte(v === true)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    J'ai lu et j'accepte les{" "}
+                    <Link
+                      to="/conditions-utilisation"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline underline-offset-4 hover:text-primary/80"
+                    >
+                      conditions d'utilisation
+                    </Link>
+                    .
+                  </span>
+                </label>
+                <Button type="submit" className="w-full" disabled={loading || !cguAccepte}>
                   {loading ? "Inscription…" : "S'inscrire"}
                 </Button>
               </form>
