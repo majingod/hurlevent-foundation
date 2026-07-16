@@ -44,6 +44,7 @@ import { ForgeSection } from "./sections/ForgeSection";
 import { JoaillerieSection } from "./sections/JoaillerieSection";
 import { PiegesSection } from "./sections/PiegesSection";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
+import { useModeStaff } from "@/contexts/ModeStaffContext";
 import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
 import RappelFouille from "./RappelFouille";
 import { FicheImprimable } from "./FicheImprimable";
@@ -328,6 +329,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
   // ISOWNER-COMPTE-VS-PROFIL : on compare le PROFIL actif (joueurId), pas le compte (user.id).
   const isOwner = joueurId === fiche?.joueur_id;
   const isAdmin = role === "admin";
+  const { staffActif } = useModeStaff();
   // ÉDITION-ADMIN-WIZARD : l'édition in-place (historique/âme) reste réservée au
   // propriétaire ; l'admin passe par l'éditeur complet (wizard ?admin=1).
   const peutEditer = isOwner;
@@ -447,7 +449,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
 
   return (
     <div className={mode === 'route' ? 'container max-w-6xl py-8 space-y-6' : 'space-y-6'}>
-      {mode === 'route' && isAdmin && !isOwner && (
+      {mode === 'route' && isAdmin && !isOwner && staffActif && (
         <div className="rounded-xl border border-gold/20 bg-card p-4 flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <Wand2 className="h-5 w-5 shrink-0 mt-0.5 text-gold" />
@@ -550,7 +552,7 @@ const FichePersonnageView = ({ personnageId, mode }: FichePersonnageViewProps) =
           <div className="max-w-sm">
             <BoutonRemodeler personnageId={personnageId} />
           </div>
-          {isAdmin && (
+          {isAdmin && staffActif && (
             <Button
               variant="outline"
               size="sm"
