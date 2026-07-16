@@ -35,7 +35,7 @@ const Connexion = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
 
-  if (user) return <Navigate to="/tableau-de-bord" replace />;
+  if (user) return <Navigate to="/" replace />;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +48,7 @@ const Connexion = () => {
     if (error) {
       toast({ title: "Erreur de connexion", description: error.message, variant: "destructive" });
     } else {
-      navigate("/tableau-de-bord");
+      navigate("/");
     }
   };
 
@@ -83,7 +83,7 @@ const Connexion = () => {
       toast({ title: "Erreur d'inscription", description: error.message, variant: "destructive" });
     } else if (data.session) {
       toast({ title: "Inscription réussie", description: "Votre compte est prêt, vous êtes connecté." });
-      navigate("/tableau-de-bord");
+      navigate("/");
     } else {
       toast({ title: "Inscription réussie", description: "Vérifiez votre courriel pour confirmer votre compte." });
     }
