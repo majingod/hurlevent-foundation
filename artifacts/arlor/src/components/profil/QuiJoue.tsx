@@ -109,7 +109,7 @@ export default function QuiJoue() {
   const choisir = (p: ProfilJoueur) => {
     if (gestion || editionId) return;
     switchProfil(p.id);
-    navigate("/tableau-de-bord");
+    navigate("/");
   };
 
   const validerAjout = async () => {
