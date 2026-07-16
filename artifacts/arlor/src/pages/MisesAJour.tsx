@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Ton accueil, c'est maintenant ton espace de jeu",
+    description:
+      "En te connectant, tu arrives directement sur ton espace : ta fiche de personnage à portée de main, le prochain GN et son inscription, ta banque d'XP et tes notifications. Plus besoin de fouiller le menu pour retrouver ton personnage — il est là dès l'ouverture. La page « Tableau de bord » reste ton outil pour tout gérer (tous tes persos, transferts).",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Acceptation des conditions d'utilisation",
     description:
       "À votre prochaine connexion, une fenêtre unique vous demandera de confirmer avoir lu et accepté les conditions d'utilisation. Une seule confirmation par compte : c'est le titulaire du compte qui accepte, pour tous les profils de sa famille. Les nouveaux comptes cochent la case directement à l'inscription.",
