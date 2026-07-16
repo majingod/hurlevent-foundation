@@ -5,8 +5,14 @@ import { useModeStaff } from "@/contexts/ModeStaffContext";
 import { useMenuNavigation } from "@/hooks/useMenuNavigation";
 import ClocheNotifications from "@/components/notifications/ClocheNotifications";
 import ClocheNotificationsStaff from "@/components/notifications/ClocheNotificationsStaff";
-import { useAutresIdentitesNonLues, useRealtimeNotifications } from "@/hooks/useNotifications";
-import { Menu, Users, Settings, Crown, Sparkles } from "lucide-react";
+import {
+  useAutresIdentitesNonLues,
+  useRealtimeNotifications,
+  useNotifications,
+  useNotificationsStaff,
+} from "@/hooks/useNotifications";
+import { ADMIN_POLES } from "@/components/admin/adminPoles";
+import { Menu, Users, Settings, Crown, Sparkles, User } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,21 +20,21 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 const Navbar = () => {
   const { user, role, signOut } = useAuth();
   const { profilActif, reinitialiserProfil } = useProfil();
-  const { peutBasculer, staffActif, interrupteurOn, setInterrupteur } = useModeStaff();
+  const { peutBasculer, staffActif, setInterrupteur } = useModeStaff();
   const autresIdentitesNonLues = useAutresIdentitesNonLues();
+  const { nbNonLus } = useNotifications();
+  const { nbATraiter } = useNotificationsStaff();
   useRealtimeNotifications();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { data: menuItems, sections } = useMenuNavigation(role);
 
-  const menuVisibles = (menuItems ?? [])
-    .filter((item) => item.afficher_navbar)
-    .filter((item) => staffActif || !item.url.startsWith("/administration"));
+  const menuVisibles = (menuItems ?? []).filter((item) => item.afficher_navbar);
   const menuSansSection = menuVisibles.filter((item) => item.section === null);
 
   const handleSignOut = async () => {
@@ -40,6 +46,16 @@ const Navbar = () => {
 
   const close = () => setOpen(false);
 
+  // Sélecteur d'espace : bascule le mode staff ET atterrit sur l'accueil de l'espace.
+  const allerJoueur = () => {
+    setInterrupteur(false);
+    navigate("/");
+  };
+  const allerOrga = () => {
+    setInterrupteur(true);
+    navigate("/administration/dashboard");
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -48,8 +64,16 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-2">
-          {user && <ClocheNotifications />}
-          {user && <ClocheNotificationsStaff />}
+          {user && peutBasculer && (
+            <SelecteurEspace
+              staffActif={staffActif}
+              nbNonLus={nbNonLus}
+              nbATraiter={nbATraiter}
+              onJoueur={allerJoueur}
+              onOrga={allerOrga}
+            />
+          )}
+          {user && (staffActif ? <ClocheNotificationsStaff /> : <ClocheNotifications />)}
           {user && profilActif && (
             <span
               className="flex items-center gap-1.5 rounded-full border px-2 py-1"
@@ -145,75 +169,78 @@ const Navbar = () => {
                 >
                   <Settings size={16} /> Gérer les profils
                 </button>
-
-                {peutBasculer && (
-                  <div
-                    className="mt-3 flex items-center gap-3 border-t pt-3"
-                    style={{ borderColor: "#2a2618" }}
-                  >
-                    <div className="flex-1">
-                      <div
-                        className="flex items-center gap-1.5 text-sm font-semibold"
-                        style={{ color: "#f0e6d2" }}
-                      >
-                        <Sparkles size={14} style={{ color: "#c9a84c" }} /> Mode animation
-                      </div>
-                      <div className="mt-0.5 text-[10.5px]" style={{ color: "#8a8a8a" }}>
-                        {staffActif
-                          ? "Activé — outils d'animation visibles."
-                          : "Désactivé — tu navigues comme un joueur."}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={interrupteurOn}
-                      aria-label="Mode animation"
-                      onClick={() => setInterrupteur(!interrupteurOn)}
-                      className="relative h-[26px] w-[46px] flex-shrink-0 rounded-full border transition-colors"
-                      style={{
-                        borderColor: interrupteurOn ? "#c9a84c" : "#3a3320",
-                        background: interrupteurOn ? "rgba(201,168,76,.18)" : "#0d0d0d",
-                      }}
-                    >
-                      <span
-                        className="absolute top-[2px] h-5 w-5 rounded-full transition-all"
-                        style={{
-                          left: interrupteurOn ? 22 : 2,
-                          background: interrupteurOn ? "#c9a84c" : "#6b6b6b",
-                        }}
-                      />
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 
-            <nav className="flex flex-col gap-1 px-4">
-              {menuSansSection.map((item) => (
-                <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} boxed />
-              ))}
-            </nav>
-
-            {(sections ?? []).map((sec) => {
-              const its = menuVisibles.filter((item) => item.section === sec.slug);
-              if (its.length === 0) return null;
-              return (
-                <div key={sec.slug}>
+            {/* ── Navigation selon l'espace actif ── */}
+            {staffActif ? (
+              // Mode Organisation : les 3 pôles admin (source = ADMIN_POLES)
+              ADMIN_POLES.map((pole) => (
+                <div key={pole.label}>
                   <div
                     className="px-[14px] pb-1 pt-4 text-[9.5px] font-bold uppercase tracking-[1.4px]"
-                    style={{ color: sec.est_staff ? "#c98a8a" : "#8a7333" }}
+                    style={{ color: "#c98a8a" }}
                   >
-                    {sec.libelle}
+                    {pole.label}
                   </div>
                   <nav className="flex flex-col gap-1 px-4">
-                    {its.map((item) => (
-                      <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
-                    ))}
+                    {pole.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.id}
+                          to={item.path}
+                          onClick={close}
+                          className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/20 hover:text-primary"
+                        >
+                          <Icon className="h-4 w-4 flex-shrink-0" style={{ color: "#8a8a8a" }} />
+                          <span>{item.label}</span>
+                          {item.id === "approbations" && nbATraiter > 0 && (
+                            <span
+                              className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[0.66rem] font-bold"
+                              style={{ background: "#c9a84c", color: "#0a0a0a" }}
+                            >
+                              {nbATraiter}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
                   </nav>
                 </div>
-              );
-            })}
+              ))
+            ) : (
+              // Mode Joueur : menu joueur (base), sections non-staff uniquement
+              <>
+                <nav className="flex flex-col gap-1 px-4">
+                  {menuSansSection.map((item) => (
+                    <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} boxed />
+                  ))}
+                </nav>
+
+                {(sections ?? [])
+                  .filter((sec) => !sec.est_staff)
+                  .map((sec) => {
+                    const its = menuVisibles.filter((item) => item.section === sec.slug);
+                    if (its.length === 0) return null;
+                    return (
+                      <div key={sec.slug}>
+                        <div
+                          className="px-[14px] pb-1 pt-4 text-[9.5px] font-bold uppercase tracking-[1.4px]"
+                          style={{ color: "#8a7333" }}
+                        >
+                          {sec.libelle}
+                        </div>
+                        <nav className="flex flex-col gap-1 px-4">
+                          {its.map((item) => (
+                            <NavItem key={item.id} to={item.url} label={item.libelle} onClick={close} />
+                          ))}
+                        </nav>
+                      </div>
+                    );
+                  })}
+              </>
+            )}
 
             </div>
 
@@ -236,6 +263,82 @@ const Navbar = () => {
         </div>
       </div>
     </header>
+  );
+};
+
+// ── Sélecteur d'espace (header) : Joueur / Orga, avec badge des deux côtés ──
+const SelecteurEspace = ({
+  staffActif,
+  nbNonLus,
+  nbATraiter,
+  onJoueur,
+  onOrga,
+}: {
+  staffActif: boolean;
+  nbNonLus: number;
+  nbATraiter: number;
+  onJoueur: () => void;
+  onOrga: () => void;
+}) => {
+  const seg = (active: boolean, activeColor: string): CSSProperties => ({
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 6,
+    padding: "4px 7px",
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer",
+    border: "none",
+    background: active
+      ? activeColor === "#c98a8a"
+        ? "rgba(201,138,138,.16)"
+        : "rgba(201,168,76,.18)"
+      : "transparent",
+    color: active ? activeColor : "#8a8a8a",
+  });
+  const pastille = (n: number) =>
+    n > 0 ? (
+      <span
+        style={{
+          minWidth: 15,
+          height: 15,
+          borderRadius: 999,
+          background: "#c9a84c",
+          color: "#0a0a0a",
+          fontSize: 9.5,
+          fontWeight: 700,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 4px",
+          border: "2px solid #0a0a0a",
+        }}
+      >
+        {n > 9 ? "9+" : n}
+      </span>
+    ) : null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 2,
+        background: "#0d0d0d",
+        border: "1px solid #3a3320",
+        borderRadius: 8,
+        padding: 2,
+      }}
+    >
+      <button type="button" onClick={onJoueur} aria-label="Mode joueur" style={seg(!staffActif, "#c9a84c")}>
+        <span style={{ position: "absolute", top: -7, left: -5 }}>{pastille(nbNonLus)}</span>
+        <User size={13} /> Joueur
+      </button>
+      <button type="button" onClick={onOrga} aria-label="Mode organisation" style={seg(staffActif, "#c98a8a")}>
+        <Sparkles size={13} /> Orga
+        <span style={{ position: "absolute", top: -7, right: -5 }}>{pastille(nbATraiter)}</span>
+      </button>
+    </div>
   );
 };
 
@@ -303,4 +406,3 @@ const Sigil = ({ nom, size = 44 }: { nom: string; size?: number }) => {
 };
 
 export default Navbar;
-
