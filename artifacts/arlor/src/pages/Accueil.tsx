@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
+import HubJoueur from "@/components/hub/HubJoueur";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, MapPin, Users, Sparkles } from "lucide-react";
@@ -161,6 +162,9 @@ const Accueil = () => {
       "Inscription complétée ! Après l'événement, l'organisation confirmera votre présence et vous recevrez les XP sur votre personnage."
     );
   };
+
+  // [HUB s337] Joueur connecté → son chez-soi. Visiteur déconnecté → accueil ci-dessous.
+  if (user && joueurId) return <HubJoueur />;
 
   return (
     <div className="flex flex-col">
