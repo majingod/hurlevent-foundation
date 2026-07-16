@@ -64,15 +64,6 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-2">
-          {user && peutBasculer && (
-            <SelecteurEspace
-              staffActif={staffActif}
-              nbNonLus={nbNonLus}
-              nbATraiter={nbATraiter}
-              onJoueur={allerJoueur}
-              onOrga={allerOrga}
-            />
-          )}
           {user && (staffActif ? <ClocheNotificationsStaff /> : <ClocheNotifications />)}
           {user && profilActif && (
             <span
@@ -262,6 +253,19 @@ const Navbar = () => {
         </Sheet>
         </div>
       </div>
+
+      {/* Ligne 2 — sélecteur d'espace (compte staff sur profil principal) */}
+      {user && peutBasculer && (
+        <div className="container flex justify-center border-t border-white/5 pb-2.5 pt-1">
+          <SelecteurEspace
+            staffActif={staffActif}
+            nbNonLus={nbNonLus}
+            nbATraiter={nbATraiter}
+            onJoueur={allerJoueur}
+            onOrga={allerOrga}
+          />
+        </div>
+      )}
     </header>
   );
 };
