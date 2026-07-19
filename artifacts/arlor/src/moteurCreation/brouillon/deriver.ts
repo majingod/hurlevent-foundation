@@ -38,6 +38,7 @@ import {
   quotaPiegesNiveau,
   quotaRecettesPalier,
   quotaAssemblagesTotal,
+  calculerNiveau,
   type EtatCreationVisiteur,
   type CompetenceAcquiseLocale,
   type NiveauxArtisanat,
@@ -417,6 +418,7 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
   };
   const contexteMagie: ContexteMagie = {
     xpDispo,
+    niveau: calculerNiveau(),
     competencesAcquises: acquis,
     religionId: etatAvecGratuites.religionId ?? null,
   };

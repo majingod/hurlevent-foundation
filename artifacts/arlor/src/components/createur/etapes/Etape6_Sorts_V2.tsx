@@ -51,6 +51,7 @@ import { COUT_ZONE, DUREES, PORTEES, ZONES_PAR_TYPE } from "@/constants/magie";
 import {
   calculerCoutPS,
   calculerCoutXP,
+  coutXpMaxAutorise,
   filterDureesDisponibles,
   filterPorteesDisponibles,
   isZoneUnique,
@@ -93,6 +94,8 @@ interface Etape6Props {
    * Le serveur reste l'arbitre final de la validation.
    */
   xpDisponible?: number;
+  /** [MAGIE-PLAFOND] Niveau du PERSONNAGE : plafonne le prix d'une instance. */
+  niveauPersonnage?: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onPrevious?: () => void;
@@ -159,6 +162,7 @@ const Chevron = ({
 const Etape6_Sorts_V2 = ({
   personnageId,
   xpDisponible = 0,
+  niveauPersonnage = 1,
   onSuccess,
   onError,
   onPrevious,
@@ -997,6 +1001,7 @@ const Etape6_Sorts_V2 = ({
                                   1,
                                   c.niveau_max_sorts ?? 1,
                                 )}
+                                niveauPersonnage={niveauPersonnage}
                                 valeurs={valeursAchat}
                                 onChange={setValeursAchat}
                                 plancher={null}
@@ -1015,13 +1020,18 @@ const Etape6_Sorts_V2 = ({
                               {(() => {
                                 const xpInsuffisants =
                                   peutAcheter && coutXpAchat > xpDisponible;
+                                // [MAGIE-PLAFOND] meme motif que les XP : on grise plutot que de laisser le serveur refuser.
+                                const horsPlafond =
+                                  peutAcheter &&
+                                  coutXpAchat > coutXpMaxAutorise(niveauPersonnage);
                                 return (
                                   <Button
                                     onClick={handleAcheter}
                                     disabled={
                                       !peutAcheter ||
                                       mutation.isPending ||
-                                      xpInsuffisants
+                                      xpInsuffisants ||
+                                      horsPlafond
                                     }
                                     title={
                                       xpInsuffisants
@@ -1335,6 +1345,7 @@ const Etape6_Sorts_V2 = ({
                                     ps.sorts?.cout_xp_base ?? 0,
                                   )}
                                   niveauMax={nivMaxCercle(ps.sorts?.cercle)}
+                                  niveauPersonnage={niveauPersonnage}
                                   valeurs={valeursModif}
                                   onChange={setValeursModif}
                                   plancher={plancher}
@@ -1373,6 +1384,10 @@ const Etape6_Sorts_V2 = ({
                                     valeursModif.niveau === ps.niveau_sort &&
                                     nomTrim === nomActuel;
                                   const xpInsuffisants = diff > xpDisponible;
+                                  // [MAGIE-PLAFOND] miroir du serveur : ne mord que si le cout augmente.
+                                  const horsPlafond =
+                                    diff > 0 &&
+                                    coutApres > coutXpMaxAutorise(niveauPersonnage);
                                   return (
                                     <>
                                       {diff > 0 ? (
@@ -1406,6 +1421,7 @@ const Etape6_Sorts_V2 = ({
                                           !complet ||
                                           inchange ||
                                           xpInsuffisants ||
+                                          horsPlafond ||
                                           modifierMutation.isPending
                                         }
                                         onClick={() =>

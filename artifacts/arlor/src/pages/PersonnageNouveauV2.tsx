@@ -70,6 +70,7 @@ const dbToUi = (db: number): number =>
 interface PersonnageRow {
   id: string;
   nom: string | null;
+  niveau: number | null;
   etape_creation: number;
   xp_total: number | null;
   xp_depense: number | null;
@@ -451,6 +452,8 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   const xpDepense = personnage?.xp_depense ?? 0;
   const xpTotalAffiche = xpTotal + xpGainCourant;
   const xpDisponible = xpTotalAffiche - xpDepense - xpDeltaCourant;
+  // [MAGIE-PLAFOND] Niveau du PERSONNAGE (pas du sort) : decide le plafond de prix.
+  const niveauPersonnage = personnage?.niveau ?? 1;
 
   const progression = useMemo(
     () => Math.round((dbToUi(etape) / TOTAL_STEPS_UI) * 100),
@@ -846,6 +849,7 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
             <Etape6_Sorts_V2
               personnageId={personnageId}
               xpDisponible={xpDisponible}
+              niveauPersonnage={niveauPersonnage}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
               modeCampagne={modeCampagne}
@@ -855,6 +859,7 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
             <Etape7_Prieres_V2
               personnageId={personnageId}
               xpDisponible={xpDisponible}
+              niveauPersonnage={niveauPersonnage}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
               modeCampagne={modeCampagne}

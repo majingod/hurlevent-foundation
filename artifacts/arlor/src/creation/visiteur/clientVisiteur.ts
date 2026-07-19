@@ -52,6 +52,7 @@ import {
 } from "@/moteurCreation/deriveurs";
 import { peutAcheterCompetence } from "@/moteurCreation/gatesCompetences";
 import { peutAcheterSort, peutAcheterPriere } from "@/moteurCreation/gatesMagie";
+import { refusPlafondMagie } from "@/utils/calculsMagie";
 import {
   peutAcheterPiege,
   peutAcheterRecette,
@@ -612,6 +613,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         );
       }
       const diff = nouveauCout - ancienCout;
+      // [MAGIE-PLAFOND] Miroir de modifier_sort : ne mord QUE si le cout augmente.
+      const refusPlafond = refusPlafondMagie("sort", etat.contexteMagie.niveau, nouveauCout);
+      if (diff > 0 && refusPlafond) {
+        return repErr({ code: "plafond_depasse", message: refusPlafond }, { plancher });
+      }
       if (diff > 0 && etat.xpDispo < diff) {
         return repErr({ code: "xp_insuffisant", message: "XP insuffisant" }, { plancher });
       }
@@ -716,6 +722,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         );
       }
       const diff = nouveauCout - ancienCout;
+      // [MAGIE-PLAFOND] Miroir de modifier_priere : ne mord QUE si le cout augmente.
+      const refusPlafond = refusPlafondMagie("priere", etat.contexteMagie.niveau, nouveauCout);
+      if (diff > 0 && refusPlafond) {
+        return repErr({ code: "plafond_depasse", message: refusPlafond }, { plancher });
+      }
       if (diff > 0 && etat.xpDispo < diff) {
         return repErr({ code: "xp_insuffisant", message: "XP insuffisant" }, { plancher });
       }
@@ -1399,6 +1410,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         data: {
           id: PERSONNAGE_LOCAL_ID,
           nom: b.etape1.nom,
+          niveau: etat.contexteMagie.niveau,
           etape_creation: b.meta.etapeCourante,
           xp_total: etat.xpTotal,
           xp_depense: etat.xpDepense,
