@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Créer un sort ou une prière : plus rien n'est caché",
+    description:
+      "Quand tu construis un sort ou une prière, les choix de zone, de portée et de durée défilaient sur le côté : jusqu'à 24 possibilités, dont une poignée seulement visible à l'écran. On pouvait terminer son personnage sans avoir jamais vu qu'un « Rayon 10 pieds » existait. Désormais tout tient à l'écran d'un coup d'œil, et la longue liste des zones est séparée en « Cibles » et « Rayons ». Le prix de chaque possibilité reste affiché dessus, et le calcul du coût suit tes réglages en direct.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Ton accueil, c'est maintenant ton espace de jeu",
     description:
       "En te connectant, tu arrives directement sur ton espace : ta fiche de personnage à portée de main, le prochain GN et son inscription, ta banque d'XP et tes notifications. Plus besoin de fouiller le menu pour retrouver ton personnage — il est là dès l'ouverture. La page « Tableau de bord » reste ton outil pour tout gérer (tous tes persos, transferts).",
