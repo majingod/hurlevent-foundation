@@ -181,10 +181,11 @@ const CAS: Cas[] = [
     nom: "lirePersonnageProgression",
     appel: () => clientVisiteur.lirePersonnageProgression(PERSONNAGE_LOCAL_ID),
     // clientServeur.ts:165
-    colonnesServeur: ["id", "nom", "etape_creation", "xp_total", "xp_depense"],
+    colonnesServeur: ["id", "nom", "niveau", "etape_creation", "xp_total", "xp_depense"],
     valeursAttendues: (b, etat) => ({
       id: PERSONNAGE_LOCAL_ID,
       nom: b.etape1.nom,
+      niveau: etat.contexteMagie.niveau,
       etape_creation: b.meta.etapeCourante,
       xp_total: etat.xpTotal,
       xp_depense: etat.xpDepense,

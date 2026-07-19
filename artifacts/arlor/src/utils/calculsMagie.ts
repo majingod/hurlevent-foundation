@@ -43,7 +43,33 @@ export function calculerCoutXP(
 // --- Coût XP maximum autorisé pour un personnage ---
 // Formule : (niveau_personnage × 10) + 10
 export function coutXpMaxAutorise(niveauPersonnage: number): number {
-  return niveauPersonnage * 10 + 10;
+  return Math.max(niveauPersonnage ?? 1, 1) * 10 + 10;
+}
+
+// --- Refus de plafond ---
+// ⚠️ MIROIR EXACT de la fonction SQL public.refus_plafond_magie : renvoie null
+// si le coût passe, sinon le message joueur au caractère près (accents inclus).
+// Manuel : « Un sort ne peut jamais coûter plus cher que 10 points d'expérience
+// plus 10 fois le niveau du personnage (10+(10*niv.)). »
+export function refusPlafondMagie(
+  type: "sort" | "priere",
+  niveauPersonnage: number,
+  coutXp: number,
+): string | null {
+  const niveau = Math.max(niveauPersonnage ?? 1, 1);
+  const plafond = coutXpMaxAutorise(niveau);
+  if (coutXp <= plafond) return null;
+  return (
+    (type === "priere" ? "Cette prière coûterait " : "Ce sort coûterait ") +
+    coutXp +
+    " XP. À ton niveau (" +
+    niveau +
+    "), " +
+    (type === "priere" ? "une prière" : "un sort") +
+    " ne peut pas dépasser " +
+    plafond +
+    " XP. Baisse le niveau, la portée, la durée ou le nombre de cibles."
+  );
 }
 
 // --- Filtrage des portées disponibles selon la portée maximale du sort ---

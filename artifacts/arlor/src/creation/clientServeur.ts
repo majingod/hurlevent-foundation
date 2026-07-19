@@ -162,7 +162,7 @@ export const clientServeur: ClientCreation = {
   async lirePersonnageProgression(personnageId) {
     return await supabase
       .from("personnages")
-      .select("id, nom, etape_creation, xp_total, xp_depense")
+      .select("id, nom, etape_creation, xp_total, xp_depense, niveau")
       .eq("id", personnageId)
       .single();
   },

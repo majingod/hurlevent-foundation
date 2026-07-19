@@ -336,7 +336,7 @@ export interface ClientCreation {
     Reponse<
       Pick<
         RowT<"personnages">,
-        "id" | "nom" | "etape_creation" | "xp_total" | "xp_depense"
+        "id" | "nom" | "etape_creation" | "xp_total" | "xp_depense" | "niveau"
       >
     >
   >;

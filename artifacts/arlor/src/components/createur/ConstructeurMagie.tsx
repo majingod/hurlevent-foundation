@@ -8,6 +8,7 @@ import {
   calculerCoutPS,
   calculerCoutXP,
   calculerDureeIncantation,
+  coutXpMaxAutorise,
   filterDureesDisponibles,
   filterPorteesDisponibles,
   getNoteZone,
@@ -48,6 +49,8 @@ interface ConstructeurMagieProps {
   dureeMax: string; // sorts.duree / prieres.duree
   coutXpBase: number;
   niveauMax: number; // niveau_max du cercle/domaine
+  /** [MAGIE-PLAFOND] Niveau du PERSONNAGE — plafonne le prix a 10 + 10 x niveau. */
+  niveauPersonnage?: number;
   valeurs: ValeursConstructeur;
   onChange: (v: ValeursConstructeur) => void;
   plancher?: PlancherMagie | null; // null/undefined = achat (aucun verrou)
@@ -181,6 +184,7 @@ const ConstructeurMagie = ({
   dureeMax,
   coutXpBase,
   niveauMax,
+  niveauPersonnage = 1,
   valeurs,
   onChange,
   plancher,
@@ -211,6 +215,10 @@ const ConstructeurMagie = ({
       )
     : 0;
   const coutPS = coutXp > 0 ? calculerCoutPS(coutXp) : 0;
+
+  // [MAGIE-PLAFOND] Manuel : un sort/une priere ne peut pas depasser 10 + 10 x niveau.
+  const plafondCout = coutXpMaxAutorise(niveauPersonnage);
+  const horsPlafond = complet && coutXp > plafondCout;
 
   // Bonus par niveau (PR #361) affiché dans la barre de formule live.
   const renderBonusNiveau = () => {
@@ -348,7 +356,11 @@ const ConstructeurMagie = ({
           {valeurs.duree ? ptsDuree(valeurs.duree) : "?"} + niv :{" "}
           {valeurs.niveau} ) × coefficient : {coutXpBase}{" "}
           {complet ? (
-            <strong className="text-primary">= {coutXp} XP</strong>
+            <strong
+              className={horsPlafond ? "text-destructive" : "text-primary"}
+            >
+              = {coutXp} XP
+            </strong>
           ) : (
             "= …"
           )}
@@ -366,6 +378,21 @@ const ConstructeurMagie = ({
             </>
           )}
         </p>
+        {/* [MAGIE-PLAFOND] Option B validee s344 : ligne dediee, qui nomme le
+            niveau du PERSONNAGE pour le distinguer du « max » du niveau de sort. */}
+        <p
+          className={`text-xs ${horsPlafond ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          Plafond de ton personnage (niveau {niveauPersonnage}) :{" "}
+          <strong>{plafondCout} XP</strong> par{" "}
+          {type === "sort" ? "sort" : "prière"}
+        </p>
+        {horsPlafond && (
+          <div className="mt-1 rounded-md bg-secondary px-2 py-1.5 text-xs text-secondary-foreground">
+            <strong>{coutXp - plafondCout} XP de trop.</strong> Baisse le niveau,
+            la portée, la durée ou le nombre de cibles.
+          </div>
+        )}
         {type === "priere" && complet && (
           <p className="text-xs text-muted-foreground">
             Incantation :{" "}

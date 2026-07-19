@@ -9,7 +9,11 @@
  * contexte EST le personnage local (les fixtures n'en produisent jamais).
  */
 
-import { calculerCoutXP, calculerDureeIncantation } from "@/utils/calculsMagie";
+import {
+  calculerCoutXP,
+  calculerDureeIncantation,
+  refusPlafondMagie,
+} from "@/utils/calculsMagie";
 import { getSnapshot } from "./snapshot";
 import { genererFormuleMagique } from "./formuleMagique";
 import {
@@ -89,6 +93,12 @@ export function peutAcheterSort(
     };
   }
 
+  // [MAGIE-PLAFOND] Miroir SQL : le plafond passe AVANT le controle d'XP.
+  const refusPlafond = refusPlafondMagie("sort", ctx.niveau, coutXp);
+  if (refusPlafond) {
+    return { peutAcheter: false, code: "plafond_depasse", raison: refusPlafond };
+  }
+
   if (ctx.xpDispo < coutXp) {
     return {
       peutAcheter: false,
@@ -141,6 +151,12 @@ export function peutAcheterPriere(
       raison:
         "Niveau de prière supérieur au maximum autorisé pour ce domaine",
     };
+  }
+
+  // [MAGIE-PLAFOND] Miroir SQL : le plafond passe AVANT le controle d'XP.
+  const refusPlafond = refusPlafondMagie("priere", ctx.niveau, coutXp);
+  if (refusPlafond) {
+    return { peutAcheter: false, code: "plafond_depasse", raison: refusPlafond };
   }
 
   if (ctx.xpDispo < coutXp) {

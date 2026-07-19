@@ -160,7 +160,7 @@ describe("parité clientVisiteur — acheterCompetence (88)", () => {
 // ============================================================
 describe("parité clientVisiteur — acheterSort (59)", () => {
   const data = sortsFx as unknown as {
-    contextes: Array<{ ref: number; xp_dispo: number; competences_acquises: FxAcquis[] }>;
+    contextes: Array<{ ref: number; xp_dispo: number; niveau: number; competences_acquises: FxAcquis[] }>;
     cas: Array<{ ctx: number; demande: { sort_id: string; sort_nom: string; niveau_sort: number; zone_choisie: string; portee_choisie: string; duree_choisie: string }; verdict: { peut_acheter: boolean; raison: string; code?: string } }>;
   };
   const parRef = new Map(data.contextes.map((c) => [c.ref, c]));
@@ -169,7 +169,7 @@ describe("parité clientVisiteur — acheterSort (59)", () => {
     it(`#${i + 1} « ${cas.demande.sort_nom} » niv ${cas.demande.niveau_sort}`, async () => {
       const ctx = parRef.get(cas.ctx)!;
       etatCourant = etatBase();
-      etatCourant.contexteMagie = { xpDispo: ctx.xp_dispo, competencesAcquises: mapAcquis(ctx.competences_acquises) };
+      etatCourant.contexteMagie = { xpDispo: ctx.xp_dispo, niveau: ctx.niveau, competencesAcquises: mapAcquis(ctx.competences_acquises) };
       const res = await client.acheterSort({
         p_personnage_id: PERSONNAGE_LOCAL_ID,
         p_sort_id: cas.demande.sort_id,
@@ -189,7 +189,7 @@ describe("parité clientVisiteur — acheterSort (59)", () => {
 // ============================================================
 describe("parité clientVisiteur — acheterPriere (33)", () => {
   const data = prieresFx as unknown as {
-    contextes: Array<{ ref: number; xp_dispo: number; religion_id: string | null; competences_acquises: FxAcquis[] }>;
+    contextes: Array<{ ref: number; xp_dispo: number; niveau: number; religion_id: string | null; competences_acquises: FxAcquis[] }>;
     cas: Array<{ ctx: number; demande: { priere_id: string; priere_nom: string; niveau_priere: number; zone_choisie: string; portee_choisie: string; duree_choisie: string }; verdict: { peut_acheter: boolean; raison: string; code?: string } }>;
   };
   const parRef = new Map(data.contextes.map((c) => [c.ref, c]));
@@ -200,6 +200,7 @@ describe("parité clientVisiteur — acheterPriere (33)", () => {
       etatCourant = etatBase();
       etatCourant.contexteMagie = {
         xpDispo: ctx.xp_dispo,
+        niveau: ctx.niveau,
         competencesAcquises: mapAcquis(ctx.competences_acquises),
         religionId: ctx.religion_id,
       };

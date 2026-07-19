@@ -54,6 +54,8 @@ export interface DemandeAchatCompetence {
  */
 export interface ContexteMagie {
   xpDispo: number;
+  /** Niveau du PERSONNAGE (pas du sort) — décide le plafond 10 + 10 x niveau. */
+  niveau: number;
   competencesAcquises: AcquisCompetence[];
   religionId?: string | null;
 }

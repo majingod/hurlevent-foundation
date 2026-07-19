@@ -31,6 +31,7 @@ interface FixtureAcquis {
 interface FixtureContexte {
   ref: number;
   xp_dispo: number;
+  niveau: number;
   religion_id?: string | null;
   competences_acquises: FixtureAcquis[];
 }
@@ -77,6 +78,7 @@ const prieres = prieresFx as unknown as FixturesPrieres;
 function toContexte(ctx: FixtureContexte): ContexteMagie {
   return {
     xpDispo: ctx.xp_dispo,
+    niveau: ctx.niveau,
     religionId: ctx.religion_id ?? null,
     competencesAcquises: ctx.competences_acquises.map((a) => ({
       competenceId: a.competence_id,
@@ -114,14 +116,14 @@ function verdictPriereSnake(c: VerdictPriere): Record<string, unknown> {
   return v;
 }
 
-describe("parité enregistrée peut_acheter_sort (59 cas)", () => {
+describe("parité enregistrée peut_acheter_sort (63 cas)", () => {
   const ctxParRef = new Map<number, FixtureContexte>(
     sorts.contextes.map((c) => [c.ref, c])
   );
 
   it("fixtures cohérentes", () => {
     expect(sorts.cas.length).toBe(sorts.nb_cas);
-    expect(sorts.cas.length).toBe(59);
+    expect(sorts.cas.length).toBe(63);
     expect(sorts.contextes.length).toBe(sorts.nb_contextes);
   });
 
