@@ -82,6 +82,42 @@ interface PillOption {
   cout: number;
 }
 
+const Pastille = ({
+  opt,
+  selectionnee,
+  sousPlancher,
+  onSelect,
+}: {
+  opt: PillOption;
+  selectionnee: boolean;
+  sousPlancher: boolean;
+  onSelect: (label: string) => void;
+}) => (
+  <button
+    type="button"
+    disabled={sousPlancher}
+    title={sousPlancher ? "Acquis — plancher" : undefined}
+    onClick={() => onSelect(opt.label)}
+    className={`flex items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition-colors ${
+      selectionnee
+        ? "border-primary bg-primary font-semibold text-primary-foreground"
+        : "border-border bg-card text-foreground hover:border-primary/50"
+    } ${sousPlancher ? "opacity-40" : ""}`}
+  >
+    {sousPlancher && <Lock className="h-3 w-3" />}
+    {opt.label} · {opt.cout} XP
+  </button>
+);
+
+/**
+ * s342 — plus de scroll horizontal : les options hors écran n'étaient jamais
+ * découvertes (pire cas mesuré : 24 options, ~9 visibles). Les pastilles
+ * reviennent à la ligne, et la longue rangée des zones se coupe en
+ * « Cibles » / « Rayons ».
+ * ⚠️ Les titres de groupe ne s'affichent QUE si les deux groupes existent :
+ * portée et durée n'ont aucun « Rayon » → un seul groupe, sans titre ;
+ * les zones « Nombre de cibles » ou « Tous rayons » aussi.
+ */
 const RangeePills = ({
   label,
   options,
@@ -94,34 +130,43 @@ const RangeePills = ({
   selection: string;
   plancherPts: number | null;
   onSelect: (label: string) => void;
-}) => (
-  <div className="space-y-2">
-    <Label>{label}</Label>
-    <div className="flex gap-1.5 overflow-x-auto pb-1">
-      {options.map((opt) => {
-        const sousPlancher = plancherPts !== null && opt.cout < plancherPts;
-        const selectionnee = selection === opt.label;
-        return (
-          <button
-            key={opt.label}
-            type="button"
-            disabled={sousPlancher}
-            title={sousPlancher ? "Acquis — plancher" : undefined}
-            onClick={() => onSelect(opt.label)}
-            className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition-colors ${
-              selectionnee
-                ? "border-primary bg-primary font-semibold text-primary-foreground"
-                : "border-border bg-card text-foreground hover:border-primary/50"
-            } ${sousPlancher ? "opacity-40" : ""}`}
-          >
-            {sousPlancher && <Lock className="h-3 w-3" />}
-            {opt.label} · {opt.cout} XP
-          </button>
-        );
-      })}
+}) => {
+  const cibles = options.filter((opt) => !opt.label.startsWith("Rayon"));
+  const rayons = options.filter((opt) => opt.label.startsWith("Rayon"));
+  const groupes =
+    cibles.length > 0 && rayons.length > 0
+      ? [
+          { titre: "Cibles", options: cibles },
+          { titre: "Rayons", options: rayons },
+        ]
+      : [{ titre: null, options }];
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {groupes.map((groupe, i) => (
+        <div key={groupe.titre ?? i} className="space-y-1.5">
+          {groupe.titre && (
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {groupe.titre}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            {groupe.options.map((opt) => (
+              <Pastille
+                key={opt.label}
+                opt={opt}
+                selectionnee={selection === opt.label}
+                sousPlancher={plancherPts !== null && opt.cout < plancherPts}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Constructeur de sort/prière partagé (achat étapes 6-7, éditeur Modifier
