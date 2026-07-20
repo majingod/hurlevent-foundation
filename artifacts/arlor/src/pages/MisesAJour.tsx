@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Le prix d'un sort ne peut plus dépasser ce que ton niveau permet",
+    description:
+      "Le manuel dit qu'un sort ou une prière ne peut jamais coûter plus de 10 XP, plus 10 fois ton niveau — donc 20 XP à niveau 1, 40 XP à niveau 3. Cette limite n'était appliquée nulle part : on pouvait acheter un sort trop cher pour son personnage. C'est corrigé. Pendant que tu règles ton sort, une ligne t'indique maintenant le plafond de ton personnage ; si tu le dépasses, le total passe en rouge, la plateforme te dit de combien, et le bouton d'achat attend que tu redescendes. Rien de ce que tu as déjà acheté n'est touché — aucun sort, aucune prière à refaire. Le mode hors ligne applique exactement la même limite, pour qu'un personnage bâti sans réseau ne soit pas refusé au moment de l'enregistrer.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Créer un sort ou une prière : plus rien n'est caché",
     description:
       "Quand tu construis un sort ou une prière, les choix de zone, de portée et de durée défilaient sur le côté : jusqu'à 24 possibilités, dont une poignée seulement visible à l'écran. On pouvait terminer son personnage sans avoir jamais vu qu'un « Rayon 10 pieds » existait. Désormais tout tient à l'écran d'un coup d'œil, et la longue liste des zones est séparée en « Cibles » et « Rayons ». Le prix de chaque possibilité reste affiché dessus, et le calcul du coût suit tes réglages en direct.",
