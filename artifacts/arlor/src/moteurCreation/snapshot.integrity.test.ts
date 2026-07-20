@@ -115,4 +115,22 @@ describe("snapshot visiteur — intégrité anti-stub", () => {
       );
     }
   });
+
+  it("carte équipement (lot 0 générateur, s347) : les 2 clés vont ensemble et respectent leurs planchers", () => {
+    const CLES_GENERATEUR = ["objets_generateur", "objets_requis"] as const;
+    const presentes = CLES_GENERATEUR.filter((c) => c in tables);
+
+    if (presentes.length === 0) {
+      // JSON committé antérieur au lot 0 : garde-fou inactif jusqu'au
+      // prochain refresh/prebuild du snapshot.
+      return;
+    }
+
+    for (const cle of CLES_GENERATEUR) {
+      expect(tables, `clé « ${cle} » manquante alors que « ${presentes[0]} » est présente`).toHaveProperty(cle);
+    }
+    // Planchers de réalité : 31 objets et 37 exigences seedés en prod (s347).
+    expect((tables.objets_generateur ?? []).length).toBeGreaterThanOrEqual(25);
+    expect((tables.objets_requis ?? []).length).toBeGreaterThanOrEqual(30);
+  });
 });

@@ -3,7 +3,7 @@
  * snapshot-visiteur.mjs — script de RÉGÉNÉRATION du snapshot visiteur offline.
  *
  * Un SEUL appel `supabase.rpc('snapshot_visiteur')` renvoie tout le jsonb
- * `{manifest:{genere_le,comptes}, tables:{…26 tables…}}` — la RPC est
+ * `{manifest:{genere_le,comptes}, tables:{…28 tables…}}` — la RPC est
  * SECURITY INVOKER, donc l'appelant anon voit exactement ce que la RLS lui
  * montre (parité stricte avec ce que l'app peut lire).
  *
@@ -42,7 +42,7 @@ function fail(raison) {
 }
 
 // ============================================================
-// Clés attendues (19 legacy + 7 extension hors-ligne = 26)
+// Clés attendues (19 legacy + 2 générateur + 7 extension hors-ligne = 28)
 // ============================================================
 
 const TABLES_LEGACY = [
@@ -51,11 +51,13 @@ const TABLES_LEGACY = [
   'assemblages_runes', 'recettes_alchimie', 'pieges', 'objets_forge',
   'objets_joaillerie', 'reparations_forge', 'parametres_jeu', 'ingredients_alchimiques',
 ];
+// Lot 0 générateur (s347) : carte équipement ↔ compétences/races.
+const TABLES_GENERATEUR = ['objets_generateur', 'objets_requis'];
 const TABLES_HORS_LIGNE = [
   'sections_regles', 'effets_combat', 'bestiaire', 'lore', 'fiches_schemas',
   'fiches_listes', 'vue_competences_encyclopedie',
 ];
-const TABLES_ATTENDUES = [...TABLES_LEGACY, ...TABLES_HORS_LIGNE];
+const TABLES_ATTENDUES = [...TABLES_LEGACY, ...TABLES_GENERATEUR, ...TABLES_HORS_LIGNE];
 
 // ============================================================
 // Chargement des variables d'environnement
@@ -155,10 +157,10 @@ async function exportSnapshot() {
 
   const violations = [];
 
-  // 0. Les 25 clés attendues doivent toutes être présentes.
+  // 0. Toutes les clés attendues doivent être présentes.
   for (const t of TABLES_ATTENDUES) {
     if (!tableNames.includes(t)) {
-      violations.push(`Clé « ${t} » absente de la réponse RPC (25 attendues, ${tableNames.length} reçues).`);
+      violations.push(`Clé « ${t} » absente de la réponse RPC (${TABLES_ATTENDUES.length} attendues, ${tableNames.length} reçues).`);
     }
   }
 

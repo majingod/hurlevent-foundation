@@ -1464,6 +1464,30 @@ export type Database = {
           },
         ]
       }
+      objets_generateur: {
+        Row: {
+          est_actif: boolean
+          groupe: string
+          id: string
+          libelle: string
+          ordre: number
+        }
+        Insert: {
+          est_actif?: boolean
+          groupe: string
+          id: string
+          libelle: string
+          ordre: number
+        }
+        Update: {
+          est_actif?: boolean
+          groupe?: string
+          id?: string
+          libelle?: string
+          ordre?: number
+        }
+        Relationships: []
+      }
       objets_joaillerie: {
         Row: {
           cout_xp: number | null
@@ -1508,6 +1532,62 @@ export type Database = {
           temps_rare_minutes?: number | null
         }
         Relationships: []
+      }
+      objets_requis: {
+        Row: {
+          commentaire: string | null
+          competence_id: string | null
+          id: string
+          libelle_manque: string
+          race_id: string | null
+          variantes: Json
+        }
+        Insert: {
+          commentaire?: string | null
+          competence_id?: string | null
+          id?: string
+          libelle_manque: string
+          race_id?: string | null
+          variantes: Json
+        }
+        Update: {
+          commentaire?: string | null
+          competence_id?: string | null
+          id?: string
+          libelle_manque?: string
+          race_id?: string | null
+          variantes?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "objets_requis_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: true
+            referencedRelation: "competences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objets_requis_competence_id_fkey"
+            columns: ["competence_id"]
+            isOneToOne: true
+            referencedRelation: "vue_competences_encyclopedie"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objets_requis_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: true
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objets_requis_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: true
+            referencedRelation: "vue_demandes_races_attente"
+            referencedColumns: ["race_id"]
+          },
+        ]
       }
       parametres_jeu: {
         Row: {
