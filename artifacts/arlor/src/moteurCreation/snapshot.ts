@@ -16,6 +16,8 @@ export type Religion = Database["public"]["Tables"]["religions"]["Row"];
 export type Langue = Database["public"]["Tables"]["langues"]["Row"];
 export type ReparationForge = Database["public"]["Tables"]["reparations_forge"]["Row"];
 export type IngredientAlchimique = Database["public"]["Tables"]["ingredients_alchimiques"]["Row"];
+export type ObjetGenerateur = Database["public"]["Tables"]["objets_generateur"]["Row"];
+export type ObjetRequis = Database["public"]["Tables"]["objets_requis"]["Row"];
 export type SectionRegle = Database["public"]["Tables"]["sections_regles"]["Row"];
 export type EffetCombat = Database["public"]["Tables"]["effets_combat"]["Row"];
 export type Creature = Database["public"]["Tables"]["bestiaire"]["Row"];
@@ -44,6 +46,10 @@ export interface SnapshotVisiteur {
     langues: Langue[];
     reparations_forge: ReparationForge[];
     ingredients_alchimiques: IngredientAlchimique[];
+    // Lot 0 générateur (s347) : carte équipement ↔ compétences/races —
+    // optionnelles tant que le JSON committé n'a pas été régénéré.
+    objets_generateur?: ObjetGenerateur[];
+    objets_requis?: ObjetRequis[];
     // Extension hors-ligne (lot A0, s312) : optionnelles tant que le JSON
     // committé reste en 18 clés — présentes dès qu'un prebuild/refresh
     // régénère le snapshot à 25 clés.
