@@ -28,6 +28,9 @@ import {
 import StepperEtapes, { type EtapeDef } from "@/components/createur/StepperEtapes";
 import DrawerAjusterXp from "@/components/createur/DrawerAjusterXp";
 import { useEtapesApplicables } from "@/components/createur/useEtapesApplicables";
+import Generateur from "@/components/createur/generateur/Generateur";
+import { GENERATEUR_ACTIF } from "@/components/createur/generateur/config";
+import { doitMontrerAccueil } from "@/components/createur/generateur/decisionAccueil";
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
@@ -129,6 +132,9 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   // fiche visiteur, route protégée) — on affiche un panneau de succès en place.
   const [finalisationVisiteurReussie, setFinalisationVisiteurReussie] =
     useState(false);
+  // [VIS-8 lot 1] Une porte de l'accueil a été franchie (🛠️) : « Précédent »
+  // depuis l'étape 2 ne fait pas réapparaître le menu des portes.
+  const [accueilFranchi, setAccueilFranchi] = useState(false);
   // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
   // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
   const [etapeInitialisee, setEtapeInitialisee] = useState(false);
@@ -669,6 +675,29 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
           {modeVisiteur ? "Retour à l'accueil" : "Retour au tableau de bord"}
         </Button>
       </div>
+    );
+  }
+
+  // [VIS-8 lot 1] Accueil des portes — ÉTEINT (GENERATEUR_ACTIF=false)
+  // jusqu'au lot résolveur. Placé APRÈS les early-returns : le démarrage est
+  // terminé, l'étape est positionnée (NAV-2), les cas reprise / admin /
+  // campagne / visiteur finalisé sont déjà passés. Ne concerne qu'un
+  // démarrage à zéro (étape 1).
+  if (
+    doitMontrerAccueil({
+      actif: GENERATEUR_ACTIF,
+      accueilFranchi,
+      modeAdmin,
+      modeCampagne,
+      reprise: !!personnageIdParUrl,
+      etape,
+    })
+  ) {
+    return (
+      <Generateur
+        modeVisiteur={modeVisiteur}
+        onBatirMoiMeme={() => setAccueilFranchi(true)}
+      />
     );
   }
 
