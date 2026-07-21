@@ -1,0 +1,811 @@
+{
+ "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-21 (s348) — 35 compétences du contenu Guerrier. NE PAS ÉDITER À LA MAIN : recapturer via MCP (même SELECT, en-tête du test).",
+ "competences": [
+  {
+   "id": "804c92f5-5c88-44bd-b2ad-e49e24498fa6",
+   "nom": "Berserk",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 15
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 19
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "3dfaeb28-defe-4e80-a8d5-3e5a686b98d5",
+   "nom": "Bonne santé",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 15
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "04cadb85-598c-4dbf-b982-3b5f9d5736f2",
+   "nom": "Botte Secrète",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 9
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 12
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 12
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "70680316-bd7f-4bed-b711-050a2c54161a",
+   "nom": "Bravoure",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 7
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "c7a18f18-48d6-4d4a-aa30-cdc1d9eb6f2c",
+   "nom": "Charge",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 8
+    }
+   ],
+   "prerequis": {
+    "1": [
+     {
+      "competence_nom": "Botte Secrète",
+      "niveau_min": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "f7bc6a4c-bc01-41d6-a9a7-65a48ddac19b",
+   "nom": "Combat à deux armes",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 8
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 12
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "7c379b31-0983-49d3-bf35-7cc0225210f5",
+   "nom": "Compétence d'arme à deux mains",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 8
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "e688d4a9-db95-4dd8-b888-429b1c711656",
+   "nom": "Compétence d'arme à distance",
+   "categorie": "voleur",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 7
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 9
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 14
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "c9e1bd23-1cd2-4904-bcea-89c1cceeb034",
+   "nom": "Compétence d'arme à la hache",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 15
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 14
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 13
+    }
+   ],
+   "prerequis": {
+    "1": [
+     {
+      "competence_nom": "Botte Secrète",
+      "niveau_min": 1
+     }
+    ],
+    "2": [
+     {
+      "competence_nom": "Botte Secrète",
+      "niveau_min": 2
+     }
+    ],
+    "3": [
+     {
+      "competence_nom": "Botte Secrète",
+      "niveau_min": 3
+     }
+    ]
+   }
+  },
+  {
+   "id": "57708546-4627-44ef-83c1-17c57e5045e4",
+   "nom": "Compétence d'arme à la lame",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 12
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 9
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "2d4de299-2695-4fef-89c6-0149f76544d1",
+   "nom": "Compétence d'arme d'hast",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 12
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 16
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "15f248a3-4299-492b-b0c9-c647d2e641c5",
+   "nom": "Compétence d'arme d'impact",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 13
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 19
+    }
+   ],
+   "prerequis": {
+    "3": [
+     {
+      "competence_nom": "Berserk",
+      "niveau_min": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "d017baba-28f0-4070-9124-87814e7544d2",
+   "nom": "Connaissances des Créatures",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "multiple_avec_choix_par_niveau",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 12
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "6fddb377-09bf-4448-9aee-11fd43ade998",
+   "nom": "Connaissances des Métaux Communs",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 6
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "b4048343-f713-4bd0-8459-7732a459d563",
+   "nom": "Connaissances des Métaux Rares",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    }
+   ],
+   "prerequis": {
+    "1": [
+     {
+      "competence_nom": "Connaissances des Métaux Communs",
+      "niveau_min": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "c821b270-d314-4092-9899-2fd80925e873",
+   "nom": "Connaissances des Religions",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "multiple_choix_distinct",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 4
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "4e177cdd-167d-4bb0-ba54-6d8df0e2c9ef",
+   "nom": "Corps Sain",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 5
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 7
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 10
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "b0e72c43-0889-45b5-a0ed-bb742bc7fa3a",
+   "nom": "Défense Inflexible",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 12
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 16
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "82159693-1e88-4a8d-9dca-e6dcc25a4a42",
+   "nom": "Dépeçage",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 15
+    }
+   ],
+   "prerequis": {
+    "1": [
+     {
+      "competence_nom": "Connaissances des Créatures",
+      "niveau_min": 1
+     },
+     {
+      "competence_nom": "Premiers Soins",
+      "niveau_min": 1
+     }
+    ],
+    "2": [
+     {
+      "competence_nom": "Connaissances des Créatures",
+      "niveau_min": 2
+     }
+    ]
+   }
+  },
+  {
+   "id": "8e583714-0b29-4071-9142-56d92324d7ba",
+   "nom": "Désengagement",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "61b09930-ec60-4c24-99c3-dacd611871e5",
+   "nom": "Discours du Commandement",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 17
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 12
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "e7f5cff9-cb41-4fd3-abbc-6be47e7d1436",
+   "nom": "Estimation",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 8
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 14
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "efe58364-a1df-4b5b-b15c-4bf353c10e13",
+   "nom": "Forge",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 9
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 13
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 21
+    }
+   ],
+   "prerequis": {
+    "1": [
+     {
+      "competence_nom": "Connaissances des Métaux Communs",
+      "niveau_min": 1
+     }
+    ],
+    "2": [
+     {
+      "competence_nom": "Connaissances des Métaux Rares",
+      "niveau_min": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "cc02fb93-3204-4c81-a0d1-3b1701db9ae9",
+   "nom": "Langue supplémentaire",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "multiple_choix_distinct",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 5
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "05529f8e-0743-4573-bbb9-bad8358e9bd8",
+   "nom": "Maniement du bouclier moyen",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier",
+    "pretre"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "4b726be1-0771-4641-9f65-28eb744dda9b",
+   "nom": "Maniement du grand bouclier",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 12
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "cc082d1a-72ed-47fb-b0c2-2e400e5b717a",
+   "nom": "Maniement du petit bouclier",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 8
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "8db2d42b-b669-440d-abce-7c63bf42f3f9",
+   "nom": "Mineur",
+   "categorie": "generale",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 6
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 9
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 15
+    }
+   ],
+   "prerequis": {
+    "1": [
+     {
+      "competence_nom": "Connaissances des Métaux Communs",
+      "niveau_min": 1
+     }
+    ],
+    "2": [
+     {
+      "competence_nom": "Connaissances des Métaux Rares",
+      "niveau_min": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "92e89b57-9e4d-4405-ad12-5301592914eb",
+   "nom": "Poids Lourd",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "1e9d8d12-0ead-4724-a4c8-3a92d87e8426",
+   "nom": "Port d'armure intermédiaire",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier",
+    "pretre"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 12
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "c5f9869b-b824-4368-aa8c-4b3b0d149eb9",
+   "nom": "Port d'armure légère",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 7
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "4fd3014c-0baa-45cc-a78f-b7923275f500",
+   "nom": "Port d'armure lourde",
+   "categorie": "guerrier",
+   "classes_requises": [
+    "guerrier"
+   ],
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 17
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "fe5d2c38-89c9-4af1-bbc7-343497e7969c",
+   "nom": "Premiers Soins",
+   "categorie": "pretre",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 6
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 14
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "c027e99c-33a2-4e12-b9e8-6b477c9c2c4a",
+   "nom": "Renforcement défensif",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 14
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 23
+    }
+   ],
+   "prerequis": {
+    "1": [
+     {
+      "competence_nom": "Forge",
+      "niveau_min": 1
+     }
+    ],
+    "2": [
+     {
+      "competence_nom": "Forge",
+      "niveau_min": 2
+     }
+    ]
+   }
+  },
+  {
+   "id": "940f9586-d731-499c-8bdd-41bafb7149b6",
+   "nom": "Résistance à la magie",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 14
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 18
+    }
+   ],
+   "prerequis": null
+  },
+  {
+   "id": "98d5ccd0-4039-4b27-885d-19c00a02b1be",
+   "nom": "Résolution Guerrière",
+   "categorie": "guerrier",
+   "classes_requises": null,
+   "type_achat": "simple",
+   "est_actif": true,
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 13
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 8
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 13
+    }
+   ],
+   "prerequis": null
+  }
+ ]
+}
