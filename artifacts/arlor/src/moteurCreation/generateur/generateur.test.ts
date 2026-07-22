@@ -3,7 +3,8 @@
  *
  * Fixture : `fixtures/competences_guerrier.fixture.json` — capture MCP prod
  * (2026-07-21, s348). Ne jamais l'éditer à la main : toute retouche de règle
- * en base impose une recapture (même SELECT). Les totaux ci-dessous sont les
+ * en base impose une recapture — même patron de fermeture récursive que
+ * les tests pretre/voleur/mage (seeds = les noms du contenu guerrier). Les totaux ci-dessous sont les
  * chiffres MESURÉS de la conception (§4.1/§4.5) : le moteur doit les
  * RE-DÉRIVER depuis la fixture, jamais les connaître.
  *

@@ -236,3 +236,67 @@ export const FILET_MARTIAL: Etape4[] = [
   { type: "jauge", nom: "Connaissances des Religions", plafondRachats: 15 },
   { type: "jauge", nom: "Langue supplémentaire", plafondRachats: 6 },
 ];
+
+/* ------------------------------------------------------------------ */
+/* [lot 2b] Adaptateur vers le contrat GÉNÉRIQUE (contenu/commun.ts) —
+   les structures pilotes ci-dessus restent la source ; on les adapte,
+   on ne les duplique pas.                                              */
+
+import {
+  comp,
+  FILET_MARTIAL_COMMUN,
+  type ContenuClasse,
+  type EntreePool,
+  type EtapePond,
+  type RoleClasse,
+} from "./commun";
+
+const adaptePool = (items: readonly ItemPool[]): EntreePool[] =>
+  items.map((i) => ({
+    label: i.nom,
+    note: i.note,
+    achats: () => [comp(i.nom, i.niveauCible)],
+    condition: i.condition ? (inv) => i.condition!(inv) : undefined,
+    teteDeListe: i.teteDeListe,
+  }));
+
+const adaptePond = (etapes: readonly Etape4[]): EtapePond[] =>
+  etapes.map((e) =>
+    e.type === "achat"
+      ? {
+          type: "achats" as const,
+          label: `${e.nom} ${e.niveauCible}`,
+          achats: () => [comp(e.nom, e.niveauCible)],
+        }
+      : { type: "jauge" as const, nom: e.nom, plafondRachats: e.plafondRachats }
+  );
+
+export const CONTENU_GUERRIER: ContenuClasse = {
+  classe: CLASSE,
+  gratuites: GRATUITES_GUERRIER,
+  alertesGratuites: (inv) =>
+    inv.has("lame_deux_mains")
+      ? []
+      : [
+          "La Compétence d'arme à deux mains est offerte, mais sans arme à deux mains apportée elle reste inutilisable pour l'instant.",
+        ],
+  roles: ROLES_GUERRIER.map<RoleClasse>((r) => ({
+    id: r.id,
+    emoji: r.emoji,
+    titre: r.titre,
+    phrase: r.phrase,
+    requiert: (inv) => r.requiert(inv),
+    noyau: (inv) => r.noyau(inv).map((c) => comp(c.nom, c.niveauCible)),
+  })),
+  pool3: {
+    Offensif: adaptePool(POOL3_GUERRIER.Offensif),
+    Défensif: adaptePool(POOL3_GUERRIER["Défensif"]),
+    Spécialisé: adaptePool(POOL3_GUERRIER["Spécialisé"]),
+  },
+  pond4: {
+    gFrappe: adaptePond(POND4_GUERRIER.gFrappe),
+    gTient: adaptePond(POND4_GUERRIER.gTient),
+    gArtisan: adaptePond(POND4_GUERRIER.gArtisan),
+  },
+  filet: FILET_MARTIAL_COMMUN,
+};

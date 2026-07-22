@@ -1,0 +1,172 @@
+{
+ "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-21 (s349) — 15 modèles magie des noyaux/pools casters : 7 paires (sort de dégâts base 1.00 + bouclier base 0.50) par cercle + la prière Soins. NE PAS ÉDITER À LA MAIN : recapturer via MCP (SELECT complet documenté en tête de generateur.magie.test.ts).",
+ "sorts": [
+  {
+   "id": "fba3b42c-d9fc-4a74-82bc-6d610fef4ffa",
+   "nom": "Rayon Électrique",
+   "cercle": "Air",
+   "niveau": 1,
+   "type_sort": "dégâts",
+   "zone_effet": "Nombre de cibles ou tous rayons",
+   "portee": "À vue",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  },
+  {
+   "id": "334f49e2-fd75-4d3d-baff-f2f632d9d20b",
+   "nom": "Bouclier de Vent",
+   "cercle": "Air",
+   "niveau": 1,
+   "type_sort": "effet bénéfique",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "30 Minutes",
+   "cout_xp_base": 0.5
+  },
+  {
+   "id": "121584cc-bc10-464f-8296-75ad3baea69d",
+   "nom": "Projectile de glace",
+   "cercle": "Eau",
+   "niveau": 1,
+   "type_sort": "dégâts",
+   "zone_effet": "Nombre de cibles ou tous rayons",
+   "portee": "À vue",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  },
+  {
+   "id": "72f1258d-9cbe-4a4a-8d67-5d8a640fcc12",
+   "nom": "Bouclier de Glace",
+   "cercle": "Eau",
+   "niveau": 1,
+   "type_sort": "effet bénéfique",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "30 Minutes",
+   "cout_xp_base": 0.5
+  },
+  {
+   "id": "f6398fde-a061-41b7-89ed-5a89457ba05a",
+   "nom": "Jet de flammes",
+   "cercle": "Feu",
+   "niveau": 1,
+   "type_sort": "dégâts",
+   "zone_effet": "Nombre de cibles ou tous rayons",
+   "portee": "À vue",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  },
+  {
+   "id": "018f508e-fe3f-414a-9a95-3248692c5d3b",
+   "nom": "Bouclier de Feu",
+   "cercle": "Feu",
+   "niveau": 1,
+   "type_sort": "effet bénéfique",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "30 Minutes",
+   "cout_xp_base": 0.5
+  },
+  {
+   "id": "b568bc68-d86f-43d6-af74-7d29d6a20803",
+   "nom": "Rayon d'Énergie Négative",
+   "cercle": "Magie Noire",
+   "niveau": 1,
+   "type_sort": "dégâts",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  },
+  {
+   "id": "15bf1e3a-9583-408c-a780-2b1e6a881f9f",
+   "nom": "Bouclier contre l'Énergie négative",
+   "cercle": "Magie Noire",
+   "niveau": 1,
+   "type_sort": "effet bénéfique",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "30 Minutes",
+   "cout_xp_base": 0.5
+  },
+  {
+   "id": "818e3b37-4d3f-4e6e-bec4-89a977ddade7",
+   "nom": "Projectile Magique",
+   "cercle": "Magie Pure",
+   "niveau": 1,
+   "type_sort": "dégâts",
+   "zone_effet": "Nombre de cibles ou tous rayons",
+   "portee": "À vue",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  },
+  {
+   "id": "b0ae70d2-e789-4023-b75f-cec355e751a9",
+   "nom": "Bouclier Magique",
+   "cercle": "Magie Pure",
+   "niveau": 1,
+   "type_sort": "effet bénéfique",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "10 Minutes",
+   "cout_xp_base": 0.5
+  },
+  {
+   "id": "40bb3997-6796-403a-a5b5-df66ad6943b4",
+   "nom": "Destruction des Morts-Vivants",
+   "cercle": "Nécromancie",
+   "niveau": 1,
+   "type_sort": "dégâts",
+   "zone_effet": "Nombre de cibles",
+   "portee": "25 Pieds",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  },
+  {
+   "id": "de2e7549-94ef-48ae-90e7-b45856cc6267",
+   "nom": "Bouclier Contre la Mort",
+   "cercle": "Nécromancie",
+   "niveau": 1,
+   "type_sort": "effet bénéfique",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "30 Minutes",
+   "cout_xp_base": 0.5
+  },
+  {
+   "id": "1e16ce08-1d42-413a-ad6a-ac06d30ff5bb",
+   "nom": "Rayon d'Acide",
+   "cercle": "Terre",
+   "niveau": 1,
+   "type_sort": "dégâts",
+   "zone_effet": "Nombre de cibles ou tous rayons",
+   "portee": "À vue",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  },
+  {
+   "id": "452125a2-4f7d-45e1-8cdd-2a8144d03cf9",
+   "nom": "Bouclier de Terre",
+   "cercle": "Terre",
+   "niveau": 1,
+   "type_sort": "effet bénéfique",
+   "zone_effet": "Nombre de cibles",
+   "portee": "À vue",
+   "duree": "30 Minutes",
+   "cout_xp_base": 0.5
+  }
+ ],
+ "prieres": [
+  {
+   "id": "a7bfaf7c-6dc3-4657-8aac-d26e39d279d5",
+   "nom": "Soins",
+   "domaine": "Bénédiction",
+   "niveau": 1,
+   "type_priere": "effet bénéfique",
+   "zone_effet": "Nombre de cibles ou tous rayons",
+   "portee": "5 Pieds",
+   "duree": "Instantanée",
+   "cout_xp_base": 1
+  }
+ ]
+}
