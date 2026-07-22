@@ -28,6 +28,35 @@ export interface CompetenceCatalogue {
 
 export type ClasseId = "guerrier" | "mage" | "pretre" | "voleur";
 
+/** Config d'un sort ou d'une prière planifié (labels des constantes magie). */
+export interface ConfigMagie {
+  niveau: number;
+  zone: string;
+  portee: string;
+  duree: string;
+}
+
+/** [lot 2b] Un achat de MAGIE planifié : un sort/prière configuré, prix DÉRIVÉ
+ *  par le miroir attesté (`@/utils/calculsMagie`, PR #710) — jamais écrit. */
+export interface AchatMagiePlanifie {
+  type: "sort" | "priere";
+  modeleId: string;
+  nom: string;
+  config: ConfigMagie;
+  coutXp: number;
+  coutPS: number;
+  couche: 2 | 3 | 4;
+  motif: string;
+  /** Surclassement (④ « monter la prière ») : l'entrée reste dans SA couche,
+   *  montée sur place — la trace dit d'où elle vient et qui l'a montée. */
+  surclasse?: {
+    deNiveau: number;
+    deCoutXp: number;
+    parCouche: 2 | 3 | 4;
+    motif: string;
+  };
+}
+
 /** Un achat planifié : UNE montée de palier d'une compétence. */
 export interface AchatPlanifie {
   competenceId: string;
@@ -44,6 +73,8 @@ export interface CompositionOk {
   /** Couche ① — gratuités de classe (0 XP). */
   gratuites: { competenceId: string; nom: string; note?: string }[];
   achats: AchatPlanifie[];
+  /** [lot 2b] Sorts/prières planifiés (vide pour les classes martiales). */
+  achatsMagie: AchatMagiePlanifie[];
   budget: number;
   totalDepense: number;
   reliquat: number;
@@ -70,5 +101,10 @@ export interface ContexteComposition {
    * Couche ③ « essentiels » déjà retenus (mode 🧭 : choisis par le joueur ;
    * mode 🎲 : tirés par `tirerEssentiels`). Cibles = { nom, niveauCible }.
    */
-  essentiels?: readonly { nom: string; niveauCible: number }[];
+  essentiels?: readonly (
+    | { nom: string; niveauCible: number }
+    | { label: string }
+  )[];
+  /** [lot 2b] 🔥 Mage : le cercle choisi (🧭) ou tiré (🎲) — « ton élément ? ». */
+  element?: string;
 }

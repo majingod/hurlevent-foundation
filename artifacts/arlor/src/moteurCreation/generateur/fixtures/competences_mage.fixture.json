@@ -1,0 +1,462 @@
+{
+ "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-21 (s349) — 20 compétences du contenu Mage, fermeture récursive des prérequis ; homonymes filtrés categorie='mage' (les 4 : Assemblage de Runes, Développement Spirituel, Développement Spirituel Supérieur, Canalisation). NE PAS ÉDITER À LA MAIN : recapturer via MCP (SELECT complet documenté en tête de generateur.mage.test.ts).",
+ "competences": [
+  {
+   "id": "9fc3a181-4e29-4d94-8639-65b9a9a7c787",
+   "nom": "Acquisition de Cercle",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 5
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 15
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": {
+    "1": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Linguistique et Mathématique"
+     }
+    ]
+   },
+   "type_achat": "multiple_avec_choix_par_niveau",
+   "classes_requises": null
+  },
+  {
+   "id": "d9a446cc-abdd-40d1-be68-42240b7c9bae",
+   "nom": "Acquisition de Sort",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 0
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": {
+    "1": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Acquisition de Cercle"
+     }
+    ]
+   },
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "3f018622-a2ad-443a-882b-483ef3e2bd23",
+   "nom": "Alchimie",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 14
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 22
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": {
+    "1": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Connaissances des Herbes Communes"
+     }
+    ],
+    "2": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Connaissances des Herbes Rares"
+     }
+    ]
+   },
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "16361c8e-a173-40b2-ae6f-4f670d8010d4",
+   "nom": "Assemblage de Runes",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 8
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 14
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 24
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": {
+    "1": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Connaissances des Runes"
+     },
+     {
+      "niveau_min": 1,
+      "competence_nom": "Canalisation"
+     }
+    ],
+    "3": [
+     {
+      "niveau_min": 2,
+      "competence_nom": "Canalisation"
+     }
+    ]
+   },
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "649d3974-0e37-4b15-a26f-4db78dc541a9",
+   "nom": "Bâton de Sorcier",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 9
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": [
+    "mage"
+   ]
+  },
+  {
+   "id": "4c28af19-09f6-47b3-b2e5-3e78805b4dc9",
+   "nom": "Canalisation",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 6
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 12
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "c601901b-2a26-46e0-a42e-2e3077fe99e2",
+   "nom": "Connaissances des Herbes Communes",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 6
+    }
+   ],
+   "categorie": "generale",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "72a3db25-ed40-49c1-96f0-ec9f60f62fa3",
+   "nom": "Connaissances des Herbes Rares",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 9
+    }
+   ],
+   "categorie": "generale",
+   "est_actif": true,
+   "prerequis": {
+    "1": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Connaissances des Herbes Communes"
+     }
+    ]
+   },
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "1135db5a-9161-4cc3-bc50-e0e0bed3ce5a",
+   "nom": "Connaissances des Runes",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 12
+    }
+   ],
+   "categorie": "generale",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "5b82c487-dd4c-48cb-a472-255019bbe835",
+   "nom": "Création et désarmement de piège",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 11
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 16
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 18
+    }
+   ],
+   "categorie": "voleur",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "0b0fba09-77d5-4078-946f-9add150f695d",
+   "nom": "Décryptage",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 9
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "multiple_choix_distinct",
+   "classes_requises": null
+  },
+  {
+   "id": "506f7bc1-af9d-403b-a495-fee5cb5f751d",
+   "nom": "Développement Spirituel",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 2
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "multiple_sans_choix",
+   "classes_requises": null
+  },
+  {
+   "id": "0eeecf81-7953-45b1-9928-13ed02eaaa69",
+   "nom": "Développement Spirituel Supérieur",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 4
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "multiple_sans_choix",
+   "classes_requises": [
+    "mage"
+   ]
+  },
+  {
+   "id": "ecba79a7-e57a-4fd0-a4f7-4f09567cfbd8",
+   "nom": "Frénésie magique",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 8
+    }
+   ],
+   "categorie": "generale",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "43ddc446-2769-407b-a658-6999c1484907",
+   "nom": "Identification d'objet",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 4
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 25
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "47fa46c2-e39b-4fd5-9540-ca7e3dc9b271",
+   "nom": "Identification des Potions",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 4
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 12
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 15
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": {
+    "1": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Connaissances des Herbes Communes"
+     },
+     {
+      "niveau_min": 1,
+      "competence_nom": "Alchimie"
+     }
+    ],
+    "2": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Connaissances des Herbes Rares"
+     },
+     {
+      "niveau_min": 2,
+      "competence_nom": "Alchimie"
+     }
+    ],
+    "3": [
+     {
+      "niveau_min": 3,
+      "competence_nom": "Alchimie"
+     }
+    ]
+   },
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "cc02fb93-3204-4c81-a0d1-3b1701db9ae9",
+   "nom": "Langue supplémentaire",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 5
+    }
+   ],
+   "categorie": "generale",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "multiple_choix_distinct",
+   "classes_requises": null
+  },
+  {
+   "id": "c9d9a7b0-145e-48f6-b6fb-0d6811480221",
+   "nom": "Linguistique et Mathématique",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 4
+    }
+   ],
+   "categorie": "generale",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "087b2e9c-3995-496f-855b-5851de176c98",
+   "nom": "Méditation",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 10
+    },
+    {
+     "niveau": 2,
+     "cout_xp": 16
+    },
+    {
+     "niveau": 3,
+     "cout_xp": 26
+    }
+   ],
+   "categorie": "generale",
+   "est_actif": true,
+   "prerequis": null,
+   "type_achat": "simple",
+   "classes_requises": null
+  },
+  {
+   "id": "545e574e-14be-4946-a191-119b88fdf992",
+   "nom": "Piège Magique",
+   "niveaux": [
+    {
+     "niveau": 1,
+     "cout_xp": 17
+    }
+   ],
+   "categorie": "mage",
+   "est_actif": true,
+   "prerequis": {
+    "1": [
+     {
+      "niveau_min": 1,
+      "competence_nom": "Création et désarmement de piège"
+     },
+     {
+      "niveau_min": 1,
+      "competence_nom": "Canalisation"
+     }
+    ]
+   },
+   "type_achat": "simple",
+   "classes_requises": null
+  }
+ ]
+}

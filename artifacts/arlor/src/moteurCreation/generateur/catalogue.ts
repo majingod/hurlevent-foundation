@@ -15,6 +15,14 @@ export class CatalogueCompetences {
   constructor(competences: readonly CompetenceCatalogue[]) {
     for (const c of competences) {
       if (c.est_actif === false) continue;
+      if (this.parNom.has(c.nom)) {
+        throw new Error(
+          `[generateur] Collision d'homonymes au catalogue : « ${c.nom} » ` +
+            `apparaît deux fois. Filtrer la fixture par classe — 4 paires ` +
+            `mage/prêtre mesurées (s349) : Assemblage de Runes, Canalisation, ` +
+            `Développement Spirituel, Développement Spirituel Supérieur.`
+        );
+      }
       this.parNom.set(c.nom, c);
     }
   }
