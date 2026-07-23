@@ -20,8 +20,9 @@ import fxVoleur from "./fixtures/competences_voleur.fixture.json";
 import type { CompetenceCatalogue, Composition } from "./types";
 
 /**
- * [lot 2b] JUMEAU POSITIF (règle s346) : la promesse « reliquat ≤ 3 XP,
- * jamais négatif » se DÉROULE sur tout le domaine — 12 rôles × 7 éléments
+ * [lot A2] JUMEAU POSITIF (règle s346) : la promesse « reliquat ≤ 3 XP,
+ * jamais négatif » se DÉROULE sur tout le domaine — les 6 archétypes
+ * MARTIAUX mesurés (s350) + les 6 rôles casters du 2b × 7 éléments
  * pour le 🔥 × budgets 60/80 × inventaires min/max × ③ absent/tiré —
  * et le pire cas est CITÉ, pas promis.
  */
@@ -50,24 +51,24 @@ interface Cas {
 }
 
 const CAS: Cas[] = [
-  { classe: "guerrier", roleId: "gFrappe", inv: ["lame_deux_mains"] },
-  { classe: "guerrier", roleId: "gFrappe", inv: ["lame_longue", "targe", "hache", "deux_armes_identiques"] },
-  { classe: "guerrier", roleId: "gTient", inv: ["pavois", "armure_plaques"] },
-  { classe: "guerrier", roleId: "gTient", inv: ["targe", "armure_cuir", "lame_moyenne"] },
-  { classe: "guerrier", roleId: "gArtisan", inv: [] },
-  { classe: "guerrier", roleId: "gArtisan", inv: ["contondante_moyenne", "fioles"] },
+  { classe: "guerrier", roleId: "gForgeron", inv: [] },
+  { classe: "guerrier", roleId: "gForgeron", inv: ["contondante_moyenne", "ecu", "armure_cuir", "bandages"] },
+  { classe: "guerrier", roleId: "gTient", inv: ["armure_cuir"] },
+  { classe: "guerrier", roleId: "gTient", inv: ["pavois", "armure_plaques", "lame_longue"] },
+  { classe: "guerrier", roleId: "gFrappe", inv: ["deux_armes_identiques"] },
+  { classe: "guerrier", roleId: "gFrappe", inv: ["deux_armes_identiques", "lame_longue", "targe", "armure_cuir", "bandages", "contondante_longue"] },
   { classe: "pretre", roleId: "pSoigne", inv: [] },
   { classe: "pretre", roleId: "pSoigne", inv: ["armure_maille", "ecu", "bourse"] },
   { classe: "pretre", roleId: "pFront", inv: ["armure_cuir"] },
   { classe: "pretre", roleId: "pFront", inv: ["armure_cuir", "armure_maille", "targe", "ecu"] },
   { classe: "pretre", roleId: "pRite", inv: [] },
   { classe: "pretre", roleId: "pRite", inv: ["targe", "fioles"] },
-  { classe: "voleur", roleId: "vSurprise", inv: [] },
-  { classe: "voleur", roleId: "vSurprise", inv: ["contondante_longue", "bourse", "lame_courte", "fioles", "arme_distance"] },
-  { classe: "voleur", roleId: "vTire", inv: ["arme_distance"] },
-  { classe: "voleur", roleId: "vTire", inv: ["arme_distance", "fioles", "bourse"] },
-  { classe: "voleur", roleId: "vPiege", inv: [] },
-  { classe: "voleur", roleId: "vPiege", inv: ["contondante_courte", "bourse"] },
+  { classe: "voleur", roleId: "vOrfevre", inv: ["bourse"] },
+  { classe: "voleur", roleId: "vOrfevre", inv: ["bourse", "feuille_crayon", "lame_courte", "fioles"] },
+  { classe: "voleur", roleId: "vPremier", inv: [] },
+  { classe: "voleur", roleId: "vPremier", inv: ["contondante_longue", "bourse", "lame_courte", "fioles", "arme_distance"] },
+  { classe: "voleur", roleId: "vEclaireur", inv: ["bandages"] },
+  { classe: "voleur", roleId: "vEclaireur", inv: ["bandages", "bourse", "contondante_courte", "arme_distance"] },
   { classe: "mage", roleId: "mAlchimiste", inv: ["fioles"] },
   { classe: "mage", roleId: "mAlchimiste", inv: ["fioles", "baton_sceptre_baguette", "feuille_crayon"] },
   { classe: "mage", roleId: "mRuniste", inv: ["feuille_crayon"] },
@@ -153,12 +154,14 @@ describe("simulation — tout le domaine", () => {
       }
     }
     expect(nb).toBe(144);
-    // ⭐ ATTESTATION du pire cas (mesuré s349) : ⚔️ deux mains à 60 XP sans ③,
-    // reliquat 3 — le même qu'au lot 2a, désormais tenu sur les 12 rôles
-    // (le 🔥 à 60 XP fait aussi 3 : DS ×10 puis plus rien ne rentre).
+    // ⭐ ATTESTATION du pire cas (re-mesuré s353, pas promis) : 🔨 le forgeron
+    // les mains vides à 60 XP sans ③ — reliquat 3. La borne « ≤ 3 » tient
+    // toujours après le passage aux archétypes mesurés : le filet martial se
+    // termine sur Religions à 4 XP, donc un reste de 1 à 3 XP est structurel
+    // et assumé (§4.5 « honnêteté sur le 0 gaspillage »).
     expect(pire).toEqual({
       reliquat: 3,
-      desc: "guerrier/gFrappe inv=[lame_deux_mains] budget=60 ③absent",
+      desc: "guerrier/gForgeron inv=[] budget=60 ③absent",
     });
   });
 });

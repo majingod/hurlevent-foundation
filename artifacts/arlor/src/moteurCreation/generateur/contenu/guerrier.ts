@@ -1,245 +1,3 @@
-import type { EtatPossession } from "../couts";
-
-/**
- * [VIS-8 lot 2a] CONTENU du Guerrier — porté depuis la conception arrêtée
- * (§4.1 s341, pools/pondérations §4.5 s346). C'est du CONTENU versionné
- * (décision Fred s348) : Fred l'ajuste par PR ; le test d'intégrité casse si
- * un nom référencé quitte le catalogue.
- *
- * Les entrées sont des CIBLES { nom, niveauCible } + conditions d'inventaire ;
- * les PRIX ne sont jamais écrits ici — ils sont dérivés du catalogue par
- * `cheminComplet` (R3), et les tests attestent qu'ils retombent sur les
- * chiffres mesurés de la spec.
- */
-
-export const CLASSE = "guerrier" as const;
-
-export const GRATUITES_GUERRIER = [
-  "Bravoure",
-  "Compétence d'arme à deux mains",
-] as const;
-
-export interface Cible {
-  nom: string;
-  niveauCible: number;
-}
-
-/* ------------------------------------------------------------------ */
-/* Cases d'inventaire → genres d'armes / protections (ids réels
-   `objets_generateur`, PR #712).                                      */
-
-export const CASES_ARMES_PAR_GENRE = {
-  deuxMains: ["lame_deux_mains"],
-  impact: ["contondante_courte", "contondante_moyenne", "contondante_longue"],
-  hache: ["hache"],
-  hast: ["baton_hast"],
-  lame: ["lame_courte", "lame_moyenne", "lame_longue"],
-  /** ⚠️ jamais un créneau ⚔️ : catégorie voleur, cul-de-sac (Gotcha A43). */
-  distance: ["arme_distance"],
-} as const;
-
-export const CASES_PROTECTIONS: readonly {
-  caseId: string;
-  competence: string;
-}[] = [
-  { caseId: "targe", competence: "Maniement du petit bouclier" },
-  { caseId: "ecu", competence: "Maniement du bouclier moyen" },
-  { caseId: "pavois", competence: "Maniement du grand bouclier" },
-  { caseId: "armure_cuir", competence: "Port d'armure légère" },
-  { caseId: "armure_maille", competence: "Port d'armure intermédiaire" },
-  { caseId: "armure_plaques", competence: "Port d'armure lourde" },
-];
-
-const auMoinsUne = (inv: ReadonlySet<string>, cases: readonly string[]) =>
-  cases.some((c) => inv.has(c));
-
-/* ------------------------------------------------------------------ */
-/* Les 3 rôles (noyaux ②). Le créneau ⚔️ vise l'effet OFFENSIF de chaque
-   genre (carte équipement v3 §0) : deux mains (offerte) > impact niv 1 >
-   hache niv 1 (Botte en prérequis) > hast niv 2 > lame niv 2.            */
-
-export interface RoleGuerrier {
-  id: "gFrappe" | "gTient" | "gArtisan";
-  emoji: string;
-  titre: string;
-  phrase: string;
-  /** null = jouable ; sinon la raison du refus (avec quoi rattraper). */
-  requiert: (inv: ReadonlySet<string>) => string | null;
-  /** Cibles du noyau (hors gratuités). */
-  noyau: (inv: ReadonlySet<string>) => Cible[];
-}
-
-const CRENEAU_FRAPPE: readonly {
-  genre: keyof typeof CASES_ARMES_PAR_GENRE;
-  cibles: Cible[];
-}[] = [
-  { genre: "deuxMains", cibles: [] }, // compétence offerte (couche ①)
-  { genre: "impact", cibles: [{ nom: "Compétence d'arme d'impact", niveauCible: 1 }] },
-  { genre: "hache", cibles: [{ nom: "Compétence d'arme à la hache", niveauCible: 1 }] },
-  { genre: "hast", cibles: [{ nom: "Compétence d'arme d'hast", niveauCible: 2 }] },
-  { genre: "lame", cibles: [{ nom: "Compétence d'arme à la lame", niveauCible: 2 }] },
-];
-
-export const ROLES_GUERRIER: readonly RoleGuerrier[] = [
-  {
-    id: "gFrappe",
-    emoji: "⚔️",
-    titre: "Celui qui frappe",
-    phrase: "Il gagne les échanges : il désarme, puis brise le bouclier.",
-    requiert: (inv) => {
-      const uneArme = CRENEAU_FRAPPE.some((c) =>
-        auMoinsUne(inv, CASES_ARMES_PAR_GENRE[c.genre])
-      );
-      if (uneArme) return null;
-      return auMoinsUne(inv, CASES_ARMES_PAR_GENRE.distance)
-        ? "Un arc seul ne suffit pas : la Compétence d'arme à distance est de catégorie voleur — un Guerrier y plafonne au niveau 1, sans jamais l'effet offensif. Il te faut une arme de mêlée."
-        : "Il te faut une arme de mêlée (lame, hache, masse, bâton…).";
-    },
-    noyau: (inv) => {
-      const creneau =
-        CRENEAU_FRAPPE.find((c) =>
-          auMoinsUne(inv, CASES_ARMES_PAR_GENRE[c.genre])
-        )?.cibles ?? [];
-      return [...creneau, { nom: "Botte Secrète", niveauCible: 1 }];
-    },
-  },
-  {
-    id: "gTient",
-    emoji: "🛡️",
-    titre: "Celui qui tient",
-    phrase: "On ne le déplace pas et on ne passe pas.",
-    // ⚠️ UN SEUL créneau obligatoire (décision s341) : bouclier OU armure.
-    requiert: (inv) =>
-      CASES_PROTECTIONS.some((p) => inv.has(p.caseId))
-        ? null
-        : "Il te faut un bouclier ou une armure.",
-    noyau: (inv) => [
-      { nom: "Désengagement", niveauCible: 1 },
-      ...CASES_PROTECTIONS.filter((p) => inv.has(p.caseId)).map((p) => ({
-        nom: p.competence,
-        niveauCible: 1,
-      })),
-    ],
-  },
-  {
-    id: "gArtisan",
-    emoji: "🔨",
-    titre: "L'artisan",
-    phrase: "Il transforme le métal. Jouable sans rien apporter.",
-    requiert: () => null, // aucun créneau — le rôle le plus stable des trois
-    noyau: () => [
-      { nom: "Forge", niveauCible: 1 },
-      { nom: "Mineur", niveauCible: 1 },
-      { nom: "Renforcement défensif", niveauCible: 1 },
-    ],
-  },
-];
-
-/* ------------------------------------------------------------------ */
-/* Couche ③ — pool du Guerrier par style (§4.5). `condition` = case(s)
-   d'inventaire requise(s)   */
-
-export interface ItemPool {
-  nom: string;
-  niveauCible: number;
-  note: string;
-  condition?: (inv: ReadonlySet<string>) => boolean;
-}
-
-export const POOL3_GUERRIER: Record<
-  "Offensif" | "Défensif" | "Spécialisé",
-  ItemPool[]
-> = {
-  Offensif: [
-    {
-      nom: "Charge",
-      niveauCible: 1,
-      note: "si arme à deux mains — Botte Secrète déjà au noyau",
-      condition: (inv) => inv.has("lame_deux_mains"),
-    },
-    {
-      nom: "Combat à deux armes",
-      niveauCible: 1,
-      note: "si deux armes identiques",
-      condition: (inv) => inv.has("deux_armes_identiques"),
-    },
-    { nom: "Berserk", niveauCible: 1, note: "2 PV temporaires, +2 en résistance aux sorts à effet" },
-    { nom: "Résolution Guerrière", niveauCible: 1, note: "agir normalement à 1 PV" },
-  ],
-  Défensif: [
-    {
-      nom: "Défense Inflexible",
-      niveauCible: 1,
-      note: "encaisse un sort, 1×/combat — tête de liste (décision s341)",
-    },
-    { nom: "Poids Lourd", niveauCible: 1, note: "ignore le premier repoussement de chaque combat" },
-    { nom: "Bonne santé", niveauCible: 1, note: "+1 PV à chaque soin reçu" },
-    { nom: "Corps Sain", niveauCible: 1, note: "1 potion de plus par cycle" },
-    { nom: "Résistance à la magie", niveauCible: 1, note: "résister à un sort à effet, 1×/événement" },
-  ],
-  Spécialisé: [
-    { nom: "Forge", niveauCible: 1, note: "prix chemin : Métaux Communs inclus" },
-    { nom: "Discours du Commandement", niveauCible: 1, note: "2 à 6 alliés ignorent une attaque" },
-    {
-      nom: "Dépeçage",
-      niveauCible: 1,
-      note: "prix chemin : Créatures + Premiers Soins inclus ⚠️ Premiers Soins plafonné (hors classe)",
-    },
-  ],
-};
-
-/** R1 pilote — protections orphelines : cases cochées non couvertes. */
-export function orphelinsProtection(
-  inv: ReadonlySet<string>,
-  possede: EtatPossession
-): Cible[] {
-  return CASES_PROTECTIONS.filter(
-    (p) => inv.has(p.caseId) && !(possede.niveaux.get(p.competence) ?? 0)
-  ).map((p) => ({ nom: p.competence, niveauCible: 1 }));
-}
-
-/* ------------------------------------------------------------------ */
-/* Couche ④ — pondérations par rôle (§4.5) + FILET (règle gravée s346 :
-   toute pondération se TERMINE sur les jauges de classe ; martial =
-   Religions 4 XP puis Langues 5 XP, un reste de 1-3 XP est assumé).      */
-
-export type Etape4 =
-  | { type: "achat"; nom: string; niveauCible: number }
-  | { type: "jauge"; nom: string; plafondRachats: number };
-
-export const POND4_GUERRIER: Record<
-  "gFrappe" | "gTient" | "gArtisan",
-  Etape4[]
-> = {
-  gFrappe: [
-    { type: "achat", nom: "Berserk", niveauCible: 1 },
-    { type: "achat", nom: "Corps Sain", niveauCible: 1 },
-    { type: "jauge", nom: "Connaissances des Religions", plafondRachats: 15 },
-  ],
-  gTient: [
-    { type: "achat", nom: "Bonne santé", niveauCible: 1 },
-    { type: "achat", nom: "Corps Sain", niveauCible: 1 },
-    { type: "achat", nom: "Résistance à la magie", niveauCible: 1 },
-    { type: "jauge", nom: "Connaissances des Religions", plafondRachats: 15 },
-  ],
-  gArtisan: [
-    { type: "achat", nom: "Forge", niveauCible: 2 },
-    { type: "achat", nom: "Connaissances des Métaux Rares", niveauCible: 1 },
-    { type: "achat", nom: "Estimation", niveauCible: 1 },
-    { type: "jauge", nom: "Langue supplémentaire", plafondRachats: 6 },
-  ],
-};
-
-export const FILET_MARTIAL: Etape4[] = [
-  { type: "jauge", nom: "Connaissances des Religions", plafondRachats: 15 },
-  { type: "jauge", nom: "Langue supplémentaire", plafondRachats: 6 },
-];
-
-/* ------------------------------------------------------------------ */
-/* [lot 2b] Adaptateur vers le contrat GÉNÉRIQUE (contenu/commun.ts) —
-   les structures pilotes ci-dessus restent la source ; on les adapte,
-   on ne les duplique pas.                                              */
-
 import {
   comp,
   FILET_MARTIAL_COMMUN,
@@ -249,27 +7,290 @@ import {
   type RoleClasse,
 } from "./commun";
 
-const adaptePool = (items: readonly ItemPool[]): EntreePool[] =>
-  items.map((i) => ({
-    label: i.nom,
-    note: i.note,
-    achats: () => [comp(i.nom, i.niveauCible)],
-    condition: i.condition ? (inv) => i.condition!(inv) : undefined,
-  }));
+/**
+ * [VIS-8 lot A2] Contenu GUERRIER — les 3 archétypes MESURÉS sur les joueurs
+ * réels (conception §4.0.3, arrêtés Fred s350 ; ids arrêtés s352).
+ *
+ * ⚠️ Remplace le contenu pilote du lot 2a. `gArtisan` (🔨 L'artisan, conçu)
+ * devient `gForgeron` (🔨 Le forgeron, mesuré) — id neuf parce que le CONTENU
+ * est différent : l'artisan conçu partait de Forge + Renforcement défensif ;
+ * le forgeron réel part de la chaîne des Métaux et de Mineur, la Forge n'étant
+ * que chez 4 membres sur 6 (donc en ③, pas en ②).
+ *
+ * ② NOYAU = la liste « ≥ 80 % des membres » du groupe mesuré, au plancher
+ * niveau 1, plus les paliers FORCÉS par un prérequis. Les PRIX ne sont jamais
+ * écrits ici (décision 20) : ils sont dérivés du catalogue par `cheminComplet`,
+ * et les tests attestent qu'ils retombent sur la table §5 de la référence v2.
+ *
+ * ⚠️ Décision 27 — les « Connaissances » ne sont JAMAIS une entrée autonome
+ * (ni ③ ni ④) : uniquement maillon d'un chemin de prérequis (Métaux Communs →
+ * Métaux Rares → Mineur/Forge). Les `Connaissances des Gemmes` et
+ * `des Religions` des listes mesurées sortent donc du pool ; les Religions
+ * restent la première jauge du FILET, qui est un autre mécanisme.
+ * ⚠️ Jamais de niveau 3 (référence v2 §2.1).
+ */
 
-const adaptePond = (etapes: readonly Etape4[]): EtapePond[] =>
-  etapes.map((e) =>
-    e.type === "achat"
-      ? {
-          type: "achats" as const,
-          label: `${e.nom} ${e.niveauCible}`,
-          achats: () => [comp(e.nom, e.niveauCible)],
-        }
-      : { type: "jauge" as const, nom: e.nom, plafondRachats: e.plafondRachats }
-  );
+export const CLASSE_GUERRIER = "guerrier" as const;
+
+export const GRATUITES_GUERRIER = [
+  "Bravoure",
+  "Compétence d'arme à deux mains",
+] as const;
+
+/** Cases `objets_generateur` — mêmes ids que `objets_requis` (PR #712). */
+const LAMES = ["lame_courte", "lame_moyenne", "lame_longue", "lame_deux_mains"];
+const MELEE = [
+  ...LAMES,
+  "hache",
+  "contondante_courte",
+  "contondante_moyenne",
+  "contondante_longue",
+  "baton_hast",
+];
+const BOUCLIERS = ["targe", "ecu", "pavois"];
+
+/** Créneau d'armure — du plus lourd au plus léger. Le 🛡️ mesuré porte des
+ *  plaques (4/5) ; on descend au mieux de ce qui a été apporté. */
+const CRENEAU_ARMURE: readonly { caseId: string; competence: string }[] = [
+  { caseId: "armure_plaques", competence: "Port d'armure lourde" },
+  { caseId: "armure_maille", competence: "Port d'armure intermédiaire" },
+  { caseId: "armure_cuir", competence: "Port d'armure légère" },
+];
+
+const uneDe = (inv: ReadonlySet<string>, cases: readonly string[]) =>
+  cases.some((c) => inv.has(c));
+
+const ROLES_GUERRIER: readonly RoleClasse[] = [
+  {
+    id: "gForgeron",
+    emoji: "🔨",
+    titre: "Le forgeron",
+    phrase:
+      "Il creuse, il fond, il forge. Jouable sans rien apporter — l'atelier vient avec lui.",
+    requiert: () => null, // aucun créneau : le rôle le plus stable des trois
+    // Mesuré : Métaux Rares 6/6 · Mineur 6/6 · Métaux Communs 6/6 ·
+    // Linguistique 5/6. Les Métaux Communs sont à la fois mesurés ET maillon
+    // du chemin vers les deux autres — la dédup de `cheminComplet` s'en charge.
+    noyau: () => [
+      comp("Connaissances des Métaux Rares", 1),
+      comp("Mineur", 1),
+      comp("Connaissances des Métaux Communs", 1),
+      comp("Linguistique et Mathématique", 1),
+    ],
+  },
+  {
+    id: "gTient",
+    emoji: "🛡️",
+    titre: "Celui qui tient",
+    phrase: "On ne le déplace pas et on ne passe pas.",
+    requiert: (inv) =>
+      CRENEAU_ARMURE.some((a) => inv.has(a.caseId))
+        ? null
+        : "Il te faut une armure — cuir, mailles ou plaques. C'est elle qui fait tenir la ligne.",
+    // Mesuré : Botte Secrète 5/5 · Revenu 5/5 · Compétence d'arme à la lame
+    // 4/5 · Port d'armure lourde 4/5. Arme et armure sont des CRÉNEAUX
+    // (grammaire §2.11) : on n'achète jamais une compétence injouable.
+    noyau: (inv) => {
+      const armure = CRENEAU_ARMURE.find((a) => inv.has(a.caseId));
+      return [
+        ...(armure ? [comp(armure.competence, 1)] : []),
+        ...(uneDe(inv, MELEE) ? [comp("Botte Secrète", 1)] : []),
+        ...(uneDe(inv, LAMES) ? [comp("Compétence d'arme à la lame", 1)] : []),
+        comp("Revenu", 1),
+      ];
+    },
+  },
+  {
+    id: "gFrappe",
+    emoji: "⚔️",
+    titre: "Celui qui frappe",
+    phrase: "Deux armes, la fureur assumée : il gagne les échanges.",
+    requiert: (inv) =>
+      inv.has("deux_armes_identiques")
+        ? null
+        : "Il te faut deux armes identiques — courtes suffisent. C'est la définition même de cet archétype chez les joueurs qui le tiennent.",
+    // Mesuré 2/2 : Berserk · Combat à deux armes.
+    noyau: () => [comp("Berserk", 1), comp("Combat à deux armes", 1)],
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/* ③a — LES MONTÉES SIGNATURE (référence v2 §4, porteurs mesurés).      */
+
+const SIGNATURE3_GUERRIER: Record<string, EntreePool[]> = {
+  gForgeron: [
+    {
+      label: "Mineur 2",
+      note: "Trois cartes par événement et l'accès aux expéditions de métaux rares — 6 forgerons sur 6 l'ont.",
+      achats: () => [comp("Mineur", 2)],
+    },
+  ],
+  gTient: [
+    {
+      label: "Botte Secrète 2",
+      note: "« Brise-bouclier » : après deux coups sur le bouclier adverse — 5 sur 5 l'ont.",
+      achats: () => [comp("Botte Secrète", 2)],
+      condition: (inv) => uneDe(inv, MELEE),
+    },
+  ],
+  gFrappe: [
+    {
+      label: "Berserk 2",
+      note: "La fureur montée d'un cran — 2 sur 2 l'ont.",
+      achats: () => [comp("Berserk", 2)],
+    },
+    {
+      label: "Combat à deux armes 2",
+      note: "Deux armes moyennes, plus seulement courtes — 2 sur 2 l'ont.",
+      achats: () => [comp("Combat à deux armes", 2)],
+    },
+  ],
+};
+
+/* ------------------------------------------------------------------ */
+/* ③b — LE POOL (listes « ESSENTIEL » 50-79 % mesurées, réunies par style). */
+
+const POOL3_GUERRIER: Record<string, EntreePool[]> = {
+  Offensif: [
+    {
+      label: "Botte Secrète 1",
+      note: "Désarmer : après deux coups sur l'arme adverse.",
+      achats: () => [comp("Botte Secrète", 1)],
+      condition: (inv) => uneDe(inv, MELEE),
+    },
+    {
+      label: "Charge",
+      note: "Prix chemin : Botte Secrète incluse si tu ne l'as pas encore.",
+      achats: () => [comp("Charge", 1)],
+      condition: (inv) => uneDe(inv, MELEE),
+    },
+    {
+      label: "Compétence d'arme à la lame 1",
+      note: "Résister à un désarmement par cycle.",
+      achats: () => [comp("Compétence d'arme à la lame", 1)],
+      condition: (inv) => uneDe(inv, LAMES),
+    },
+    {
+      label: "Assommer 1",
+      note: "Mettre à terre sans tuer. ⚠️ hors classe, plafonné niveau 1 à la création.",
+      achats: () => [comp("Assommer", 1)],
+      condition: (inv) => inv.has("contondante_longue") || inv.has("baton_hast"),
+    },
+    {
+      label: "Résolution Guerrière 1",
+      note: "Agir normalement à 1 point de vie.",
+      achats: () => [comp("Résolution Guerrière", 1)],
+    },
+  ],
+  Défensif: [
+    {
+      label: "Défense Inflexible 1",
+      note: "Encaisser un sort, une fois par combat.",
+      achats: () => [comp("Défense Inflexible", 1)],
+      condition: (inv) => uneDe(inv, BOUCLIERS),
+    },
+    {
+      label: "Résistance à la magie 1",
+      note: "Résister à un sort à effet, une fois par événement.",
+      achats: () => [comp("Résistance à la magie", 1)],
+    },
+    {
+      label: "Poids Lourd",
+      note: "Ignorer le premier repoussement de chaque combat.",
+      achats: () => [comp("Poids Lourd", 1)],
+    },
+    {
+      label: "Port d'armure légère",
+      note: "Porter le cuir.",
+      achats: () => [comp("Port d'armure légère", 1)],
+      condition: (inv) => inv.has("armure_cuir"),
+    },
+  ],
+  Atelier: [
+    {
+      label: "Forge 1",
+      note: "Fondre, fabriquer, réparer les alliages communs — prix chemin : Métaux Communs inclus.",
+      achats: () => [comp("Forge", 1)],
+    },
+    {
+      label: "Estimation 1",
+      note: "Savoir ce que vaut ce qu'on te propose.",
+      achats: () => [comp("Estimation", 1)],
+    },
+    {
+      label: "Revenu",
+      note: "10 écus au début de chaque événement — de quoi entretenir l'équipement.",
+      achats: () => [comp("Revenu", 1)],
+    },
+    {
+      label: "Premiers Soins 1",
+      note: "Stabiliser un blessé. ⚠️ hors classe, plafonné niveau 1.",
+      achats: () => [comp("Premiers Soins", 1)],
+      condition: (inv) => inv.has("bandages"),
+    },
+  ],
+};
+
+/* ------------------------------------------------------------------ */
+/* ④ — PONDÉRATIONS (listes « REMPLISSAGE » 25-49 %), puis le FILET.    */
+
+const POND4_GUERRIER: Record<string, EtapePond[]> = {
+  gForgeron: [
+    { type: "achats", label: "Forge 2", achats: () => [comp("Forge", 2)] },
+    {
+      type: "achats",
+      label: "Résolution Guerrière 1",
+      achats: () => [comp("Résolution Guerrière", 1)],
+    },
+    {
+      type: "achats",
+      label: "Bonne santé",
+      achats: () => [comp("Bonne santé", 1)],
+    },
+    {
+      type: "achats",
+      label: "Maniement du bouclier moyen",
+      achats: () => [comp("Maniement du bouclier moyen", 1)],
+    },
+  ],
+  gTient: [
+    {
+      type: "achats",
+      label: "Désengagement",
+      achats: () => [comp("Désengagement", 1)],
+    },
+    {
+      type: "achats",
+      label: "Bonne santé",
+      achats: () => [comp("Bonne santé", 1)],
+    },
+    {
+      type: "achats",
+      label: "Maniement du grand bouclier",
+      achats: () => [comp("Maniement du grand bouclier", 1)],
+    },
+    {
+      type: "achats",
+      label: "Méditation 1",
+      achats: () => [comp("Méditation", 1)],
+    },
+  ],
+  gFrappe: [
+    {
+      type: "achats",
+      label: "Corps Sain 1",
+      achats: () => [comp("Corps Sain", 1)],
+    },
+    {
+      type: "achats",
+      label: "Résolution Guerrière 1",
+      achats: () => [comp("Résolution Guerrière", 1)],
+    },
+  ],
+};
 
 export const CONTENU_GUERRIER: ContenuClasse = {
-  classe: CLASSE,
+  classe: CLASSE_GUERRIER,
   gratuites: GRATUITES_GUERRIER,
   alertesGratuites: (inv) =>
     inv.has("lame_deux_mains")
@@ -277,23 +298,11 @@ export const CONTENU_GUERRIER: ContenuClasse = {
       : [
           "La Compétence d'arme à deux mains est offerte, mais sans arme à deux mains apportée elle reste inutilisable pour l'instant.",
         ],
-  roles: ROLES_GUERRIER.map<RoleClasse>((r) => ({
-    id: r.id,
-    emoji: r.emoji,
-    titre: r.titre,
-    phrase: r.phrase,
-    requiert: (inv) => r.requiert(inv),
-    noyau: (inv) => r.noyau(inv).map((c) => comp(c.nom, c.niveauCible)),
-  })),
-  pool3: {
-    Offensif: adaptePool(POOL3_GUERRIER.Offensif),
-    Défensif: adaptePool(POOL3_GUERRIER["Défensif"]),
-    Spécialisé: adaptePool(POOL3_GUERRIER["Spécialisé"]),
-  },
-  pond4: {
-    gFrappe: adaptePond(POND4_GUERRIER.gFrappe),
-    gTient: adaptePond(POND4_GUERRIER.gTient),
-    gArtisan: adaptePond(POND4_GUERRIER.gArtisan),
-  },
+  roles: ROLES_GUERRIER,
+  signature3: SIGNATURE3_GUERRIER,
+  pool3: POOL3_GUERRIER,
+  pond4: POND4_GUERRIER,
   filet: FILET_MARTIAL_COMMUN,
 };
+
+export { POND4_GUERRIER, POOL3_GUERRIER, ROLES_GUERRIER, SIGNATURE3_GUERRIER };

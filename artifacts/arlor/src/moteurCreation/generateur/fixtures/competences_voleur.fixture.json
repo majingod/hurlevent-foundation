@@ -1,533 +1,647 @@
 {
- "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-21 (s349) — 24 compétences du contenu Voleur, fermeture récursive des prérequis ; homonymes filtrés categorie='voleur' (aucun atteint). NE PAS ÉDITER À LA MAIN : recapturer via MCP (SELECT complet documenté en tête de generateur.voleur.test.ts).",
- "competences": [
-  {
-   "id": "3f018622-a2ad-443a-882b-483ef3e2bd23",
-   "nom": "Alchimie",
-   "niveaux": [
+  "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-23 (s353) — 30 compétences du contenu Voleur (15 archétypes mesurés), fermeture récursive des prérequis ; homonymes filtrés categorie='voleur'. NE PAS ÉDITER À LA MAIN : recapturer via MCP (SELECT complet documenté en tête de generateur.voleur.test.ts).",
+  "competences": [
     {
-     "niveau": 1,
-     "cout_xp": 10
+      "id": "8c0b09e8-23d1-478f-925f-47c8ed24bc92",
+      "nom": "Assommer",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 13
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 16
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 12
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 14
+      "id": "2ea4f7f3-33bd-4227-9705-df9caffc6f3a",
+      "nom": "Attaque sournoise",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 21
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 17
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 26
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 22
-    }
-   ],
-   "categorie": "mage",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Herbes Communes"
-     }
-    ],
-    "2": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Herbes Rares"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "8c0b09e8-23d1-478f-925f-47c8ed24bc92",
-   "nom": "Assommer",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 13
+      "id": "04cadb85-598c-4dbf-b982-3b5f9d5736f2",
+      "nom": "Botte Secrète",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 9
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 12
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 12
+        }
+      ],
+      "categorie": "guerrier",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 16
+      "id": "083212ef-02b7-46d3-86b5-fb0e2aa885af",
+      "nom": "Cachette secrète",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 10
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": [
+        "voleur"
+      ]
     },
     {
-     "niveau": 3,
-     "cout_xp": 12
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "2ea4f7f3-33bd-4227-9705-df9caffc6f3a",
-   "nom": "Attaque sournoise",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 21
+      "id": "e688d4a9-db95-4dd8-b888-429b1c711656",
+      "nom": "Compétence d'arme à distance",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 7
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 9
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 17
+      "id": "9e122ea3-2552-438b-ad3d-c15d62f7471a",
+      "nom": "Connaissances Criminelles",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 5
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 10
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 15
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_avec_choix_par_niveau",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 26
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "083212ef-02b7-46d3-86b5-fb0e2aa885af",
-   "nom": "Cachette secrète",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 10
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": [
-    "voleur"
-   ]
-  },
-  {
-   "id": "e688d4a9-db95-4dd8-b888-429b1c711656",
-   "nom": "Compétence d'arme à distance",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 7
+      "id": "7e56dffe-8e26-4942-939e-34914b17cd0e",
+      "nom": "Connaissances des Gemmes Communes",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 5
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 9
+      "id": "c601901b-2a26-46e0-a42e-2e3077fe99e2",
+      "nom": "Connaissances des Herbes Communes",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 14
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "9e122ea3-2552-438b-ad3d-c15d62f7471a",
-   "nom": "Connaissances Criminelles",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 5
+      "id": "72a3db25-ed40-49c1-96f0-ec9f60f62fa3",
+      "nom": "Connaissances des Herbes Rares",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 9
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Herbes Communes"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 10
+      "id": "6fddb377-09bf-4448-9aee-11fd43ade998",
+      "nom": "Connaissances des Métaux Communs",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 15
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "multiple_avec_choix_par_niveau",
-   "classes_requises": null
-  },
-  {
-   "id": "d017baba-28f0-4070-9124-87814e7544d2",
-   "nom": "Connaissances des Créatures",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 10
+      "id": "b4048343-f713-4bd0-8459-7732a459d563",
+      "nom": "Connaissances des Métaux Rares",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 10
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Métaux Communs"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 12
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "multiple_avec_choix_par_niveau",
-   "classes_requises": null
-  },
-  {
-   "id": "c601901b-2a26-46e0-a42e-2e3077fe99e2",
-   "nom": "Connaissances des Herbes Communes",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 6
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "72a3db25-ed40-49c1-96f0-ec9f60f62fa3",
-   "nom": "Connaissances des Herbes Rares",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 9
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Herbes Communes"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "c821b270-d314-4092-9899-2fd80925e873",
-   "nom": "Connaissances des Religions",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 4
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "multiple_choix_distinct",
-   "classes_requises": null
-  },
-  {
-   "id": "5b82c487-dd4c-48cb-a472-255019bbe835",
-   "nom": "Création et désarmement de piège",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 11
+      "id": "c821b270-d314-4092-9899-2fd80925e873",
+      "nom": "Connaissances des Religions",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 4
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_choix_distinct",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 16
+      "id": "5b82c487-dd4c-48cb-a472-255019bbe835",
+      "nom": "Création et désarmement de piège",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 16
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 18
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 18
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "420d699f-a0c9-4fee-b046-9dfc1e519c73",
-   "nom": "Crochetage de serrure",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 8
+      "id": "420d699f-a0c9-4fee-b046-9dfc1e519c73",
+      "nom": "Crochetage de serrure",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 8
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 13
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 11
+      "id": "0b0fba09-77d5-4078-946f-9add150f695d",
+      "nom": "Décryptage",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 9
+        }
+      ],
+      "categorie": "mage",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_choix_distinct",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 13
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "82159693-1e88-4a8d-9dca-e6dcc25a4a42",
-   "nom": "Dépeçage",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 10
+      "id": "c25950db-72a5-4671-a231-8c60942022cc",
+      "nom": "Diagnostic",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 9
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 15
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Créatures"
-     },
-     {
-      "niveau_min": 1,
-      "competence_nom": "Premiers Soins"
-     }
-    ],
-    "2": [
-     {
-      "niveau_min": 2,
-      "competence_nom": "Connaissances des Créatures"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "356b26b4-92c2-4912-baa1-1d11bd254288",
-   "nom": "Empoisonnement de projectile",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 12
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Expertise en toxicologie"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": [
-    "voleur"
-   ]
-  },
-  {
-   "id": "e7f5cff9-cb41-4fd3-abbc-6be47e7d1436",
-   "nom": "Estimation",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 8
+      "id": "e7f5cff9-cb41-4fd3-abbc-6be47e7d1436",
+      "nom": "Estimation",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 8
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 11
+      "id": "dbbfd20a-73e4-411a-a5b5-757dc394450c",
+      "nom": "Falsification",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Estimation"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": [
+        "voleur"
+      ]
     },
     {
-     "niveau": 3,
-     "cout_xp": 14
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "2b668197-abf4-4dd9-bf9b-9704cedde17a",
-   "nom": "Expertise en toxicologie",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 11
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Alchimie"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "dbbfd20a-73e4-411a-a5b5-757dc394450c",
-   "nom": "Falsification",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 14
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Estimation"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": [
-    "voleur"
-   ]
-  },
-  {
-   "id": "cc4fc008-70dd-4f57-b060-e316f2028824",
-   "nom": "Fouille rapide",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 15
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": [
-    "voleur"
-   ]
-  },
-  {
-   "id": "cc02fb93-3204-4c81-a0d1-3b1701db9ae9",
-   "nom": "Langue supplémentaire",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 5
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "multiple_choix_distinct",
-   "classes_requises": null
-  },
-  {
-   "id": "1427677e-98fd-4ba5-86ca-3145fc4aa178",
-   "nom": "Piège sécurisé",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 9
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Création et désarmement de piège"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "de5715d0-4f65-4494-9788-914244b90173",
-   "nom": "Pistage",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 10
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "fe5d2c38-89c9-4af1-bbc7-343497e7969c",
-   "nom": "Premiers Soins",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 6
+      "id": "efe58364-a1df-4b5b-b15c-4bf353c10e13",
+      "nom": "Forge",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 9
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 13
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 21
+        }
+      ],
+      "categorie": "guerrier",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Métaux Communs"
+          }
+        ],
+        "2": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Métaux Rares"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 10
+      "id": "cc4fc008-70dd-4f57-b060-e316f2028824",
+      "nom": "Fouille rapide",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 15
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": [
+        "voleur"
+      ]
     },
     {
-     "niveau": 3,
-     "cout_xp": 14
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "f9fac4c3-5a46-48cd-9ee3-d628f0f8a39d",
-   "nom": "Rumeur",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 15
-    }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 2,
-      "competence_nom": "Connaissances Criminelles"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "f70b5b83-4e49-4e28-91e7-5b48909b7d84",
-   "nom": "Torture",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 9
+      "id": "e022728b-3a77-4964-9beb-6b95fe75a0b8",
+      "nom": "Herbalisme",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 7
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 16
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Herbes Communes"
+          }
+        ],
+        "2": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Herbes Rares"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 16
+      "id": "dde7edb6-7882-4c72-aad1-368f994a2de7",
+      "nom": "Joaillerie",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 5
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 9
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 21
+      "id": "cc02fb93-3204-4c81-a0d1-3b1701db9ae9",
+      "nom": "Langue supplémentaire",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 5
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_choix_distinct",
+      "classes_requises": null
+    },
+    {
+      "id": "c9d9a7b0-145e-48f6-b6fb-0d6811480221",
+      "nom": "Linguistique et Mathématique",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 4
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "8db2d42b-b669-440d-abce-7c63bf42f3f9",
+      "nom": "Mineur",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 9
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 15
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Métaux Communs"
+          }
+        ],
+        "2": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Métaux Rares"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "1427677e-98fd-4ba5-86ca-3145fc4aa178",
+      "nom": "Piège sécurisé",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 9
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Création et désarmement de piège"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "de5715d0-4f65-4494-9788-914244b90173",
+      "nom": "Pistage",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 10
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "fe5d2c38-89c9-4af1-bbc7-343497e7969c",
+      "nom": "Premiers Soins",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 10
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "fe42b034-42a3-4f98-8f4d-2c3d05b0da59",
+      "nom": "Revenu",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "f9fac4c3-5a46-48cd-9ee3-d628f0f8a39d",
+      "nom": "Rumeur",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 15
+        }
+      ],
+      "categorie": "voleur",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 2,
+            "competence_nom": "Connaissances Criminelles"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     }
-   ],
-   "categorie": "voleur",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  }
- ]
+  ]
 }
