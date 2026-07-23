@@ -34,7 +34,6 @@ export interface EntreePool {
   note: string;
   achats: (inv: ReadonlySet<string>, o: OptionsRole) => Achat[];
   condition?: (inv: ReadonlySet<string>, o: OptionsRole) => boolean;
-  teteDeListe?: boolean;
 }
 
 export type EtapePond =
@@ -50,6 +49,10 @@ export interface ContenuClasse {
   gratuites: readonly string[];
   alertesGratuites?: (inv: ReadonlySet<string>) => string[];
   roles: readonly RoleClasse[];
+  /** ⭐ s352 — MONTÉES SIGNATURE, indexées par rôle comme `pond4`.
+   *  Prises EN TÊTE de ③, dans l'ordre déclaré, AVANT tout tirage : c'est
+   *  ce qui rend l'archétype reconnaissable. Jamais laissé au hasard. */
+  signature3?: Record<string, EntreePool[]>;
   pool3: Record<string, EntreePool[]>;
   pond4: Record<string, EtapePond[]>;
   filet: EtapePond[];
