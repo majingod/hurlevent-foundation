@@ -55,7 +55,7 @@ const CAS: Cas[] = [
   { classe: "guerrier", roleId: "gForgeron", inv: ["contondante_moyenne", "ecu", "armure_cuir", "bandages"] },
   { classe: "guerrier", roleId: "gTient", inv: ["armure_cuir"] },
   { classe: "guerrier", roleId: "gTient", inv: ["pavois", "armure_plaques", "lame_longue"] },
-  { classe: "guerrier", roleId: "gFrappe", inv: ["deux_armes_identiques"] },
+  { classe: "guerrier", roleId: "gFrappe", inv: ["lame_courte"] },
   { classe: "guerrier", roleId: "gFrappe", inv: ["deux_armes_identiques", "lame_longue", "targe", "armure_cuir", "bandages", "contondante_longue"] },
   { classe: "pretre", roleId: "pSoigne", inv: [] },
   { classe: "pretre", roleId: "pSoigne", inv: ["armure_maille", "ecu", "bourse"] },
@@ -154,14 +154,36 @@ describe("simulation — tout le domaine", () => {
       }
     }
     expect(nb).toBe(144);
-    // ⭐ ATTESTATION du pire cas (re-mesuré s353, pas promis) : 🔨 le forgeron
-    // les mains vides à 60 XP sans ③ — reliquat 3. La borne « ≤ 3 » tient
-    // toujours après le passage aux archétypes mesurés : le filet martial se
-    // termine sur Religions à 4 XP, donc un reste de 1 à 3 XP est structurel
-    // et assumé (§4.5 « honnêteté sur le 0 gaspillage »).
+    // ⭐ ATTESTATION du pire cas (re-mesuré s353, pas promis).
+    // Depuis que les filets martiaux se terminent sur `Développement
+    // Spirituel` à 2 XP (plafonds mesurés en prod, arbitrage Fred s353), le
+    // pire cas n'est PLUS un martial : il a basculé sur un CASTER, dont le
+    // contenu n'est pas touché par ce lot. Les 24 compositions martiales
+    // tiennent maintenant sous 3 XP de reliquat.
     expect(pire).toEqual({
       reliquat: 3,
-      desc: "guerrier/gForgeron inv=[] budget=60 ③absent",
+      desc: "mage/mAlchimiste inv=[fioles] budget=80 ③tiré",
     });
+
+    // Le reliquat MARTIAL, mesuré à part : c'est lui que ce lot améliore.
+    const pireMartial = { reliquat: -1, desc: "" };
+    for (const [idx, cas] of CAS.entries()) {
+      if (cas.classe !== "guerrier" && cas.classe !== "voleur") continue;
+      const { cats, contenu } = PAR_CLASSE[cas.classe];
+      for (const budget of [60, 80]) {
+        const c = composerClasse(cats, contenu, {
+          roleId: cas.roleId,
+          inventaire: new Set(cas.inv),
+          budget,
+        } as Parameters<typeof composerClasse>[2]);
+        if (!c.ok) continue;
+        if (c.reliquat > pireMartial.reliquat) {
+          pireMartial.reliquat = c.reliquat;
+          pireMartial.desc = `${cas.classe}/${cas.roleId} inv=[${cas.inv.join(",")}] budget=${budget}`;
+        }
+        void idx;
+      }
+    }
+    expect(pireMartial.reliquat).toBeLessThanOrEqual(3);
   });
 });

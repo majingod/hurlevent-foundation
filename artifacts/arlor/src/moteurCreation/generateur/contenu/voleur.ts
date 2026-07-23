@@ -1,6 +1,7 @@
 import {
   comp,
-  FILET_MARTIAL_COMMUN,
+  FILET_VOLEUR,
+  type Achat,
   type ContenuClasse,
   type EntreePool,
   type EtapePond,
@@ -191,50 +192,67 @@ const POOL3_VOLEUR: Record<string, EntreePool[]> = {
 /* ------------------------------------------------------------------ */
 /* ④ — PONDÉRATIONS (listes « REMPLISSAGE » 25-49 %), puis le FILET.    */
 
+/** Étape ④ conditionnée par l'inventaire : hors condition, liste vide. */
+const si = (
+  label: string,
+  cases: readonly string[],
+  achats: () => Achat[]
+): EtapePond => ({
+  type: "achats",
+  label,
+  achats: (inv) => (cases.some((c) => inv.has(c)) ? achats() : []),
+});
+const et = (label: string, achats: () => Achat[]): EtapePond => ({
+  type: "achats",
+  label,
+  achats,
+});
+
+/**
+ * ⭐ ④ RALLONGÉE SUR LES DONNÉES (s353). Repères prod (16 voleurs vivants) :
+ * Attaque sournoise 6/16 · Premiers Soins 6/16 · Revenu 6/16 ·
+ * Création de piège 4/16 · Falsification 4/16 · Herbalisme 4/16 · Mineur 4/16.
+ * Le FILET n'intervient qu'après cette liste — plus en rafale.
+ */
 const POND4_VOLEUR: Record<string, EtapePond[]> = {
   vOrfevre: [
-    {
-      type: "achats",
-      label: "Création et désarmement de piège 1",
-      achats: () => [comp("Création et désarmement de piège", 1)],
-    },
-    {
-      type: "achats",
-      label: "Botte Secrète 1",
-      achats: () => [comp("Botte Secrète", 1)],
-    },
-    { type: "achats", label: "Revenu", achats: () => [comp("Revenu", 1)] },
-    {
-      type: "achats",
-      label: "Herbalisme 1",
-      achats: () => [comp("Herbalisme", 1)],
-    },
+    et("Revenu", () => [comp("Revenu", 1)]),
+    et("Mineur 1", () => [comp("Mineur", 1)]),
+    si("Falsification", ["feuille_crayon"], () => [comp("Falsification", 1)]),
+    et("Création et désarmement de piège 1", () => [
+      comp("Création et désarmement de piège", 1),
+    ]),
+    si("Botte Secrète 1", MELEE, () => [comp("Botte Secrète", 1)]),
+    si("Herbalisme 1", ["fioles"], () => [comp("Herbalisme", 1)]),
+    si("Attaque sournoise 1", ["lame_courte"], () => [
+      comp("Attaque sournoise", 1),
+    ]),
   ],
   vPremier: [
-    { type: "achats", label: "Assommer 1", achats: () => [comp("Assommer", 1)] },
-    {
-      type: "achats",
-      label: "Fouille rapide",
-      achats: () => [comp("Fouille rapide", 1)],
-    },
-    {
-      type: "achats",
-      label: "Botte Secrète 1",
-      achats: () => [comp("Botte Secrète", 1)],
-    },
+    si("Attaque sournoise 1", ["lame_courte"], () => [
+      comp("Attaque sournoise", 1),
+    ]),
+    si("Assommer 1", ["contondante_longue", "baton_hast"], () => [
+      comp("Assommer", 1),
+    ]),
+    et("Fouille rapide", () => [comp("Fouille rapide", 1)]),
+    si("Botte Secrète 1", MELEE, () => [comp("Botte Secrète", 1)]),
+    si("Premiers Soins 1", ["bandages"], () => [comp("Premiers Soins", 1)]),
+    et("Revenu", () => [comp("Revenu", 1)]),
   ],
   vEclaireur: [
-    { type: "achats", label: "Pistage", achats: () => [comp("Pistage", 1)] },
-    {
-      type: "achats",
-      label: "Compétence d'arme à distance 1",
-      achats: () => [comp("Compétence d'arme à distance", 1)],
-    },
-    {
-      type: "achats",
-      label: "Diagnostic 1",
-      achats: () => [comp("Diagnostic", 1)],
-    },
+    et("Diagnostic 1", () => [comp("Diagnostic", 1)]),
+    et("Création et désarmement de piège 1", () => [
+      comp("Création et désarmement de piège", 1),
+    ]),
+    et("Pistage", () => [comp("Pistage", 1)]),
+    si("Compétence d'arme à distance 1", ["arme_distance"], () => [
+      comp("Compétence d'arme à distance", 1),
+    ]),
+    si("Attaque sournoise 1", ["lame_courte"], () => [
+      comp("Attaque sournoise", 1),
+    ]),
+    si("Herbalisme 1", ["fioles"], () => [comp("Herbalisme", 1)]),
   ],
 };
 
@@ -251,5 +269,5 @@ export const CONTENU_VOLEUR: ContenuClasse = {
   signature3: SIGNATURE3_VOLEUR,
   pool3: POOL3_VOLEUR,
   pond4: POND4_VOLEUR,
-  filet: FILET_MARTIAL_COMMUN,
+  filet: FILET_VOLEUR,
 };

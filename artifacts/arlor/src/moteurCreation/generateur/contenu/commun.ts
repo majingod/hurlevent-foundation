@@ -75,10 +75,38 @@ export const priere = (nom: string, config: ConfigMagie): Achat => ({
   config,
 });
 
-/** Filet martial (règle s346) : Religions 4 XP puis Langues 5 XP. */
-export const FILET_MARTIAL_COMMUN: EtapePond[] = [
-  { type: "jauge", nom: "Connaissances des Religions", plafondRachats: 15 },
+/**
+ * ⭐ FILETS MARTIAUX — PLAFONDS MESURÉS EN PROD (s353, arbitrage Fred).
+ *
+ * L'ancien `FILET_MARTIAL_COMMUN` ouvrait `Connaissances des Religions` à
+ * **15 rachats** : un chiffre de conception, jamais mesuré. Le générateur
+ * pouvait en poser **7 d'affilée** sur une fiche. Or sur les 99 personnages
+ * vivants, `Connaissances des Religions` est portée par **3 guerriers sur 21**
+ * (moins de 3 voleurs sur 16) et **jamais plus d'une fois**. Une fiche à sept
+ * religions ne ressemble à aucun joueur réel.
+ *
+ * Les plafonds ci-dessous sont les MAXIMA OBSERVÉS chez les vivants de la
+ * classe, pas des estimations :
+ *   guerrier · `Développement Spirituel` 4 porteurs/21, jusqu'à **5** rachats
+ *              (2 XP l'unité — la vraie petite monnaie du guerrier)
+ *            · `Connaissances des Religions` 3/21, **1** rachat, jamais deux
+ *   voleur   · `Langue supplémentaire` 4 porteurs/16, jusqu'à **6** rachats
+ *            · `Connaissances des Religions` 2/16, **1** rachat
+ *            · `Développement Spirituel` 1/16, **1** rachat (2 XP — le grain
+ *              qui termine la cascade, règle s346)
+ *
+ * ⚠️ Chaque plafond est le MAXIMUM OBSERVÉ, pas une cible : le générateur ne
+ * remplit une jauge que faute de mieux, après la couche ④ de l'archétype.
+ */
+export const FILET_GUERRIER: EtapePond[] = [
+  { type: "jauge", nom: "Développement Spirituel", plafondRachats: 5 },
+  { type: "jauge", nom: "Connaissances des Religions", plafondRachats: 1 },
+];
+
+export const FILET_VOLEUR: EtapePond[] = [
   { type: "jauge", nom: "Langue supplémentaire", plafondRachats: 6 },
+  { type: "jauge", nom: "Connaissances des Religions", plafondRachats: 1 },
+  { type: "jauge", nom: "Développement Spirituel", plafondRachats: 1 },
 ];
 
 /** Filet caster (s349) : chaque PS = un lancer de plus — DS 2 XP puis DSS 4 XP.

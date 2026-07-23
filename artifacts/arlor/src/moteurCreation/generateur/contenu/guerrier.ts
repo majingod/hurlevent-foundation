@@ -1,6 +1,7 @@
 import {
   comp,
-  FILET_MARTIAL_COMMUN,
+  FILET_GUERRIER,
+  type Achat,
   type ContenuClasse,
   type EntreePool,
   type EtapePond,
@@ -104,13 +105,27 @@ const ROLES_GUERRIER: readonly RoleClasse[] = [
     id: "gFrappe",
     emoji: "⚔️",
     titre: "Celui qui frappe",
-    phrase: "Deux armes, la fureur assumée : il gagne les échanges.",
-    requiert: (inv) =>
+    phrase: "La fureur assumée : il gagne les échanges.",
+    // ⭐ PORTE LARGE (arbitrage Fred s353) : n'importe quelle arme de mêlée
+    // ouvre le rôle. Les 2 membres mesurés jouent deux armes identiques, mais
+    // fermer la porte à tous les autres coûtait plus qu'elle ne rapportait.
+    requiert: (inv) => {
+      // « deux armes identiques » est une case à part dans `objets_generateur` :
+      // elle vaut arme de mêlée pour l'ouverture du rôle.
+      if (uneDe(inv, MELEE) || inv.has("deux_armes_identiques")) return null;
+      return inv.has("arme_distance")
+        ? "Un arc seul ne suffit pas : la Compétence d'arme à distance est de catégorie voleur — un Guerrier y plafonne au niveau 1, sans jamais l'effet offensif. Il te faut une arme de mêlée."
+        : "Il te faut une arme de mêlée (lame, hache, masse, bâton…).";
+    },
+    // Mesuré 2/2 : Berserk · Combat à deux armes. Le second est un CRÉNEAU :
+    // il exige deux armes identiques (`objets_requis`). Sans elles, la Botte
+    // Secrète tient le geste offensif — mesurée 1/2 en ③ chez ce groupe.
+    noyau: (inv) => [
+      comp("Berserk", 1),
       inv.has("deux_armes_identiques")
-        ? null
-        : "Il te faut deux armes identiques — courtes suffisent. C'est la définition même de cet archétype chez les joueurs qui le tiennent.",
-    // Mesuré 2/2 : Berserk · Combat à deux armes.
-    noyau: () => [comp("Berserk", 1), comp("Combat à deux armes", 1)],
+        ? comp("Combat à deux armes", 1)
+        : comp("Botte Secrète", 1),
+    ],
   },
 ];
 
@@ -143,6 +158,13 @@ const SIGNATURE3_GUERRIER: Record<string, EntreePool[]> = {
       label: "Combat à deux armes 2",
       note: "Deux armes moyennes, plus seulement courtes — 2 sur 2 l'ont.",
       achats: () => [comp("Combat à deux armes", 2)],
+      condition: (inv) => inv.has("deux_armes_identiques"),
+    },
+    {
+      label: "Botte Secrète 2",
+      note: "Sans deux armes identiques, c'est le brise-bouclier qui porte la montée offensive.",
+      achats: () => [comp("Botte Secrète", 2)],
+      condition: (inv) => !inv.has("deux_armes_identiques") && uneDe(inv, MELEE),
     },
   ],
 };
@@ -234,58 +256,67 @@ const POOL3_GUERRIER: Record<string, EntreePool[]> = {
 /* ------------------------------------------------------------------ */
 /* ④ — PONDÉRATIONS (listes « REMPLISSAGE » 25-49 %), puis le FILET.    */
 
+/** Une étape ④ conditionnée par l'inventaire : hors condition, elle rend une
+ *  liste vide — le composeur passe au suivant sans rien acheter. */
+const si = (
+  label: string,
+  cases: readonly string[],
+  achats: () => Achat[]
+): EtapePond => ({
+  type: "achats",
+  label,
+  achats: (inv) => (cases.some((c) => inv.has(c)) ? achats() : []),
+});
+const et = (label: string, achats: () => Achat[]): EtapePond => ({
+  type: "achats",
+  label,
+  achats,
+});
+
+/**
+ * ⭐ ④ RALLONGÉE SUR LES DONNÉES (s353). Avant, la liste était courte et le
+ * FILET absorbait le reste en rafale. Elle reprend maintenant tout ce que les
+ * joueurs de l'archétype achètent réellement (listes ESSENTIEL + REMPLISSAGE
+ * du §4.0.3), pour que le filet n'ait presque plus rien à faire.
+ * Repères prod (21 guerriers vivants) : Résistance à la magie 9/21 ·
+ * Port d'armure légère 8/21 · Bonne santé 7/21 · Défense Inflexible 6/21 ·
+ * Poids Lourd 5/21 · Maniement du bouclier moyen 5/21.
+ */
 const POND4_GUERRIER: Record<string, EtapePond[]> = {
   gForgeron: [
-    { type: "achats", label: "Forge 2", achats: () => [comp("Forge", 2)] },
-    {
-      type: "achats",
-      label: "Résolution Guerrière 1",
-      achats: () => [comp("Résolution Guerrière", 1)],
-    },
-    {
-      type: "achats",
-      label: "Bonne santé",
-      achats: () => [comp("Bonne santé", 1)],
-    },
-    {
-      type: "achats",
-      label: "Maniement du bouclier moyen",
-      achats: () => [comp("Maniement du bouclier moyen", 1)],
-    },
+    et("Forge 2", () => [comp("Forge", 2)]),
+    et("Estimation 1", () => [comp("Estimation", 1)]),
+    et("Revenu", () => [comp("Revenu", 1)]),
+    et("Résistance à la magie 1", () => [comp("Résistance à la magie", 1)]),
+    et("Résolution Guerrière 1", () => [comp("Résolution Guerrière", 1)]),
+    et("Bonne santé", () => [comp("Bonne santé", 1)]),
+    si("Maniement du bouclier moyen", ["ecu"], () => [
+      comp("Maniement du bouclier moyen", 1),
+    ]),
+    si("Compétence d'arme à la lame 1", LAMES, () => [
+      comp("Compétence d'arme à la lame", 1),
+    ]),
   ],
   gTient: [
-    {
-      type: "achats",
-      label: "Désengagement",
-      achats: () => [comp("Désengagement", 1)],
-    },
-    {
-      type: "achats",
-      label: "Bonne santé",
-      achats: () => [comp("Bonne santé", 1)],
-    },
-    {
-      type: "achats",
-      label: "Maniement du grand bouclier",
-      achats: () => [comp("Maniement du grand bouclier", 1)],
-    },
-    {
-      type: "achats",
-      label: "Méditation 1",
-      achats: () => [comp("Méditation", 1)],
-    },
+    et("Désengagement", () => [comp("Désengagement", 1)]),
+    et("Résistance à la magie 1", () => [comp("Résistance à la magie", 1)]),
+    et("Poids Lourd", () => [comp("Poids Lourd", 1)]),
+    et("Bonne santé", () => [comp("Bonne santé", 1)]),
+    si("Défense Inflexible 1", BOUCLIERS, () => [comp("Défense Inflexible", 1)]),
+    si("Maniement du grand bouclier", ["pavois"], () => [
+      comp("Maniement du grand bouclier", 1),
+    ]),
+    et("Méditation 1", () => [comp("Méditation", 1)]),
   ],
   gFrappe: [
-    {
-      type: "achats",
-      label: "Corps Sain 1",
-      achats: () => [comp("Corps Sain", 1)],
-    },
-    {
-      type: "achats",
-      label: "Résolution Guerrière 1",
-      achats: () => [comp("Résolution Guerrière", 1)],
-    },
+    et("Corps Sain 1", () => [comp("Corps Sain", 1)]),
+    et("Résistance à la magie 1", () => [comp("Résistance à la magie", 1)]),
+    et("Résolution Guerrière 1", () => [comp("Résolution Guerrière", 1)]),
+    si("Port d'armure légère", ["armure_cuir"], () => [
+      comp("Port d'armure légère", 1),
+    ]),
+    si("Premiers Soins 1", ["bandages"], () => [comp("Premiers Soins", 1)]),
+    si("Botte Secrète 1", MELEE, () => [comp("Botte Secrète", 1)]),
   ],
 };
 
@@ -302,7 +333,7 @@ export const CONTENU_GUERRIER: ContenuClasse = {
   signature3: SIGNATURE3_GUERRIER,
   pool3: POOL3_GUERRIER,
   pond4: POND4_GUERRIER,
-  filet: FILET_MARTIAL_COMMUN,
+  filet: FILET_GUERRIER,
 };
 
 export { POND4_GUERRIER, POOL3_GUERRIER, ROLES_GUERRIER, SIGNATURE3_GUERRIER };
