@@ -120,7 +120,6 @@ const POOL3_MAGE: Record<string, EntreePool[]> = {
         }),
       ],
       condition: (_inv, o) => !!o.element,
-      teteDeListe: true,
     },
     {
       label: "Canalisation",

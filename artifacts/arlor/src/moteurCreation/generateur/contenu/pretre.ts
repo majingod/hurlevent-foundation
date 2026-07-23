@@ -99,7 +99,6 @@ const POOL3_PRETRE: Record<string, EntreePool[]> = {
       label: "Réveil Expéditif",
       note: "Relever un inconscient en quelques secondes.",
       achats: () => [comp("Réveil Expéditif", 1)],
-      teteDeListe: true,
     },
     {
       label: "Bénédiction 2",

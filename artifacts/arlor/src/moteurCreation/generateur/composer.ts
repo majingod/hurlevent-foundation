@@ -319,7 +319,24 @@ export function composerClasse(
     reste -= cout;
   }
 
-  // ③ Les essentiels retenus (choisis en 🧭, tirés en 🎲). Un essentiel qui
+  // ③a ⭐ s352 — LA SIGNATURE DU RÔLE, en tête de ③, déterministe.
+  // Sans elle, un 🎲 à 80 XP pouvait rendre l'archétype méconnaissable.
+  // Gloutonne : une montée qui ne rentre pas est sautée, jamais bloquante.
+  for (const entree of contenu.signature3?.[ctx.roleId] ?? []) {
+    if (entree.condition && !entree.condition(ctx.inventaire, o)) continue;
+    const cout = planifierEntree(
+      cats,
+      contenu.classe,
+      ch,
+      entree.achats(ctx.inventaire, o),
+      3,
+      `${role.emoji} signature — ${role.titre}`,
+      reste
+    );
+    if (cout !== null) reste -= cout;
+  }
+
+  // ③b Les essentiels retenus (choisis en 🧭, tirés en 🎲). Un essentiel qui
   // ne rentre plus est simplement écarté avec une alerte — jamais bloquant.
   for (const e of ctx.essentiels ?? []) {
     const { label, achats } = resoudreEssentiel(contenu, e, ctx.inventaire, o);
@@ -440,6 +457,24 @@ export function tirerEssentielsClasse(
     );
   }
 
+  // ⭐ s352 — la signature est déjà prise en ③a par le composeur : on
+  // l'applique à l'état de départ ET on en retire le prix du budget, sinon
+  // le tirage la reproposerait et compterait deux fois le même XP.
+  let budgetApresSignature = budgetRestant;
+  for (const entree of contenu.signature3?.[ctx.roleId] ?? []) {
+    if (entree.condition && !entree.condition(ctx.inventaire, o)) continue;
+    const cout = planifierEntree(
+      cats,
+      contenu.classe,
+      ch,
+      entree.achats(ctx.inventaire, o),
+      3,
+      "signature",
+      budgetApresSignature
+    );
+    if (cout !== null) budgetApresSignature -= cout;
+  }
+
   // Candidats : condition ok ET utiles (prix > 0 sur l'état de départ).
   const candidats = entreesDuPool(contenu).filter((i) => {
     if (i.condition && !i.condition(ctx.inventaire, o)) return false;
@@ -463,7 +498,7 @@ export function tirerEssentielsClasse(
   }
 
   const pris: { label: string }[] = [];
-  let dispo = budgetRestant;
+  let dispo = budgetApresSignature;
   for (const c of candidats) {
     if (pris.length >= 2) break;
     const essai = cloner(ch);

@@ -137,14 +137,13 @@ export const ROLES_GUERRIER: readonly RoleGuerrier[] = [
 
 /* ------------------------------------------------------------------ */
 /* Couche ③ — pool du Guerrier par style (§4.5). `condition` = case(s)
-   d'inventaire requise(s) ; `teteDeListe` = Défense Inflexible (s341).   */
+   d'inventaire requise(s)   */
 
 export interface ItemPool {
   nom: string;
   niveauCible: number;
   note: string;
   condition?: (inv: ReadonlySet<string>) => boolean;
-  teteDeListe?: boolean;
 }
 
 export const POOL3_GUERRIER: Record<
@@ -172,7 +171,6 @@ export const POOL3_GUERRIER: Record<
       nom: "Défense Inflexible",
       niveauCible: 1,
       note: "encaisse un sort, 1×/combat — tête de liste (décision s341)",
-      teteDeListe: true,
     },
     { nom: "Poids Lourd", niveauCible: 1, note: "ignore le premier repoussement de chaque combat" },
     { nom: "Bonne santé", niveauCible: 1, note: "+1 PV à chaque soin reçu" },
@@ -257,7 +255,6 @@ const adaptePool = (items: readonly ItemPool[]): EntreePool[] =>
     note: i.note,
     achats: () => [comp(i.nom, i.niveauCible)],
     condition: i.condition ? (inv) => i.condition!(inv) : undefined,
-    teteDeListe: i.teteDeListe,
   }));
 
 const adaptePond = (etapes: readonly Etape4[]): EtapePond[] =>

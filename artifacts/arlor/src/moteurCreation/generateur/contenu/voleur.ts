@@ -102,7 +102,6 @@ const POOL3_VOLEUR: Record<string, EntreePool[]> = {
       note: "Herbes → Alchimie → Toxicologie : la chaîne complète du poison.",
       achats: () => [comp("Expertise en toxicologie", 1)],
       condition: (inv) => inv.has("fioles"),
-      teteDeListe: true,
     },
     {
       label: "Empoisonnement de projectile",
