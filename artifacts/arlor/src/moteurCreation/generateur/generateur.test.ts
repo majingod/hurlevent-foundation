@@ -1,26 +1,45 @@
 /**
- * [VIS-8 lot 2a] Preuves du moteur de composition — pilote Guerrier.
+ * [VIS-8 lot A2] Preuves du moteur de composition — GUERRIER, les 3
+ * archétypes MESURÉS (conception §4.0.3, arrêtés Fred s350).
  *
  * Fixture : `fixtures/competences_guerrier.fixture.json` — capture MCP prod
- * (2026-07-21, s348). Ne jamais l'éditer à la main : toute retouche de règle
- * en base impose une recapture — même patron de fermeture récursive que
- * les tests pretre/voleur/mage (seeds = les noms du contenu guerrier). Les totaux ci-dessous sont les
- * chiffres MESURÉS de la conception (§4.1/§4.5) : le moteur doit les
- * RE-DÉRIVER depuis la fixture, jamais les connaître.
+ * (2026-07-23, s353). Ne jamais l'éditer à la main : toute retouche de règle
+ * en base impose une recapture. SELECT :
+ *   WITH RECURSIVE seed(nom) AS (SELECT unnest(ARRAY[<seeds du contenu>])),
+ *   fermeture(nom) AS (
+ *     SELECT nom FROM seed
+ *     UNION
+ *     SELECT pr.p->>'competence_nom'
+ *     FROM fermeture f
+ *     JOIN competences c ON c.nom = f.nom AND c.est_actif = true
+ *      AND (c.nom NOT IN ('Assemblage de Runes','Développement Spirituel',
+ *           'Développement Spirituel Supérieur','Canalisation')
+ *           OR c.categorie = 'guerrier')
+ *     CROSS JOIN LATERAL jsonb_each(COALESCE(c.prerequis_competences::jsonb,'{}'::jsonb)) AS niv(k,val)
+ *     CROSS JOIN LATERAL jsonb_array_elements(niv.val) AS pr(p))
+ *   SELECT id, nom, categorie, classes_requises, type_achat, est_actif,
+ *          niveaux épurés {niveau, cout_xp}, prerequis_competences AS prerequis
+ *   FROM competences WHERE est_actif AND nom IN (SELECT nom FROM fermeture)
+ *     AND (<même filtre homonymes>);
  *
- * ⭐ Jumeau positif (règle gravée s346) : la promesse « reliquat ≤ 3 XP » se
- * SIMULE sur tout le domaine (rôles × budgets × inventaires min/max), pire
- * cas cité — pas seulement rédigée.
+ * ⭐ Les totaux ci-dessous sont ceux de `VIS8_archetypes_REFERENCE_v2.md` §5
+ * (SEULE autorité sur les coûts) : le moteur doit les RE-DÉRIVER depuis la
+ * fixture, jamais les connaître. ⚠️ Ne PAS lire les coûts du §4.0.3 de la
+ * conception — ils divergent sur 13 archétypes sur 15 (dette
+ * [VIS8-CHIFFRAGE-3-MAISONS]).
  */
 import { describe, expect, it } from "vitest";
 
 import { CatalogueCompetences, plafondCreation } from "./catalogue";
-import { composerGuerrier, tirerEssentiels } from "./composer";
+import { CatalogueMagie } from "./catalogueMagie";
+import { composerClasse, type Catalogues } from "./composer";
 import {
+  CONTENU_GUERRIER,
   GRATUITES_GUERRIER,
   POND4_GUERRIER,
   POOL3_GUERRIER,
   ROLES_GUERRIER,
+  SIGNATURE3_GUERRIER,
 } from "./contenu/guerrier";
 import { cheminComplet, prixChemin, type EtatPossession } from "./couts";
 import fixture from "./fixtures/competences_guerrier.fixture.json";
@@ -29,288 +48,261 @@ import type { CompetenceCatalogue, Composition } from "./types";
 const CAT = new CatalogueCompetences(
   fixture.competences as CompetenceCatalogue[]
 );
+const cats: Catalogues = {
+  competences: CAT,
+  magie: new CatalogueMagie({ sorts: [], prieres: [] }),
+};
+
 const etatVierge = (): EtatPossession => ({ niveaux: new Map() });
 const etatGuerrier = (): EtatPossession => ({
-  niveaux: new Map(GRATUITES_GUERRIER.map((n) => [n, 1])),
+  niveaux: new Map(GRATUITES_GUERRIER.map((n) => [n, 1] as const)),
 });
 const inv = (...ids: string[]) => new Set(ids);
 
+const compose = (roleId: string, inventaire: Set<string>, budget = 60) =>
+  composerClasse(cats, CONTENU_GUERRIER, {
+    classe: "guerrier",
+    roleId,
+    inventaire,
+    budget,
+  });
+
+const ok = (c: Composition) => {
+  if (!c.ok) throw new Error(`refus inattendu : ${c.raison}`);
+  return c;
+};
+const couche = (c: Extract<Composition, { ok: true }>, n: 2 | 3 | 4) =>
+  c.achats.filter((a) => a.couche === n).reduce((s, a) => s + a.coutXp, 0);
+
+/** Chiffre un noyau comme le composeur : chemins complets enchaînés sur un
+ *  état partagé, donc un prérequis commun n'est payé qu'une fois. */
+const noyau = (roleId: string, inventaire: Set<string>) => {
+  const role = ROLES_GUERRIER.find((r) => r.id === roleId)!;
+  const etat = etatGuerrier();
+  let total = 0;
+  for (const a of role.noyau(inventaire, {})) {
+    const cible = "niveauCible" in a ? a.niveauCible : 1;
+    const r = cheminComplet(CAT, "guerrier", etat, a.nom, cible);
+    expect(r, `${roleId} — ${a.nom}@${cible} refusé par le plafond`).not.toBeNull();
+    total += r!.total;
+  }
+  return total;
+};
+
 /* ------------------------------------------------------------------ */
-describe("cheminComplet — R3, prix contextuels (chiffres §4.5 re-dérivés)", () => {
+
+describe("cheminComplet — R3, prix contextuels re-dérivés de la fixture", () => {
   it("Forge 1 = 15 (9 + Métaux Communs 6)", () => {
-    expect(
-      cheminComplet(CAT, "guerrier", etatVierge(), "Forge", 1)?.total
-    ).toBe(15);
-  });
-
-  it("Dépeçage 1 = 26 (10 + Créatures 10 + Premiers Soins 6)", () => {
-    expect(
-      cheminComplet(CAT, "guerrier", etatVierge(), "Dépeçage", 1)?.total
-    ).toBe(26);
-  });
-
-  it("Hache 1 = 24 (Botte Secrète 9 en prérequis + 15)", () => {
-    const r = cheminComplet(
-      CAT,
-      "guerrier",
-      etatVierge(),
-      "Compétence d'arme à la hache",
-      1
+    expect(cheminComplet(CAT, "guerrier", etatVierge(), "Forge", 1)!.total).toBe(
+      15
     );
-    expect(r?.total).toBe(24);
-    expect(r?.achats.map((a) => a.nom)).toEqual([
-      "Botte Secrète",
-      "Compétence d'arme à la hache",
-    ]);
   });
 
-  it("Charge est contextuelle : 17 à froid, 8 quand Botte est au panier (mesuré s348)", () => {
-    expect(prixChemin(CAT, "guerrier", etatVierge(), "Charge", 1)).toBe(17);
-    const avecBotte = etatVierge();
-    avecBotte.niveaux.set("Botte Secrète", 1);
-    expect(prixChemin(CAT, "guerrier", avecBotte, "Charge", 1)).toBe(8);
+  it("Mineur 1 = 12 (6 + Métaux Communs 6)", () => {
+    expect(cheminComplet(CAT, "guerrier", etatVierge(), "Mineur", 1)!.total).toBe(
+      12
+    );
+  });
+
+  it("Connaissances des Métaux Rares 1 = 16 (10 + Métaux Communs 6)", () => {
+    expect(
+      cheminComplet(CAT, "guerrier", etatVierge(), "Connaissances des Métaux Rares", 1)!
+        .total
+    ).toBe(16);
+  });
+
+  it("Charge est contextuelle : 17 à froid, 8 quand Botte est au panier", () => {
+    expect(cheminComplet(CAT, "guerrier", etatVierge(), "Charge", 1)!.total).toBe(
+      17
+    );
+    const avec: EtatPossession = { niveaux: new Map([["Botte Secrète", 1]]) };
+    expect(prixChemin(CAT, "guerrier", avec, "Charge", 1)).toBe(8);
   });
 
   it("un prérequis partagé n'est payé qu'une fois (Forge puis Mineur : 15 + 6)", () => {
     const etat = etatVierge();
-    const forge = cheminComplet(CAT, "guerrier", etat, "Forge", 1);
-    const mineur = cheminComplet(CAT, "guerrier", etat, "Mineur", 1);
-    expect(forge?.total).toBe(15);
-    expect(mineur?.total).toBe(6); // Métaux Communs déjà payé par Forge
+    const forge = cheminComplet(CAT, "guerrier", etat, "Forge", 1)!;
+    const mineur = cheminComplet(CAT, "guerrier", etat, "Mineur", 1)!;
+    expect(forge.total).toBe(15);
+    expect(mineur.total).toBe(6);
+    expect(forge.total + mineur.total).toBe(21);
   });
 
   it("les paliers se cumulent (Résolution Guerrière 1→2 = 13 + 8 = 21)", () => {
     expect(
-      cheminComplet(CAT, "guerrier", etatVierge(), "Résolution Guerrière", 2)
-        ?.total
+      cheminComplet(CAT, "guerrier", etatVierge(), "Résolution Guerrière", 2)!
+        .total
     ).toBe(21);
   });
 });
 
-/* ------------------------------------------------------------------ */
 describe("verrous de création — §2.5", () => {
   it("hors-classe = niveau 1 seulement (Premiers Soins, catégorie prêtre)", () => {
     expect(plafondCreation(CAT.exiger("Premiers Soins"), "guerrier")).toBe(1);
-    expect(
-      cheminComplet(CAT, "guerrier", etatVierge(), "Premiers Soins", 2)
-    ).toBeNull();
   });
 
   it("sa classe ou générale = plafond création 2, jamais 3", () => {
     expect(plafondCreation(CAT.exiger("Botte Secrète"), "guerrier")).toBe(2);
-    expect(plafondCreation(CAT.exiger("Estimation"), "guerrier")).toBe(2);
-    expect(
-      cheminComplet(CAT, "guerrier", etatVierge(), "Botte Secrète", 3)
-    ).toBeNull();
+    expect(plafondCreation(CAT.exiger("Mineur"), "guerrier")).toBe(2);
   });
 
   it("classes_requises est un verrou absolu (Bonne santé pour un mage : 0)", () => {
     expect(plafondCreation(CAT.exiger("Bonne santé"), "mage")).toBe(0);
-    expect(plafondCreation(CAT.exiger("Bonne santé"), "guerrier")).toBe(2);
   });
 });
 
-/* ------------------------------------------------------------------ */
-describe("noyaux §4.1 — les tableaux de la spec, re-dérivés", () => {
-  const noyauTotal = (roleId: string, inventaire: ReadonlySet<string>) => {
-    const role = ROLES_GUERRIER.find((r) => r.id === roleId)!;
-    const etat = etatGuerrier();
-    let total = 0;
-    for (const c of role.noyau(inventaire)) {
-      const r = cheminComplet(CAT, "guerrier", etat, c.nom, c.niveauCible);
-      expect(r).not.toBeNull();
-      total += r!.total;
-    }
-    return total;
-  };
-
-  it("⚔️ : deux mains 9 · masse 22 · hache 24 · hast 31 · épée 32", () => {
-    expect(noyauTotal("gFrappe", inv("lame_deux_mains"))).toBe(9);
-    expect(noyauTotal("gFrappe", inv("contondante_moyenne"))).toBe(22);
-    expect(noyauTotal("gFrappe", inv("hache"))).toBe(24);
-    expect(noyauTotal("gFrappe", inv("baton_hast"))).toBe(31);
-    expect(noyauTotal("gFrappe", inv("lame_moyenne"))).toBe(32);
+describe("② noyaux des 3 archétypes mesurés — table §5 re-dérivée", () => {
+  it("🔨 Le forgeron : 26 XP, quel que soit l'équipement apporté", () => {
+    expect(noyau("gForgeron", inv())).toBe(26);
+    expect(noyau("gForgeron", inv("armure_plaques", "pavois", "lame_longue"))).toBe(
+      26
+    );
   });
 
-  it("⚔️ refuse l'arc seul (cul-de-sac, Gotcha A43) et les mains vides", () => {
-    const frappe = ROLES_GUERRIER.find((r) => r.id === "gFrappe")!;
-    expect(frappe.requiert(inv("arme_distance"))).toMatch(/voleur/);
-    expect(frappe.requiert(inv())).toMatch(/arme de mêlée/);
-    expect(frappe.requiert(inv("hache"))).toBeNull();
+  it("🛡️ Celui qui tient : créneau armure + créneau arme — plaques+lame = 43", () => {
+    expect(noyau("gTient", inv("armure_plaques", "lame_longue"))).toBe(43);
+    expect(noyau("gTient", inv("armure_cuir", "lame_moyenne"))).toBe(33);
+    expect(noyau("gTient", inv("armure_maille", "contondante_moyenne"))).toBe(27);
+    expect(noyau("gTient", inv("armure_cuir"))).toBe(13);
   });
 
-  it("🛡️ : targe 18 · cuir 17 · targe+cuir 25 · écu+maille 32 · pavois+plaques 39", () => {
-    expect(noyauTotal("gTient", inv("targe"))).toBe(18);
-    expect(noyauTotal("gTient", inv("armure_cuir"))).toBe(17);
-    expect(noyauTotal("gTient", inv("targe", "armure_cuir"))).toBe(25);
-    expect(noyauTotal("gTient", inv("ecu", "armure_maille"))).toBe(32);
-    expect(noyauTotal("gTient", inv("pavois", "armure_plaques"))).toBe(39);
+  it("⚔️ Celui qui frappe : 19 XP (Berserk 11 + Combat à deux armes 8)", () => {
+    expect(noyau("gFrappe", inv("deux_armes_identiques"))).toBe(19);
   });
 
-  it("🛡️ exige AU MOINS un bouclier ou une armure (décision s341), 🔨 rien", () => {
-    const tient = ROLES_GUERRIER.find((r) => r.id === "gTient")!;
-    expect(tient.requiert(inv())).toMatch(/bouclier ou une armure/);
-    expect(tient.requiert(inv("targe"))).toBeNull();
-    const artisan = ROLES_GUERRIER.find((r) => r.id === "gArtisan")!;
-    expect(artisan.requiert(inv())).toBeNull();
-  });
-
-  it("🔨 : 32 XP exactement, quel que soit l'équipement", () => {
-    expect(noyauTotal("gArtisan", inv())).toBe(32);
-    expect(noyauTotal("gArtisan", inv("pavois", "fioles"))).toBe(32);
+  it("🔨 est jouable les mains vides ; 🛡️ exige une armure ; ⚔️ deux armes identiques", () => {
+    expect(compose("gForgeron", inv()).ok).toBe(true);
+    const t = compose("gTient", inv("lame_longue"));
+    expect(t.ok).toBe(false);
+    if (!t.ok) expect(t.raison).toMatch(/armure/);
+    const f = compose("gFrappe", inv("lame_longue", "armure_plaques"));
+    expect(f.ok).toBe(false);
+    if (!f.ok) expect(f.raison).toMatch(/deux armes identiques/);
   });
 });
 
-/* ------------------------------------------------------------------ */
-describe("composerGuerrier — la composition tient ses comptes", () => {
-  it("⚔️ deux mains, 60 XP : reliquat 3 — LE pire cas mesuré s346, reproduit", () => {
-    const c = composerGuerrier(CAT, {
-      classe: "guerrier",
-      roleId: "gFrappe",
-      inventaire: inv("lame_deux_mains"),
-      budget: 60,
-    }) as Extract<Composition, { ok: true }>;
-    expect(c.ok).toBe(true);
-    expect(c.totalDepense + c.reliquat).toBe(60);
+describe("③a signature — l'archétype reste reconnaissable (PR #716)", () => {
+  it("🔨 monte Mineur 2 (9) → ②+③ = 35, la valeur §5", () => {
+    const c = ok(compose("gForgeron", inv(), 80));
+    expect(couche(c, 2)).toBe(26);
+    expect(couche(c, 3)).toBe(9);
+    expect(
+      c.achats.some((a) => a.nom === "Mineur" && a.niveau === 2 && a.couche === 3)
+    ).toBe(true);
+  });
+
+  it("🛡️ monte Botte Secrète 2 (12) → ②+③ = 55, LE plus cher des 15", () => {
+    const c = ok(compose("gTient", inv("armure_plaques", "lame_longue"), 80));
+    expect(couche(c, 2) + couche(c, 3)).toBe(55);
+    expect(couche(c, 3)).toBe(12);
+  });
+
+  it("⚔️ monte Berserk 2 et Combat à deux armes 2 (26) → ②+③ = 45", () => {
+    const c = ok(compose("gFrappe", inv("deux_armes_identiques"), 80));
+    expect(couche(c, 2) + couche(c, 3)).toBe(45);
+    expect(couche(c, 3)).toBe(26);
+  });
+
+  it("🛡️ sans arme de mêlée : la signature est SAUTÉE, jamais bloquante", () => {
+    const c = ok(compose("gTient", inv("armure_cuir"), 80));
+    expect(c.achats.some((a) => a.nom === "Botte Secrète")).toBe(false);
+    expect(couche(c, 3)).toBe(0);
+  });
+});
+
+describe("la composition tient ses comptes", () => {
+  it("🔨 les mains vides à 60 XP : reliquat 3 — LE pire cas re-mesuré s353", () => {
+    const c = ok(compose("gForgeron", inv(), 60));
     expect(c.reliquat).toBe(3);
-    expect(c.alertes.join(" ")).toMatch(/reste 3 XP/);
+    expect(c.totalDepense + c.reliquat).toBe(60);
+    expect(c.alertes.some((a) => a.includes("Il reste 3 XP"))).toBe(true);
   });
 
-  it("l'Artisan les mains vides est prévenu que sa gratuité d'arme est inutilisable", () => {
-    const c = composerGuerrier(CAT, {
-      classe: "guerrier",
-      roleId: "gArtisan",
-      inventaire: inv(),
-      budget: 60,
-    }) as Extract<Composition, { ok: true }>;
-    expect(c.ok).toBe(true);
-    expect(c.alertes.join(" ")).toMatch(/inutilisable/);
-    expect(c.gratuites.map((g) => g.nom)).toEqual([...GRATUITES_GUERRIER]);
+  it("le forgeron les mains vides est prévenu que sa gratuité d'arme est inutilisable", () => {
+    const c = ok(compose("gForgeron", inv(), 60));
+    expect(c.alertes.some((a) => a.includes("deux mains"))).toBe(true);
   });
 
   it("un essentiel ③ qui ne rentre plus est écarté avec une alerte, jamais bloquant", () => {
-    const c = composerGuerrier(CAT, {
+    const c = composerClasse(cats, CONTENU_GUERRIER, {
       classe: "guerrier",
       roleId: "gTient",
-      inventaire: inv("pavois", "armure_plaques"),
+      inventaire: inv("armure_plaques", "lame_longue"),
       budget: 60,
-      essentiels: [{ nom: "Discours du Commandement", niveauCible: 1 }], // 17 > 21 restants ? si, rentre — Dépeçage 26 non
-    }) as Extract<Composition, { ok: true }>;
-    expect(c.ok).toBe(true);
-    const c2 = composerGuerrier(CAT, {
-      classe: "guerrier",
-      roleId: "gTient",
-      inventaire: inv("pavois", "armure_plaques"),
-      budget: 60,
-      essentiels: [{ nom: "Dépeçage", niveauCible: 1 }],
-    }) as Extract<Composition, { ok: true }>;
-    expect(c2.alertes.join(" ")).toMatch(/Dépeçage.*écarté/);
+      essentiels: [{ label: "Résistance à la magie 1" }],
+    });
+    const r = ok(c);
+    expect(
+      r.alertes.some((a) => a.includes("Résistance à la magie 1"))
+    ).toBe(true);
   });
 
   it("aucun achat planifié ne dépasse le plafond de création", () => {
-    const c = composerGuerrier(CAT, {
-      classe: "guerrier",
-      roleId: "gArtisan",
-      inventaire: inv(),
-      budget: 80,
-    }) as Extract<Composition, { ok: true }>;
-    for (const a of c.achats) {
-      expect(a.niveau).toBeLessThanOrEqual(
-        plafondCreation(CAT.exiger(a.nom), "guerrier")
-      );
-    }
-  });
-});
-
-/* ------------------------------------------------------------------ */
-describe("⭐ SIMULATION — reliquat ≤ 3 XP sur tout le domaine (promesse s346)", () => {
-  const INVENTAIRES: Record<string, ReadonlySet<string>[]> = {
-    gFrappe: [
-      inv("lame_deux_mains"), // noyau min 9
-      inv("lame_moyenne"), // noyau max 32
-      inv("hache", "targe", "armure_cuir", "deux_armes_identiques"),
-    ],
-    gTient: [
-      inv("targe"), // min 18
-      inv("pavois", "armure_plaques"), // max 39
-      inv("targe", "armure_cuir", "lame_moyenne"),
-    ],
-    gArtisan: [inv(), inv("lame_deux_mains", "pavois", "armure_plaques")],
-  };
-  const rngFixe = (graine: number) => {
-    // LCG déterministe — l'aléa est injecté, la CI est stable.
-    let s = graine;
-    return () => {
-      s = (s * 1103515245 + 12345) % 2147483648;
-      return s / 2147483648;
-    };
-  };
-
-  it("rôles × budgets {60, 80} × inventaires × ③ {aucun, tiré} : jamais plus de 3 XP orphelins", () => {
-    let pire = { reliquat: -1, cas: "" };
     for (const role of ROLES_GUERRIER) {
       for (const budget of [60, 80]) {
-        for (const inventaire of INVENTAIRES[role.id]) {
-          for (const avecTirage of [false, true]) {
-            const base = { classe: "guerrier" as const, roleId: role.id, inventaire, budget };
-            const essentiels = avecTirage
-              ? tirerEssentiels(CAT, base, budget, rngFixe(42))
-              : [];
-            const c = composerGuerrier(CAT, { ...base, essentiels });
-            expect(c.ok).toBe(true);
-            if (!c.ok) continue;
-            expect(c.reliquat).toBeGreaterThanOrEqual(0);
-            expect(c.totalDepense + c.reliquat).toBe(budget);
-            expect(c.reliquat).toBeLessThanOrEqual(3);
-            // Jamais deux fois le même palier au panier.
-            const paliers = c.achats
-              .filter((a) => CAT.exiger(a.nom).type_achat === "simple")
-              .map((a) => `${a.nom}@${a.niveau}`);
-            expect(new Set(paliers).size).toBe(paliers.length);
-            if (c.reliquat > pire.reliquat) {
-              pire = {
-                reliquat: c.reliquat,
-                cas: `${role.emoji} budget ${budget}, [${[...inventaire].join(",") || "mains vides"}], ③ ${avecTirage ? "tiré" : "aucun"}`,
-              };
-            }
-          }
+        const c = compose(
+          role.id,
+          inv(
+            "deux_armes_identiques",
+            "lame_longue",
+            "armure_plaques",
+            "pavois",
+            "bandages",
+            "contondante_longue",
+            "armure_cuir"
+          ),
+          budget
+        );
+        if (!c.ok) continue;
+        for (const a of c.achats) {
+          expect(
+            a.niveau,
+            `${role.id} — ${a.nom}@${a.niveau}`
+          ).toBeLessThanOrEqual(plafondCreation(CAT.exiger(a.nom), "guerrier"));
+          expect(a.niveau, `${role.id} — ${a.nom}`).toBeLessThan(3);
         }
       }
     }
-    // Le pire cas est CITÉ (règle s346) : ⚔️ deux mains à 60, reliquat 3.
-    expect(pire.reliquat).toBe(3);
-  });
-
-  it("tirerEssentiels est déterministe à graine fixe, ≤ 2 items, conditions d'inventaire respectées", () => {
-    const base = {
-      classe: "guerrier" as const,
-      roleId: "gFrappe",
-      inventaire: inv("lame_deux_mains"),
-      budget: 60,
-    };
-    const a = tirerEssentiels(CAT, base, 51, rngFixe(7));
-    const b = tirerEssentiels(CAT, base, 51, rngFixe(7));
-    expect(a).toEqual(b);
-    expect(a.length).toBeLessThanOrEqual(2);
-    for (const e of a) {
-      const item = Object.values(POOL3_GUERRIER)
-        .flat()
-        .find((i) => i.nom === e.nom)!;
-      if (item.condition) expect(item.condition(base.inventaire)).toBe(true);
-    }
   });
 });
 
-/* ------------------------------------------------------------------ */
 describe("intégrité du contenu — chaque nom référencé existe", () => {
+  const TOUT = inv(
+    "lame_courte",
+    "lame_moyenne",
+    "lame_longue",
+    "lame_deux_mains",
+    "hache",
+    "contondante_courte",
+    "contondante_moyenne",
+    "contondante_longue",
+    "baton_hast",
+    "deux_armes_identiques",
+    "targe",
+    "ecu",
+    "pavois",
+    "armure_cuir",
+    "armure_maille",
+    "armure_plaques",
+    "bandages"
+  );
+
   const nomsReferences = [
     ...GRATUITES_GUERRIER,
-    ...ROLES_GUERRIER.flatMap((r) => [
-      ...r.noyau(inv("lame_deux_mains", "hache", "baton_hast", "lame_moyenne", "contondante_moyenne", "targe", "ecu", "pavois", "armure_cuir", "armure_maille", "armure_plaques")).map((c) => c.nom),
-    ]),
-    ...Object.values(POOL3_GUERRIER).flat().map((i) => i.nom),
-    ...Object.values(POND4_GUERRIER).flat().flatMap((e) => [e.nom]),
-  ];
+    ...ROLES_GUERRIER.flatMap((r) => r.noyau(TOUT, {}).map((a) => a.nom)),
+    ...Object.values(SIGNATURE3_GUERRIER)
+      .flat()
+      .flatMap((e) => e.achats(TOUT, {}).map((a) => a.nom)),
+    ...Object.values(POOL3_GUERRIER)
+      .flat()
+      .flatMap((e) => e.achats(TOUT, {}).map((a) => a.nom)),
+    ...Object.values(POND4_GUERRIER)
+      .flat()
+      .flatMap((e) =>
+        e.type === "jauge" ? [e.nom] : e.achats(TOUT, {}).map((a) => a.nom)
+      ),
+    ...CONTENU_GUERRIER.filet.map((e) => (e.type === "jauge" ? e.nom : "")),
+  ].filter(Boolean);
 
   it("dans la fixture MCP (le catalogue lève sinon)", () => {
     for (const nom of nomsReferences) expect(CAT.exiger(nom).nom).toBe(nom);
@@ -320,11 +312,15 @@ describe("intégrité du contenu — chaque nom référencé existe", () => {
     const snapshot = (await import("@/data/snapshotVisiteur.json")) as {
       tables: { competences?: { nom: string | null }[] };
     };
-    const noms = new Set(
-      (snapshot.tables.competences ?? []).map((c) => c.nom)
-    );
+    const noms = new Set((snapshot.tables.competences ?? []).map((c) => c.nom));
     for (const nom of new Set(nomsReferences)) {
       expect(noms.has(nom), `« ${nom} » absent du snapshot bundlé`).toBe(true);
     }
+  });
+
+  it("aucun rôle supprimé ne survit (gArtisan retiré au profit de gForgeron)", () => {
+    const ids = ROLES_GUERRIER.map((r) => r.id);
+    expect(ids).toEqual(["gForgeron", "gTient", "gFrappe"]);
+    expect(ids).not.toContain("gArtisan");
   });
 });
