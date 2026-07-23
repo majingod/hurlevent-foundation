@@ -170,14 +170,30 @@ describe("② noyaux des 3 archétypes mesurés — table §5 re-dérivée", () 
     expect(noyau("gFrappe", inv("deux_armes_identiques"))).toBe(19);
   });
 
-  it("🔨 est jouable les mains vides ; 🛡️ exige une armure ; ⚔️ deux armes identiques", () => {
+  it("🔨 est jouable les mains vides ; 🛡️ exige une armure ; ⚔️ une arme de mêlée", () => {
     expect(compose("gForgeron", inv()).ok).toBe(true);
     const t = compose("gTient", inv("lame_longue"));
     expect(t.ok).toBe(false);
     if (!t.ok) expect(t.raison).toMatch(/armure/);
-    const f = compose("gFrappe", inv("lame_longue", "armure_plaques"));
+    // ⭐ PORTE LARGE (arbitrage Fred s353) : une seule épée suffit.
+    expect(compose("gFrappe", inv("lame_longue")).ok).toBe(true);
+    expect(compose("gFrappe", inv("deux_armes_identiques")).ok).toBe(true);
+    const f = compose("gFrappe", inv("arme_distance"));
     expect(f.ok).toBe(false);
-    if (!f.ok) expect(f.raison).toMatch(/deux armes identiques/);
+    if (!f.ok) expect(f.raison).toMatch(/arc seul/);
+    const g = compose("gFrappe", inv("armure_plaques"));
+    expect(g.ok).toBe(false);
+    if (!g.ok) expect(g.raison).toMatch(/arme de mêlée/);
+  });
+
+  it("⚔️ sans deux armes identiques : la Botte Secrète tient le geste offensif", () => {
+    expect(noyau("gFrappe", inv("deux_armes_identiques"))).toBe(19);
+    expect(noyau("gFrappe", inv("lame_longue"))).toBe(20);
+    const c = ok(compose("gFrappe", inv("lame_longue"), 80));
+    expect(c.achats.some((a) => a.nom === "Combat à deux armes")).toBe(false);
+    expect(
+      c.achats.some((a) => a.nom === "Botte Secrète" && a.couche === 2)
+    ).toBe(true);
   });
 });
 
@@ -203,6 +219,14 @@ describe("③a signature — l'archétype reste reconnaissable (PR #716)", () =>
     expect(couche(c, 3)).toBe(26);
   });
 
+  it("⚔️ à une seule arme : la signature bascule sur Botte Secrète 2 (12)", () => {
+    const c = ok(compose("gFrappe", inv("lame_longue"), 80));
+    expect(couche(c, 3)).toBe(27); // Berserk 2 (15) + Botte Secrète 2 (12)
+    expect(
+      c.achats.some((a) => a.nom === "Botte Secrète" && a.niveau === 2)
+    ).toBe(true);
+  });
+
   it("🛡️ sans arme de mêlée : la signature est SAUTÉE, jamais bloquante", () => {
     const c = ok(compose("gTient", inv("armure_cuir"), 80));
     expect(c.achats.some((a) => a.nom === "Botte Secrète")).toBe(false);
@@ -211,11 +235,32 @@ describe("③a signature — l'archétype reste reconnaissable (PR #716)", () =>
 });
 
 describe("la composition tient ses comptes", () => {
-  it("🔨 les mains vides à 60 XP : reliquat 3 — LE pire cas re-mesuré s353", () => {
+  it("🔨 les mains vides à 60 XP : reliquat 1, dit au joueur (décision 15)", () => {
     const c = ok(compose("gForgeron", inv(), 60));
-    expect(c.reliquat).toBe(3);
+    expect(c.reliquat).toBe(1);
     expect(c.totalDepense + c.reliquat).toBe(60);
-    expect(c.alertes.some((a) => a.includes("Il reste 3 XP"))).toBe(true);
+    expect(c.alertes.some((a) => a.includes("Il reste 1 XP"))).toBe(true);
+  });
+
+  it("⭐ plus JAMAIS de rafale de Connaissances des Religions (arbitrage Fred s353)", () => {
+    // Avant s353 le filet en ouvrait 15 : le générateur en posait jusqu'à 7
+    // d'affilée. Mesure prod : 3 guerriers sur 21 en portent UNE, jamais deux.
+    for (const role of ROLES_GUERRIER) {
+      for (const budget of [60, 80]) {
+        for (const equip of [inv(), inv("lame_longue", "armure_plaques", "ecu", "bandages", "deux_armes_identiques")]) {
+          const c = compose(role.id, equip, budget);
+          if (!c.ok) continue;
+          const rel = c.achats.filter(
+            (a) => a.nom === "Connaissances des Religions"
+          ).length;
+          expect(rel, `${role.id} budget=${budget}`).toBeLessThanOrEqual(1);
+          const lang = c.achats.filter(
+            (a) => a.nom === "Langue supplémentaire"
+          ).length;
+          expect(lang, `${role.id} budget=${budget}`).toBe(0);
+        }
+      }
+    }
   });
 
   it("le forgeron les mains vides est prévenu que sa gratuité d'arme est inutilisable", () => {

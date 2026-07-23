@@ -1,5 +1,5 @@
 {
-  "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-23 (s353) — 30 compétences du contenu Voleur (15 archétypes mesurés), fermeture récursive des prérequis ; homonymes filtrés categorie='voleur'. NE PAS ÉDITER À LA MAIN : recapturer via MCP (SELECT complet documenté en tête de generateur.voleur.test.ts).",
+  "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-23 (s353) — 31 compétences du contenu Voleur (15 archétypes mesurés), fermeture récursive des prérequis ; homonymes filtrés categorie='voleur'. NE PAS ÉDITER À LA MAIN : recapturer via MCP (SELECT complet documenté en tête de generateur.voleur.test.ts).",
   "competences": [
     {
       "id": "8c0b09e8-23d1-478f-925f-47c8ed24bc92",
@@ -296,6 +296,21 @@
       "est_actif": true,
       "prerequis": null,
       "type_achat": "multiple_choix_distinct",
+      "classes_requises": null
+    },
+    {
+      "id": "0db39587-68ad-4025-afe4-bbcbff67ad8a",
+      "nom": "Développement Spirituel",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 2
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_sans_choix",
       "classes_requises": null
     },
     {
