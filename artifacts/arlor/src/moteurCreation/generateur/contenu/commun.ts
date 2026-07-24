@@ -75,6 +75,88 @@ export const priere = (nom: string, config: ConfigMagie): Achat => ({
   config,
 });
 
+/* ------------------------------------------------------------------ */
+/* HELPERS D'ÉTAPE ④ — une seule maison (remontés ici en s355).        */
+/*                                                                     */
+/* Ils vivaient en DOUBLE, copiés à l'identique dans `guerrier.ts` et  */
+/* `voleur.ts`. Le contenu Mage aurait fait une 3ᵉ copie.              */
+
+/** Étape ④ conditionnée par l'inventaire : hors condition elle rend une
+ *  liste vide — le composeur passe au suivant sans rien acheter. */
+export const si = (
+  label: string,
+  cases: readonly string[],
+  achats: () => Achat[]
+): EtapePond => ({
+  type: "achats",
+  label,
+  achats: (inv) => (cases.some((c) => inv.has(c)) ? achats() : []),
+});
+
+/** Étape ④ inconditionnelle. */
+export const et = (label: string, achats: () => Achat[]): EtapePond => ({
+  type: "achats",
+  label,
+  achats,
+});
+
+/* ------------------------------------------------------------------ */
+/* ⭐ GARDE « INAPTE À LA MAGIE » (référence v4 §2.2).                  */
+
+/**
+ * Les compétences qui coûtent ou donnent des POINTS DE SPIRITUALITÉ.
+ *
+ * La référence en compte « cinq » en comptant `Développement Spirituel` et
+ * sa version Supérieure comme UNE famille ; le code doit nommer les deux,
+ * ce sont deux lignes distinctes du catalogue (mesuré : la base refuse
+ * bien les deux).
+ */
+export const COMPETENCES_A_PS: readonly string[] = [
+  "Acquisition de Cercle",
+  "Acquisition de Domaine",
+  "Développement Spirituel",
+  "Développement Spirituel Supérieur",
+  "Canalisation",
+  "Assemblage de Runes",
+];
+
+export const estCompetenceAPS = (nom: string): boolean =>
+  COMPETENCES_A_PS.includes(nom);
+
+/**
+ * ⭐ Un archétype DEMANDE-T-IL des PS ? — DÉRIVÉ du noyau, jamais déclaré.
+ *
+ * Un drapeau écrit à la main sur chaque rôle serait un chiffre de
+ * conception de plus (règle s353) et se désynchroniserait du contenu au
+ * premier remaniement. On lit donc ce que le rôle ÉMET réellement en ② :
+ * une compétence à PS, un sort ou une prière ⇒ il demande des PS.
+ *
+ * Consommé ici pour REFUSER le rôle à un personnage inapte, et par le lot
+ * 🎲 pour tirer l'archétype D'ABORD et le trait racial ENSUITE — un
+ * Demi-Orc garde ainsi l'accès aux 15.
+ */
+export const archetypeDemandeDesPS = (
+  contenu: ContenuClasse,
+  roleId: string,
+  inv: ReadonlySet<string> = new Set(),
+  o: OptionsRole = {}
+): boolean => {
+  const role = contenu.roles.find((r) => r.id === roleId);
+  if (!role) return false;
+  let achats: Achat[];
+  try {
+    achats = role.noyau(inv, o);
+  } catch {
+    return false;
+  }
+  return achats.some(
+    (a) =>
+      a.t === "sort" ||
+      a.t === "priere" ||
+      ((a.t === "comp" || a.t === "rachat") && estCompetenceAPS(a.nom))
+  );
+};
+
 /**
  * ⭐ FILETS MARTIAUX — PLAFONDS MESURÉS EN PROD (s353, arbitrage Fred).
  *
@@ -109,8 +191,27 @@ export const FILET_VOLEUR: EtapePond[] = [
   { type: "jauge", nom: "Développement Spirituel", plafondRachats: 1 },
 ];
 
-/** Filet caster (s349) : chaque PS = un lancer de plus — DS 2 XP puis DSS 4 XP.
- *  Reliquat borné à 3 (une unité DSS ne rentre plus, DS au plafond). */
+/**
+ * Filet caster : chaque PS = un lancer de plus — DS 2 XP puis DSS 4 XP.
+ * Reliquat borné à 3 (une unité DSS ne rentre plus, DS au plafond).
+ *
+ * ⭐ D'OÙ VIENNENT CES DEUX « 10 » (mesuré s355, règle s353).
+ * Ce ne sont PAS des maxima observés, contrairement aux filets martiaux :
+ * c'est le PLAFOND DU JEU lui-même. Le manuel borne `Développement
+ * Spirituel` à 20 PS et sa version Supérieure à 30 ; `recalculer_ps_max`
+ * fait `ps_max = ps_depart + nb_DS + nb_DSS`, et `classes.ps_depart` vaut
+ * **10** pour le Mage comme pour le Prêtre. Donc 10 rachats de DS mènent
+ * pile à 20, et 10 de DSS pile à 30. Un plafond plus haut produirait une
+ * fiche illégale ; plus bas, de l'XP non dépensée.
+ *
+ * Concordance prod : sur 33 mages vivants, 9 des 22 porteurs sont
+ * exactement à 10 rachats ; sur 17 prêtres, 8 des 12. Ils sont au plafond,
+ * ils ne s'y sont pas arrêtés par goût.
+ * (Comparaison utile : Guerrier et Voleur ont `ps_depart` = 5, donc leur
+ * plafond de JEU serait 15 — `FILET_GUERRIER` s'arrête à 5 parce que 5 est
+ * le maximum RÉELLEMENT observé. Les deux filets ne se justifient pas de
+ * la même façon.)
+ */
 export const FILET_CASTER: EtapePond[] = [
   { type: "jauge", nom: "Développement Spirituel", plafondRachats: 10 },
   { type: "jauge", nom: "Développement Spirituel Supérieur", plafondRachats: 10 },

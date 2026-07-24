@@ -1,6 +1,8 @@
 import {
-  comp,
   FILET_VOLEUR,
+  comp,
+  et,
+  si,
   type Achat,
   type ContenuClasse,
   type EntreePool,
@@ -192,21 +194,8 @@ const POOL3_VOLEUR: Record<string, EntreePool[]> = {
 /* ------------------------------------------------------------------ */
 /* ④ — PONDÉRATIONS (listes « REMPLISSAGE » 25-49 %), puis le FILET.    */
 
-/** Étape ④ conditionnée par l'inventaire : hors condition, liste vide. */
-const si = (
-  label: string,
-  cases: readonly string[],
-  achats: () => Achat[]
-): EtapePond => ({
-  type: "achats",
-  label,
-  achats: (inv) => (cases.some((c) => inv.has(c)) ? achats() : []),
-});
-const et = (label: string, achats: () => Achat[]): EtapePond => ({
-  type: "achats",
-  label,
-  achats,
-});
+/* `si` / `et` viennent de `commun.ts` (remontés s355 — ils vivaient en
+   double ici et dans l'autre contenu martial). */
 
 /**
  * ⭐ ④ RALLONGÉE SUR LES DONNÉES (s353). Repères prod (16 voleurs vivants) :
