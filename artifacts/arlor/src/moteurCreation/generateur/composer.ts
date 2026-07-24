@@ -3,7 +3,9 @@ import { CatalogueMagie } from "./catalogueMagie";
 import {
   archetypeDemandeDesPS,
   comp,
+  entreeExigeDesPS,
   estCompetenceAPS,
+  exigeDesPS,
   type Achat,
   type ContenuClasse,
   type EntreePool,
@@ -355,6 +357,16 @@ export function composerClasse(
       alertes.push(`« ${label} » n'est plus proposable — écarté.`);
       continue;
     }
+    // ⭐ [A2-socle s355] Le pool ③b est partagé entre les rôles d'une classe :
+    // une entrée à PS y est facultative, on l'écarte au lieu de refuser le
+    // rôle entier. Ceinture ET bretelles avec le filtre de tirage : 🧭 laisse
+    // le joueur CHOISIR ses essentiels, il ne passe pas par le tirage.
+    if (ctx.inapteMagie && exigeDesPS(achats)) {
+      alertes.push(
+        `« ${label} » demande de la magie — écarté : ton personnage y est inapte.`
+      );
+      continue;
+    }
     const cout = planifierEntree(
       cats,
       contenu.classe,
@@ -493,6 +505,10 @@ export function tirerEssentielsClasse(
   // Candidats : condition ok ET utiles (prix > 0 sur l'état de départ).
   const candidats = entreesDuPool(contenu).filter((i) => {
     if (i.condition && !i.condition(ctx.inventaire, o)) return false;
+    // ⭐ [A2-socle s355] Chez un inapte, une entrée à PS n'est pas écartée
+    // APRÈS coup : elle n'entre jamais dans le tirage. Sinon 🎲 proposerait
+    // « Canalisation » à quelqu'un qui ne peut pas la prendre.
+    if (ctx.inapteMagie && entreeExigeDesPS(i, ctx.inventaire, o)) return false;
     const essai = cloner(ch);
     const prix = planifierEntree(
       cats,

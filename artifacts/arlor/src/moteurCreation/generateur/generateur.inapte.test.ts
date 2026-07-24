@@ -210,3 +210,183 @@ describe("composerClasse honore inapteMagie (le drapeau est LU)", () => {
     }
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* ③ — LA SIGNATURE REFUSE, LE POOL ÉCARTE (arbitrage Fred s355)       */
+
+import { CatalogueMagie as CatMagie2, type PriereModele, type SortModele } from "./catalogueMagie";
+import { tirerEssentielsClasse } from "./composer";
+import fxMage from "./fixtures/competences_mage.fixture.json";
+import fxMagie from "./fixtures/magie_generateur.fixture.json";
+import { entreeExigeDesPS, exigeDesPS, comp, rachat } from "./contenu/commun";
+
+const catsMage: Catalogues = {
+  competences: new CatalogueCompetences(
+    (fxMage as { competences: unknown[] }).competences as CompetenceCatalogue[]
+  ),
+  magie: new CatMagie2(
+    fxMagie as unknown as { sorts: SortModele[]; prieres: PriereModele[] }
+  ),
+};
+
+describe("③a signature — un rôle dont la SIGNATURE exige des PS est refusé", () => {
+  it("le prédicat voit la signature, pas seulement le noyau", () => {
+    // Aucun rôle livré n'a aujourd'hui de PS en signature : on le prouve sur
+    // un contenu synthétique, sinon le chemin de code ne serait jamais exercé.
+    const faux: ContenuClasse = {
+      classe: "guerrier",
+      gratuites: [],
+      roles: [
+        {
+          id: "rSansPS",
+          emoji: "🔨",
+          titre: "Sans PS",
+          phrase: "",
+          requiert: () => null,
+          noyau: () => [comp("Botte Secrète", 1)],
+        },
+        {
+          id: "rSigPS",
+          emoji: "🔮",
+          titre: "Signature magique",
+          phrase: "",
+          requiert: () => null,
+          noyau: () => [comp("Botte Secrète", 1)],
+        },
+      ],
+      signature3: {
+        rSigPS: [
+          { label: "Canalisation", note: "", achats: () => [comp("Canalisation", 1)] },
+        ],
+      },
+      pool3: {},
+      pond4: {},
+      filet: [],
+    };
+    expect(archetypeDemandeDesPS(faux, "rSansPS")).toBe(false);
+    expect(archetypeDemandeDesPS(faux, "rSigPS")).toBe(true);
+  });
+
+  it("une signature sous condition non remplie ne déclenche pas le refus", () => {
+    const faux: ContenuClasse = {
+      classe: "guerrier",
+      gratuites: [],
+      roles: [
+        {
+          id: "r",
+          emoji: "🔨",
+          titre: "T",
+          phrase: "",
+          requiert: () => null,
+          noyau: () => [],
+        },
+      ],
+      signature3: {
+        r: [
+          {
+            label: "Canalisation si bâton",
+            note: "",
+            condition: (inv) => inv.has("baton"),
+            achats: () => [rachat("Développement Spirituel")],
+          },
+        ],
+      },
+      pool3: {},
+      pond4: {},
+      filet: [],
+    };
+    expect(archetypeDemandeDesPS(faux, "r", new Set())).toBe(false);
+    expect(archetypeDemandeDesPS(faux, "r", new Set(["baton"]))).toBe(true);
+  });
+});
+
+describe("③b pool — écarté du TIRAGE, jamais motif de refus", () => {
+  const INV_MAGE = new Set(["baton", "fioles", "feuille_crayon", "parchemin"]);
+
+  it("le pool Mage contient bien des entrées à PS (sinon le test suivant passe à vide)", () => {
+    const aPS = Object.values(CONTENU_MAGE.pool3)
+      .flat()
+      .filter((e) => entreeExigeDesPS(e, INV_MAGE, { element: "Feu" }));
+    expect(aPS.length).toBeGreaterThan(0);
+  });
+
+  it("🎲 ne tire AUCUNE entrée à PS pour un inapte", () => {
+    for (const r of CONTENU_MAGE.roles) {
+      const tires = tirerEssentielsClasse(
+        catsMage,
+        CONTENU_MAGE,
+        {
+          classe: "mage",
+          roleId: r.id,
+          inventaire: INV_MAGE,
+          budget: 80,
+          element: "Feu",
+          inapteMagie: true,
+        },
+        80,
+        () => 0.5
+      );
+      const pool = Object.values(CONTENU_MAGE.pool3).flat();
+      for (const t of tires) {
+        const e = pool.find((p) => p.label === t.label);
+        if (!e) continue;
+        expect(entreeExigeDesPS(e, INV_MAGE, { element: "Feu" })).toBe(false);
+      }
+    }
+  });
+
+  it("PREUVE PAR LE CONTRAIRE : sans le drapeau, le tirage SORT une entrée à PS", () => {
+    // Sans ce test, celui du dessus passerait à vide le jour où le tirage
+    // cesserait de proposer quoi que ce soit. Sondé s355 : à 80 XP, « un
+    // deuxième élément — un cercle + un sort dedans » sort pour les 3 rôles.
+    const pool = Object.values(CONTENU_MAGE.pool3).flat();
+    let vuAvecPS = false;
+    for (const r of CONTENU_MAGE.roles) {
+      const tires = tirerEssentielsClasse(
+        catsMage,
+        CONTENU_MAGE,
+        {
+          classe: "mage",
+          roleId: r.id,
+          inventaire: INV_MAGE,
+          budget: 80,
+          element: "Feu",
+        },
+        80,
+        () => 0.5
+      );
+      for (const t of tires) {
+        const e = pool.find((p2) => p2.label === t.label);
+        if (e && entreeExigeDesPS(e, INV_MAGE, { element: "Feu" })) vuAvecPS = true;
+      }
+    }
+    expect(vuAvecPS).toBe(true);
+  });
+
+  it("un essentiel à PS imposé en 🧭 est écarté avec une phrase, pas un plantage", () => {
+    const pool = Object.values(CONTENU_MAGE.pool3).flat();
+    const coupable = pool.find((e) =>
+      entreeExigeDesPS(e, INV_MAGE, { element: "Feu" })
+    )!;
+    const c = composerClasse(catsMage, CONTENU_MAGE, {
+      classe: "mage",
+      roleId: "mAlchimiste",
+      inventaire: INV_MAGE,
+      budget: 80,
+      element: "Feu",
+      inapteMagie: true,
+      essentiels: [{ label: coupable.label }],
+    });
+    if (!c.ok) return; // refus amont : acceptable
+    expect([...c.gratuites, ...c.achats].filter((a) => estCompetenceAPS(a.nom))).toEqual([]);
+    expect(c.alertes.join(" ")).toContain("inapte");
+  });
+});
+
+describe("exigeDesPS", () => {
+  it("voit un sort et une prière, pas seulement une compétence", () => {
+    expect(exigeDesPS([{ t: "sort", nom: "X", config: {} as never }])).toBe(true);
+    expect(exigeDesPS([{ t: "priere", nom: "X", config: {} as never }])).toBe(true);
+    expect(exigeDesPS([comp("Botte Secrète", 1)])).toBe(false);
+  });
+});
