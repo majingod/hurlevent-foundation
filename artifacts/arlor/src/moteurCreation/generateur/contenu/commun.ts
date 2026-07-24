@@ -131,6 +131,19 @@ export const estCompetenceAPS = (nom: string): boolean =>
  * premier remaniement. On lit donc ce que le rôle ÉMET réellement en ② :
  * une compétence à PS, un sort ou une prière ⇒ il demande des PS.
  *
+ * ⭐ s355 — PORTE SUR ② NOYAU **ET** ③a SIGNATURE (arbitrage Fred).
+ * Les deux sont DÉTERMINISTES : le noyau définit le rôle, la signature est
+ * prise en tête de ③ avant tout tirage, c'est elle qui rend l'archétype
+ * reconnaissable. Un rôle dont la signature exige des PS ne peut donc pas
+ * être joué sans PS — le refuser est plus honnête que le livrer amputé.
+ *
+ * ⚠️ Le pool ③b, lui, n'entre PAS dans ce verdict, et ce n'est pas un oubli :
+ * il est indexé par THÈME (« Arcaniste+ », « Offensif »…) et PARTAGÉ entre
+ * les rôles d'une classe, pas attaché à un rôle. Une entrée à PS y est
+ * TIRÉE ou CHOISIE, donc facultative : on l'ÉCARTE du tirage plutôt que de
+ * refuser tout le rôle. Refuser sur le pool reviendrait à interdire un rôle
+ * à cause d'une option que le générateur n'aurait de toute façon pas prise.
+ *
  * Consommé ici pour REFUSER le rôle à un personnage inapte, et par le lot
  * 🎲 pour tirer l'archétype D'ABORD et le trait racial ENSUITE — un
  * Demi-Orc garde ainsi l'accès aux 15.
@@ -143,18 +156,44 @@ export const archetypeDemandeDesPS = (
 ): boolean => {
   const role = contenu.roles.find((r) => r.id === roleId);
   if (!role) return false;
-  let achats: Achat[];
+
+  const lots: Achat[][] = [];
   try {
-    achats = role.noyau(inv, o);
+    lots.push(role.noyau(inv, o));
   } catch {
-    return false;
+    /* un noyau qui refuse ne dit rien sur les PS */
   }
-  return achats.some(
+  for (const entree of contenu.signature3?.[roleId] ?? []) {
+    try {
+      if (entree.condition && !entree.condition(inv, o)) continue;
+      lots.push(entree.achats(inv, o));
+    } catch {
+      /* idem */
+    }
+  }
+  return lots.some(exigeDesPS);
+};
+
+/** Un lot d'achats touche-t-il aux points de spiritualité ? */
+export const exigeDesPS = (achats: readonly Achat[]): boolean =>
+  achats.some(
     (a) =>
       a.t === "sort" ||
       a.t === "priere" ||
       ((a.t === "comp" || a.t === "rachat") && estCompetenceAPS(a.nom))
   );
+
+/** Une entrée de pool ③b touche-t-elle aux PS ? (évaluation défensive) */
+export const entreeExigeDesPS = (
+  entree: EntreePool,
+  inv: ReadonlySet<string>,
+  o: OptionsRole
+): boolean => {
+  try {
+    return exigeDesPS(entree.achats(inv, o));
+  } catch {
+    return false;
+  }
 };
 
 /**
