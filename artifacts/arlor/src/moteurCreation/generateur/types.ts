@@ -107,4 +107,15 @@ export interface ContexteComposition {
   )[];
   /** [lot 2b] 🔥 Mage : le cercle choisi (🧭) ou tiré (🎲) — « ton élément ? ». */
   element?: string;
+  /**
+   * ⭐ [A2-socle] Le personnage ne peut avoir AUCUNE compétence à points de
+   * spiritualité (trait « Inapte à la magie »).
+   *
+   * ⚠️ CALCULÉ PAR L'APPELANT, jamais par le moteur — et surtout jamais
+   * déduit de la RACE ici. La base actuelle refuse sur le pool de traits du
+   * Demi-Orc ; le fix `[INAPTE-MAGIE-MODELE-INSTANCE]` la fera porter sur le
+   * TRAIT CHOISI. Coder « Demi-Orc » dans le moteur serait donc déjà périmé
+   * à la livraison. L'appelant change, le moteur ne bouge jamais.
+   */
+  inapteMagie?: boolean;
 }

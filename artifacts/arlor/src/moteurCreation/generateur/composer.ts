@@ -1,7 +1,9 @@
 import { CatalogueCompetences } from "./catalogue";
 import { CatalogueMagie } from "./catalogueMagie";
 import {
+  archetypeDemandeDesPS,
   comp,
+  estCompetenceAPS,
   type Achat,
   type ContenuClasse,
   type EntreePool,
@@ -281,6 +283,15 @@ export function composerClasse(
   const refus = role.requiert(ctx.inventaire, o);
   if (refus !== null) return { ok: false, raison: refus };
 
+  // ⭐ [A2-socle] Garde « inapte à la magie » (référence v4 §2.2).
+  // Le moteur ne devine RIEN : il lit le booléen que l'appelant a calculé.
+  if (ctx.inapteMagie && archetypeDemandeDesPS(contenu, ctx.roleId, ctx.inventaire, o)) {
+    return {
+      ok: false,
+      raison: `${role.emoji} ${role.titre} demande de la magie, et ton personnage y est inapte : choisis un autre rôle, ou une autre origine.`,
+    };
+  }
+
   // ① Gratuités de classe — possédées d'office, 0 XP.
   const ch: Chantier = {
     etat: { niveaux: new Map() },
@@ -377,6 +388,10 @@ export function composerClasse(
         );
         if (cout !== null) reste -= cout;
       } else {
+        // ⭐ [A2-socle] Un inapte ne reçoit AUCUNE jauge à PS — sans ça
+        // `FILET_GUERRIER` / `FILET_VOLEUR` lui poseraient du
+        // « Développement Spirituel ». L'XP glisse à l'étape suivante.
+        if (ctx.inapteMagie && estCompetenceAPS(e.nom)) continue;
         // Jauge d'étendue : rachats à l'unité tant que budget et plafond.
         const c = cats.competences.exiger(e.nom);
         const unit = cats.competences.coutNiveau(e.nom, 1);
