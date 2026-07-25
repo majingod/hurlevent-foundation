@@ -53,69 +53,129 @@ const coutCouche = (c: Extract<Composition, { ok: true }>, couche: number) =>
   c.achats.filter((a) => a.couche === couche).reduce((s, a) => s + a.coutXp, 0) +
   c.achatsMagie.filter((m) => m.couche === couche).reduce((s, m) => s + m.coutXp, 0);
 
-describe("MAGE — noyaux attestés (§4.4, chiffres MCP s349, politique boucliers au toucher)", () => {
-  it("🔥 Feu : 37 = rampe Cercle 1+2 (15) + Jet de flammes niv 6 (11) + Bouclier de Feu niv 10 au toucher (11)", () => {
-    const c = ok(composer("mBrule", inv(), 60, "Feu"));
-    expect(coutCouche(c, 2)).toBe(37);
-    const noms = c.achats.filter((a) => a.couche === 2).map((a) => `${a.nom}@${a.niveau}:${a.coutXp}`);
-    expect(noms).toContain("Acquisition de Cercle@1:5");
-    expect(noms).toContain("Acquisition de Cercle@2:10");
-    expect(noms).toContain("Acquisition de Sort@1:0");
-    expect(c.achatsMagie.map((m) => `${m.nom}:${m.coutXp}/${m.coutPS}PS`)).toEqual([
-      "Jet de flammes:11/3PS",
-      "Bouclier de Feu:11/3PS",
-    ]);
-  });
+const CERCLES = [
+  "Air", "Altération", "Charmes", "Combat", "Divination", "Eau", "Feu",
+  "Illusion", "Magie Noire", "Magie Pure", "Nécromancie", "Protection", "Terre",
+];
 
-  it("🔥 Magie Pure : 36 (bouclier plafonné 10 minutes → 10) · Nécromancie : 37", () => {
-    const mp = ok(composer("mBrule", inv(), 60, "Magie Pure"));
-    expect(coutCouche(mp, 2)).toBe(36);
-    expect(mp.achatsMagie.find((m) => m.nom === "Bouclier Magique")).toMatchObject({
-      coutXp: 10,
-      config: { duree: "10 Minutes" },
-    });
-    const necro = ok(composer("mBrule", inv(), 60, "Nécromancie"));
-    expect(coutCouche(necro, 2)).toBe(37);
-  });
+/** Le ② d'un rôle, dérivé par le MOTEUR sur chaque cercle. */
+const noyauxParCercle = (roleId: string, inventaire: ReadonlySet<string>) =>
+  CERCLES.map((cercle) => ({
+    cercle,
+    cout: coutCouche(ok(composer(roleId, inventaire, 80, cercle)), 2),
+  }));
 
-  it("🔥 sans élément choisi : refus qui pose LA question", () => {
-    const c = composer("mBrule", inv(), 60);
-    expect(c.ok).toBe(false);
-    if (!c.ok) expect(c.raison).toMatch(/élément/);
-  });
+const bornes = (v: { cout: number }[]) => [
+  Math.min(...v.map((x) => x.cout)),
+  Math.max(...v.map((x) => x.cout)),
+];
 
-  it("🔥 ④ : Dév Spirituel prioritaire (×10) puis plus rien ne rentre — reliquat 3 (pire cas caster)", () => {
-    const c = ok(composer("mBrule", inv(), 60, "Feu"));
-    expect(c.achats.filter((a) => a.nom === "Développement Spirituel")).toHaveLength(10);
-    expect(c.reliquat).toBe(3);
-  });
-
-  it("⚗️ fioles : noyau 16 (Herbes 6 + Alchimie 10) ; ④ Alchimie 2 tire Herbes Rares (23) puis Potions (+4) — reliquat 1", () => {
-    const c = ok(composer("mAlchimiste", inv("fioles")));
-    expect(coutCouche(c, 2)).toBe(16);
-    expect(c.achats.filter((a) => a.nom === "Connaissances des Herbes Rares")).toHaveLength(1);
-    expect(c.achats.some((a) => a.nom === "Identification des Potions" && a.coutXp === 4)).toBe(true);
-    expect(c.reliquat).toBe(1);
-    const sansFioles = composer("mAlchimiste", inv());
-    expect(sansFioles.ok).toBe(false);
-    if (!sansFioles.ok) expect(sansFioles.raison).toMatch(/fioles/);
-  });
-
-  it("ᚱ feuille+crayon : noyau 26 (Runes 12 + Canalisation 6 + Assemblage 8) ; ④ Assemblage 2 (+14)", () => {
-    const c = ok(composer("mRuniste", inv("feuille_crayon")));
-    expect(coutCouche(c, 2)).toBe(26);
-    expect(c.achats.some((a) => a.nom === "Assemblage de Runes" && a.niveau === 2 && a.coutXp === 14)).toBe(true);
-    expect(c.reliquat).toBe(0);
-  });
-
-  it("③ « Un deuxième élément » : jamais un accès sec — le rachat du cercle (5) ET un premier sort (6)", () => {
-    const c = ok(
-      composer("mBrule", inv(), 80, "Feu", [
-        { label: "Un deuxième élément — un cercle + un sort dedans" },
+describe("MAGE — les 5 archétypes mesurés (§4.0.3), ② dérivé sur les 13 cercles", () => {
+  // ⭐ Le cercle étant LIBRE (référence §5.1), un rôle n'a plus UN prix mais
+  // une FOURCHETTE. Les bornes ci-dessous sont dérivées du catalogue, jamais
+  // écrites dans le contenu — elles attestent la table §5 de la référence.
+  it("⚗️ l'alchimiste sort SANS magie : ② = 25, zéro sort, zéro cercle", () => {
+    const c = ok(composer("mAlchimiste", inv("fioles"), 60));
+    expect(coutCouche(c, 2)).toBe(25);
+    expect(c.achatsMagie).toHaveLength(0);
+    expect(c.achats.map((a) => a.nom)).not.toContain("Acquisition de Cercle");
+    const n2 = c.achats.filter((a) => a.couche === 2).map((a) => a.nom);
+    expect(n2).toEqual(
+      expect.arrayContaining([
+        "Alchimie",
+        "Connaissances des Herbes Rares",
+        "Connaissances des Herbes Communes",
       ])
     );
-    expect(coutCouche(c, 3)).toBe(11);
-    expect(c.achats.filter((a) => a.nom === "Acquisition de Cercle")).toHaveLength(3); // niv 1 + niv 2 + le rachat
-    expect(c.achatsMagie.some((m) => m.nom === "Rayon Électrique" && m.config.niveau === 1 && m.coutXp === 6)).toBe(true);
+  });
+
+  it("⚗️ la magie est une OPTION ③, jamais dans son ② (décision Fred s357)", () => {
+    // 4 des 7 alchimistes mesurés n'ont NI cercle NI sort : la magie ne peut
+    // pas vivre dans un noyau défini comme « ≥ 80 % des membres ». Elle est
+    // une entrée ③ que le joueur prend en 🧭 — et que le 🎲 ne voit pas,
+    // faute de cercle tiré. ⚠️ La référence §5 comptait « ⚗️ ② = 33 avec
+    // magie » : c'était un raccourci, pas une mesure. À corriger en v7.
+    const sans = ok(composer("mAlchimiste", inv("fioles"), 60));
+    expect(coutCouche(sans, 2)).toBe(25);
+
+    const avec = ok(
+      composer("mAlchimiste", inv("fioles"), 60, "Charmes", [
+        { label: "Un cercle de magie — et un premier sort dedans" },
+      ])
+    );
+    expect(coutCouche(avec, 2)).toBe(25); // le noyau ne bouge PAS
+    expect(coutCouche(avec, 3)).toBeGreaterThan(0); // l'option est en ③
+    expect(avec.achatsMagie).toHaveLength(1);
+  });
+
+  it("⚗️ son ③ = signature Alchimie 2 (14) + option magie (7 à 11) = 21–25", () => {
+    const sansOption = coutCouche(ok(composer("mAlchimiste", inv("fioles"), 60)), 3);
+    expect(sansOption).toBe(14); // la signature seule — 7/7 membres l'ont
+    const couts = CERCLES.map((cercle) =>
+      coutCouche(
+        ok(
+          composer("mAlchimiste", inv("fioles"), 60, cercle, [
+            { label: "Un cercle de magie — et un premier sort dedans" },
+          ])
+        ),
+        3
+      )
+    );
+    expect([Math.min(...couts), Math.max(...couts)]).toEqual([21, 25]);
+    // L'option seule : 7 XP (accès 5 + sort 2) à 11 XP (accès 5 + sort 6).
+    expect([Math.min(...couts) - 14, Math.max(...couts) - 14]).toEqual([7, 11]);
+  });
+
+  it("🎭 le mage de guilde (3 sorts) : ② = 29–36", () => {
+    expect(bornes(noyauxParCercle("mGuilde", inv()))).toEqual([29, 36]);
+  });
+
+  it("🔮 le canalisateur : ② = 40–44 — le PIRE CAS caster de la table", () => {
+    const v = noyauxParCercle("mCanalisateur", inv());
+    expect(bornes(v)).toEqual([40, 44]);
+    // ②+③ = 55 au pire (③ Canalisation 2 = 11), reste 5 XP sur 60.
+    const c = ok(composer("mCanalisateur", inv(), 60, "Altération"));
+    expect(coutCouche(c, 2) + coutCouche(c, 3)).toBeLessThanOrEqual(55);
+    expect(c.reliquat).toBeGreaterThanOrEqual(0);
+  });
+
+  it("✨ l'enchanteur (3 sorts + bâton) : ② = 21–28", () => {
+    expect(bornes(noyauxParCercle("mEnchanteur", inv("baton_sceptre_baguette")))).toEqual([21, 28]);
+  });
+
+  it("ᚱ le runiste : ② = 43–47", () => {
+    expect(bornes(noyauxParCercle("mRuniste", inv("feuille_crayon")))).toEqual([43, 47]);
+  });
+
+  it("🔥 « Celui qui brûle » n'existe plus — aucun groupe élémentaire mesuré (§4.0.4 ①)", () => {
+    expect(CONTENU_MAGE.roles.map((r) => r.id)).toEqual([
+      "mAlchimiste", "mGuilde", "mCanalisateur", "mEnchanteur", "mRuniste",
+    ]);
+  });
+});
+
+describe("MAGE — les portes de rôle posent LA question manquante", () => {
+  it("🎭 sans cercle : le refus nomme le cercle, pas un jargon", () => {
+    const c = composer("mGuilde", inv(), 60);
+    expect(c.ok).toBe(false);
+    expect(!c.ok && c.raison).toMatch(/cercle/i);
+  });
+
+  it("⚗️ sans fioles : le refus dit où cocher", () => {
+    const c = composer("mAlchimiste", inv(), 60);
+    expect(c.ok).toBe(false);
+    expect(!c.ok && c.raison).toMatch(/fioles/i);
+  });
+
+  it("✨ sans bâton : le refus dit quoi apporter", () => {
+    const c = composer("mEnchanteur", inv(), 60, "Charmes");
+    expect(c.ok).toBe(false);
+    expect(!c.ok && c.raison).toMatch(/bâton|sceptre|baguette/i);
+  });
+
+  it("ᚱ sans feuille ni crayon : le refus le dit AVANT de parler de cercle", () => {
+    const c = composer("mRuniste", inv(), 60);
+    expect(c.ok).toBe(false);
+    expect(!c.ok && c.raison).toMatch(/écrire|feuille|crayon/i);
   });
 });

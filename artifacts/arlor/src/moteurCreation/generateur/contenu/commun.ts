@@ -16,7 +16,15 @@ export type Achat =
   /** +1 rachat au prix du niveau 1 (jauges à choix : cercle, langue, savoir…). */
   | { t: "rachat"; nom: string }
   | { t: "sort"; nom: string; config: ConfigMagie }
-  | { t: "priere"; nom: string; config: ConfigMagie };
+  | { t: "priere"; nom: string; config: ConfigMagie }
+  /**
+   * ⭐ [A2-Mage s358] « le n-ième sort représentatif du CERCLE CHOISI ».
+   * Le cercle est LIBRE pour les 5 rôles Mage (référence §5.1) : le contenu
+   * ne peut donc plus NOMMER un sort. Il déclare un rang, le composeur
+   * résout via le catalogue (dégâts en tête, puis les moins chers) et pose
+   * la config lui-même. Aucun prix, aucun nom de sort dans le contenu.
+   */
+  | { t: "sortAuChoix"; rang: number };
 
 export interface RoleClasse {
   id: string;
@@ -64,6 +72,8 @@ export const comp = (nom: string, niveauCible = 1): Achat => ({
   niveauCible,
 });
 export const rachat = (nom: string): Achat => ({ t: "rachat", nom });
+/** Le n-ième sort représentatif du cercle choisi (rang 1 = le plus signifiant). */
+export const sortAuChoix = (rang: number): Achat => ({ t: "sortAuChoix", rang });
 export const sort = (nom: string, config: ConfigMagie): Achat => ({
   t: "sort",
   nom,

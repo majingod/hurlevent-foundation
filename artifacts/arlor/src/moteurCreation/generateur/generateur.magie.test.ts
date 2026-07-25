@@ -7,10 +7,18 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { COUT_ZONE, DUREES, ZONES_PAR_TYPE } from "@/constants/magie";
+import { filterDureesDisponibles } from "@/utils/calculsMagie";
+
 import { CatalogueCompetences } from "./catalogue";
 import { CatalogueMagie, type PriereModele, type SortModele } from "./catalogueMagie";
-import { dureeBouclier, PAIRES_ELEMENTS } from "./contenu/mage";
-import { dureePlafonnee, NIVEAU_ACQUISITION, prixMagie } from "./coutsMagie";
+import {
+  configGenerateur,
+  dureePlafonnee,
+  NIVEAU_ACQUISITION,
+  ordonnerSortsRepresentatifs,
+  prixMagie,
+} from "./coutsMagie";
 import fxMagie from "./fixtures/magie_generateur.fixture.json";
 import fxPretre from "./fixtures/competences_pretre.fixture.json";
 import type { CompetenceCatalogue } from "./types";
@@ -94,21 +102,95 @@ describe("prixMagie — attestation contre calculer_cout_xp_magie (MCP s349)", (
   });
 });
 
-describe("intégrité des paires d'éléments et des gardes", () => {
-  it("7 éléments, chacun : un sort de dégâts (base 1.00) + un bouclier (base 0.50)", () => {
-    expect(Object.keys(PAIRES_ELEMENTS)).toHaveLength(7);
-    for (const [element, paire] of Object.entries(PAIRES_ELEMENTS)) {
-      const d = cat.exigerSort(paire.degats);
-      const b = cat.exigerSort(paire.bouclier);
-      expect(d.cercle, element).toBe(element);
-      expect(b.cercle, element).toBe(element);
-      expect(d.cout_xp_base).toBe(1);
-      expect(b.cout_xp_base).toBe(0.5);
-      // La durée du contenu = la durée voulue (30 min) plafonnée par le modèle.
-      expect(dureeBouclier(element)).toBe(dureePlafonnee(b, "30 Minutes"));
+describe("configGenerateur — les deux gardes mesurées en s358", () => {
+  // ⚠️ PREUVE PAR LE CONTRAIRE : chaque garde est doublée du test « SANS la
+  // garde, la chose arrive ». Sinon l'assertion serait verte à vide.
+  const sorts = (fxMagie as unknown as { sorts: SortModele[] }).sorts;
+  const degats = sorts.filter((s) => s.type_sort === "dégâts");
+
+  it("un sort de DÉGÂTS n'est JAMAIS « Personnelle » (le lanceur se blesserait)", () => {
+    expect(degats.length).toBe(7);
+    for (const s of degats) {
+      expect(configGenerateur(s).zone, s.nom).not.toBe("Personnelle");
+      expect(configGenerateur(s).portee, s.nom).toBe("10 Pieds");
     }
   });
 
+  it("…et SANS la garde, « Personnelle » serait bien le moins cher — la garde mord", () => {
+    // Le jumeau : les 7 sorts de dégâts ADMETTENT « Personnelle » d'après
+    // leur modèle. Sans le filtre, le moins cher la choisirait toujours.
+    for (const s of degats) {
+      const zonesDuModele = ZONES_PAR_TYPE[s.zone_effet] ?? [s.zone_effet];
+      expect(zonesDuModele, s.nom).toContain("Personnelle");
+    }
+    // Et elle coûte STRICTEMENT moins cher que « 1 Cible » : sans garde, elle gagne.
+    expect(COUT_ZONE["Personnelle"]).toBeLessThan(COUT_ZONE["1 Cible"]);
+  });
+
+  it("une durée « Instantanée » n'est gardée que si le modèle n'offre rien d'autre", () => {
+    const bouclier = cat.exigerSort("Bouclier de Feu");
+    expect(configGenerateur(bouclier).duree).not.toBe("Instantanée");
+    // Un sort réellement instantané la garde — c'est sa seule option.
+    const eclair = cat.exigerSort("Rayon Électrique");
+    expect(configGenerateur(eclair).duree).toBe("Instantanée");
+  });
+
+  it("…et SANS la garde, le bouclier sortirait à durée nulle — la garde mord", () => {
+    // Le jumeau : « Instantanée » EST proposée par le modèle du bouclier, et
+    // c'est la moins chère. Sans le filtre, un Bouclier de Feu durerait 0 s.
+    const bouclier = cat.exigerSort("Bouclier de Feu");
+    const durees = filterDureesDisponibles(bouclier.duree).map((d) => d.label);
+    expect(durees).toContain("Instantanée");
+    expect(durees.length).toBeGreaterThan(1);
+    const cout = (label: string) => DUREES.find((d) => d.label === label)!.cout;
+    expect(cout("Instantanée")).toBeLessThan(cout(durees[1]));
+  });
+});
+
+describe("ordonnerSortsRepresentatifs — le sort de dégâts en tête (arbitrage Fred s358)", () => {
+  it("les 7 cercles à sort de dégâts le mettent en 1er, même s'il n'est pas le moins cher", () => {
+    const attendu: Record<string, string> = {
+      Air: "Rayon Électrique",
+      Eau: "Projectile de glace",
+      Feu: "Jet de flammes",
+      "Magie Noire": "Rayon d'Énergie Négative",
+      "Magie Pure": "Projectile Magique",
+      Nécromancie: "Destruction des Morts-Vivants",
+      Terre: "Rayon d'Acide",
+    };
+    for (const [cercle, nom] of Object.entries(attendu)) {
+      const ordre = ordonnerSortsRepresentatifs(cat.sortsDuCercle(cercle));
+      expect(ordre[0].modele.nom, cercle).toBe(nom);
+    }
+  });
+
+  it("…et SANS la règle, 7 cercles sur 13 auraient mené avec un BOUCLIER", () => {
+    // Le jumeau : c'est exactement le défaut que la règle corrige.
+    const parPrix = (cercle: string) =>
+      [...cat.sortsDuCercle(cercle)]
+        .map((m) => ({ m, c: prixMagie(m, "sort", configGenerateur(m)).coutXp }))
+        .sort((a, b) => a.c - b.c || a.m.nom.localeCompare(b.m.nom, "fr"))[0].m.nom;
+    expect(parPrix("Feu")).toMatch(/^Bouclier/);
+    expect(parPrix("Magie Pure")).toMatch(/^Bouclier/);
+    expect(parPrix("Terre")).toMatch(/^Bouclier/);
+  });
+
+  it("les 6 cercles SANS sort de dégâts gardent leur moins cher — et aucun n'est un bouclier", () => {
+    for (const cercle of ["Altération", "Charmes", "Combat", "Divination", "Illusion", "Protection"]) {
+      const ordre = ordonnerSortsRepresentatifs(cat.sortsDuCercle(cercle));
+      expect(ordre.some((x) => x.modele.type_sort === "dégâts"), cercle).toBe(false);
+      expect(ordre[0].modele.nom, cercle).not.toMatch(/^Bouclier/);
+    }
+  });
+
+  it("l'ordre est STABLE : deux appels donnent la même liste", () => {
+    const a = ordonnerSortsRepresentatifs(cat.sortsDuCercle("Charmes")).map((x) => x.modele.nom);
+    const b = ordonnerSortsRepresentatifs(cat.sortsDuCercle("Charmes")).map((x) => x.modele.nom);
+    expect(a).toEqual(b);
+  });
+});
+
+describe("intégrité du catalogue", () => {
   it("CatalogueMagie refuse un modèle en double", () => {
     expect(
       () => new CatalogueMagie({ sorts: [MAGIE.sorts[0], MAGIE.sorts[0]], prieres: [] })
