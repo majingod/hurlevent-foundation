@@ -1,437 +1,612 @@
 {
- "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-21 (s349) — 20 compétences du contenu Prêtre, fermeture récursive des prérequis ; homonymes filtrés categorie='pretre' (Assemblage de Runes, Développement Spirituel, Développement Spirituel Supérieur, Canalisation). NE PAS ÉDITER À LA MAIN : recapturer via MCP (SELECT complet documenté en tête de generateur.pretre.test.ts).",
- "competences": [
-  {
-   "id": "069a0cd4-a368-4134-96ff-467c6a98b2ad",
-   "nom": "Acquisition de Domaine",
-   "niveaux": [
+  "_provenance": "MCP execute_sql prod dezocltwpuhbvpxwcbdy, 2026-07-25 (s359) — 20 -> 28 competences : les seeds du contenu Pretre PLUS celles des 4 archetypes mesures (CONCEPTION 4.0.3), fermeture RECURSIVE des prerequis ; homonymes filtres categorie='pretre' (Assemblage de Runes, Developpement Spirituel, Developpement Spirituel Superieur, Canalisation). +8 : Canalisation/pretre (noyau du missionnaire), Revenu (noyau du pretre de rite), Estimation, Langue supplementaire, Chirurgien, Herbalisme, Connaissances des Herbes Communes, Connaissances des Herbes Rares (tiree par la fermeture). ATTESTATION s359 : md5 champ-a-champ (tri binaire, Gotcha C62) = 85ea3a752b4d067b5563ef9c52e16cc6, identique en prod et dans ce fichier ; les 20 anciennes presentes, 0 perdue et 0 ecart. NE PAS EDITER A LA MAIN : recapturer via MCP (SELECT complet documente en tete de generateur.pretre.test.ts).",
+  "competences": [
     {
-     "niveau": 1,
-     "cout_xp": 5
+      "id": "069a0cd4-a368-4134-96ff-467c6a98b2ad",
+      "nom": "Acquisition de Domaine",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 5
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 10
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 15
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Linguistique et Mathématique"
+          }
+        ]
+      },
+      "type_achat": "multiple_avec_choix_par_niveau",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 10
+      "id": "61eb2c1f-522e-468c-a4ad-f45261e683cc",
+      "nom": "Acquisition de Prière",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 0
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Acquisition de Domaine"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 15
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Linguistique et Mathématique"
-     }
-    ]
-   },
-   "type_achat": "multiple_avec_choix_par_niveau",
-   "classes_requises": null
-  },
-  {
-   "id": "61eb2c1f-522e-468c-a4ad-f45261e683cc",
-   "nom": "Acquisition de Prière",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 0
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Acquisition de Domaine"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "b5a7460c-1259-40ca-83cd-098d00d9946d",
-   "nom": "Bénédiction",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 4
+      "id": "b5a7460c-1259-40ca-83cd-098d00d9946d",
+      "nom": "Bénédiction",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 4
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 8
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Religions"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 8
+      "id": "4250ebd9-a93d-4611-94d5-feba449407fc",
+      "nom": "Canalisation",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 12
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 14
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Religions"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "c821b270-d314-4092-9899-2fd80925e873",
-   "nom": "Connaissances des Religions",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 4
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "multiple_choix_distinct",
-   "classes_requises": null
-  },
-  {
-   "id": "113400c0-9c8b-4b69-8544-55bf96fc3cbe",
-   "nom": "Consécration",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 7
+      "id": "9f0c30b3-3440-47d3-a965-68859acc6417",
+      "nom": "Chirurgien",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 20
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 2,
+            "competence_nom": "Diagnostic"
+          },
+          {
+            "niveau_min": 2,
+            "competence_nom": "Premiers Soins"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 10
+      "id": "c601901b-2a26-46e0-a42e-2e3077fe99e2",
+      "nom": "Connaissances des Herbes Communes",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 16
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "0db39587-68ad-4025-afe4-bbcbff67ad8a",
-   "nom": "Développement Spirituel",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 2
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "multiple_sans_choix",
-   "classes_requises": null
-  },
-  {
-   "id": "868141a8-ecb5-4e6b-9ccc-09a0bebd9a0b",
-   "nom": "Développement Spirituel Supérieur",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 4
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "multiple_sans_choix",
-   "classes_requises": [
-    "pretre"
-   ]
-  },
-  {
-   "id": "c25950db-72a5-4671-a231-8c60942022cc",
-   "nom": "Diagnostic",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 6
+      "id": "72a3db25-ed40-49c1-96f0-ec9f60f62fa3",
+      "nom": "Connaissances des Herbes Rares",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 9
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Herbes Communes"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 9
+      "id": "c821b270-d314-4092-9899-2fd80925e873",
+      "nom": "Connaissances des Religions",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 4
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_choix_distinct",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 14
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "847ce9b2-a3be-4600-a2b0-31e932e45dd0",
-   "nom": "Formation Théologique",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 10
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Religions"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": [
-    "pretre"
-   ]
-  },
-  {
-   "id": "212f9ea9-2a25-4943-a114-384e8801b275",
-   "nom": "Grande Messe",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 8
+      "id": "113400c0-9c8b-4b69-8544-55bf96fc3cbe",
+      "nom": "Consécration",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 7
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 10
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 16
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 12
+      "id": "c25950db-72a5-4671-a231-8c60942022cc",
+      "nom": "Diagnostic",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 9
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 17
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Religions"
-     }
-    ],
-    "2": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Religions"
-     }
-    ],
-    "3": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Connaissances des Religions"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "c9d9a7b0-145e-48f6-b6fb-0d6811480221",
-   "nom": "Linguistique et Mathématique",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 4
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "05529f8e-0743-4573-bbb9-bad8358e9bd8",
-   "nom": "Maniement du bouclier moyen",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 10
-    }
-   ],
-   "categorie": "guerrier",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": [
-    "guerrier",
-    "pretre"
-   ]
-  },
-  {
-   "id": "cc082d1a-72ed-47fb-b0c2-2e400e5b717a",
-   "nom": "Maniement du petit bouclier",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 8
-    }
-   ],
-   "categorie": "guerrier",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "087b2e9c-3995-496f-855b-5851de176c98",
-   "nom": "Méditation",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 10
+      "id": "0db39587-68ad-4025-afe4-bbcbff67ad8a",
+      "nom": "Développement Spirituel",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 2
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_sans_choix",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 16
+      "id": "868141a8-ecb5-4e6b-9ccc-09a0bebd9a0b",
+      "nom": "Développement Spirituel Supérieur",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 4
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_sans_choix",
+      "classes_requises": [
+        "pretre"
+      ]
     },
     {
-     "niveau": 3,
-     "cout_xp": 26
-    }
-   ],
-   "categorie": "generale",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "1e9d8d12-0ead-4724-a4c8-3a92d87e8426",
-   "nom": "Port d'armure intermédiaire",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 12
-    }
-   ],
-   "categorie": "guerrier",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": [
-    "guerrier",
-    "pretre"
-   ]
-  },
-  {
-   "id": "c5f9869b-b824-4368-aa8c-4b3b0d149eb9",
-   "nom": "Port d'armure légère",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 7
-    }
-   ],
-   "categorie": "guerrier",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "fe5d2c38-89c9-4af1-bbc7-343497e7969c",
-   "nom": "Premiers Soins",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 6
+      "id": "e7f5cff9-cb41-4fd3-abbc-6be47e7d1436",
+      "nom": "Estimation",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 8
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 10
+      "id": "847ce9b2-a3be-4600-a2b0-31e932e45dd0",
+      "nom": "Formation Théologique",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 10
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Religions"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": [
+        "pretre"
+      ]
     },
     {
-     "niveau": 3,
-     "cout_xp": 14
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "940f9586-d731-499c-8bdd-41bafb7149b6",
-   "nom": "Résistance à la magie",
-   "niveaux": [
-    {
-     "niveau": 1,
-     "cout_xp": 11
+      "id": "212f9ea9-2a25-4943-a114-384e8801b275",
+      "nom": "Grande Messe",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 8
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 12
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 17
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Religions"
+          }
+        ],
+        "2": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Religions"
+          }
+        ],
+        "3": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Religions"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 2,
-     "cout_xp": 14
+      "id": "e022728b-3a77-4964-9beb-6b95fe75a0b8",
+      "nom": "Herbalisme",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 7
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 16
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Herbes Communes"
+          }
+        ],
+        "2": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Connaissances des Herbes Rares"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": null
     },
     {
-     "niveau": 3,
-     "cout_xp": 18
-    }
-   ],
-   "categorie": "guerrier",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": null
-  },
-  {
-   "id": "17cc577e-6ea5-4def-850b-c7f6112ab8fb",
-   "nom": "Réveil Expéditif",
-   "niveaux": [
+      "id": "cc02fb93-3204-4c81-a0d1-3b1701db9ae9",
+      "nom": "Langue supplémentaire",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 5
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "multiple_choix_distinct",
+      "classes_requises": null
+    },
     {
-     "niveau": 1,
-     "cout_xp": 4
-    }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": {
-    "1": [
-     {
-      "niveau_min": 1,
-      "competence_nom": "Premiers Soins"
-     }
-    ]
-   },
-   "type_achat": "simple",
-   "classes_requises": [
-    "pretre"
-   ]
-  },
-  {
-   "id": "af0725d0-61e9-4b1c-9d44-d4c8c31bf42d",
-   "nom": "Rêves",
-   "niveaux": [
+      "id": "c9d9a7b0-145e-48f6-b6fb-0d6811480221",
+      "nom": "Linguistique et Mathématique",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 4
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
     {
-     "niveau": 1,
-     "cout_xp": 9
+      "id": "05529f8e-0743-4573-bbb9-bad8358e9bd8",
+      "nom": "Maniement du bouclier moyen",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 10
+        }
+      ],
+      "categorie": "guerrier",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": [
+        "guerrier",
+        "pretre"
+      ]
+    },
+    {
+      "id": "cc082d1a-72ed-47fb-b0c2-2e400e5b717a",
+      "nom": "Maniement du petit bouclier",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 8
+        }
+      ],
+      "categorie": "guerrier",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "087b2e9c-3995-496f-855b-5851de176c98",
+      "nom": "Méditation",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 10
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 16
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 26
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "1e9d8d12-0ead-4724-a4c8-3a92d87e8426",
+      "nom": "Port d'armure intermédiaire",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 12
+        }
+      ],
+      "categorie": "guerrier",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": [
+        "guerrier",
+        "pretre"
+      ]
+    },
+    {
+      "id": "c5f9869b-b824-4368-aa8c-4b3b0d149eb9",
+      "nom": "Port d'armure légère",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 7
+        }
+      ],
+      "categorie": "guerrier",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "fe5d2c38-89c9-4af1-bbc7-343497e7969c",
+      "nom": "Premiers Soins",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 10
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 14
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "fe42b034-42a3-4f98-8f4d-2c3d05b0da59",
+      "nom": "Revenu",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 6
+        }
+      ],
+      "categorie": "generale",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "940f9586-d731-499c-8bdd-41bafb7149b6",
+      "nom": "Résistance à la magie",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 11
+        },
+        {
+          "niveau": 2,
+          "cout_xp": 14
+        },
+        {
+          "niveau": 3,
+          "cout_xp": 18
+        }
+      ],
+      "categorie": "guerrier",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": null
+    },
+    {
+      "id": "17cc577e-6ea5-4def-850b-c7f6112ab8fb",
+      "nom": "Réveil Expéditif",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 4
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": {
+        "1": [
+          {
+            "niveau_min": 1,
+            "competence_nom": "Premiers Soins"
+          }
+        ]
+      },
+      "type_achat": "simple",
+      "classes_requises": [
+        "pretre"
+      ]
+    },
+    {
+      "id": "af0725d0-61e9-4b1c-9d44-d4c8c31bf42d",
+      "nom": "Rêves",
+      "niveaux": [
+        {
+          "niveau": 1,
+          "cout_xp": 9
+        }
+      ],
+      "categorie": "pretre",
+      "est_actif": true,
+      "prerequis": null,
+      "type_achat": "simple",
+      "classes_requises": [
+        "pretre"
+      ]
     }
-   ],
-   "categorie": "pretre",
-   "est_actif": true,
-   "prerequis": null,
-   "type_achat": "simple",
-   "classes_requises": [
-    "pretre"
-   ]
-  }
- ]
+  ]
 }
