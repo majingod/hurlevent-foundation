@@ -9,7 +9,7 @@ import {
 } from "./composer";
 import { type ContenuClasse } from "./contenu/commun";
 import { CONTENU_GUERRIER } from "./contenu/guerrier";
-import { CONTENU_MAGE, ELEMENTS } from "./contenu/mage";
+import { CONTENU_MAGE } from "./contenu/mage";
 import { CONTENU_PRETRE } from "./contenu/pretre";
 import { CONTENU_VOLEUR } from "./contenu/voleur";
 import fxGuerrier from "./fixtures/competences_guerrier.fixture.json";
@@ -50,6 +50,13 @@ interface Cas {
   element?: string;
 }
 
+/** Les 13 cercles de la prod — le domaine complet depuis que le cercle est
+ *  libre (référence §5.1 ①). */
+const CERCLES = [
+  "Air", "Altération", "Charmes", "Combat", "Divination", "Eau", "Feu",
+  "Illusion", "Magie Noire", "Magie Pure", "Nécromancie", "Protection", "Terre",
+];
+
 const CAS: Cas[] = [
   { classe: "guerrier", roleId: "gForgeron", inv: [] },
   { classe: "guerrier", roleId: "gForgeron", inv: ["contondante_moyenne", "ecu", "armure_cuir", "bandages"] },
@@ -69,13 +76,21 @@ const CAS: Cas[] = [
   { classe: "voleur", roleId: "vPremier", inv: ["contondante_longue", "bourse", "lame_courte", "fioles", "arme_distance"] },
   { classe: "voleur", roleId: "vEclaireur", inv: ["bandages"] },
   { classe: "voleur", roleId: "vEclaireur", inv: ["bandages", "bourse", "contondante_courte", "arme_distance"] },
+  // ⚗️ l'alchimiste est le SEUL rôle Mage sans cercle obligatoire.
   { classe: "mage", roleId: "mAlchimiste", inv: ["fioles"] },
   { classe: "mage", roleId: "mAlchimiste", inv: ["fioles", "baton_sceptre_baguette", "feuille_crayon"] },
-  { classe: "mage", roleId: "mRuniste", inv: ["feuille_crayon"] },
-  { classe: "mage", roleId: "mRuniste", inv: ["feuille_crayon", "fioles", "baton_sceptre_baguette"] },
-  ...ELEMENTS.flatMap<Cas>((element) => [
-    { classe: "mage", roleId: "mBrule", inv: [], element },
-    { classe: "mage", roleId: "mBrule", inv: ["baton_sceptre_baguette", "feuille_crayon", "fioles"], element },
+  // ⭐ [s358] Les 4 autres rôles Mage × les 13 CERCLES : le cercle est libre,
+  // donc le domaine à couvrir n'est plus « 7 éléments » mais tout le catalogue.
+  // Inventaire minimal ET riche, pour que ③/④ aient de quoi mordre.
+  ...CERCLES.flatMap<Cas>((element) => [
+    { classe: "mage", roleId: "mGuilde", inv: [], element },
+    { classe: "mage", roleId: "mGuilde", inv: ["baton_sceptre_baguette", "feuille_crayon", "fioles"], element },
+    { classe: "mage", roleId: "mCanalisateur", inv: [], element },
+    { classe: "mage", roleId: "mCanalisateur", inv: ["baton_sceptre_baguette", "feuille_crayon", "fioles"], element },
+    { classe: "mage", roleId: "mEnchanteur", inv: ["baton_sceptre_baguette"], element },
+    { classe: "mage", roleId: "mEnchanteur", inv: ["baton_sceptre_baguette", "feuille_crayon", "fioles"], element },
+    { classe: "mage", roleId: "mRuniste", inv: ["feuille_crayon"], element },
+    { classe: "mage", roleId: "mRuniste", inv: ["feuille_crayon", "fioles", "baton_sceptre_baguette"], element },
   ]),
 ];
 
@@ -92,7 +107,7 @@ const coutCouche = (c: Extract<Composition, { ok: true }>, couche: number) =>
   c.achatsMagie.filter((m) => m.couche === couche).reduce((s, m) => s + m.coutXp, 0);
 
 describe("simulation — tout le domaine", () => {
-  it("144 compositions : ok partout, 0 ≤ reliquat ≤ 3, comptes exacts, aucun palier en double", () => {
+  it("496 compositions : ok partout, 0 ≤ reliquat ≤ 3, comptes exacts, aucun palier en double", () => {
     let nb = 0;
     const pire = { reliquat: -1, desc: "" };
     for (const [idx, cas] of CAS.entries()) {
@@ -153,16 +168,19 @@ describe("simulation — tout le domaine", () => {
         }
       }
     }
-    expect(nb).toBe(144);
+    expect(nb).toBe(496);
     // ⭐ ATTESTATION du pire cas (re-mesuré s353, pas promis).
     // Depuis que les filets martiaux se terminent sur `Développement
     // Spirituel` à 2 XP (plafonds mesurés en prod, arbitrage Fred s353), le
     // pire cas n'est PLUS un martial : il a basculé sur un CASTER, dont le
     // contenu n'est pas touché par ce lot. Les 24 compositions martiales
     // tiennent maintenant sous 3 XP de reliquat.
+    // ⭐ ATTESTATION du pire cas (re-mesuré s358 sur les 13 cercles, pas
+    // promis). Le domaine Mage est passé de 7 éléments à 13 cercles : 496
+    // compositions au lieu de 144, et le reliquat tient toujours sous 3 XP.
     expect(pire).toEqual({
       reliquat: 3,
-      desc: "mage/mAlchimiste inv=[fioles] budget=80 ③tiré",
+      desc: "mage/mEnchanteur(Air) inv=[baton_sceptre_baguette,feuille_crayon,fioles] budget=80 ③tiré",
     });
 
     // Le reliquat MARTIAL, mesuré à part : c'est lui que ce lot améliore.

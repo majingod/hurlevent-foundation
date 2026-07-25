@@ -13,7 +13,12 @@ import {
   type OptionsRole,
 } from "./contenu/commun";
 import { CONTENU_GUERRIER } from "./contenu/guerrier";
-import { NIVEAU_ACQUISITION, prixMagie, RAMPE } from "./coutsMagie";
+import {
+  NIVEAU_ACQUISITION,
+  ordonnerSortsRepresentatifs,
+  prixMagie,
+  RAMPE,
+} from "./coutsMagie";
 import { cheminComplet, type EtatPossession } from "./couts";
 import type {
   AchatMagiePlanifie,
@@ -45,7 +50,8 @@ const clefComp = (nom: string, niveau: number) => `${nom}@${niveau}`;
 const clefMagie = (t: string, nom: string, c: ConfigMagie) =>
   `${t}:${nom}@${c.niveau}|${c.zone}|${c.portee}|${c.duree}`;
 
-const labelAchat = (a: Achat) => a.nom;
+const labelAchat = (a: Achat) =>
+  a.t === "sortAuChoix" ? `sort ${a.rang} du cercle` : a.nom;
 
 /** L'état de travail d'une composition (cloné pour le tout-ou-rien). */
 interface Chantier {
@@ -53,6 +59,9 @@ interface Chantier {
   achats: AchatPlanifie[];
   achatsMagie: AchatMagiePlanifie[];
   deja: Set<string>;
+  /** ⭐ [A2-Mage s358] Le cercle choisi/tiré — résout les achats
+   *  `sortAuChoix` du contenu. Absent pour les classes sans cercle. */
+  cercle?: string;
 }
 
 const cloner = (ch: Chantier): Chantier => ({
@@ -60,6 +69,7 @@ const cloner = (ch: Chantier): Chantier => ({
   achats: [...ch.achats],
   achatsMagie: [...ch.achatsMagie],
   deja: new Set(ch.deja),
+  cercle: ch.cercle,
 });
 
 const adopter = (ch: Chantier, src: Chantier) => {
@@ -205,6 +215,26 @@ function planifierMagie(
   return totalRampe + coutXp - rembourse;
 }
 
+/**
+ * ⭐ [A2-Mage s358] « le n-ième sort représentatif du cercle » → un achat de
+ * sort concret. Rend `null` (et non une exception) quand le cercle n'est pas
+ * choisi ou qu'il ne porte pas assez de sorts : une entrée non résolue est
+ * SAUTÉE, jamais bloquante — même politique que les autres achats qui ne
+ * rentrent pas dans le budget.
+ */
+function resoudreSortAuChoix(
+  cats: Catalogues,
+  cercle: string | undefined,
+  rang: number
+): Extract<Achat, { t: "sort" }> | null {
+  if (!cercle) return null;
+  const ordonnes = ordonnerSortsRepresentatifs(cats.magie.sortsDuCercle(cercle));
+  const choisi = ordonnes[rang - 1];
+  return choisi === undefined
+    ? null
+    : { t: "sort", nom: choisi.modele.nom, config: choisi.config };
+}
+
 function planifierAchat(
   cats: Catalogues,
   classe: ContenuClasse["classe"],
@@ -219,6 +249,14 @@ function planifierAchat(
       return planifierComp(cats, classe, ch, a, couche, motif, budgetRestant);
     case "rachat":
       return planifierRachat(cats, ch, a.nom, couche, motif, budgetRestant);
+    case "sortAuChoix": {
+      // Le contenu a demandé « le n-ième sort représentatif du cercle » :
+      // le catalogue tranche, jamais le contenu (référence §5.1 ③).
+      const resolu = resoudreSortAuChoix(cats, ch.cercle, a.rang);
+      return resolu === null
+        ? null
+        : planifierMagie(cats, classe, ch, resolu, couche, motif, budgetRestant);
+    }
     default:
       return planifierMagie(cats, classe, ch, a, couche, motif, budgetRestant);
   }
@@ -300,6 +338,7 @@ export function composerClasse(
     achats: [],
     achatsMagie: [],
     deja: new Set(),
+    cercle: ctx.element,
   };
   const gratuites = contenu.gratuites.map((nom) => {
     const c = cats.competences.exiger(nom);
@@ -470,6 +509,7 @@ export function tirerEssentielsClasse(
     achats: [],
     achatsMagie: [],
     deja: new Set(),
+    cercle: ctx.element,
   };
   for (const nom of contenu.gratuites) ch.etat.niveaux.set(nom, 1);
   for (const a of role.noyau(ctx.inventaire, o)) {
@@ -582,6 +622,10 @@ export function tirerEssentiels(
       (x) => x.label === label
     )!;
     const a = entree.achats(ctx.inventaire, {})[0];
+    if (a.t === "sortAuChoix") {
+      // Compat API Guerrier : le pool guerrier ne porte aucun `sortAuChoix`.
+      return { nom: labelAchat(a), niveauCible: 1 };
+    }
     return a.t === "comp"
       ? { nom: a.nom, niveauCible: a.niveauCible }
       : { nom: a.nom, niveauCible: 1 };
