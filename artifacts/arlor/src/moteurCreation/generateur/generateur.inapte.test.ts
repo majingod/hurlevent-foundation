@@ -364,16 +364,20 @@ describe("③b pool — écarté du TIRAGE, jamais motif de refus", () => {
   });
 
   it("un essentiel à PS imposé en 🧭 est écarté avec une phrase, pas un plantage", () => {
+    // ⭐ [R1a s361] Le contexte de SONDE doit être celui de la COMPOSITION,
+    // `element2` compris : sinon on sélectionne une entrée dont la condition
+    // ne tient pas, et elle est écartée pour « pas proposable » au lieu de
+    // « inapte » — le test passerait à côté de ce qu'il vérifie.
+    const o = { element: "Feu", element2: "Air" };
     const pool = Object.values(CONTENU_MAGE.pool3).flat();
-    const coupable = pool.find((e) =>
-      entreeExigeDesPS(e, INV_MAGE, { element: "Feu" })
-    )!;
+    const coupable = pool.find((e) => entreeExigeDesPS(e, INV_MAGE, o))!;
     const c = composerClasse(catsMage, CONTENU_MAGE, {
       classe: "mage",
       roleId: "mAlchimiste",
       inventaire: INV_MAGE,
       budget: 80,
       element: "Feu",
+      element2: "Air",
       inapteMagie: true,
       essentiels: [{ label: coupable.label }],
     });

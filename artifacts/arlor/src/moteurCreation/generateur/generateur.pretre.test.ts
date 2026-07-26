@@ -80,10 +80,14 @@ describe("PRÊTRE — les 4 archétypes mesurés (§4.0.3), ② dérivé du cata
   // ⚠️ FOURCHETTE, PAS UN POINT, pour ⛪ et ✝️ : leur domaine est LIBRE, donc
   // le prix dépend de la prière représentative du domaine choisi. Même
   // mécanique que le cercle libre côté mage (s358). Bornes CALCULÉES ici.
-  it("⛪ le prêtre de rite : ② = 26–33 sur les 8 domaines, ③ signature = 18", () => {
+  it("⛪ le prêtre de rite : ② = 26–33 sur les 8 domaines, ③ signature = 8", () => {
     expect(bornes2("pRite")).toEqual([26, 33]);
     const c = ok(composer("pRite", "Bénédiction"));
-    expect(coutCouche(c, 3)).toBe(18); // Acquisition de Domaine 2 (10) + Bénédiction 2 (8)
+    // ⭐ [R1a s361] 18 -> 8 : « Acquisition de Domaine 2 » (10 XP) RETIRÉE.
+    // C'était un PLAFOND SEC — l'accès 1 ouvre déjà les prières de niveau
+    // ≤ 5, et le générateur n'achète que du niveau 1. Reste Bénédiction 2,
+    // que la mesure soutient (50 % des créations contre 27 % des vétérans).
+    expect(coutCouche(c, 3)).toBe(8); // Bénédiction 2
     expect(c.achats.filter((a) => a.couche === 2).map((a) => a.nom)).toEqual(
       expect.arrayContaining(["Méditation", "Développement Spirituel", "Revenu"])
     );
@@ -101,7 +105,11 @@ describe("PRÊTRE — les 4 archétypes mesurés (§4.0.3), ② dérivé du cata
   it("🕊️ le missionnaire IMPOSE la Guerre : ② = 22, trois prières, zéro armure", () => {
     const c = ok(composer("pMissionnaire"));
     expect(coutCouche(c, 2)).toBe(22);
-    expect(coutCouche(c, 3)).toBe(10); // Acquisition de Domaine 2
+    // ⭐ [R1a s361] 10 -> 0 : même plafond sec retiré. 🕊️ n'a plus de
+    // signature ③a, comme ✨ et ᚱ. Sa signature MESURÉE est « une prière de
+    // Guerre plus puissante » — inécrivable tant que la fixture ne porte que
+    // du niveau 1. Dette [VIS8-GROSSE-PRIERE-SIGNATURE].
+    expect(coutCouche(c, 3)).toBe(0);
     expect(c.achatsMagie.filter((m) => m.couche === 2)).toHaveLength(3);
     // « par la prière, pas par l'armure » — même avec tout l'attirail coché.
     const arme = ok(composer("pMissionnaire", undefined, 80, ["armure_maille", "ecu"]));

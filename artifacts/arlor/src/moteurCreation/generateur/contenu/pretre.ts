@@ -2,6 +2,7 @@ import {
   comp,
   FILET_CASTER,
   priereAuChoix,
+  rachat,
   type ContenuClasse,
   type EntreePool,
   type RoleClasse,
@@ -136,11 +137,18 @@ const ROLES_PRETRE: readonly RoleClasse[] = [
  */
 const SIGNATURE3_PRETRE: Record<string, EntreePool[]> = {
   pRite: [
-    {
-      label: "Acquisition de Domaine 2",
-      note: "Ton domaine s'ouvre aux prières plus hautes.",
-      achats: () => [comp("Acquisition de Domaine", 2)],
-    },
+    /* ⛔ « Acquisition de Domaine 2 » RETIRÉ en s361 — PLAFOND SEC.
+     * Le manuel : l'accès N ouvre les prières de niveau ≤ 5N. L'accès 1
+     * couvre donc déjà tout ce que le générateur achète (niveau 1) ; le
+     * niveau 2 n'ouvre que le 6-10, que le personnage n'a pas.
+     * ⭐ MESURE (5/5, population de création 60-135 XP) : TOUS les prêtres
+     * qui ont l'accès 2 possèdent une prière de niveau 6+ — Muir-Natha (60
+     * XP, prière niv 10), Éléonore (85, niv 6), Zoé (95, niv 10), Dahlia
+     * (105, niv 10), Simon De Foix (110, niv 6). ZÉRO plafond sec.
+     * Le patron réel est « une GROSSE PRIÈRE, et l'accès suit » — et la
+     * rampe de `planifierMagie` achète déjà l'accès toute seule.
+     * ⚠️ Ne pas le réécrire ici : la fixture ne porte que du niveau 1.
+     * Voir dette [VIS8-GROSSE-PRIERE-SIGNATURE]. */
     {
       label: "Bénédiction 2",
       note: "Ta bénédiction gagne un palier.",
@@ -154,13 +162,12 @@ const SIGNATURE3_PRETRE: Record<string, EntreePool[]> = {
       achats: () => [comp("Premiers Soins", 2)],
     },
   ],
-  pMissionnaire: [
-    {
-      label: "Acquisition de Domaine 2",
-      note: "La Guerre s'ouvre aux prières plus hautes.",
-      achats: () => [comp("Acquisition de Domaine", 2)],
-    },
-  ],
+  /* ⛔ pMissionnaire — « Acquisition de Domaine 2 » RETIRÉ en s361, MÊME
+   * MOTIF (plafond sec, cf. pRite ci-dessus).
+   * ⚠️ 🕊️ n'a donc PLUS DE SIGNATURE — comme ✨ et ᚱ, dont le ③ est
+   * entièrement tiré. C'est assumé et non silencieux : sa signature mesurée
+   * est « une prière de Guerre plus puissante », inécrivable tant que la
+   * fixture ne porte que du niveau 1. Dette [VIS8-GROSSE-PRIERE-SIGNATURE]. */
   pConsecrateur: [
     {
       label: "Consécration 2",
@@ -223,6 +230,22 @@ const POOL3_PRETRE: Record<string, EntreePool[]> = {
       label: "Une prière de plus",
       note: "Élargir ton répertoire dans ton domaine.",
       achats: () => [priereAuChoix(2)],
+    },
+    {
+      label: "Un SECOND domaine de prière",
+      note: "Mesuré 2/2 chez 🕊️ et 📿 : Aymon (Guerre+Ordre), Virgile (4 domaines), Kaelen (Bénédiction+Nécromancie), Orion (Bénédiction+Nature).",
+      // ⭐ [R1a s361] Jumeau du second cercle. C'est `element2` — donc le
+      // RÉSOLVEUR — qui porte la décision Fred « proposable 🧭, jamais
+      // tirée 🎲 » pour ⛪ (1/4) et ✝️ (0/4) : 🎲 ne pose `element2` que
+      // pour 🕊️ et 📿. Le contenu, lui, ne connaît pas le rôle.
+      // ⚠️ Le domaine est BORNÉ PAR LA RELIGION (§5.2 ①) : c'est au
+      // résolveur de ne proposer que des domaines non proscrits.
+      // ⚠️ JAMAIS UN ACCÈS SEC (décision 16) : le domaine ET sa prière.
+      achats: (_inv, o) => [
+        rachat("Acquisition de Domaine", o.element2),
+        priereAuChoix(1, 2),
+      ],
+      condition: (_inv, o) => !!o.element2 && o.element2 !== o.element,
     },
     {
       label: "Méditation",

@@ -14,12 +14,28 @@ export interface OptionsRole {
    * celui-là qui arrive ici — le composeur a déjà tranché.
    */
   element?: string;
+  /**
+   * ⭐ [R1a s361] Le SECOND cercle / SECOND domaine.
+   *
+   * Mesuré 2/2 chez ✨ et ᚱ (cercles) et chez 🕊️ et 📿 (domaines) ; 1/4
+   * chez ⛪ et 0/4 chez ✝️.
+   *
+   * ⚠️⚠️ C'EST CE CHAMP QUI PORTE LA DÉCISION « PROPOSABLE 🧭, JAMAIS
+   * TIRÉE 🎲 » (arbitrage Fred s361) — pas un drapeau sur l'entrée de pool.
+   * Les pools ③ sont partagés par THÈME, pas par rôle : une entrée ne peut
+   * pas se restreindre elle-même à ✨ et ᚱ. C'est donc le RÉSOLVEUR qui
+   * tranche, et le contenu ne fait que déclarer l'entrée :
+   *   · 🎲 → le résolveur ne pose `element2` que pour ✨ ᚱ 🕊️ 📿
+   *   · 🧭 → le joueur peut le poser pour n'importe quel rôle, ⛪ et ✝️
+   *     compris. Il a le droit de vouloir ce que personne n'a encore fait.
+   */
+  element2?: string;
 }
 
 export type Achat =
-  | { t: "comp"; nom: string; niveauCible: number }
+  | { t: "comp"; nom: string; niveauCible: number; choix?: string }
   /** +1 rachat au prix du niveau 1 (jauges à choix : cercle, langue, savoir…). */
-  | { t: "rachat"; nom: string }
+  | { t: "rachat"; nom: string; choix?: string }
   | { t: "sort"; nom: string; config: ConfigMagie }
   | { t: "priere"; nom: string; config: ConfigMagie }
   /**
@@ -29,7 +45,7 @@ export type Achat =
    * résout via le catalogue (dégâts en tête, puis les moins chers) et pose
    * la config lui-même. Aucun prix, aucun nom de sort dans le contenu.
    */
-  | { t: "sortAuChoix"; rang: number }
+  | { t: "sortAuChoix"; rang: number; slot?: 1 | 2 }
   /**
    * ⭐ [A2-Prêtre s360] « la n-ième prière représentative du DOMAINE ».
    * Jumeau de `sortAuChoix`, MAIS le domaine n'est pas libre comme le cercle :
@@ -37,7 +53,7 @@ export type Achat =
    * (référence §5.2). L'ordre de représentativité est propre au prêtre —
    * la plus PORTÉE en prod, jamais la moins chère (référence §5.2 ⑤).
    */
-  | { t: "priereAuChoix"; rang: number };
+  | { t: "priereAuChoix"; rang: number; slot?: 1 | 2 };
 
 export interface RoleClasse {
   id: string;
@@ -91,18 +107,40 @@ export interface ContenuClasse {
   filet: EtapePond[];
 }
 
-export const comp = (nom: string, niveauCible = 1): Achat => ({
+export const comp = (
+  nom: string,
+  niveauCible = 1,
+  choix?: string
+): Achat => ({
   t: "comp",
   nom,
   niveauCible,
+  choix,
 });
-export const rachat = (nom: string): Achat => ({ t: "rachat", nom });
+/**
+ * ⭐ [R1a s361] `choix` = le `choix_achat` de la base, OBLIGATOIRE pour les
+ * compétences `multiple_avec_choix_par_niveau` (Acquisition de Cercle et de
+ * Domaine). Mesure prod : 122 + 56 lignes, **zéro** sans choix. Un rachat
+ * sans nom produirait une ligne comme il n'en existe aucune.
+ */
+export const rachat = (nom: string, choix?: string): Achat => ({
+  t: "rachat",
+  nom,
+  choix,
+});
 /** Le n-ième sort représentatif du cercle choisi (rang 1 = le plus signifiant). */
-export const sortAuChoix = (rang: number): Achat => ({ t: "sortAuChoix", rang });
+/** `slot: 2` = le sort va dans le SECOND cercle (`o.element2`). */
+export const sortAuChoix = (rang: number, slot?: 1 | 2): Achat => ({
+  t: "sortAuChoix",
+  rang,
+  slot,
+});
 /** La n-ième prière représentative du domaine (rang 1 = la plus portée). */
-export const priereAuChoix = (rang: number): Achat => ({
+/** `slot: 2` = la prière va dans le SECOND domaine (`o.element2`). */
+export const priereAuChoix = (rang: number, slot?: 1 | 2): Achat => ({
   t: "priereAuChoix",
   rang,
+  slot,
 });
 export const sort = (nom: string, config: ConfigMagie): Achat => ({
   t: "sort",
