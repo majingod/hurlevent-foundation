@@ -51,6 +51,23 @@ export class CatalogueMagie {
     }
   }
 
+  /** Les cercles distincts portés par les modèles de sorts (triés, stables).
+   *  ⭐ [R1b s362] Le résolveur en dérive son pool de tirage : la liste des
+   *  cercles n'est JAMAIS écrite en dur — ajouter un sort d'un nouveau
+   *  cercle en base l'ouvre au générateur sans redéploiement (décision 20). */
+  cercles(): string[] {
+    return [...new Set([...this.sorts.values()].map((s) => s.cercle))].sort(
+      (a, b) => a.localeCompare(b, "fr")
+    );
+  }
+
+  /** Les domaines distincts portés par les modèles de prières (triés). */
+  domaines(): string[] {
+    return [...new Set([...this.prieres.values()].map((p) => p.domaine))].sort(
+      (a, b) => a.localeCompare(b, "fr")
+    );
+  }
+
   exigerSort(nom: string): SortModele {
     const s = this.sorts.get(nom);
     if (!s) {
