@@ -66,6 +66,13 @@ export interface AchatPlanifie {
   couche: 2 | 3 | 4;
   /** Pourquoi il est là (fiche « toujours explicable », décision 10). */
   motif: string;
+  /**
+   * ⭐ [R1a s361] `choix_achat` — le cercle ou le domaine que cette ligne
+   * nomme. Obligatoire en base pour `Acquisition de Cercle` et
+   * `Acquisition de Domaine` (`multiple_avec_choix_par_niveau`) : 178
+   * lignes en prod, zéro sans choix. L'appelant l'écrit tel quel.
+   */
+  choix?: string;
 }
 
 export interface CompositionOk {
@@ -107,6 +114,8 @@ export interface ContexteComposition {
   )[];
   /** [lot 2b] 🔥 Mage : le cercle choisi (🧭) ou tiré (🎲) — « ton élément ? ». */
   element?: string;
+  /** ⭐ [R1a s361] Le SECOND cercle / domaine, quand le joueur en veut un. */
+  element2?: string;
   /**
    * ⭐ [A2-socle] Le personnage ne peut avoir AUCUNE compétence à points de
    * spiritualité (trait « Inapte à la magie »).

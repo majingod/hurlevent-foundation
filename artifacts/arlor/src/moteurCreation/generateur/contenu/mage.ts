@@ -161,20 +161,27 @@ const SIGNATURE3_MAGE: Record<string, EntreePool[]> = {
       achats: () => [comp("Alchimie", 2)],
     },
   ],
-  mGuilde: [
-    {
-      label: "Accès aux cercles 2",
-      note: "Les 5 mages de guilde mesurés ont tous poussé leur accès à 2.",
-      achats: () => [rachat("Acquisition de Cercle")],
-    },
-  ],
-  mCanalisateur: [
-    {
-      label: "Canalisation 2",
-      note: "La montée qui fait le canalisateur : 5 membres sur 5 l'ont.",
-      achats: () => [comp("Canalisation", 2)],
-    },
-  ],
+  /* ⛔ mGuilde — « Accès aux cercles 2 » RETIRÉ en s361.
+   *
+   * Trois défauts en une entrée :
+   *  1. La note était FAUSSE : 4 des 5 mages de guilde, pas 5.
+   *  2. Le mécanisme était FAUX : `rachat` pose un SECOND accès au niveau 1,
+   *     il ne monte rien (cf. son propre commentaire dans `planifierRachat`).
+   *  3. Et même corrigé, l'achat serait un PLAFOND SEC : le manuel dit que
+   *     l'accès N ouvre les niveaux ≤ 5N, donc l'accès 1 couvre déjà tout ce
+   *     que le générateur achète (niveau 1). Le niveau 2 n'ouvre que le 6-10.
+   *
+   * Mesure décisive : les 4 mages à l'accès 2 ont 150-170 XP et lancent du
+   * niveau 10 ; Petrine, la seule à 75 XP, a l'accès 1. Sur la population de
+   * création (60-135 XP) : 4 porteurs sur 12 — contre 16 sur 18 chez les
+   * vétérans. C'est un état d'après-jeu, pas de création.
+   * ⭐ Le moteur achète DÉJÀ l'accès qu'il faut, tout seul, via la rampe de
+   * `planifierMagie`. Rien à déclarer ici. */
+  /* ⛔ mCanalisateur — « Canalisation 2 » RETIRÉ en s361, MÊME MOTIF.
+   * La note disait « 5 membres sur 5 » — vrai, mais mesuré sur un groupe de
+   * VÉTÉRANS. Sur la population de création (60-135 XP) : 1 porteur sur 8
+   * l'a au niveau 2, contre 11 sur 21 chez les vétérans.
+   * 🔮 garde son noyau (Canalisation niveau 1), qui suffit à le reconnaître. */
 };
 
 /** ③b — le pool PARTAGÉ de la classe, indexé par thème. Union des ③
@@ -192,6 +199,21 @@ const POOL3_MAGE: Record<string, EntreePool[]> = {
       note: "Jamais un accès sec (décision 16) : le cercle ET son sort.",
       achats: () => [sortAuChoix(1)],
       condition: (_inv, o) => !!o.element,
+    },
+    {
+      label: "Un SECOND cercle — et un premier sort dedans",
+      note: "Mesuré 2/2 chez ✨ et ᚱ : Mérèkor (Air+Charmes), Valen (Charmes+Illusion), Cendre Neige (Illusion+Nécromancie), Félis (Magie Pure+Nécromancie).",
+      // ⭐ [R1a s361] `rachat` = un NOUVEAU choix au prix du niveau 1 — c'est
+      // exactement un second cercle, et il porte enfin son nom.
+      // ⚠️ JAMAIS UN ACCÈS SEC (décision 16) : le cercle ET son sort. C'est
+      // précisément le défaut reproché à l'ancienne signature de 🎭 — il
+      // aurait été absurde de le réintroduire ici. `slot: 2` envoie le sort
+      // dans le SECOND cercle, pas dans le premier.
+      achats: (_inv, o) => [
+        rachat("Acquisition de Cercle", o.element2),
+        sortAuChoix(1, 2),
+      ],
+      condition: (_inv, o) => !!o.element2 && o.element2 !== o.element,
     },
     {
       label: "Canalisation",

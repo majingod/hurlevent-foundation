@@ -70,6 +70,8 @@ interface Chantier {
    * Absent pour les classes sans magie.
    */
   choixMagie?: string;
+  /** ⭐ [R1a s361] Le SECOND cercle/domaine — cible des achats `slot: 2`. */
+  choixMagie2?: string;
 }
 
 const cloner = (ch: Chantier): Chantier => ({
@@ -78,6 +80,11 @@ const cloner = (ch: Chantier): Chantier => ({
   achatsMagie: [...ch.achatsMagie],
   deja: new Set(ch.deja),
   choixMagie: ch.choixMagie,
+  // ⚠️ [R1a s361] Un cloneur écrit à la main est l'endroit où un champ neuf
+  // meurt EN SILENCE : sans cette ligne, le second cercle disparaissait dès
+  // qu'une entrée se planifiait sur une copie, et `sortAuChoix(1, 2)` ne
+  // résolvait plus rien. Attrapé par la preuve par le contraire.
+  choixMagie2: ch.choixMagie2,
 });
 
 const adopter = (ch: Chantier, src: Chantier) => {
@@ -91,7 +98,7 @@ function planifierComp(
   cats: Catalogues,
   classe: ContenuClasse["classe"],
   ch: Chantier,
-  cible: { nom: string; niveauCible: number },
+  cible: { nom: string; niveauCible: number; choix?: string },
   couche: 2 | 3 | 4,
   motif: string,
   budgetRestant: number
@@ -107,7 +114,10 @@ function planifierComp(
   if (chemin === null) return null; // hors plafond création (§2.5)
   if (chemin.total > budgetRestant) return null; // ne rentre pas
   for (const a of chemin.achats) {
-    ch.achats.push({ ...a, couche, motif });
+    // ⭐ [R1a s361] Le `choix_achat` ne vaut que pour la compétence CIBLE :
+    // les prérequis traversés en chemin sont d'autres compétences.
+    const choix = a.nom === cible.nom ? cible.choix : undefined;
+    ch.achats.push({ ...a, couche, motif, ...(choix ? { choix } : {}) });
     ch.deja.add(clefComp(a.nom, a.niveau));
   }
   ch.etat.niveaux = copie.niveaux;
@@ -120,7 +130,8 @@ function planifierRachat(
   nom: string,
   couche: 2 | 3 | 4,
   motif: string,
-  budgetRestant: number
+  budgetRestant: number,
+  choix?: string
 ): number | null {
   const c = cats.competences.exiger(nom);
   const unit = cats.competences.coutNiveau(nom, 1);
@@ -132,6 +143,7 @@ function planifierRachat(
     coutXp: unit,
     couche,
     motif,
+    ...(choix ? { choix } : {}),
   });
   // Un rachat = un NOUVEAU choix : le niveau ne monte pas, mais la
   // compétence est désormais possédée (débloque ses dépendants).
@@ -187,7 +199,17 @@ function planifierMagie(
   if (totalRampe + coutXp - rembourse > budgetRestant) return null;
 
   for (const a of [...acces.achats, ...porte.achats]) {
-    ch.achats.push({ ...a, couche, motif: `accès — ${motif}` });
+    // ⭐ [R1a s361] L'ACCÈS nomme son cercle/domaine (`multiple_avec_choix_
+    // par_niveau`, 178 lignes en prod dont zéro sans choix). La PORTE
+    // (`Acquisition de Sort`/`de Prière`) est `simple` : 55 lignes en prod,
+    // zéro AVEC choix. Ne pas lui en coller un.
+    const choix = a.nom === r.acces ? ch.choixMagie : undefined;
+    ch.achats.push({
+      ...a,
+      couche,
+      motif: `accès — ${motif}`,
+      ...(choix ? { choix } : {}),
+    });
     ch.deja.add(clefComp(a.nom, a.niveau));
   }
   ch.etat.niveaux = copie.niveaux;
@@ -275,11 +297,20 @@ function planifierAchat(
     case "comp":
       return planifierComp(cats, classe, ch, a, couche, motif, budgetRestant);
     case "rachat":
-      return planifierRachat(cats, ch, a.nom, couche, motif, budgetRestant);
+      return planifierRachat(
+        cats,
+        ch,
+        a.nom,
+        couche,
+        motif,
+        budgetRestant,
+        a.choix
+      );
     case "sortAuChoix": {
       // Le contenu a demandé « le n-ième sort représentatif du cercle » :
       // le catalogue tranche, jamais le contenu (référence §5.1 ③).
-      const resolu = resoudreSortAuChoix(cats, ch.choixMagie, a.rang);
+      const cible = a.slot === 2 ? ch.choixMagie2 : ch.choixMagie;
+      const resolu = resoudreSortAuChoix(cats, cible, a.rang);
       return resolu === null
         ? null
         : planifierMagie(cats, classe, ch, resolu, couche, motif, budgetRestant);
@@ -287,7 +318,8 @@ function planifierAchat(
     case "priereAuChoix": {
       // ⭐ [A2-Prêtre s360] « la n-ième prière représentative du domaine ».
       // Même patron que `sortAuChoix`, ordre PROPRE au prêtre (§5.2 ⑤).
-      const resolu = resoudrePriereAuChoix(cats, ch.choixMagie, a.rang);
+      const cible = a.slot === 2 ? ch.choixMagie2 : ch.choixMagie;
+      const resolu = resoudrePriereAuChoix(cats, cible, a.rang);
       return resolu === null
         ? null
         : planifierMagie(cats, classe, ch, resolu, couche, motif, budgetRestant);
@@ -357,7 +389,7 @@ export function composerClasse(
   // mesure en dégage un au noyau (🕊️ Guerre, 📿 Bénédiction), sinon celui du
   // joueur. Le composeur tranche UNE fois, tout le reste lit `o.element`.
   const choixMagie = role.magieImposee ?? ctx.element;
-  const o: OptionsRole = { element: choixMagie };
+  const o: OptionsRole = { element: choixMagie, element2: ctx.element2 };
 
   const refus = role.requiert(ctx.inventaire, o);
   if (refus !== null) return { ok: false, raison: refus };
@@ -378,6 +410,7 @@ export function composerClasse(
     achatsMagie: [],
     deja: new Set(),
     choixMagie,
+    choixMagie2: ctx.element2,
   };
   const gratuites = contenu.gratuites.map((nom) => {
     const c = cats.competences.exiger(nom);
@@ -541,7 +574,7 @@ export function tirerEssentielsClasse(
   const role = contenu.roles.find((r) => r.id === ctx.roleId);
   if (!role) return [];
   const choixMagie = role.magieImposee ?? ctx.element;
-  const o: OptionsRole = { element: choixMagie };
+  const o: OptionsRole = { element: choixMagie, element2: ctx.element2 };
 
   // État de départ : gratuités + noyau (budget non contraint ici).
   const ch: Chantier = {
@@ -550,6 +583,7 @@ export function tirerEssentielsClasse(
     achatsMagie: [],
     deja: new Set(),
     choixMagie,
+    choixMagie2: ctx.element2,
   };
   for (const nom of contenu.gratuites) ch.etat.niveaux.set(nom, 1);
   for (const a of role.noyau(ctx.inventaire, o)) {

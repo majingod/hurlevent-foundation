@@ -133,10 +133,18 @@ describe("MAGE — les 5 archétypes mesurés (§4.0.3), ② dérivé sur les 13
   it("🔮 le canalisateur : ② = 40–44 — le PIRE CAS caster de la table", () => {
     const v = noyauxParCercle("mCanalisateur", inv());
     expect(bornes(v)).toEqual([40, 44]);
-    // ②+③ = 55 au pire (③ Canalisation 2 = 11), reste 5 XP sur 60.
+    // ⭐ [R1a s361] 55 -> 44. « Canalisation 2 » (11 XP) RETIRÉE : montée de
+    // VÉTÉRAN — 1 porteur sur 8 chez les créations (60-135 XP) contre 11 sur
+    // 21 chez les vétérans. 🔮 garde Canalisation niveau 1, à son noyau.
+    // ⚠️ L'assertion était `toBeLessThanOrEqual(55)` : molle, donc VERTE même
+    // après le retrait. Un pire cas se mesure, il ne s'encadre pas.
     const c = ok(composer("mCanalisateur", inv(), 60, "Altération"));
-    expect(coutCouche(c, 2) + coutCouche(c, 3)).toBeLessThanOrEqual(55);
-    expect(c.reliquat).toBeGreaterThanOrEqual(0);
+    expect(coutCouche(c, 2) + coutCouche(c, 3)).toBe(42);
+    // ⚠️ Altération n'est PAS le pire cercle : le pire est 44, sur les 7
+    // cercles dotés d'un sort de dégâts (Air, Eau, Feu, Magie Noire, Magie
+    // Pure, Nécromancie, Terre). L'ancienne REFERENCE annonçait « Altération
+    // → 55 », faux sur les deux tableaux. Re-dérivé par le moteur.
+    expect(c.reliquat).toBe(1);
   });
 
   it("✨ l'enchanteur (3 sorts + bâton) : ② = 21–28", () => {
