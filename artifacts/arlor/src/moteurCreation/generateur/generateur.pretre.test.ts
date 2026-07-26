@@ -1,110 +1,272 @@
 /**
- * RECAPTURE DE LA FIXTURE (MCP, prod) — fermeture récursive des prérequis,
- * homonymes filtrés par classe (4 paires mage/prêtre) :
+ * [VIS-8 lot A2-Prêtre, s360] Les 4 archétypes Prêtre MESURÉS.
  *
- *   WITH RECURSIVE seed(nom) AS (SELECT unnest(ARRAY[<seeds du contenu>])),
- *   fermeture(nom) AS (
- *     SELECT nom FROM seed
- *     UNION
- *     SELECT pr.p->>'competence_nom'
- *     FROM fermeture f
- *     JOIN competences c ON c.nom = f.nom AND c.est_actif = true
- *      AND (c.nom NOT IN ('Assemblage de Runes','Développement Spirituel',
- *           'Développement Spirituel Supérieur','Canalisation')
- *           OR c.categorie = '<classe>')
- *     CROSS JOIN LATERAL jsonb_each(COALESCE(c.prerequis_competences::jsonb,'{}'::jsonb)) AS niv(k,val)
- *     CROSS JOIN LATERAL jsonb_array_elements(niv.val) AS pr(p))
- *   SELECT id, nom, categorie, classes_requises, type_achat, est_actif,
- *          niveaux épurés {niveau, cout_xp}, prerequis_competences AS prerequis
- *   FROM competences WHERE est_actif AND nom IN (SELECT nom FROM fermeture)
- *     AND (<même filtre homonymes>);
+ * ⭐ CE FICHIER ATTESTE LE CHIFFRAGE : les ② ne sont plus des chiffres de
+ * document, le moteur les RE-DÉRIVE de la fixture à chaque `vitest`, comme
+ * les 6 martiaux (s353) et les 5 Mage (s358). C'est ce geste qui a montré
+ * que la table §5 de la référence reposait sur « 1 prière = 4 XP » — une
+ * hypothèse jamais mesurée, exacte 4 fois sur 4 en la reconstruisant.
+ *
+ * ⚠️ CHAQUE GARDE VA AVEC SON JUMEAU NÉGATIF (« sans la garde, X apparaît »).
+ * Un test qui vérifie qu'une garde EMPÊCHE quelque chose est vert par défaut
+ * si la chose n'arrivait de toute façon pas.
  */
 import { describe, expect, it } from "vitest";
 
+import { ZONES_PAR_TYPE } from "@/constants/magie";
+import { calculerCoutXP } from "@/utils/calculsMagie";
+
 import { CatalogueCompetences } from "./catalogue";
-import { CatalogueMagie, type PriereModele, type SortModele } from "./catalogueMagie";
+import {
+  CatalogueMagie,
+  type PriereModele,
+  type SortModele,
+} from "./catalogueMagie";
 import { composerClasse, type Catalogues } from "./composer";
 import { CONTENU_PRETRE } from "./contenu/pretre";
+import { configGenerateur, ordonnerPrieresRepresentatives } from "./coutsMagie";
 import fxPretre from "./fixtures/competences_pretre.fixture.json";
 import fxMagie from "./fixtures/magie_generateur.fixture.json";
 import type { CompetenceCatalogue, Composition } from "./types";
 
+const magie = new CatalogueMagie(
+  fxMagie as unknown as { sorts: SortModele[]; prieres: PriereModele[] }
+);
 const cats: Catalogues = {
   competences: new CatalogueCompetences(
     (fxPretre as { competences: unknown[] }).competences as CompetenceCatalogue[]
   ),
-  magie: new CatalogueMagie(
-    fxMagie as unknown as { sorts: SortModele[]; prieres: PriereModele[] }
-  ),
+  magie,
 };
-const inv = (...ids: string[]) => new Set(ids);
-const composer = (
-  roleId: string,
-  inventaire: ReadonlySet<string>,
-  budget = 60,
-  essentiels?: readonly ({ nom: string; niveauCible: number } | { label: string })[]
-) => composerClasse(cats, CONTENU_PRETRE, { roleId, inventaire, budget, essentiels });
+const PRIERES = (fxMagie as unknown as { prieres: PriereModele[] }).prieres;
+
+/** Les 8 domaines de prière de la prod (référence §5.2). */
+const DOMAINES = [
+  "Bénédiction",
+  "Chaos",
+  "Connaissance",
+  "Guerre",
+  "Nature",
+  "Nécromancie",
+  "Ordre",
+  "Éléments",
+];
+
+const composer = (roleId: string, domaine?: string, budget = 80, inv: string[] = []) =>
+  composerClasse(cats, CONTENU_PRETRE, {
+    classe: "pretre",
+    roleId,
+    inventaire: new Set(inv),
+    budget,
+    element: domaine,
+  });
 const ok = (c: Composition) => {
   if (!c.ok) throw new Error(`refus inattendu : ${c.raison}`);
   return c;
 };
 const coutCouche = (c: Extract<Composition, { ok: true }>, couche: number) =>
   c.achats.filter((a) => a.couche === couche).reduce((s, a) => s + a.coutXp, 0) +
-  c.achatsMagie.filter((m) => m.couche === couche).reduce((s, m) => s + m.coutXp, 0);
+  c.achatsMagie
+    .filter((m) => m.couche === couche)
+    .reduce((s, m) => s + m.coutXp, 0);
 
-describe("PRÊTRE — noyaux attestés (§4.2, chiffres MCP s349)", () => {
-  it("✝️ Le Soigneur : 22 XP, rampe incluse (Réveil 4 + Premiers Soins 6 + Domaine 5 + Prière 0 + Soins 7)", () => {
-    const c = ok(composer("pSoigne", inv(), 22)); // budget = noyau : ④ ne tire pas
+/** Le ② d'un rôle, dérivé par le MOTEUR sur chaque domaine. */
+const bornes2 = (roleId: string) => {
+  const v = DOMAINES.map((d) => coutCouche(ok(composer(roleId, d)), 2));
+  return [Math.min(...v), Math.max(...v)];
+};
+
+describe("PRÊTRE — les 4 archétypes mesurés (§4.0.3), ② dérivé du catalogue", () => {
+  // ⚠️ FOURCHETTE, PAS UN POINT, pour ⛪ et ✝️ : leur domaine est LIBRE, donc
+  // le prix dépend de la prière représentative du domaine choisi. Même
+  // mécanique que le cercle libre côté mage (s358). Bornes CALCULÉES ici.
+  it("⛪ le prêtre de rite : ② = 26–33 sur les 8 domaines, ③ signature = 18", () => {
+    expect(bornes2("pRite")).toEqual([26, 33]);
+    const c = ok(composer("pRite", "Bénédiction"));
+    expect(coutCouche(c, 3)).toBe(18); // Acquisition de Domaine 2 (10) + Bénédiction 2 (8)
+    expect(c.achats.filter((a) => a.couche === 2).map((a) => a.nom)).toEqual(
+      expect.arrayContaining(["Méditation", "Développement Spirituel", "Revenu"])
+    );
+  });
+
+  it("✝️ le soigneur : ② = 18–25 sur les 8 domaines, ③ signature = 10", () => {
+    expect(bornes2("pSoigne")).toEqual([18, 25]);
+    const c = ok(composer("pSoigne", "Bénédiction"));
+    expect(coutCouche(c, 3)).toBe(10); // Premiers Soins 2
+    expect(c.achats.filter((a) => a.couche === 2).map((a) => a.nom)).toEqual(
+      expect.arrayContaining(["Réveil Expéditif", "Premiers Soins"])
+    );
+  });
+
+  it("🕊️ le missionnaire IMPOSE la Guerre : ② = 22, trois prières, zéro armure", () => {
+    const c = ok(composer("pMissionnaire"));
     expect(coutCouche(c, 2)).toBe(22);
-    const noms = c.achats.filter((a) => a.couche === 2).map((a) => `${a.nom}@${a.niveau}:${a.coutXp}`);
-    expect(noms).toContain("Premiers Soins@1:6");
-    expect(noms).toContain("Réveil Expéditif@1:4");
-    expect(noms).toContain("Acquisition de Domaine@1:5");
-    expect(noms).toContain("Acquisition de Prière@1:0");
-    const soins = c.achatsMagie.find((m) => m.nom === "Soins" && m.couche === 2);
-    expect(soins).toMatchObject({ coutXp: 7, coutPS: 2, config: { niveau: 1, zone: "2 Cibles", portee: "5 Pieds" } });
+    expect(coutCouche(c, 3)).toBe(10); // Acquisition de Domaine 2
+    expect(c.achatsMagie.filter((m) => m.couche === 2)).toHaveLength(3);
+    // « par la prière, pas par l'armure » — même avec tout l'attirail coché.
+    const arme = ok(composer("pMissionnaire", undefined, 80, ["armure_maille", "ecu"]));
+    expect(arme.achats.filter((a) => a.couche === 2).map((a) => a.nom)).not.toContain(
+      "Port d'armure intermédiaire"
+    );
   });
 
-  it("✝️ ④ monte la MÊME prière au niveau 3 — EN PLACE au noyau (trace ④, delta +2), jamais deux exemplaires", () => {
-    const c = ok(composer("pSoigne", inv()));
-    const soins = c.achatsMagie.filter((m) => m.nom === "Soins");
-    expect(soins).toHaveLength(1);
-    expect(soins[0]).toMatchObject({
-      couche: 2, // elle reste la prière du noyau
-      coutXp: 9,
-      config: { niveau: 3 },
-      surclasse: { deNiveau: 1, deCoutXp: 7, parCouche: 4 },
-    });
-    expect(c.reliquat).toBeLessThanOrEqual(3);
-    expect(c.totalDepense + c.reliquat).toBe(60);
+  it("📿 le consécrateur IMPOSE la Bénédiction : ② = 16, le plus léger des 15", () => {
+    const c = ok(composer("pConsecrateur"));
+    expect(coutCouche(c, 2)).toBe(16);
+    expect(coutCouche(c, 3)).toBe(10); // Consécration 2 (plafonnée création)
   });
 
-  it("🛡️ Le Prêtre de front : protections cochées + Soins niveau 3 au toucher (rampe incluse : 11)", () => {
-    const c = ok(composer("pFront", inv("armure_maille", "ecu")));
-    expect(coutCouche(c, 2)).toBe(33); // 12 + 10 + (5 + 0 + 6)
-    const soins = c.achatsMagie.find((m) => m.couche === 2);
-    expect(soins).toMatchObject({ nom: "Soins", coutXp: 6, coutPS: 2, config: { niveau: 3, portee: "Toucher", zone: "1 Cible" } });
+  it("un domaine imposé ne dépend pas du choix du joueur (🕊️ et 📿)", () => {
+    for (const roleId of ["pMissionnaire", "pConsecrateur"]) {
+      const impose = coutCouche(ok(composer(roleId)), 2);
+      for (const d of DOMAINES) {
+        expect(coutCouche(ok(composer(roleId, d)), 2)).toBe(impose);
+      }
+    }
+  });
+});
+
+describe("PRÊTRE — la garde de zone (C66) et sa preuve par le contraire", () => {
+  /** La config la moins chère SANS la garde — ce que le moteur faisait avant. */
+  const configSansGarde = (m: PriereModele) => {
+    const zones = ZONES_PAR_TYPE[m.zone_effet] ?? [m.zone_effet];
+    let best = { zone: "", cout: Number.POSITIVE_INFINITY };
+    for (const zone of zones) {
+      const c = calculerCoutXP(zone, "Toucher", "Instantanée", 1, m.cout_xp_base);
+      if (c < best.cout) best = { zone, cout: c };
+    }
+    return best;
+  };
+
+  it("✝️ le soigneur soigne QUELQU'UN D'AUTRE — Soins n'est jamais « Personnelle »", () => {
+    const c = ok(composer("pSoigne", "Bénédiction"));
+    const soins = c.achatsMagie.find((m) => m.nom === "Soins");
+    expect(soins).toBeDefined();
+    expect(soins?.config.zone).toBe("1 Cible");
   });
 
-  it("🛡️ sans aucune protection apportée : refus avec rattrapage", () => {
-    const c = composer("pFront", inv());
+  it("PREUVE PAR LE CONTRAIRE : sans la garde, Soins SORTIRAIT en « Personnelle »", () => {
+    // Si ce test devient impossible à écrire, le précédent ne prouve plus rien.
+    const soins = PRIERES.find((p) => p.nom === "Soins");
+    expect(soins).toBeDefined();
+    expect(configSansGarde(soins!).zone).toBe("Personnelle");
+    // …et la garde coûte exactement 1 XP (zone 1 -> zone 2).
+    const avec = configGenerateur(soins!);
+    expect(avec.zone).toBe("1 Cible");
+    expect(
+      calculerCoutXP(avec.zone, avec.portee, avec.duree, 1, soins!.cout_xp_base) -
+        configSansGarde(soins!).cout
+    ).toBe(1);
+  });
+
+  it("les prières CONÇUES personnelles la gardent (modèle zone_effet = Personnelle)", () => {
+    const combat = PRIERES.find((p) => p.nom === "Combat Aveugle");
+    expect(combat?.zone_effet).toBe("Personnelle");
+    expect(configGenerateur(combat!).zone).toBe("Personnelle");
+  });
+
+  it("la garde ne laisse AUCUNE prière multi-cibles sortir en « Personnelle »", () => {
+    const fuites = PRIERES.filter(
+      (p) =>
+        (ZONES_PAR_TYPE[p.zone_effet] ?? [p.zone_effet]).length > 1 &&
+        configGenerateur(p).zone === "Personnelle"
+    );
+    expect(fuites.map((p) => p.nom)).toEqual([]);
+    // Jumeau : il EXISTE bien des prières multi-cibles, sinon on ne mesure rien.
+    const multi = PRIERES.filter(
+      (p) => (ZONES_PAR_TYPE[p.zone_effet] ?? [p.zone_effet]).length > 1
+    );
+    expect(multi.length).toBeGreaterThan(30);
+  });
+});
+
+describe("PRÊTRE — « la plus portée », et pourquoi ce n'est PAS « la moins chère »", () => {
+  it("Bénédiction mène avec Soins (9 porteurs), pas avec la moins chère", () => {
+    const ordre = ordonnerPrieresRepresentatives(magie.prieresDuDomaine("Bénédiction"));
+    expect(ordre[0].modele.nom).toBe("Soins");
+  });
+
+  it("PREUVE PAR LE CONTRAIRE : Soins est 7e sur 8 par prix — jamais choisie sinon", () => {
+    const ordre = ordonnerPrieresRepresentatives(magie.prieresDuDomaine("Bénédiction"));
+    const soins = ordre.find((x) => x.modele.nom === "Soins")!;
+    const moinsCheres = ordre.filter((x) => x.coutXp < soins.coutXp);
+    // S'il n'existait aucune prière moins chère, la règle serait indistinguable
+    // de « la moins chère » et le test précédent passerait à vide.
+    expect(moinsCheres.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("sans signal mesuré, on retombe sur la « effet bénéfique » la moins chère", () => {
+    // Connaissance, Nécromancie et Ordre sont à ÉGALITÉ À 1 PORTEUR en prod :
+    // du bruit, pas un signal. La règle de repli doit s'y voir.
+    for (const d of ["Connaissance", "Nécromancie", "Ordre"]) {
+      const ordre = ordonnerPrieresRepresentatives(magie.prieresDuDomaine(d));
+      expect(ordre[0].modele.type_priere).toBe("effet bénéfique");
+    }
+  });
+
+  it("l'ordre est STABLE : deux appels donnent la même tête", () => {
+    for (const d of DOMAINES) {
+      const a = ordonnerPrieresRepresentatives(magie.prieresDuDomaine(d));
+      const b = ordonnerPrieresRepresentatives(magie.prieresDuDomaine(d));
+      expect(a.map((x) => x.modele.nom)).toEqual(b.map((x) => x.modele.nom));
+    }
+  });
+});
+
+describe("PRÊTRE — ce que le lot RETIRE", () => {
+  it("🛡️ pFront n'existe plus : son id est devenu pMissionnaire", () => {
+    expect(CONTENU_PRETRE.roles.map((r) => r.id)).toEqual([
+      "pRite",
+      "pSoigne",
+      "pMissionnaire",
+      "pConsecrateur",
+    ]);
+    const c = composer("pFront");
     expect(c.ok).toBe(false);
-    if (!c.ok) expect(c.raison).toMatch(/protection/);
   });
 
-  it("⛪ Le Prêtre de rite : 23 XP (Consécration 7 + Bénédiction 2 : 8 + Grande Messe 8) — aucune prière", () => {
-    const c = ok(composer("pRite", inv()));
-    expect(coutCouche(c, 2)).toBe(23);
-    expect(c.achatsMagie).toHaveLength(0);
-    // ④ (spec : l'érudit des cultes d'abord) : 9 savoirs de Religions, la
-    // Grande Messe 2 ne rentre plus — reliquat 1.
-    expect(c.achats.filter((a) => a.nom === "Connaissances des Religions").length).toBe(9);
-    expect(c.achats.some((a) => a.nom === "Grande Messe" && a.niveau === 2)).toBe(false);
-    expect(c.reliquat).toBe(1);
+  it("④ n'empile plus « Connaissances des Religions » — 17 prêtres sur 17 à 1", () => {
+    // ⚠️ CE TEST ROUGIT SUR LA VERSION D'AVANT : les 3 rôles d'alors la
+    // portaient tous en ④ avec `plafondRachats: 15`, soit jusqu'à 60 XP
+    // brûlés sur une GRATUITÉ que personne n'a jamais rachetée.
+    const jauges = Object.values(CONTENU_PRETRE.pond4)
+      .flat()
+      .filter((e) => e.type === "jauge")
+      .map((e) => (e as { nom: string }).nom);
+    expect(jauges).not.toContain("Connaissances des Religions");
+    // Jumeau : le ④ n'est pas vide pour autant, il porte les jauges MESURÉES.
+    expect(jauges).toContain("Développement Spirituel");
+    expect(jauges).toContain("Langue supplémentaire");
   });
 
-  it("③ un essentiel par label du pool : « Diagnostic » = 6 XP en couche 3", () => {
-    const c = ok(composer("pRite", inv(), 60, [{ label: "Diagnostic" }]));
-    expect(coutCouche(c, 3)).toBe(6);
+  it("les plafonds de ④ sont ceux MESURÉS en prod (Dév. Spi 10 · Langue 4)", () => {
+    const plafond = (nom: string) =>
+      Object.values(CONTENU_PRETRE.pond4)
+        .flat()
+        .filter(
+          (e): e is { type: "jauge"; nom: string; plafondRachats: number } =>
+            e.type === "jauge" && e.nom === nom
+        )
+        .map((e) => e.plafondRachats);
+    expect(new Set(plafond("Développement Spirituel"))).toEqual(new Set([10]));
+    expect(new Set(plafond("Langue supplémentaire"))).toEqual(new Set([4]));
+  });
+});
+
+describe("PRÊTRE — les refus parlent au joueur", () => {
+  it("⛪ et ✝️ sans domaine : le refus dit quoi choisir, et parle de religion", () => {
+    for (const roleId of ["pRite", "pSoigne"]) {
+      const c = composer(roleId, undefined);
+      expect(c.ok).toBe(false);
+      if (!c.ok) {
+        expect(c.raison).toMatch(/domaine/i);
+        expect(c.raison).toMatch(/religion/i);
+      }
+    }
+  });
+
+  it("🕊️ et 📿 n'ont RIEN à demander : leur domaine vient de l'archétype", () => {
+    expect(composer("pMissionnaire", undefined).ok).toBe(true);
+    expect(composer("pConsecrateur", undefined).ok).toBe(true);
   });
 });

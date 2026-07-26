@@ -15,6 +15,7 @@ import {
 import { CONTENU_GUERRIER } from "./contenu/guerrier";
 import {
   NIVEAU_ACQUISITION,
+  ordonnerPrieresRepresentatives,
   ordonnerSortsRepresentatifs,
   prixMagie,
   RAMPE,
@@ -51,7 +52,11 @@ const clefMagie = (t: string, nom: string, c: ConfigMagie) =>
   `${t}:${nom}@${c.niveau}|${c.zone}|${c.portee}|${c.duree}`;
 
 const labelAchat = (a: Achat) =>
-  a.t === "sortAuChoix" ? `sort ${a.rang} du cercle` : a.nom;
+  a.t === "sortAuChoix"
+    ? `sort ${a.rang} du cercle`
+    : a.t === "priereAuChoix"
+      ? `prière ${a.rang} du domaine`
+      : a.nom;
 
 /** L'état de travail d'une composition (cloné pour le tout-ou-rien). */
 interface Chantier {
@@ -59,9 +64,12 @@ interface Chantier {
   achats: AchatPlanifie[];
   achatsMagie: AchatMagiePlanifie[];
   deja: Set<string>;
-  /** ⭐ [A2-Mage s358] Le cercle choisi/tiré — résout les achats
-   *  `sortAuChoix` du contenu. Absent pour les classes sans cercle. */
-  cercle?: string;
+  /**
+   * ⭐ [A2-Mage s358, élargi s360] LE CHOIX DE MAGIE — cercle du Mage ou
+   * domaine du Prêtre. Résout les achats `sortAuChoix` / `priereAuChoix`.
+   * Absent pour les classes sans magie.
+   */
+  choixMagie?: string;
 }
 
 const cloner = (ch: Chantier): Chantier => ({
@@ -69,7 +77,7 @@ const cloner = (ch: Chantier): Chantier => ({
   achats: [...ch.achats],
   achatsMagie: [...ch.achatsMagie],
   deja: new Set(ch.deja),
-  cercle: ch.cercle,
+  choixMagie: ch.choixMagie,
 });
 
 const adopter = (ch: Chantier, src: Chantier) => {
@@ -235,6 +243,25 @@ function resoudreSortAuChoix(
     : { t: "sort", nom: choisi.modele.nom, config: choisi.config };
 }
 
+/** ⭐ [A2-Prêtre s360] « la n-ième prière représentative du domaine » → un
+ *  achat concret. Rend `null` (et non une exception) quand le domaine n'est
+ *  pas connu ou que le rang dépasse le catalogue — jumeau de son homologue
+ *  sort, à l'ORDRE près, qui est mesuré séparément (référence §5.2 ⑤). */
+function resoudrePriereAuChoix(
+  cats: Catalogues,
+  domaine: string | undefined,
+  rang: number
+): Extract<Achat, { t: "priere" }> | null {
+  if (!domaine) return null;
+  const ordonnees = ordonnerPrieresRepresentatives(
+    cats.magie.prieresDuDomaine(domaine)
+  );
+  const choisie = ordonnees[rang - 1];
+  return choisie === undefined
+    ? null
+    : { t: "priere", nom: choisie.modele.nom, config: choisie.config };
+}
+
 function planifierAchat(
   cats: Catalogues,
   classe: ContenuClasse["classe"],
@@ -252,7 +279,15 @@ function planifierAchat(
     case "sortAuChoix": {
       // Le contenu a demandé « le n-ième sort représentatif du cercle » :
       // le catalogue tranche, jamais le contenu (référence §5.1 ③).
-      const resolu = resoudreSortAuChoix(cats, ch.cercle, a.rang);
+      const resolu = resoudreSortAuChoix(cats, ch.choixMagie, a.rang);
+      return resolu === null
+        ? null
+        : planifierMagie(cats, classe, ch, resolu, couche, motif, budgetRestant);
+    }
+    case "priereAuChoix": {
+      // ⭐ [A2-Prêtre s360] « la n-ième prière représentative du domaine ».
+      // Même patron que `sortAuChoix`, ordre PROPRE au prêtre (§5.2 ⑤).
+      const resolu = resoudrePriereAuChoix(cats, ch.choixMagie, a.rang);
       return resolu === null
         ? null
         : planifierMagie(cats, classe, ch, resolu, couche, motif, budgetRestant);
@@ -316,9 +351,13 @@ export function composerClasse(
   contenu: ContenuClasse,
   ctx: ContexteComposition
 ): Composition {
-  const o: OptionsRole = { element: ctx.element };
   const role = contenu.roles.find((r) => r.id === ctx.roleId);
   if (!role) return { ok: false, raison: `Rôle inconnu : ${ctx.roleId}` };
+  // ⭐ [A2-Prêtre s360] Le choix de magie : IMPOSÉ par l'archétype quand la
+  // mesure en dégage un au noyau (🕊️ Guerre, 📿 Bénédiction), sinon celui du
+  // joueur. Le composeur tranche UNE fois, tout le reste lit `o.element`.
+  const choixMagie = role.magieImposee ?? ctx.element;
+  const o: OptionsRole = { element: choixMagie };
 
   const refus = role.requiert(ctx.inventaire, o);
   if (refus !== null) return { ok: false, raison: refus };
@@ -338,7 +377,7 @@ export function composerClasse(
     achats: [],
     achatsMagie: [],
     deja: new Set(),
-    cercle: ctx.element,
+    choixMagie,
   };
   const gratuites = contenu.gratuites.map((nom) => {
     const c = cats.competences.exiger(nom);
@@ -499,9 +538,10 @@ export function tirerEssentielsClasse(
   budgetRestant: number,
   rng: () => number
 ): { label: string }[] {
-  const o: OptionsRole = { element: ctx.element };
   const role = contenu.roles.find((r) => r.id === ctx.roleId);
   if (!role) return [];
+  const choixMagie = role.magieImposee ?? ctx.element;
+  const o: OptionsRole = { element: choixMagie };
 
   // État de départ : gratuités + noyau (budget non contraint ici).
   const ch: Chantier = {
@@ -509,7 +549,7 @@ export function tirerEssentielsClasse(
     achats: [],
     achatsMagie: [],
     deja: new Set(),
-    cercle: ctx.element,
+    choixMagie,
   };
   for (const nom of contenu.gratuites) ch.etat.niveaux.set(nom, 1);
   for (const a of role.noyau(ctx.inventaire, o)) {

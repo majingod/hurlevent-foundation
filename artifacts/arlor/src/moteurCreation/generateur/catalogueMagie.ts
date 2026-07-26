@@ -77,4 +77,12 @@ export class CatalogueMagie {
   sortsDuCercle(cercle: string): SortModele[] {
     return [...this.sorts.values()].filter((s) => s.cercle === cercle);
   }
+
+  /** ⭐ [A2-Prêtre s360] Les prières d'un domaine — jumeau de `sortsDuCercle`.
+   *  ⚠️ Le domaine n'est PAS libre comme le cercle : la religion en proscrit
+   *  2 sur 8 (référence §5.2 ①). Le filtrage par religion vit dans le
+   *  résolveur, jamais ici — ce catalogue ne connaît que les modèles. */
+  prieresDuDomaine(domaine: string): PriereModele[] {
+    return [...this.prieres.values()].filter((p) => p.domaine === domaine);
+  }
 }

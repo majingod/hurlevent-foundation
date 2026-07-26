@@ -7,7 +7,12 @@ import type { ClasseId, ConfigMagie } from "../types";
  */
 
 export interface OptionsRole {
-  /** 🔥 Mage : le cercle choisi/tiré (« ton élément ? »). */
+  /**
+   * Le CHOIX DE MAGIE du personnage : 🔥 le cercle du Mage (« ton élément ? »)
+   * ou ⛪ le domaine du Prêtre. Un seul champ, deux lectures selon la classe.
+   * ⚠️ Quand l'archétype impose le sien (`RoleClasse.magieImposee`), c'est
+   * celui-là qui arrive ici — le composeur a déjà tranché.
+   */
   element?: string;
 }
 
@@ -24,7 +29,15 @@ export type Achat =
    * résout via le catalogue (dégâts en tête, puis les moins chers) et pose
    * la config lui-même. Aucun prix, aucun nom de sort dans le contenu.
    */
-  | { t: "sortAuChoix"; rang: number };
+  | { t: "sortAuChoix"; rang: number }
+  /**
+   * ⭐ [A2-Prêtre s360] « la n-ième prière représentative du DOMAINE ».
+   * Jumeau de `sortAuChoix`, MAIS le domaine n'est pas libre comme le cercle :
+   * 🕊️ et 📿 l'imposent (`magieImposee`), et la religion en proscrit 2 sur 8
+   * (référence §5.2). L'ordre de représentativité est propre au prêtre —
+   * la plus PORTÉE en prod, jamais la moins chère (référence §5.2 ⑤).
+   */
+  | { t: "priereAuChoix"; rang: number };
 
 export interface RoleClasse {
   id: string;
@@ -34,6 +47,18 @@ export interface RoleClasse {
   /** null = jouable ; sinon la raison du refus (avec quoi rattraper). */
   requiert: (inv: ReadonlySet<string>, o: OptionsRole) => string | null;
   noyau: (inv: ReadonlySet<string>, o: OptionsRole) => Achat[];
+  /**
+   * ⭐ [A2-Prêtre s360] Le cercle/domaine que l'ARCHÉTYPE impose, quand la
+   * mesure en dégage un au noyau : 🕊️ `Domaine:Guerre` (2/2) et 📿
+   * `Domaine:Bénédiction` (2/2). Absent = le joueur choisit (`ctx.element`),
+   * comme les 5 rôles Mage dont le cercle est libre (référence §5.1 ①).
+   *
+   * ⚠️ C'est ce qui rend possible le patron « ARCHÉTYPE D'ABORD, RELIGION
+   * ENSUITE » (référence §5.2 ③) : tirer la foi en premier rendrait ces deux
+   * rôles inaccessibles au hasard, puisque 4 religions proscrivent la Guerre
+   * et 1 la Bénédiction. Le filtrage par religion vit dans le RÉSOLVEUR.
+   */
+  magieImposee?: string;
 }
 
 export interface EntreePool {
@@ -74,6 +99,11 @@ export const comp = (nom: string, niveauCible = 1): Achat => ({
 export const rachat = (nom: string): Achat => ({ t: "rachat", nom });
 /** Le n-ième sort représentatif du cercle choisi (rang 1 = le plus signifiant). */
 export const sortAuChoix = (rang: number): Achat => ({ t: "sortAuChoix", rang });
+/** La n-ième prière représentative du domaine (rang 1 = la plus portée). */
+export const priereAuChoix = (rang: number): Achat => ({
+  t: "priereAuChoix",
+  rang,
+});
 export const sort = (nom: string, config: ConfigMagie): Achat => ({
   t: "sort",
   nom,

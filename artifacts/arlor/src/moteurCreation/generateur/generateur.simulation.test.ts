@@ -57,6 +57,13 @@ const CERCLES = [
   "Illusion", "Magie Noire", "Magie Pure", "Nécromancie", "Protection", "Terre",
 ];
 
+/** Les 8 domaines de prière — le domaine complet pour ⛪ et ✝️, dont le
+ *  domaine n'est PAS imposé par l'archétype (référence §5.2). */
+const DOMAINES = [
+  "Bénédiction", "Chaos", "Connaissance", "Guerre", "Nature",
+  "Nécromancie", "Ordre", "Éléments",
+];
+
 const CAS: Cas[] = [
   { classe: "guerrier", roleId: "gForgeron", inv: [] },
   { classe: "guerrier", roleId: "gForgeron", inv: ["contondante_moyenne", "ecu", "armure_cuir", "bandages"] },
@@ -64,12 +71,21 @@ const CAS: Cas[] = [
   { classe: "guerrier", roleId: "gTient", inv: ["pavois", "armure_plaques", "lame_longue"] },
   { classe: "guerrier", roleId: "gFrappe", inv: ["lame_courte"] },
   { classe: "guerrier", roleId: "gFrappe", inv: ["deux_armes_identiques", "lame_longue", "targe", "armure_cuir", "bandages", "contondante_longue"] },
-  { classe: "pretre", roleId: "pSoigne", inv: [] },
-  { classe: "pretre", roleId: "pSoigne", inv: ["armure_maille", "ecu", "bourse"] },
-  { classe: "pretre", roleId: "pFront", inv: ["armure_cuir"] },
-  { classe: "pretre", roleId: "pFront", inv: ["armure_cuir", "armure_maille", "targe", "ecu"] },
-  { classe: "pretre", roleId: "pRite", inv: [] },
-  { classe: "pretre", roleId: "pRite", inv: ["targe", "fioles"] },
+  // ⭐ [A2-Prêtre s360] LE DOMAINE A CHANGÉ QUAND LA RÈGLE A CHANGÉ.
+  // ⛪ et ✝️ laissent leur domaine au joueur (la mesure le dit : « domaines
+  // variés » chez ⛪, Bénédiction seulement 3/4 chez ✝️) → ils se déroulent
+  // sur les 8 DOMAINES, exactement comme les rôles Mage sur les 13 cercles.
+  // 🕊️ et 📿 l'IMPOSENT (`magieImposee`) → un seul cas chacun.
+  ...DOMAINES.flatMap<Cas>((element) => [
+    { classe: "pretre", roleId: "pRite", inv: [], element },
+    { classe: "pretre", roleId: "pRite", inv: ["targe", "fioles"], element },
+    { classe: "pretre", roleId: "pSoigne", inv: [], element },
+    { classe: "pretre", roleId: "pSoigne", inv: ["armure_maille", "ecu", "bourse"], element },
+  ]),
+  { classe: "pretre", roleId: "pMissionnaire", inv: [] },
+  { classe: "pretre", roleId: "pMissionnaire", inv: ["armure_cuir", "bourse"] },
+  { classe: "pretre", roleId: "pConsecrateur", inv: [] },
+  { classe: "pretre", roleId: "pConsecrateur", inv: ["targe", "bourse"] },
   { classe: "voleur", roleId: "vOrfevre", inv: ["bourse"] },
   { classe: "voleur", roleId: "vOrfevre", inv: ["bourse", "feuille_crayon", "lame_courte", "fioles"] },
   { classe: "voleur", roleId: "vPremier", inv: [] },
@@ -168,7 +184,7 @@ describe("simulation — tout le domaine", () => {
         }
       }
     }
-    expect(nb).toBe(496);
+    expect(nb).toBe(616);
     // ⭐ ATTESTATION du pire cas (re-mesuré s353, pas promis).
     // Depuis que les filets martiaux se terminent sur `Développement
     // Spirituel` à 2 XP (plafonds mesurés en prod, arbitrage Fred s353), le
@@ -178,9 +194,17 @@ describe("simulation — tout le domaine", () => {
     // ⭐ ATTESTATION du pire cas (re-mesuré s358 sur les 13 cercles, pas
     // promis). Le domaine Mage est passé de 7 éléments à 13 cercles : 496
     // compositions au lieu de 144, et le reliquat tient toujours sous 3 XP.
+    // ⭐ RE-MESURÉ s360 : 496 -> 616. Le domaine du Prêtre est devenu LIBRE
+    // pour ⛪ et ✝️ (🕊️ et 📿 imposent le leur), donc 8 domaines × 4 cas au
+    // lieu de 6 cas figés. LE DOMAINE DE LA SIMULATION CHANGE QUAND UNE RÈGLE
+    // CHANGE : on le RE-COMPTE, on ne réutilise pas l'ancien effectif.
+    // ⚠️ s360 — LE MAXIMUM N'A PAS BOUGÉ (3 XP), SEUL SON PORTEUR A CHANGÉ.
+    // `pire` ne retient que le PREMIER à atteindre le maximum ; les prêtres
+    // passent avant les mages dans `CAS`, donc ⛪ prend la place de ✨ sur une
+    // ÉGALITÉ, pas sur une aggravation. Le plafond de 3 XP tient sur les 616.
     expect(pire).toEqual({
       reliquat: 3,
-      desc: "mage/mEnchanteur(Air) inv=[baton_sceptre_baguette,feuille_crayon,fioles] budget=80 ③tiré",
+      desc: "pretre/pRite(Bénédiction) inv=[] budget=80 ③tiré",
     });
 
     // Le reliquat MARTIAL, mesuré à part : c'est lui que ce lot améliore.
