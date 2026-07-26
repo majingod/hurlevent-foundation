@@ -96,11 +96,32 @@ export function dureePlafonnee(
  */
 export function configGenerateur(modele: SortModele | PriereModele): ConfigMagie {
   const estDegats = "type_sort" in modele && modele.type_sort === "dégâts";
+  const estPriere = !("type_sort" in modele);
 
   const zonesModele = ZONES_PAR_TYPE[modele.zone_effet] ?? [modele.zone_effet];
-  const zones = estDegats
-    ? zonesModele.filter((z) => z !== "Personnelle")
-    : zonesModele;
+  // ⭐ [A2-Prêtre s360] GARDE ③ — une PRIÈRE ne sort jamais en « Personnelle »
+  // quand son modèle permet de viser autrui. Sans elle, `configGenerateur`
+  // prenait la zone la moins chère (1 point contre 2) et le générateur
+  // produisait un SOIGNEUR QUI NE SOIGNE QUE LUI-MÊME — 7 domaines sur 8
+  // sortaient en « Personnelle ». Coût mesuré de la garde : +1 XP.
+  //
+  // ⚠️ ELLE NE VAUT PAS POUR LES SORTS, et c'est MESURÉ, pas commode
+  //    (prod du 2026-07-25, personnages vivants) :
+  //      · sorts   : « Personnelle » = 26 instances / 92 (28 %), 10 porteurs
+  //                  — 2e zone la plus utilisée. Un mage qui se protège
+  //                    lui-même est un mage normal.
+  //      · prières : « Personnelle » =  3 instances / 49 ( 6 %),  3 porteurs
+  //                  — et les 3 sont des prières intrinsèquement personnelles
+  //                    (Anti-Détection, Augure, Contact avec les Anciens).
+  //    L'étendre aux sorts déplace 🎭 (29-36 -> 30-38) et ✨ (21-28 -> 22-30) :
+  //    ça invaliderait l'attestation Mage de s358 sans aucun motif mesuré.
+  //
+  // Les prières CONÇUES personnelles (modèle `zone_effet = "Personnelle"`,
+  // ex. Combat Aveugle, Globe d'Air) la gardent : la liste n'a qu'une entrée.
+  const zones =
+    estDegats || (estPriere && zonesModele.length > 1)
+      ? zonesModele.filter((z) => z !== "Personnelle")
+      : zonesModele;
 
   const porteesModele = filterPorteesDisponibles(modele.portee).map((p) => p.label);
   const portees =
@@ -162,6 +183,72 @@ export function ordonnerSortsRepresentatifs(
   );
   const tete = parPrix.find((x) => x.modele.type_sort === "dégâts");
   return tete === null || tete === undefined
+    ? parPrix
+    : [tete, ...parPrix.filter((x) => x.modele.nom !== tete.modele.nom)];
+}
+
+/**
+ * ⭐ [A2-Prêtre s360] L'ORDRE « REPRÉSENTATIF » d'un DOMAINE (arbitrage Fred s360).
+ *
+ * ⚠️ LA RÈGLE DU MAGE NE SE TRANSPOSE PAS, et c'est mesuré (référence §5.2 ⑤) :
+ * « le sort de dégâts du cercle sinon le moins cher » marche pour les sorts
+ * parce que le sort de dégâts EST le sort le plus porté. Côté prêtre, sur les
+ * 64 prières de niveau 1, **4 seulement** font des dégâts, et aucune des 8
+ * prières les plus portées de leur domaine n'en fait. Un jumeau se RE-MESURE.
+ *
+ * LA RÈGLE RETENUE — la plus PORTÉE EN PROD quand le domaine donne un signal,
+ * sinon la « effet bénéfique » la moins chère. C'est le MÊME PRINCIPE que côté
+ * mage (représentatif = ce que les joueurs portent), dérivé sur la mesure
+ * prêtre au lieu d'être hérité de sa formule.
+ *
+ * ⚠️ Écarté : « la moins chère », qui donnait `Protection de l'Âme` en
+ * Bénédiction alors que `Soins` y est porté par 9 joueurs — le signal le plus
+ * fort de toute la base. Optimiser sur le prix produit du contenu injouable
+ * (Gotcha C66).
+ */
+
+/**
+ * D'OÙ VIENNENT CES CHIFFRES (règle « tout seuil est une hypothèse ») :
+ * MESURÉS en prod le 2026-07-25 sur les personnages vivants —
+ *
+ *   SELECT pr.domaine, pr.nom, count(DISTINCT pp.personnage_id) AS porteurs
+ *   FROM personnage_prieres pp
+ *   JOIN prieres pr     ON pr.id = pp.priere_id
+ *   JOIN personnages p  ON p.id  = pp.personnage_id
+ *   WHERE p.est_mort = false
+ *   GROUP BY 1, 2 ORDER BY porteurs DESC;
+ *
+ * Effectif : 49 instances, 31 prières distinctes, 21 porteurs (17 prêtres).
+ * ⚠️ SEULS 5 DOMAINES SUR 8 DONNENT UN SIGNAL. Connaissance, Nécromancie et
+ * Ordre sont à ÉGALITÉ À 1 PORTEUR — du bruit, pas une mesure : ils sont
+ * volontairement absents de cette table et retombent sur la règle de repli.
+ */
+export const PRIERE_LA_PLUS_PORTEE: Readonly<Record<string, string>> = {
+  "Bénédiction": "Soins", // 9 porteurs
+  "Chaos": "Ami/Ennemi", // 4
+  "Éléments": "Peau de Pierre", // 3
+  "Guerre": "Insensibilité à la douleur", // 2
+  "Nature": "Baies de Guérison", // 2
+};
+
+export function ordonnerPrieresRepresentatives(
+  prieres: readonly PriereModele[]
+): { modele: PriereModele; config: ConfigMagie; coutXp: number }[] {
+  const chiffres = prieres.map((modele) => {
+    const config = configGenerateur(modele);
+    return { modele, config, coutXp: prixMagie(modele, "priere", config).coutXp };
+  });
+  // Départage stable par NOM à prix égal : deux appels donnent le même ordre.
+  const parPrix = [...chiffres].sort(
+    (a, b) => a.coutXp - b.coutXp || a.modele.nom.localeCompare(b.modele.nom, "fr")
+  );
+  const domaine = prieres[0]?.domaine;
+  const voulue = domaine === undefined ? undefined : PRIERE_LA_PLUS_PORTEE[domaine];
+  const tete =
+    voulue === undefined
+      ? parPrix.find((x) => x.modele.type_priere === "effet bénéfique")
+      : parPrix.find((x) => x.modele.nom === voulue);
+  return tete === undefined
     ? parPrix
     : [tete, ...parPrix.filter((x) => x.modele.nom !== tete.modele.nom)];
 }
