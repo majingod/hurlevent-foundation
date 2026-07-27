@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   Sheet,
@@ -8,34 +8,56 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { GROUPES_OBJETS, objetsGenerateur } from "@/moteurCreation/exigences";
+import {
+  ErreurPontSnapshot,
+  depsDepuisSnapshot,
+} from "@/moteurCreation/generateur/pontSnapshot";
+import {
+  tirerPersonnage,
+  type DepsResolveur,
+  type ResultatTirage,
+  type TiragePersonnage,
+} from "@/moteurCreation/generateur/resoudre";
+import type { CompositionOk } from "@/moteurCreation/generateur/types";
+import { getSnapshot } from "@/moteurCreation/snapshot";
 
 import AccueilPortes, { type PorteAffichee } from "./AccueilPortes";
 import EcranInventaire, { CaseInventaire, TITRES_GROUPES } from "./EcranInventaire";
 import EcranRace from "./EcranRace";
+import FicheTirage from "./FicheTirage";
 import { PORTES } from "./portes";
 
 /**
- * [VIS-8 lot 1] Conteneur du générateur : l'accueil des portes et les écrans
- * de constats de la phase 1, DANS le wizard partagé (visiteur hors ligne ET
- * connecté — décision 3, s340).
+ * [VIS-8] Conteneur du générateur : l'accueil des portes, les écrans de
+ * constats de la phase 1 ET la fiche du tirage 🎲 (lot s364), DANS le
+ * wizard partagé (visiteur hors ligne ET connecté — décision 3, s340).
  *
- * L'état des constats (équipement coché, race retenue) vit ICI, en mémoire :
- * pas dans le brouillon, qui ne contient que les choix du personnage
- * (invariant gardé par test structurel). Le résolveur (lot suivant) le
- * consommera directement.
+ * L'état des constats (équipement coché, race retenue) vit ICI, en
+ * mémoire : pas dans le brouillon, qui ne contient que les choix du
+ * personnage (invariant gardé par test structurel). C'est LE MÊME
+ * inventaire qui alimente 🎲 (décision 31) : cocher côté 🧭 puis revenir
+ * sur 🎲 en profite, sans aucun écran nouveau.
  *
- * Une porte n'est rendue que si elle est branchée — jamais de bouton mort :
- * - 🛠️ « Je bâtis moi-même » → `onBatirMoiMeme` (le wizard actuel, inchangé) ;
- * - 🧭 « Guide-moi » → écrans de constats (ce lot) ; la suite (« On frappe à
- *   ta porte… ») s'y branchera au lot résolveur via `onConstatsTermines` ;
- * - 🎲 « Surprends-moi » → n'apparaît que quand `onTirage` sera fourni
- *   (lot 🎲) — tirage DIRECT, sans écran de constats (contrat s346,
- *   re-confirmé Fred s348).
+ * Une porte n'est rendue que si elle est branchée — jamais de bouton mort
+ * (décision 28, symétrie) :
+ * - 🛠️ « Je bâtis moi-même » → `onBatirMoiMeme` (le wizard actuel) ;
+ * - 🧭 « Guide-moi » → écrans de constats ; la suite s'y branchera au
+ *   lot 🧭 via `onConstatsTermines` ;
+ * - 🎲 « Surprends-moi » → tirage DIRECT depuis l'inventaire coché
+ *   (contrat s346, décision 31), fiche par couches, re-roll. La porte
+ *   n'apparaît que quand `onAppliquerTirage` est fourni : sans le
+ *   « Continuer dans le créateur » (PR-B, `appliquerComposition`), la
+ *   fiche serait un cul-de-sac.
+ *
+ * Le moteur est branché PARESSEUSEMENT au premier clic 🎲 : si le
+ * snapshot ne porte pas la carte d'équipement (`objets_requis` — dette
+ * [SNAPSHOT-COMMIT-STUB] sur le JSON committé), `ErreurPontSnapshot`
+ * s'affiche en clair au lieu de tirer des races sans exigence de costume.
  */
 
-type EcranGenerateur = "accueil" | "inventaire" | "race";
+type EcranGenerateur = "accueil" | "inventaire" | "race" | "tirage";
 
-/** Fil d'ariane de la phase 1 — s'étendra au lot résolveur. */
+/** Fil d'ariane de la phase 1 (constats 🧭) — la fiche 🎲 n'en fait pas partie. */
 const FIL: readonly { id: EcranGenerateur; label: string }[] = [
   { id: "inventaire", label: "1. Équipement" },
   { id: "race", label: "2. Race" },
@@ -46,8 +68,15 @@ interface GenerateurProps {
   modeVisiteur: boolean;
   /** 🛠️ : referme l'accueil et rend la main au wizard actuel. */
   onBatirMoiMeme: () => void;
-  /** 🎲 (lot 🎲) : tant qu'absent, la porte n'est pas affichée. */
-  onTirage?: () => void;
+  /**
+   * 🎲 (PR-B) : applique la composition tirée au personnage via le
+   * guichet `ClientCreation` (décision 29). Tant qu'absent, la porte
+   * n'est pas affichée et le bouton « Continuer » n'existe pas.
+   */
+  onAppliquerTirage?: (resultat: {
+    tirage: TiragePersonnage;
+    composition: CompositionOk;
+  }) => void;
   /**
    * Fin des constats (race retenue) — branché au lot résolveur.
    * Tant qu'absent, l'écran race retient le choix sans naviguer.
@@ -61,13 +90,33 @@ interface GenerateurProps {
 const Generateur = ({
   modeVisiteur,
   onBatirMoiMeme,
-  onTirage,
+  onAppliquerTirage,
   onConstatsTermines,
 }: GenerateurProps) => {
   const [ecran, setEcran] = useState<EcranGenerateur>("accueil");
   const [inventaire, setInventaire] = useState<ReadonlySet<string>>(new Set());
   const [raceRetenueId, setRaceRetenueId] = useState<string | null>(null);
   const [sacOuvert, setSacOuvert] = useState(false);
+  const [resultat, setResultat] = useState<ResultatTirage | null>(null);
+  const [erreurPont, setErreurPont] = useState<string | null>(null);
+
+  /** Dépendances du résolveur — construites UNE fois, au premier 🎲. */
+  const depsRef = useRef<DepsResolveur | null>(null);
+  const lancerTirage = () => {
+    try {
+      depsRef.current ??= depsDepuisSnapshot(getSnapshot());
+      setResultat(tirerPersonnage(depsRef.current, Math.random, inventaire));
+      setErreurPont(null);
+    } catch (e) {
+      setErreurPont(
+        e instanceof ErreurPontSnapshot
+          ? e.message
+          : "Le générateur n'a pas pu démarrer. Réessaie, ou passe par « Je bâtis moi-même »."
+      );
+      setResultat(null);
+    }
+    setEcran("tirage");
+  };
 
   const basculer = (id: string) =>
     setInventaire((s) => {
@@ -92,11 +141,12 @@ const Generateur = ({
     if (p.id === "batir") return [{ ...p, onChoisir: onBatirMoiMeme }];
     if (p.id === "guide")
       return [{ ...p, onChoisir: () => setEcran("inventaire") }];
-    // 🎲 : affichée seulement une fois le tirage branché (lot 🎲).
-    return onTirage ? [{ ...p, onChoisir: onTirage }] : [];
+    // 🎲 : affichée seulement une fois « Continuer » branché (PR-B).
+    return onAppliquerTirage ? [{ ...p, onChoisir: lancerTirage }] : [];
   });
 
   const surAccueil = ecran === "accueil";
+  const surTirage = ecran === "tirage";
   const indexCourant = FIL.findIndex((f) => f.id === ecran);
 
   return (
@@ -141,29 +191,33 @@ const Generateur = ({
             >
               ← Retour
             </button>
-            {FIL.map((f, i) => {
-              const visitable = i < indexCourant;
-              const courant = f.id === ecran;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  disabled={!visitable && !courant}
-                  onClick={() => visitable && setEcran(f.id)}
-                  className={
-                    courant
-                      ? "font-bold text-gold"
-                      : visitable
-                        ? "text-white/80 underline underline-offset-2"
-                        : "text-white/40"
-                  }
-                >
-                  {f.label}
-                  {i < FIL.length - 1 ? " ›" : ""}
-                </button>
-              );
-            })}
-            <span className="opacity-60">› …</span>
+            {!surTirage && (
+              <>
+                {FIL.map((f, i) => {
+                  const visitable = i < indexCourant;
+                  const courant = f.id === ecran;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      disabled={!visitable && !courant}
+                      onClick={() => visitable && setEcran(f.id)}
+                      className={
+                        courant
+                          ? "font-bold text-gold"
+                          : visitable
+                            ? "text-white/80 underline underline-offset-2"
+                            : "text-white/40"
+                      }
+                    >
+                      {f.label}
+                      {i < FIL.length - 1 ? " ›" : ""}
+                    </button>
+                  );
+                })}
+                <span className="opacity-60">› …</span>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -197,9 +251,59 @@ const Generateur = ({
           onCocherObjets={cocherTous}
         />
       )}
+      {ecran === "tirage" && (
+        <>
+          {erreurPont && (
+            <div className="mx-auto max-w-2xl px-4 py-6">
+              <div className="rounded-lg border border-white/10 border-l-2 border-l-bordeaux bg-white/5 px-3.5 py-3 text-sm text-white/80">
+                ⚠️ {erreurPont}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEcran("accueil")}
+                className="mt-3 rounded-lg border border-white/15 px-4 py-2 text-sm text-white/80 transition-colors hover:border-gold/40"
+              >
+                ← Retour au menu
+              </button>
+            </div>
+          )}
+          {!erreurPont && resultat && !resultat.ok && (
+            <div className="mx-auto max-w-2xl px-4 py-6">
+              <div className="rounded-lg border border-white/10 border-l-2 border-l-bordeaux bg-white/5 px-3.5 py-3 text-sm text-white/80">
+                🎲 Ce tirage n'a pas abouti : {resultat.raison}
+              </div>
+              <button
+                type="button"
+                onClick={lancerTirage}
+                className="mt-3 rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/90 transition-colors hover:border-gold/40"
+              >
+                🎲 Relancer
+              </button>
+            </div>
+          )}
+          {!erreurPont && resultat?.ok && (
+            <FicheTirage
+              tirage={resultat.tirage}
+              composition={resultat.composition}
+              nbInventaire={inventaire.size}
+              onRelancer={lancerTirage}
+              onContinuer={
+                onAppliquerTirage
+                  ? () =>
+                      onAppliquerTirage({
+                        tirage: resultat.tirage,
+                        composition: resultat.composition,
+                      })
+                  : undefined
+              }
+            />
+          )}
+        </>
+      )}
 
       {/* 🎒 : LA seule vérité d'inventaire — ajouter/retirer ici met tout à
-          jour, partout (décision 12). */}
+          jour, partout (décision 12). Sur la fiche 🎲, l'effet passe par
+          « Relancer » : rien ne se recompose en silence. */}
       <Sheet open={sacOuvert} onOpenChange={setSacOuvert}>
         <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
           <SheetHeader>
