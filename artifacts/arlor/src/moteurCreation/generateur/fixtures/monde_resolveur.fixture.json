@@ -1,0 +1,729 @@
+{
+  "capture": {
+    "date": "2026-07-26",
+    "source": "MCP prod dezocltwpuhbvpxwcbdy",
+    "session": "s362"
+  },
+  "races": [
+    {
+      "id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "nom": "Chiméride",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "nom": "Demi-Elfe",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "nom": "Demi-Orc",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "nom": "Drow",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "fd1f6125-d2bc-4be8-ac0c-426196a1eb43",
+      "nom": "Fée",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": false
+    },
+    {
+      "id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "nom": "Gobelin",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "d9cfea0e-acbb-4f02-9eaa-12efa6fbf9b9",
+      "nom": "Haut-Elfe",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": false
+    },
+    {
+      "id": "561534b1-0375-41ce-b318-7a0e29a9d2b3",
+      "nom": "Humain",
+      "xp_depart": 80,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "4d7e2226-76cb-4b94-9df4-b8f12ff486e1",
+      "nom": "Les Non-Races",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "nom": "Myrvalk",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": true
+    },
+    {
+      "id": "91181212-4a6d-4d59-b668-808f32dc46be",
+      "nom": "Orc",
+      "xp_depart": 60,
+      "est_actif": true,
+      "est_jouable": false
+    }
+  ],
+  "race_traits": [
+    {
+      "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "trait_id": "01302682-1182-4bf8-85a7-a91f87817101"
+    },
+    {
+      "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "trait_id": "a5973fb1-8c4b-42e2-8184-f949a4982345"
+    },
+    {
+      "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "trait_id": "c36596fb-6d6e-490f-8886-3e0d08c5c099"
+    },
+    {
+      "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "trait_id": "c9e21d23-34b1-40fb-8860-357b89a17358"
+    },
+    {
+      "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "4d7e2226-76cb-4b94-9df4-b8f12ff486e1",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "4d7e2226-76cb-4b94-9df4-b8f12ff486e1",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "561534b1-0375-41ce-b318-7a0e29a9d2b3",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "561534b1-0375-41ce-b318-7a0e29a9d2b3",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "trait_id": "160abee1-2096-456a-8578-4ab8438bfaba"
+    },
+    {
+      "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "trait_id": "1db17667-e112-451e-b691-e53b0daf3970"
+    },
+    {
+      "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "trait_id": "a61750bc-a82b-44b9-8d79-3594b42e40fa"
+    },
+    {
+      "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "trait_id": "b6e46414-4a68-4cc0-a3f0-3d223c1c9f67"
+    },
+    {
+      "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "91181212-4a6d-4d59-b668-808f32dc46be",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "91181212-4a6d-4d59-b668-808f32dc46be",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "1db17667-e112-451e-b691-e53b0daf3970"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "371f712e-83b0-4684-b65f-9cb6113c915b"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "44c97fb5-deba-4879-8cda-2bedc4dc3382"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "44c97fb5-deba-4879-8cda-2bedc4dc3382"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "98f20cb6-6978-414b-bfe8-34bafe81d175"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "98f20cb6-6978-414b-bfe8-34bafe81d175"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "trait_id": "01302682-1182-4bf8-85a7-a91f87817101"
+    },
+    {
+      "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "trait_id": "20d1ccad-2446-406e-a111-9a75cb8777df"
+    },
+    {
+      "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "trait_id": "cbf32861-e0ea-49e8-b315-568588569fa8"
+    },
+    {
+      "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "trait_id": "f82081ce-764b-4e2b-9b20-e497801a8fa1"
+    },
+    {
+      "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "d9cfea0e-acbb-4f02-9eaa-12efa6fbf9b9",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "d9cfea0e-acbb-4f02-9eaa-12efa6fbf9b9",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "trait_id": "371f712e-83b0-4684-b65f-9cb6113c915b"
+    },
+    {
+      "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "trait_id": "7bfb8e13-2466-48d3-8ad1-a2aba76949fa"
+    },
+    {
+      "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "trait_id": "a3039c0b-525d-4282-a92b-09d939b801f2"
+    },
+    {
+      "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "trait_id": "c9e21d23-34b1-40fb-8860-357b89a17358"
+    },
+    {
+      "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "trait_id": "a61750bc-a82b-44b9-8d79-3594b42e40fa"
+    },
+    {
+      "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "trait_id": "cbf32861-e0ea-49e8-b315-568588569fa8"
+    },
+    {
+      "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "trait_id": "e550c444-7e31-4abe-a35e-95297afa3e4e"
+    },
+    {
+      "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "trait_id": "f02c7c2a-a18c-4670-8781-6d45121591e3"
+    },
+    {
+      "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    },
+    {
+      "race_id": "fd1f6125-d2bc-4be8-ac0c-426196a1eb43",
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+    },
+    {
+      "race_id": "fd1f6125-d2bc-4be8-ac0c-426196a1eb43",
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+    }
+  ],
+  "traits_raciaux": [
+    {
+      "id": "44c97fb5-deba-4879-8cda-2bedc4dc3382",
+      "nom": "Affinité animale",
+      "est_actif": true
+    },
+    {
+      "id": "7bfb8e13-2466-48d3-8ad1-a2aba76949fa",
+      "nom": "Casse-pied",
+      "est_actif": true
+    },
+    {
+      "id": "1db17667-e112-451e-b691-e53b0daf3970",
+      "nom": "Charognard",
+      "est_actif": true
+    },
+    {
+      "id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "nom": "Coup du destin",
+      "est_actif": true
+    },
+    {
+      "id": "20d1ccad-2446-406e-a111-9a75cb8777df",
+      "nom": "Créature des ténèbres",
+      "est_actif": true
+    },
+    {
+      "id": "c9e21d23-34b1-40fb-8860-357b89a17358",
+      "nom": "Estomac d'acier",
+      "est_actif": true
+    },
+    {
+      "id": "98f20cb6-6978-414b-bfe8-34bafe81d175",
+      "nom": "Flair affûté",
+      "est_actif": true
+    },
+    {
+      "id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "nom": "Fortuné",
+      "est_actif": true
+    },
+    {
+      "id": "160abee1-2096-456a-8578-4ab8438bfaba",
+      "nom": "Inapte à la magie",
+      "est_actif": true
+    },
+    {
+      "id": "a3039c0b-525d-4282-a92b-09d939b801f2",
+      "nom": "Infusé",
+      "est_actif": true
+    },
+    {
+      "id": "371f712e-83b0-4684-b65f-9cb6113c915b",
+      "nom": "Instinct de survie",
+      "est_actif": true
+    },
+    {
+      "id": "b6e46414-4a68-4cc0-a3f0-3d223c1c9f67",
+      "nom": "Marchandage Musclé",
+      "est_actif": true
+    },
+    {
+      "id": "a61750bc-a82b-44b9-8d79-3594b42e40fa",
+      "nom": "Mythomane",
+      "est_actif": true
+    },
+    {
+      "id": "cbf32861-e0ea-49e8-b315-568588569fa8",
+      "nom": "Poigne ardente",
+      "est_actif": true
+    },
+    {
+      "id": "c36596fb-6d6e-490f-8886-3e0d08c5c099",
+      "nom": "Poussière des profondeurs",
+      "est_actif": true
+    },
+    {
+      "id": "a5973fb1-8c4b-42e2-8184-f949a4982345",
+      "nom": "Remède des Braves",
+      "est_actif": true
+    },
+    {
+      "id": "01302682-1182-4bf8-85a7-a91f87817101",
+      "nom": "Résistance aux poisons",
+      "est_actif": true
+    },
+    {
+      "id": "e550c444-7e31-4abe-a35e-95297afa3e4e",
+      "nom": "Résonance magique",
+      "est_actif": true
+    },
+    {
+      "id": "f02c7c2a-a18c-4670-8781-6d45121591e3",
+      "nom": "Sang féerique",
+      "est_actif": true
+    },
+    {
+      "id": "f82081ce-764b-4e2b-9b20-e497801a8fa1",
+      "nom": "Sang toxique",
+      "est_actif": true
+    }
+  ],
+  "religions": [
+    {
+      "id": "3fd199e6-f4d6-4779-a132-6f023e14a9fd",
+      "nom": "Culte de la Lumière d'Asméis",
+      "domaines_principaux": [
+        "Bénédiction",
+        "Guerre",
+        "Ordre"
+      ],
+      "domaines_proscrits": [
+        "Chaos",
+        "Nécromancie"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "e8f0c9fd-38d7-425f-9a7c-a96920109748",
+      "nom": "Culte des Ombres d'Asbeth",
+      "domaines_principaux": [
+        "Chaos",
+        "Guerre",
+        "Éléments"
+      ],
+      "domaines_proscrits": [
+        "Ordre",
+        "Bénédiction"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "5f1397a7-220a-4587-ae7f-a2a544a8d2bc",
+      "nom": "L'Ordre de la Connaissance de Sol-gon",
+      "domaines_principaux": [
+        "Connaissance",
+        "Ordre",
+        "Bénédiction"
+      ],
+      "domaines_proscrits": [
+        "Nature",
+        "Guerre"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "b3924feb-9632-4ec0-a814-1a4c6ab4653e",
+      "nom": "L'Ordre de la Mer de Ren",
+      "domaines_principaux": [
+        "Bénédiction",
+        "Connaissance",
+        "Nature"
+      ],
+      "domaines_proscrits": [
+        "Nécromancie",
+        "Guerre"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "0fdcd0bd-2483-49af-b0dd-3852e7379bd7",
+      "nom": "La Compagnie de Zenlia",
+      "domaines_principaux": [
+        "Guerre",
+        "Bénédiction",
+        "Connaissance"
+      ],
+      "domaines_proscrits": [
+        "Nécromancie",
+        "Chaos"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "67829097-b7a9-49d3-b304-c72d4c526e5e",
+      "nom": "Le Culte de La Pinte Sauvage",
+      "domaines_principaux": [
+        "Bénédiction",
+        "Éléments",
+        "Chaos"
+      ],
+      "domaines_proscrits": [
+        "Ordre",
+        "Connaissance"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "7aa6cd7d-4ddc-4016-aef5-90f0854472ec",
+      "nom": "Les Chevaliers de l'Écu de Sigwulf Roc",
+      "domaines_principaux": [
+        "Ordre",
+        "Bénédiction",
+        "Guerre"
+      ],
+      "domaines_proscrits": [
+        "Chaos",
+        "Nécromancie"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "4979679f-74a6-4564-aa02-0aaf9d8c171a",
+      "nom": "Les Chevaliers Gris de Mergar",
+      "domaines_principaux": [
+        "Chaos",
+        "Nécromancie",
+        "Guerre"
+      ],
+      "domaines_proscrits": [
+        "Ordre",
+        "Éléments"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "0d412540-c3f0-48e3-9c49-97a8cbc4701f",
+      "nom": "Les Ecclésias d'Acarthas",
+      "domaines_principaux": [
+        "Éléments",
+        "Guerre",
+        "Ordre"
+      ],
+      "domaines_proscrits": [
+        "Chaos",
+        "Nécromancie"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "8d14315d-5c9d-45e6-9efd-23e40848867a",
+      "nom": "Les Éternels de Shen-Gon",
+      "domaines_principaux": [
+        "Nécromancie",
+        "Connaissance",
+        "Bénédiction"
+      ],
+      "domaines_proscrits": [
+        "Éléments",
+        "Nature"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "8f211631-f901-4b00-87d4-f2f85956dfb4",
+      "nom": "Les Faéeries de Nalidala",
+      "domaines_principaux": [
+        "Éléments",
+        "Chaos",
+        "Nature"
+      ],
+      "domaines_proscrits": [
+        "Ordre",
+        "Nécromancie"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "aec3b672-486d-44d1-9266-bfdc21e58087",
+      "nom": "Les Justicares de Sorelf",
+      "domaines_principaux": [
+        "Ordre",
+        "Connaissance",
+        "Guerre"
+      ],
+      "domaines_proscrits": [
+        "Chaos",
+        "Nature"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "2ca72bae-dff7-464b-9363-e92ec6b44141",
+      "nom": "Les Protecteurs du Temps d'Éliah",
+      "domaines_principaux": [
+        "Nécromancie",
+        "Connaissance",
+        "Nature"
+      ],
+      "domaines_proscrits": [
+        "Guerre",
+        "Chaos"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "420644a3-34c7-44f7-99b2-d9b478d1043f",
+      "nom": "Les Saronides de Garron",
+      "domaines_principaux": [
+        "Nature",
+        "Éléments",
+        "Bénédiction"
+      ],
+      "domaines_proscrits": [
+        "Guerre",
+        "Ordre"
+      ],
+      "est_actif": true
+    },
+    {
+      "id": "7e075bf8-31df-4f34-992d-a50eee831dbc",
+      "nom": "Les Sauvages de Polan",
+      "domaines_principaux": [
+        "Guerre",
+        "Éléments",
+        "Nature"
+      ],
+      "domaines_proscrits": [
+        "Ordre",
+        "Connaissance"
+      ],
+      "est_actif": true
+    }
+  ],
+  "objets_requis": [
+    {
+      "id": "0950c17b-0e86-4740-aa19-568a9f87d80a",
+      "competence_id": null,
+      "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
+      "libelle_manque": "un masque, ou des oreilles pointues avec un maquillage vert",
+      "variantes": [
+        {
+          "objets": [
+            "masque"
+          ],
+          "niveau_min": 1
+        },
+        {
+          "objets": [
+            "oreilles_pointues",
+            "maquillage_vert"
+          ],
+          "niveau_min": 1
+        }
+      ],
+      "commentaire": null
+    },
+    {
+      "id": "99505ed3-65ac-4073-b58a-a71fc78cfc37",
+      "competence_id": null,
+      "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
+      "libelle_manque": "un costume d'animal",
+      "variantes": [
+        {
+          "objets": [
+            "costume_animal"
+          ],
+          "niveau_min": 1
+        }
+      ],
+      "commentaire": null
+    },
+    {
+      "id": "9ca1f417-d8db-448b-9119-749b5876b9a3",
+      "competence_id": null,
+      "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
+      "libelle_manque": "un masque, ou du maquillage vert",
+      "variantes": [
+        {
+          "objets": [
+            "masque"
+          ],
+          "niveau_min": 1
+        },
+        {
+          "objets": [
+            "maquillage_vert"
+          ],
+          "niveau_min": 1
+        }
+      ],
+      "commentaire": null
+    },
+    {
+      "id": "ade6b766-bcd2-485e-8a80-6077c5736f94",
+      "competence_id": null,
+      "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
+      "libelle_manque": "un masque, ou des oreilles pointues avec un maquillage noir, gris ou mauve foncé",
+      "variantes": [
+        {
+          "objets": [
+            "masque"
+          ],
+          "niveau_min": 1
+        },
+        {
+          "objets": [
+            "oreilles_pointues",
+            "maquillage_fonce"
+          ],
+          "niveau_min": 1
+        }
+      ],
+      "commentaire": null
+    },
+    {
+      "id": "bb645f64-6bfb-4423-92a4-c3db8f52c0d5",
+      "competence_id": null,
+      "race_id": "4d7e2226-76cb-4b94-9df4-b8f12ff486e1",
+      "libelle_manque": "un costume de créature",
+      "variantes": [
+        {
+          "objets": [
+            "costume_creature"
+          ],
+          "niveau_min": 1
+        }
+      ],
+      "commentaire": null
+    },
+    {
+      "id": "c295601d-6edd-4884-b87a-3201bdbd9d80",
+      "competence_id": null,
+      "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
+      "libelle_manque": "une barbe (obligatoire chez les hommes)",
+      "variantes": [
+        {
+          "objets": [
+            "barbe"
+          ],
+          "niveau_min": 1
+        }
+      ],
+      "commentaire": null
+    },
+    {
+      "id": "cb96cb20-df4a-466a-a5c7-54acaf0da162",
+      "competence_id": null,
+      "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
+      "libelle_manque": "des oreilles pointues",
+      "variantes": [
+        {
+          "objets": [
+            "oreilles_pointues"
+          ],
+          "niveau_min": 1
+        }
+      ],
+      "commentaire": null
+    }
+  ]
+}

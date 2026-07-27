@@ -90,7 +90,12 @@ export interface TraitAcquis {
  * Implémentation UNIQUE (déplacée depuis snapshot.ts).
  */
 export function raceInapteMagie(
-  snapshot: SnapshotVisiteur,
+  snapshot: {
+    tables: {
+      race_traits: readonly { race_id: string; trait_id: string }[];
+      traits_raciaux: readonly { id: string; nom: string; est_actif: boolean }[];
+    };
+  },
   raceId: string | null
 ): boolean {
   if (!raceId) return false;

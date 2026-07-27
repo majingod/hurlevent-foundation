@@ -252,12 +252,19 @@ export const archetypeDemandeDesPS = (
   return lots.some(exigeDesPS);
 };
 
-/** Un lot d'achats touche-t-il aux points de spiritualité ? */
+/** Un lot d'achats touche-t-il aux points de spiritualité ?
+ *  ⚠️ [R1b s362] `sortAuChoix`/`priereAuChoix` SONT des sorts/prières : le
+ *  prédicat de s355 les ratait — nés en s358 avec « le contenu ne nomme plus
+ *  ses sorts », ils avaient désarmé la garde pour tout noyau caster sans
+ *  compétence à PS explicite (📿 Consécration + priereAuChoix passait pour
+ *  « sans PS », un inapte recevait une prière). Patron Gotcha C68. */
 export const exigeDesPS = (achats: readonly Achat[]): boolean =>
   achats.some(
     (a) =>
       a.t === "sort" ||
       a.t === "priere" ||
+      a.t === "sortAuChoix" ||
+      a.t === "priereAuChoix" ||
       ((a.t === "comp" || a.t === "rachat") && estCompetenceAPS(a.nom))
   );
 

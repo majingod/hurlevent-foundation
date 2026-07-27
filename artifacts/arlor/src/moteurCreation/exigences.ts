@@ -63,8 +63,8 @@ function lignesObjetsRequis(): ObjetRequis[] {
   return (getSnapshot().tables.objets_requis ?? []) as ObjetRequis[];
 }
 
-function construireIndex(
-  lignes: ObjetRequis[],
+export function construireIndex(
+  lignes: readonly ObjetRequis[],
   cle: "competence_id" | "race_id"
 ): Map<string, ExigenceObjets> {
   const index = new Map<string, ExigenceObjets>();
