@@ -26,9 +26,9 @@ import type {
 // - ABRÉGÉ ("fiche") : layout « journal » (racine .fp-compact) — corps 19px (s363 :
 //   lisibilité terrain > tenir en 2 pages ; arbitrage Fred, GN en faible lumière),
 //   colonnes doubles, catalogues d'artisanat en tableaux filtrés au niveau.
-// - INTÉGRAL ("manuel") : layout carte historique inchangé (verbatims, historique/âme,
-//   catalogues complets), à une exception : la réparation est fusionnée dans la carte
-//   de chaque objet forgé (jointure objets_forge → reparations_forge).
+// - INTÉGRAL ("manuel") : même échelle typo (s363) ; règles & recettes en cartes
+//   PLEINE LARGEUR (mesure de lecture ~70 signes), identité/traits/manipulations en
+//   2 colonnes ; la réparation reste fusionnée dans la carte de chaque objet forgé.
 // - Rendue dans le document principal, masquée à l'écran (.fp-root { display:none }),
 //   révélée uniquement à l'impression via @media print (le reste de l'appli est masqué).
 // - Encre économe : aucun aplat, contours fins, filets gris, texte noir.
@@ -77,57 +77,68 @@ const PRINT_CSS = `
   #fiche-imprimable h2, #fiche-imprimable h3 { break-after: avoid; }
 }
 /* Impression économe en encre : aucun aplat, contours fins, filets gris, texte noir. */
-#fiche-imprimable { font-family: Arial, sans-serif; color: #111; margin: 0; }
-#fiche-imprimable h1 { font-family: Georgia, "Times New Roman", serif; font-size: 23px; margin: 0 0 2px; }
-#fiche-imprimable .fp-sub { color: #555; font-size: 12px; margin: 0 0 14px; }
-#fiche-imprimable h2 { font-family: Georgia, serif; font-size: 16px; margin: 18px 0 7px; border-bottom: 1px solid #999; padding-bottom: 2px; }
-#fiche-imprimable h3 { font-size: 11.5px; margin: 11px 0 5px; color: #444; font-weight: bold; text-transform: uppercase; letter-spacing: .03em; }
-#fiche-imprimable .fp-grid { display: grid; gap: 9px; }
-#fiche-imprimable .fp-kv { display: grid; gap: 3px 14px; grid-template-columns: repeat(3, 1fr); margin-bottom: 8px; }
-#fiche-imprimable .fp-kv .fp-item { font-size: 12px; }
+#fiche-imprimable {
+  font-family: Arial, sans-serif; color: #111; margin: 0;
+  /* Échelle typographique UNIQUE des deux variantes (s363) — un seul endroit à régler. */
+  --fp-corps: 19px;    /* prose, règles, lignes de recette */
+  --fp-meta: 17px;     /* méta, tableaux, mentions */
+  --fp-petit: 16px;    /* badges XP, en-têtes de tableaux */
+  --fp-formule: 20px;  /* formules magiques (mono, lues à voix haute) */
+  --fp-titre: 20px;    /* titres de cartes / noms d'items */
+  --fp-nom: 26px;      /* nom du personnage */
+  --fp-section: 21px;  /* titres de sections + bandeau de stats */
+  --fp-sous: 18px;     /* sous-sections, sous-titre, fouille */
+}
+#fiche-imprimable h1 { font-family: Georgia, "Times New Roman", serif; font-size: var(--fp-nom); margin: 0 0 3px; }
+#fiche-imprimable .fp-sub { color: #333; font-size: var(--fp-sous); margin: 0 0 16px; }
+#fiche-imprimable h2 { font-family: Georgia, serif; font-size: var(--fp-section); margin: 20px 0 8px; border-bottom: 1px solid #777; padding-bottom: 3px; }
+#fiche-imprimable h3 { font-size: var(--fp-sous); margin: 13px 0 6px; color: #222; font-weight: bold; text-transform: uppercase; letter-spacing: .03em; }
+#fiche-imprimable .fp-grid { display: grid; gap: 12px; }
+#fiche-imprimable .fp-kv { display: grid; gap: 4px 18px; grid-template-columns: repeat(2, 1fr); margin-bottom: 10px; }
+#fiche-imprimable .fp-kv .fp-item { font-size: var(--fp-corps); }
 #fiche-imprimable .fp-label { font-weight: bold; }
-#fiche-imprimable .fp-prose { font-size: 11.5px; color: #222; white-space: pre-wrap; margin: 0 0 6px; }
-/* Historique / Âme : deux cartes côte à côte + respiration sous le bloc. */
-#fiche-imprimable .fp-hist { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 16px; }
+#fiche-imprimable .fp-prose { font-size: var(--fp-corps); color: #111; white-space: pre-wrap; margin: 0 0 8px; }
+/* Historique / Âme : pleine largeur, l'un sous l'autre (s363 — des récits, pas des colonnes). */
+#fiche-imprimable .fp-hist { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 0 0 18px; }
 /* Carte de base (sections hors périmètre : identité/traits, compétences, manipulations). */
-#fiche-imprimable .fp-card { border: 1px solid #bbb; border-radius: 4px; padding: 8px 10px; }
-#fiche-imprimable .fp-card-title { font-weight: bold; font-size: 12.5px; }
+#fiche-imprimable .fp-card { border: 1px solid #999; border-radius: 4px; padding: 10px 12px; }
+#fiche-imprimable .fp-card-title { font-weight: bold; font-size: var(--fp-titre); }
 #fiche-imprimable .fp-card-row { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
-#fiche-imprimable .fp-badge { display: inline-block; border: 1px solid #777; border-radius: 3px; padding: 0 6px; font-size: 10px; white-space: nowrap; color: #333; line-height: 16px; }
-#fiche-imprimable .fp-muted { color: #555; font-size: 10.5px; margin-top: 2px; }
-#fiche-imprimable .fp-desc { font-size: 11px; color: #222; margin-top: 5px; border-top: 1px solid #ddd; padding-top: 4px; white-space: pre-wrap; }
+#fiche-imprimable .fp-badge { display: inline-block; border: 1px solid #555; border-radius: 3px; padding: 1px 8px; font-size: var(--fp-petit); white-space: nowrap; color: #222; line-height: 24px; }
+#fiche-imprimable .fp-muted { color: #333; font-size: var(--fp-meta); margin-top: 3px; }
+#fiche-imprimable .fp-desc { font-size: var(--fp-corps); color: #111; margin-top: 6px; border-top: 1px solid #ccc; padding-top: 5px; white-space: pre-wrap; }
 /* Carte "recette" (sorts, prières, assemblages, alchimie, pièges, forge, joaillerie). */
 #fiche-imprimable .fp-card.fp-recette { padding: 0; overflow: hidden; }
-#fiche-imprimable .fp-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 8px 10px 7px; }
-#fiche-imprimable .fp-row { font-size: 11px; padding: 6px 10px; border-top: 1px solid #e2e2e2; white-space: pre-wrap; }
+#fiche-imprimable .fp-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 10px 12px 8px; }
+#fiche-imprimable .fp-row { font-size: var(--fp-corps); padding: 7px 12px; border-top: 1px solid #ccc; white-space: pre-wrap; }
 #fiche-imprimable .fp-row .fp-k { font-weight: bold; }
-#fiche-imprimable .fp-row.fp-desc { color: #333; margin-top: 0; padding-top: 6px; border-top: 1px solid #e2e2e2; }
-#fiche-imprimable .fp-row.fp-formula { font-family: monospace; color: #333; }
-#fiche-imprimable .fp-lvl { border-top: 2px solid #ddd; }
-#fiche-imprimable .fp-lvl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px 4px; }
-#fiche-imprimable .fp-lvl-title { font-weight: bold; font-size: 11.5px; color: #333; }
+#fiche-imprimable .fp-row.fp-desc { color: #222; margin-top: 0; padding-top: 7px; border-top: 1px solid #ccc; }
+#fiche-imprimable .fp-row.fp-formula { font-family: "Courier New", monospace; font-size: var(--fp-formule); color: #111; }
+#fiche-imprimable .fp-lvl { border-top: 2px solid #bbb; }
+#fiche-imprimable .fp-lvl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 12px 5px; }
+#fiche-imprimable .fp-lvl-title { font-weight: bold; font-size: var(--fp-sous); color: #222; }
 /* ── Variante ABRÉGÉ « terrain » (s363) — layout « journal », racine .fp-compact ──
    Arbitrage Fred s363 : lisibilité en forêt/faible lumière > tenir en 2 pages.
    Corps 19px (×2 de s299) · méta/tableaux 17px · formules 20px mono ·
    bandeau de stats 21px gras · gris assombris pour la lampe frontale. */
-#fiche-imprimable.fp-compact { font-size: 19px; line-height: 1.32; }
-#fiche-imprimable.fp-compact h1 { font-size: 26px; display: inline; margin: 0; }
-#fiche-imprimable.fp-compact .fp-sub { display: inline; margin-left: 8px; font-size: 18px; color: #222; }
-#fiche-imprimable.fp-compact .fp-statband { display: flex; flex-wrap: wrap; gap: 4px 18px; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 5px 0; font-size: 21px; font-weight: bold; margin: 8px 0 10px; }
-#fiche-imprimable.fp-compact .fp-fouille { border: 1px solid #555; padding: 6px 9px; font-size: 18px; margin: 0 0 10px; }
-#fiche-imprimable.fp-compact h2 { font-size: 20px; margin: 12px 0 5px; padding-bottom: 2px; }
+#fiche-imprimable.fp-compact { font-size: var(--fp-corps); line-height: 1.32; }
+#fiche-imprimable.fp-compact h1 { font-size: var(--fp-nom); display: inline; margin: 0; }
+#fiche-imprimable.fp-compact .fp-sub { display: inline; margin-left: 8px; font-size: var(--fp-sous); color: #222; }
+#fiche-imprimable.fp-compact .fp-statband { display: flex; flex-wrap: wrap; gap: 4px 18px; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 5px 0; font-size: var(--fp-section); font-weight: bold; margin: 8px 0 10px; }
+#fiche-imprimable.fp-compact .fp-fouille { border: 1px solid #555; padding: 6px 9px; font-size: var(--fp-sous); margin: 0 0 10px; }
+#fiche-imprimable.fp-compact h2 { font-size: var(--fp-section); margin: 12px 0 5px; padding-bottom: 2px; }
 #fiche-imprimable.fp-compact .fp-cols2 { column-count: 2; column-gap: 22px; }
 #fiche-imprimable.fp-compact .fp-it { break-inside: avoid; margin: 0 0 7px; }
-#fiche-imprimable.fp-compact .fp-it b { font-size: 20px; }
-#fiche-imprimable.fp-compact .fp-meta { color: #333; font-size: 17px; }
+#fiche-imprimable.fp-compact .fp-it b { font-size: var(--fp-titre); }
+#fiche-imprimable.fp-compact .fp-meta { color: #333; font-size: var(--fp-meta); }
 #fiche-imprimable.fp-compact .fp-bloc { break-inside: avoid; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px dotted #999; }
-#fiche-imprimable.fp-compact .fp-params { color: #222; font-size: 17px; }
-#fiche-imprimable.fp-compact .fp-formula { font-family: "Courier New", monospace; font-size: 20px; }
-#fiche-imprimable.fp-compact table { width: 100%; border-collapse: collapse; font-size: 17px; margin: 3px 0 12px; }
-#fiche-imprimable.fp-compact th { text-align: left; border-bottom: 1px solid #555; padding: 2px 6px 2px 0; font-size: 16px; text-transform: uppercase; letter-spacing: .02em; color: #111; }
+#fiche-imprimable.fp-compact .fp-params { color: #222; font-size: var(--fp-meta); }
+#fiche-imprimable.fp-compact .fp-formula { font-family: "Courier New", monospace; font-size: var(--fp-formule); }
+#fiche-imprimable.fp-compact table { width: 100%; border-collapse: collapse; font-size: var(--fp-meta); margin: 3px 0 12px; }
+#fiche-imprimable.fp-compact th { text-align: left; border-bottom: 1px solid #555; padding: 2px 6px 2px 0; font-size: var(--fp-petit); text-transform: uppercase; letter-spacing: .02em; color: #111; }
 #fiche-imprimable.fp-compact td { border-bottom: 1px solid #ccc; padding: 3px 6px 3px 0; vertical-align: top; }
 #fiche-imprimable.fp-compact td b { font-size: 18px; }
-#fiche-imprimable.fp-compact tr.fp-grptype td { border-bottom: 1px solid #777; font-weight: bold; font-size: 16px; text-transform: uppercase; color: #111; padding-top: 6px; }
+#fiche-imprimable.fp-compact tr.fp-grptype td { border-bottom: 1px solid #777; font-weight: bold; font-size: var(--fp-petit); text-transform: uppercase; color: #111; padding-top: 6px; }
 #fiche-imprimable.fp-compact table, #fiche-imprimable.fp-compact .fp-it, #fiche-imprimable.fp-compact .fp-bloc { break-inside: avoid; }
 `;
 
@@ -169,10 +180,12 @@ export const FicheImprimable = ({
   langues,
   religions,
 }: FicheImprimableProps) => {
-  // Plafond colonnes : 3 en Fiche (compact), 2 en Manuel (verbatim long, plus lisible).
+  // Plafond colonnes des sections restées en grille (identité/traits, manipulations).
   const cap = printMode === "manuel" ? 2 : 3;
   const colsFor = (n: number) => Math.min(Math.max(n, 1), cap);
   const gridStyle = (n: number) => ({ gridTemplateColumns: `repeat(${colsFor(n)}, 1fr)` });
+  // s363 : une règle se lit d'une traite → les cartes règles/recettes passent pleine largeur.
+  const pleineLargeur = { gridTemplateColumns: "1fr" };
 
   // Description "carte" héritée (identité/traits) : Fiche = courte (repli verbatim) ; Manuel = verbatim.
   const desc = (court?: string | null, complet?: string | null) => {
@@ -855,7 +868,7 @@ export const FicheImprimable = ({
       {Object.entries(sortsByCercle).map(([cercle, sortsDuCercle]) => (
         <div key={cercle}>
           <h3>{cercle}</h3>
-          <div className="fp-grid" style={gridStyle(sortsDuCercle.length)}>
+          <div className="fp-grid" style={pleineLargeur}>
             {sortsDuCercle.map(renderSortCard)}
           </div>
         </div>
@@ -869,16 +882,13 @@ export const FicheImprimable = ({
       {Object.entries(prieresByDomaine).map(([domaine, prieresDuDomaine]) => (
         <div key={domaine}>
           <h3>{domaine}</h3>
-          <div className="fp-grid" style={gridStyle(prieresDuDomaine.length)}>
+          <div className="fp-grid" style={pleineLargeur}>
             {prieresDuDomaine.map(renderPriereCard)}
           </div>
         </div>
       ))}
     </>
   );
-
-  // Sorts | Prières côte à côte uniquement si peu de magie (en pratique 1 sort + 1 prière).
-  const coteACote = sorts.length > 0 && prieres.length > 0 && sorts.length + prieres.length < 3;
 
   return (
     <div id="fiche-imprimable" className="fp-root">
@@ -991,7 +1001,7 @@ export const FicheImprimable = ({
       {competencesGroupees.length > 0 && (
         <>
           <h2>Compétences</h2>
-          <div className="fp-grid" style={gridStyle(competencesGroupees.length)}>
+          <div className="fp-grid" style={pleineLargeur}>
             {competencesGroupees.map((c) => {
               const detail = detailCompetence(c);
               const statut =
@@ -1018,24 +1028,15 @@ export const FicheImprimable = ({
         </>
       )}
 
-      {/* 4-5. Magie : côte à côte si peu d'items, sinon empilé */}
-      {coteACote ? (
-        <div className="fp-grid" style={{ gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
-          <div>{sortsSection}</div>
-          <div>{prieresSection}</div>
-        </div>
-      ) : (
-        <>
-          {sorts.length > 0 && <>{sortsSection}</>}
-          {prieres.length > 0 && <>{prieresSection}</>}
-        </>
-      )}
+      {/* 4-5. Magie — toujours empilée pleine largeur (s363 : formules lisibles à voix haute). */}
+      {sorts.length > 0 && <>{sortsSection}</>}
+      {prieres.length > 0 && <>{prieresSection}</>}
 
       {/* 6. Assemblages de runes */}
       {assemblages.length > 0 && (
         <>
           <h2>Assemblages de runes</h2>
-          <div className="fp-grid" style={gridStyle(assemblages.length)}>
+          <div className="fp-grid" style={pleineLargeur}>
             {assemblages.map((a) => (
               <div className="fp-card fp-recette" key={a.id}>
                 <div className="fp-card-head">
@@ -1068,7 +1069,7 @@ export const FicheImprimable = ({
             .map((n) => (
               <div key={n}>
                 <h3>{niveauLabels[n]}</h3>
-                <div className="fp-grid" style={gridStyle((recettesByNiveau[n] ?? []).length)}>
+                <div className="fp-grid" style={pleineLargeur}>
                   {(recettesByNiveau[n] ?? []).map((r) => {
                     const { composants, manipulations: manips } = parseIngredientsRecette(r.ingredients);
                     return (
@@ -1120,7 +1121,7 @@ export const FicheImprimable = ({
       {famillesPieges.length > 0 && (
         <>
           <h2>Pièges (Niv. {niveauPieges})</h2>
-          <div className="fp-grid" style={gridStyle(famillesPieges.length)}>
+          <div className="fp-grid" style={pleineLargeur}>
             {famillesPieges.map(([nom, niveaux]) => {
               const constrRaw = piegeCat.get(`${nom}__1`)?.construction;
               const constr = constrRaw ? constrRaw.replace(/^\s*Construction\s*:\s*/i, "") : null;
@@ -1167,7 +1168,7 @@ export const FicheImprimable = ({
         <>
           <h2>Forge (Niv. {niveauForge})</h2>
           <h3>Fabrication &amp; réparation</h3>
-          <div className="fp-grid" style={gridStyle(objetsForge.length)}>
+          <div className="fp-grid" style={pleineLargeur}>
             {objetsForge.map((o) => (
               <div className="fp-card fp-recette" key={o.id}>
                 <div className="fp-card-head">
@@ -1204,7 +1205,7 @@ export const FicheImprimable = ({
           {objetsJoaillerie.length > 0 && (
             <>
               <h3>Fabrication</h3>
-              <div className="fp-grid" style={gridStyle(objetsJoaillerie.length)}>
+              <div className="fp-grid" style={pleineLargeur}>
                 {objetsJoaillerie.map((o) => (
                   <div className="fp-card fp-recette" key={o.id}>
                     <div className="fp-card-head">

@@ -33,9 +33,9 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
-    titre: "Fiche imprimée « Abrégé » : une écriture deux fois plus grosse",
+    titre: "Fiches imprimées : une écriture deux fois plus grosse, lisible en forêt",
     description:
-      "La version imprimable Abrégé de ta fiche tenait sur 2 pages — au prix d'une écriture minuscule, pénible à lire le soir en forêt. Le texte est maintenant deux fois plus gros, le bandeau de tes statistiques ressort en gras, et les textes gris ont été assombris pour rester nets à la lampe frontale. La fiche prend quelques pages de plus : c'est voulu — sur le terrain, lire vite passe avant économiser du papier. L'impression Intégral, elle, ne change pas.",
+      "Les deux versions imprimables de ta fiche — Abrégé et Intégral — étaient réglées pour économiser le papier, au prix d'une écriture minuscule, pénible à lire le soir en forêt. Le texte passe au double sur les deux. L'Abrégé garde son format dense en colonnes, avec le bandeau de tes statistiques en gras. L'Intégral change aussi de mise en page : chaque règle, sort, prière et recette s'affiche maintenant en pleine largeur, comme une page de manuel, au lieu d'être comprimée en colonnes étroites. Partout, les textes gris ont été assombris pour rester nets à la lampe frontale. Les fiches prennent plus de pages : c'est voulu — sur le terrain, lire vite passe avant économiser du papier.",
   },
   {
     statut: "fait",
