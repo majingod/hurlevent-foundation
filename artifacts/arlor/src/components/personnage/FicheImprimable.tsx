@@ -23,9 +23,9 @@ import type {
 } from "./sections/types";
 
 // PDF-PATTERN-4 — Vue imprimable React, deux variantes (s299 v2) :
-// - ABRÉGÉ ("fiche") : layout dense « journal » (racine .fp-compact) — corps 9.5px,
-//   colonnes doubles, catalogues d'artisanat en tableaux filtrés au niveau. Objectif
-//   2 pages pour un perso typique SANS perdre de contenu abrégé.
+// - ABRÉGÉ ("fiche") : layout « journal » (racine .fp-compact) — corps 19px (s363 :
+//   lisibilité terrain > tenir en 2 pages ; arbitrage Fred, GN en faible lumière),
+//   colonnes doubles, catalogues d'artisanat en tableaux filtrés au niveau.
 // - INTÉGRAL ("manuel") : layout carte historique inchangé (verbatims, historique/âme,
 //   catalogues complets), à une exception : la réparation est fusionnée dans la carte
 //   de chaque objet forgé (jointure objets_forge → reparations_forge).
@@ -106,26 +106,28 @@ const PRINT_CSS = `
 #fiche-imprimable .fp-lvl { border-top: 2px solid #ddd; }
 #fiche-imprimable .fp-lvl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px 4px; }
 #fiche-imprimable .fp-lvl-title { font-weight: bold; font-size: 11.5px; color: #333; }
-/* ── Variante ABRÉGÉ compacte (s299 v2) — layout dense « journal », racine .fp-compact ──
-   Corps 9.5px · tableaux/méta 8.5px · formules magiques 10px mono, JAMAIS plus petites. */
-#fiche-imprimable.fp-compact { font-size: 9.5px; line-height: 1.28; }
-#fiche-imprimable.fp-compact h1 { font-size: 20px; display: inline; margin: 0; }
-#fiche-imprimable.fp-compact .fp-sub { display: inline; margin-left: 8px; font-size: 11px; color: #444; }
-#fiche-imprimable.fp-compact .fp-statband { display: flex; flex-wrap: wrap; gap: 3px 14px; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 3px 0; font-size: 10px; margin: 5px 0 6px; }
-#fiche-imprimable.fp-compact .fp-fouille { border: 1px solid #888; padding: 4px 7px; font-size: 9px; margin: 0 0 7px; }
-#fiche-imprimable.fp-compact h2 { font-size: 12.5px; margin: 8px 0 3px; padding-bottom: 1px; }
-#fiche-imprimable.fp-compact .fp-cols2 { column-count: 2; column-gap: 18px; }
-#fiche-imprimable.fp-compact .fp-it { break-inside: avoid; margin: 0 0 4px; }
-#fiche-imprimable.fp-compact .fp-it b { font-size: 9.8px; }
-#fiche-imprimable.fp-compact .fp-meta { color: #555; font-size: 8.5px; }
-#fiche-imprimable.fp-compact .fp-bloc { break-inside: avoid; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px dotted #bbb; }
-#fiche-imprimable.fp-compact .fp-params { color: #444; font-size: 8.5px; }
-#fiche-imprimable.fp-compact .fp-formula { font-family: "Courier New", monospace; font-size: 10px; }
-#fiche-imprimable.fp-compact table { width: 100%; border-collapse: collapse; font-size: 8.5px; margin: 2px 0 8px; }
-#fiche-imprimable.fp-compact th { text-align: left; border-bottom: 1px solid #555; padding: 1px 4px 1px 0; font-size: 8px; text-transform: uppercase; letter-spacing: .02em; color: #333; }
-#fiche-imprimable.fp-compact td { border-bottom: 1px solid #e0e0e0; padding: 1.5px 4px 1.5px 0; vertical-align: top; }
-#fiche-imprimable.fp-compact td b { font-size: 8.8px; }
-#fiche-imprimable.fp-compact tr.fp-grptype td { border-bottom: 1px solid #999; font-weight: bold; font-size: 8px; text-transform: uppercase; color: #444; padding-top: 4px; }
+/* ── Variante ABRÉGÉ « terrain » (s363) — layout « journal », racine .fp-compact ──
+   Arbitrage Fred s363 : lisibilité en forêt/faible lumière > tenir en 2 pages.
+   Corps 19px (×2 de s299) · méta/tableaux 17px · formules 20px mono ·
+   bandeau de stats 21px gras · gris assombris pour la lampe frontale. */
+#fiche-imprimable.fp-compact { font-size: 19px; line-height: 1.32; }
+#fiche-imprimable.fp-compact h1 { font-size: 26px; display: inline; margin: 0; }
+#fiche-imprimable.fp-compact .fp-sub { display: inline; margin-left: 8px; font-size: 18px; color: #222; }
+#fiche-imprimable.fp-compact .fp-statband { display: flex; flex-wrap: wrap; gap: 4px 18px; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 5px 0; font-size: 21px; font-weight: bold; margin: 8px 0 10px; }
+#fiche-imprimable.fp-compact .fp-fouille { border: 1px solid #555; padding: 6px 9px; font-size: 18px; margin: 0 0 10px; }
+#fiche-imprimable.fp-compact h2 { font-size: 20px; margin: 12px 0 5px; padding-bottom: 2px; }
+#fiche-imprimable.fp-compact .fp-cols2 { column-count: 2; column-gap: 22px; }
+#fiche-imprimable.fp-compact .fp-it { break-inside: avoid; margin: 0 0 7px; }
+#fiche-imprimable.fp-compact .fp-it b { font-size: 20px; }
+#fiche-imprimable.fp-compact .fp-meta { color: #333; font-size: 17px; }
+#fiche-imprimable.fp-compact .fp-bloc { break-inside: avoid; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px dotted #999; }
+#fiche-imprimable.fp-compact .fp-params { color: #222; font-size: 17px; }
+#fiche-imprimable.fp-compact .fp-formula { font-family: "Courier New", monospace; font-size: 20px; }
+#fiche-imprimable.fp-compact table { width: 100%; border-collapse: collapse; font-size: 17px; margin: 3px 0 12px; }
+#fiche-imprimable.fp-compact th { text-align: left; border-bottom: 1px solid #555; padding: 2px 6px 2px 0; font-size: 16px; text-transform: uppercase; letter-spacing: .02em; color: #111; }
+#fiche-imprimable.fp-compact td { border-bottom: 1px solid #ccc; padding: 3px 6px 3px 0; vertical-align: top; }
+#fiche-imprimable.fp-compact td b { font-size: 18px; }
+#fiche-imprimable.fp-compact tr.fp-grptype td { border-bottom: 1px solid #777; font-weight: bold; font-size: 16px; text-transform: uppercase; color: #111; padding-top: 6px; }
 #fiche-imprimable.fp-compact table, #fiche-imprimable.fp-compact .fp-it, #fiche-imprimable.fp-compact .fp-bloc { break-inside: avoid; }
 `;
 
@@ -216,7 +218,7 @@ export const FicheImprimable = ({
     );
   };
 
-  // Effets calculés / palier actif, rendu compact (variante abrégé) : div nue 9.5px.
+  // Effets calculés / palier actif, rendu compact (variante abrégé) : div nue 19px (héritée).
   const effetCompact = (
     effet: EffetInstance | null | undefined,
     paliers: PalierSort[] | null | undefined,
@@ -742,11 +744,11 @@ export const FicheImprimable = ({
           </>
         )}
 
-        {/* 13. Ingrédients & manipulations — texte complet, 8.5px */}
+        {/* 13. Ingrédients & manipulations — texte complet, 17px */}
         {niveauAlchimie >= 1 && manipulationsVisibles.length > 0 && (
           <>
             <h2>Ingrédients &amp; manipulations — Niv. ≤ {niveauAlchimie}</h2>
-            <div className="fp-cols2" style={{ fontSize: "8.5px" }}>
+            <div className="fp-cols2" style={{ fontSize: "17px" }}>
               {manipulationsVisibles.map((m) => (
                 <div className="fp-it" key={m.id}>
                   <b>{m.nom ?? ""}</b>{" "}
@@ -764,7 +766,7 @@ export const FicheImprimable = ({
             <h2>
               Pièges — Niv. {niveauPieges} · catalogue (réalisables aux niv. 1-{niveauPieges})
             </h2>
-            <div className="fp-cols2" style={{ fontSize: "8.5px" }}>
+            <div className="fp-cols2" style={{ fontSize: "17px" }}>
               {cataloguePieges.map((p) => (
                 <div className="fp-it" key={`${p.nom}§${p.niveaux.join(",")}`}>
                   <b>{p.nom}</b>{" "}

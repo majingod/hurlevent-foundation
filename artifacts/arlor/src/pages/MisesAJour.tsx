@@ -33,6 +33,13 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Fiche imprimée « Abrégé » : une écriture deux fois plus grosse",
+    description:
+      "La version imprimable Abrégé de ta fiche tenait sur 2 pages — au prix d'une écriture minuscule, pénible à lire le soir en forêt. Le texte est maintenant deux fois plus gros, le bandeau de tes statistiques ressort en gras, et les textes gris ont été assombris pour rester nets à la lampe frontale. La fiche prend quelques pages de plus : c'est voulu — sur le terrain, lire vite passe avant économiser du papier. L'impression Intégral, elle, ne change pas.",
+  },
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Le prix d'un sort ne peut plus dépasser ce que ton niveau permet",
     description:
       "Le manuel dit qu'un sort ou une prière ne peut jamais coûter plus de 10 XP, plus 10 fois ton niveau — donc 20 XP à niveau 1, 40 XP à niveau 3. Cette limite n'était appliquée nulle part : on pouvait acheter un sort trop cher pour son personnage. C'est corrigé. Pendant que tu règles ton sort, une ligne t'indique maintenant le plafond de ton personnage ; si tu le dépasses, le total passe en rouge, la plateforme te dit de combien, et le bouton d'achat attend que tu redescendes. Rien de ce que tu as déjà acheté n'est touché — aucun sort, aucune prière à refaire. Le mode hors ligne applique exactement la même limite, pour qu'un personnage bâti sans réseau ne soit pas refusé au moment de l'enregistrer.",
