@@ -8,8 +8,11 @@ import {
 } from "lucide-react";
 
 import { clientActif } from "@/creation/clientActif";
+import { appliquerComposition } from "@/creation/generateur/appliquerComposition";
 import { PROFIL_VISITEUR_LOCAL } from "@/creation/visiteur/clientVisiteur";
 import { effacerBrouillon } from "@/creation/visiteur/stockageBrouillon";
+import type { TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
+import type { CompositionOk } from "@/moteurCreation/generateur/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
@@ -135,6 +138,9 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   // [VIS-8 lot 1] Une porte de l'accueil a été franchie (🛠️) : « Précédent »
   // depuis l'étape 2 ne fait pas réapparaître le menu des portes.
   const [accueilFranchi, setAccueilFranchi] = useState(false);
+  // [VIS-8 PR-B] 🎲 « Continuer dans le créateur » en cours d'application :
+  // overlay bloquant (anti double-clic) le temps du rejeu des vraies RPC.
+  const [applicationTirage, setApplicationTirage] = useState(false);
   // Étape initiale positionnée une seule fois (cas reprise via ?id=) :
   // ne jamais ré-écraser la navigation manuelle de l'utilisateur ensuite.
   const [etapeInitialisee, setEtapeInitialisee] = useState(false);
@@ -693,11 +699,69 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
       etape,
     })
   ) {
+    // [VIS-8 PR-B] 🎲 « Continuer dans le créateur » : applique la composition
+    // au personnage DÉJÀ démarré par cette page (jamais de re-démarrage —
+    // `brouillon_existant` sinon), via les vraies portes `ClientCreation`.
+    // La PRÉSENCE de ce prop allume la porte 🎲 (décision 28/33) — le double
+    // gate tient : sans `GENERATEUR_ACTIF`, ce bloc n'est jamais rendu.
+    const appliquerTirage = async (resultat: {
+      tirage: TiragePersonnage;
+      composition: CompositionOk;
+    }) => {
+      if (applicationTirage) return;
+      setApplicationTirage(true);
+      try {
+        const res = await appliquerComposition(clientActif, resultat, personnageId);
+        if (!res.faits.some((f) => f.type === "etape4")) {
+          // Échec AVANT l'étape 4 : les achats n'ont pas commencé (ordre du
+          // plan), rien d'irréversible — on reste sur la fiche (retry sûr).
+          toast.error(
+            res.echecs[0]?.message ||
+              "Le personnage n'a pas pu être préparé. Réessaie, ou passe par « Je bâtis moi-même ».",
+          );
+          return;
+        }
+        if (res.echecs.length > 0) {
+          // Politique VIS-6 : achats refusés journalisés, on continue — le
+          // créateur est l'endroit où compléter (pas de re-tentative ici,
+          // les jauges répétées doubleraient).
+          toast.warning(
+            `${res.echecs.length} achat${res.echecs.length > 1 ? "s" : ""} n'a pas pu être appliqué — tu pourras compléter dans le créateur.`,
+          );
+        }
+        // Le rejeu a écrit via RPC : purger tout le cache du personnage
+        // (pattern maison : toute clé qui porte l'id).
+        await queryClient.invalidateQueries({
+          predicate: (q) => q.queryKey.includes(personnageId),
+        });
+        setAccueilFranchi(true); // → wizard, étape 1 : le joueur nomme son perso
+      } catch (e) {
+        // `ErreurConversionTirage` (snapshot inutilisable) ou panne réseau
+        // inattendue : message en clair, on reste sur la fiche.
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "Le tirage n'a pas pu être appliqué. Réessaie.",
+        );
+      } finally {
+        setApplicationTirage(false);
+      }
+    };
+
     return (
-      <Generateur
-        modeVisiteur={modeVisiteur}
-        onBatirMoiMeme={() => setAccueilFranchi(true)}
-      />
+      <>
+        <Generateur
+          modeVisiteur={modeVisiteur}
+          onBatirMoiMeme={() => setAccueilFranchi(true)}
+          onAppliquerTirage={appliquerTirage}
+        />
+        {applicationTirage && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/70 backdrop-blur-sm">
+            <Loader2 className="h-8 w-8 animate-spin text-gold" />
+            <p className="text-sm text-white/80">Préparation du personnage…</p>
+          </div>
+        )}
+      </>
     );
   }
 
