@@ -496,10 +496,12 @@ describe("🧭 resoudreChoix — refus avec phrase, jamais en silence (G5)", () 
 
 describe("🎲 tirerPersonnage — sweep seedé", () => {
   const N = 400;
-  it(`G1/G2/G3/G6 sur ${N} tirages : jamais un interdit, religion principale, element2 ⇔ ✨ᚱ🕊️📿, compose toujours`, () => {
+  it(`G1/G2/G3/G6 sur ${N} tirages : jamais un interdit, religion principale, element2 ⇒ ACHETÉ (option A s366), compose toujours`, () => {
     const cerclesVus = new Set<string>();
     const rolesAvecE2 = new Set<string>();
     let prêtresVus = 0;
+    let rolesE2Vus = 0; // tirages d'un rôle ✨ᚱ🕊️📿 (candidat possible)
+    let e2Poses = 0; // … dont element2 est SORTI (donc acheté)
     for (let i = 0; i < N; i++) {
       const t = tirerPersonnage(deps, lcg(i * 7919 + 17));
       expect(t.ok, `seed ${i}`).toBe(true);
@@ -526,17 +528,41 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
           expect(rel?.domaines_proscrits, "C3").not.toContain(tirage.element2);
         }
       }
-      // G6, sens ① : element2 seulement pour les 4 rôles de la politique.
+      if (ROLES_ELEMENT2.includes(tirage.roleId)) rolesE2Vus += 1;
+      // G6, sens ① (option A s366) : element2 en SORTIE ⟹ rôle de la
+      // politique, ≠ du premier, ET RÉELLEMENT ACHETÉ. C'est le test qui
+      // ROUGIT sur la version d'avant (680 candidats sur 779 sortaient
+      // sans achat — la fiche mentait).
       if (tirage.element2) {
+        e2Poses += 1;
         expect(ROLES_ELEMENT2).toContain(tirage.roleId);
         rolesAvecE2.add(tirage.roleId);
         expect(tirage.element2).not.toBe(tirage.element);
+        expect(
+          composition.achats.some(
+            (a) =>
+              (a.nom === "Acquisition de Cercle" ||
+                a.nom === "Acquisition de Domaine") &&
+              a.choix === tirage.element2
+          ),
+          `seed ${i} : element2 « ${tirage.element2} » affiché mais non acheté`
+        ).toBe(true);
       }
     }
-    // G6, sens ② (jumeau : le test peut échouer) : les rôles à element2
-    // ATTEIGNABLES à ∅ (🕊️ et 📿) en ont bien reçu un au fil du sweep.
+    // G6, sens ② (jumeau : le test peut échouer) : le SORTI existe — les
+    // deux rôles atteignables à ∅ (🕊️ 📿) finissent par sortir avec un
+    // second domaine ACHETÉ au fil du sweep.
     expect(rolesAvecE2).toContain("pMissionnaire");
     expect(rolesAvecE2).toContain("pConsecrateur");
+    // G6, sens ③ (jumeau du filtre : sans lui, ce compte serait rolesE2Vus)
+    // — le MANGÉ existe aussi : des rôles à candidat sortent SANS element2,
+    // preuve que l'effectif filtre vraiment. Comptes MESURÉS (règle s362,
+    // lus depuis l'échec du toBe(-1)) : 45 tirages 🕊️/📿 sur 400 à ∅ (seuls
+    // rôles de la politique atteignables sans inventaire), dont 3 sortent
+    // avec le second domaine ACHETÉ et 42 sans (le candidat était mangé).
+    expect(rolesE2Vus).toBe(45);
+    expect(e2Poses).toBe(3);
+    expect(e2Poses).toBeLessThan(rolesE2Vus);
     expect(prêtresVus).toBeGreaterThan(20);
     // Le tirage BOUGE vraiment (pas un vert-à-vide) : ≥ 5 cercles distincts.
     expect(cerclesVus.size).toBeGreaterThanOrEqual(5);

@@ -14,6 +14,7 @@ export type RaceTrait = Database["public"]["Tables"]["race_traits"]["Row"];
 export type TraitRacial = Database["public"]["Tables"]["traits_raciaux"]["Row"];
 export type Religion = Database["public"]["Tables"]["religions"]["Row"];
 export type Langue = Database["public"]["Tables"]["langues"]["Row"];
+export type FamilleCriminelle = Database["public"]["Tables"]["familles_criminelles"]["Row"];
 export type ReparationForge = Database["public"]["Tables"]["reparations_forge"]["Row"];
 export type IngredientAlchimique = Database["public"]["Tables"]["ingredients_alchimiques"]["Row"];
 export type ObjetGenerateur = Database["public"]["Tables"]["objets_generateur"]["Row"];
@@ -44,6 +45,9 @@ export interface SnapshotVisiteur {
     competences: Competence[];
     religions: Religion[];
     langues: Langue[];
+    // [s366] Choix tirés des achats du générateur (versBrouillon) —
+    // optionnelle : le convertisseur lève bruyamment si absente.
+    familles_criminelles?: FamilleCriminelle[];
     reparations_forge: ReparationForge[];
     ingredients_alchimiques: IngredientAlchimique[];
     // Lot 0 générateur (s347) : carte équipement ↔ compétences/races —
