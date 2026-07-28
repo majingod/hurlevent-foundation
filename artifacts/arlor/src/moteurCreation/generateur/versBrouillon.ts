@@ -73,7 +73,7 @@ function classeDuSnapshot(
   classes: readonly Classe[],
   classeId: TiragePersonnage["classe"],
 ): Classe {
-  const classe = classes.find((c) => normaliser(c.nom) === classeId);
+  const classe = classes.find((c) => normaliser(c.nom ?? "") === classeId);
   if (!classe) {
     throw new ErreurConversionTirage(
       `Classe « ${classeId} » introuvable dans le snapshot — la conversion du tirage est impossible.`,
