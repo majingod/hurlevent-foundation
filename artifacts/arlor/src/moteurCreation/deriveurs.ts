@@ -93,7 +93,15 @@ export function raceInapteMagie(
   snapshot: {
     tables: {
       race_traits: readonly { race_id: string; trait_id: string }[];
-      traits_raciaux: readonly { id: string; nom: string; est_actif: boolean }[];
+      // `est_actif` accepte le null : la colonne est nullable en base, donc les
+      // types générés (SnapshotVisiteur) le sont aussi. Le corps filtre déjà en
+      // `=== true`, ce qui exclut le null — élargir le type ne change rien au
+      // comportement (0 ligne NULL en prod au 2026-07-27, 20/20 renseignées).
+      traits_raciaux: readonly {
+        id: string;
+        nom: string;
+        est_actif: boolean | null;
+      }[];
     };
   },
   raceId: string | null

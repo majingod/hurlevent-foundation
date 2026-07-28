@@ -696,8 +696,12 @@ export function tirerEssentiels(
       (x) => x.label === label
     )!;
     const a = entree.achats(ctx.inventaire, {})[0];
-    if (a.t === "sortAuChoix") {
-      // Compat API Guerrier : le pool guerrier ne porte aucun `sortAuChoix`.
+    if (a.t === "sortAuChoix" || a.t === "priereAuChoix") {
+      // Compat API Guerrier : le pool guerrier ne porte aucun achat
+      // « AuChoix » (sort OU prière) — branche morte par construction, mais
+      // le compilateur ne peut pas le savoir. `priereAuChoix` (né s359) n'a
+      // pas de `nom` : sans cette garde, la branche finale le recevait et
+      // lisait `a.nom` → undefined silencieux (piège C70, versant lecture).
       return { nom: labelAchat(a), niveauCible: 1 };
     }
     return a.t === "comp"

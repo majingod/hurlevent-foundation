@@ -16,4 +16,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Typecheck AVANT vitest (échec rapide). Dans le MÊME job « vitest »
+      # exprès : le status check requis du ruleset le couvre sans geste UI.
+      - run: pnpm --dir artifacts/arlor run typecheck
       - run: pnpm --dir artifacts/arlor exec vitest run
