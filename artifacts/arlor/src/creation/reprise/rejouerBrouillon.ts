@@ -35,7 +35,12 @@
  * là où `sauvegarder_etape_4` l'a mis ; le joueur re-parcourt les étapes 5+ dans
  * le wizard (validation native).
  *
- * Code NON APPELÉ en prod (le branchement UI vient au Lot 2) — zéro impact.
+ * [PR-B 🎲 s365] Le CŒUR du rejeu est extrait en `executerRejeu` : exécution
+ * du plan sur un personnage EXISTANT, sans démarrage. `rejouerBrouillon`
+ * (VIS-6 — branché en prod par `RepriseEssai` et `preVolBrouillon`) reste
+ * « démarrage + cœur », comportement inchangé ; `appliquerComposition` (🎲,
+ * src/creation/generateur) est « conversion + cœur », étapes 1-3 en
+ * `p_brouillon: true`.
  */
 
 import type { Database, Json } from "@/integrations/supabase/types";
@@ -93,6 +98,20 @@ export interface ResultatRejeu {
   statut: "complet" | "partiel" | "echec_demarrage";
   faits: FaitRejeu[];
   echecs: EchecRejeu[];
+}
+
+/** Options du cœur de rejeu (`executerRejeu`). */
+export interface OptionsRejeu {
+  /**
+   * [PR-B 🎲] Étapes 1-3 en `p_brouillon: true` : persistance SANS validation
+   * ni avancement — le contrat autosave du wizard (migration 20260619030657).
+   * Indispensable au tirage : un personnage tiré n'a PAS de nom (l'étape 1
+   * complète le refuserait), pas de sous-type Chiméride, pas de traits.
+   * L'étape 4 reste TOUJOURS complète : elle seule attribue les gratuites de
+   * classe, et `valider_etape_4` ne dépend pas des étapes 1-3 (mesuré s365).
+   * Défaut `false` : VIS-6 rejoue les 4 étapes en mode complet, inchangé.
+   */
+  etapes123EnBrouillon?: boolean;
 }
 
 // ============================================================
@@ -254,7 +273,7 @@ async function executer(invoke: () => Promise<Reponse<Json>>): Promise<IssueAppe
 // le `null` transite verbatim jusqu'à la RPC, exactement comme le fait le
 // wizard natif.
 
-function paramsEtape1(b: BrouillonVisiteur, personnageId: string) {
+function paramsEtape1(b: BrouillonVisiteur, personnageId: string, enBrouillon?: boolean) {
   return {
     p_personnage_id: personnageId,
     p_nom: b.etape1.nom,
@@ -263,21 +282,24 @@ function paramsEtape1(b: BrouillonVisiteur, personnageId: string) {
     p_ouvertures_terrain: b.etape1.ouverturesTerrain,
     p_est_croyant: b.etape1.estCroyant,
     p_religion_id: b.etape1.religionId,
+    ...(enBrouillon ? { p_brouillon: true } : {}),
   } as unknown as ArgsR<"sauvegarder_etape_1">;
 }
 
-function paramsEtape2(b: BrouillonVisiteur, personnageId: string) {
+function paramsEtape2(b: BrouillonVisiteur, personnageId: string, enBrouillon?: boolean) {
   return {
     p_personnage_id: personnageId,
     p_race_id: b.etape2.raceId,
     p_sous_type_chimeride: b.etape2.sousTypeChimeride ?? null,
+    ...(enBrouillon ? { p_brouillon: true } : {}),
   } as unknown as ArgsR<"sauvegarder_etape_2">;
 }
 
-function paramsEtape3(b: BrouillonVisiteur, personnageId: string) {
+function paramsEtape3(b: BrouillonVisiteur, personnageId: string, enBrouillon?: boolean) {
   return {
     p_personnage_id: personnageId,
     p_traits_raciaux_choisis: b.etape3.traitsRaciauxChoisis,
+    ...(enBrouillon ? { p_brouillon: true } : {}),
   } as unknown as ArgsR<"sauvegarder_etape_3">;
 }
 
@@ -326,6 +348,13 @@ function paramsPriere(p: BrouillonPriere, personnageId: string) {
 // Orchestrateur
 // ============================================================
 
+/**
+ * [VIS-6] Orchestrateur COMPLET : démarre un personnage NEUF
+ * (`demarrer_creation_personnage`) puis lui rejoue le brouillon via
+ * `executerRejeu`. Comportement identique au Lot 1 (démarrage refusé →
+ * `echec_demarrage`, rien d'autre n'est tenté ; fait « demarrage » émis en
+ * premier) — c'est le chemin « le visiteur crée son compte ».
+ */
 export async function rejouerBrouillon(
   client: ClientCreation,
   catalogue: CatalogueRejeu,
@@ -333,14 +362,6 @@ export async function rejouerBrouillon(
   profilId: string,
   onProgres?: (fait: FaitRejeu) => void,
 ): Promise<ResultatRejeu> {
-  const faits: FaitRejeu[] = [];
-  const echecs: EchecRejeu[] = [];
-
-  const reussir = (fait: FaitRejeu): void => {
-    faits.push(fait);
-    onProgres?.(fait);
-  };
-
   // ── 1. Démarrage ────────────────────────────────────────────────────────
   const dem = await executer(() =>
     client.demarrerCreationPersonnage({ p_profil_id: profilId }),
@@ -350,11 +371,51 @@ export async function rejouerBrouillon(
       dem.statut === "refus"
         ? { code: dem.code, message: dem.message }
         : { code: "exception", message: dem.message };
-    echecs.push({ type: "demarrage", code, message });
-    return { personnageId: null, statut: "echec_demarrage", faits, echecs };
+    return {
+      personnageId: null,
+      statut: "echec_demarrage",
+      faits: [],
+      echecs: [{ type: "demarrage", code, message }],
+    };
   }
   const personnageId = String(dem.payload.donnees?.personnage_id ?? "");
-  reussir({ type: "demarrage" });
+  const faitDemarrage: FaitRejeu = { type: "demarrage" };
+  onProgres?.(faitDemarrage);
+
+  // ── 2. Cœur (plan + achats) sur le personnage fraîchement démarré ───────
+  const res = await executerRejeu(
+    client,
+    catalogue,
+    brouillon,
+    personnageId,
+    {},
+    onProgres,
+  );
+  return { ...res, faits: [faitDemarrage, ...res.faits] };
+}
+
+/**
+ * [PR-B 🎲 s365] CŒUR du rejeu, extrait pour `appliquerComposition` : exécute
+ * le plan (`planifierRejeu`) sur un personnage EXISTANT — ne démarre RIEN.
+ * Motif mesuré : quand l'accueil des portes s'affiche, la page a DÉJÀ créé
+ * (ou adopté) le personnage ; re-démarrer répondrait `brouillon_existant`.
+ * Extraction sans changement de comportement (VIS-6 l'appelle tel quel).
+ */
+export async function executerRejeu(
+  client: ClientCreation,
+  catalogue: CatalogueRejeu,
+  brouillon: BrouillonVisiteur,
+  personnageId: string,
+  options: OptionsRejeu = {},
+  onProgres?: (fait: FaitRejeu) => void,
+): Promise<ResultatRejeu> {
+  const faits: FaitRejeu[] = [];
+  const echecs: EchecRejeu[] = [];
+
+  const reussir = (fait: FaitRejeu): void => {
+    faits.push(fait);
+    onProgres?.(fait);
+  };
 
   // Retour anticipé mutualisé pour les arrêts « partiels ».
   const partiel = (): ResultatRejeu => ({
@@ -402,13 +463,13 @@ export async function rejouerBrouillon(
     let ok: boolean;
     switch (action.type) {
       case "etape1":
-        ok = await jouer(action, () => client.sauvegarderEtape1(paramsEtape1(brouillon, personnageId)), true);
+        ok = await jouer(action, () => client.sauvegarderEtape1(paramsEtape1(brouillon, personnageId, options.etapes123EnBrouillon)), true);
         break;
       case "etape2":
-        ok = await jouer(action, () => client.sauvegarderEtape2(paramsEtape2(brouillon, personnageId)), true);
+        ok = await jouer(action, () => client.sauvegarderEtape2(paramsEtape2(brouillon, personnageId, options.etapes123EnBrouillon)), true);
         break;
       case "etape3":
-        ok = await jouer(action, () => client.sauvegarderEtape3(paramsEtape3(brouillon, personnageId)), true);
+        ok = await jouer(action, () => client.sauvegarderEtape3(paramsEtape3(brouillon, personnageId, options.etapes123EnBrouillon)), true);
         break;
       case "etape4":
         ok = await jouer(action, () => client.sauvegarderEtape4(paramsEtape4(brouillon, personnageId)), true);
