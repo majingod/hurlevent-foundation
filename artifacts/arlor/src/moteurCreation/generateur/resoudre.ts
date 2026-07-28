@@ -384,26 +384,7 @@ export function tirerPersonnage(
     }
   }
 
-  // ⑤ La religion — EN SORTIE, prêtre seulement : « archétype d'abord,
-  // religion ensuite » (§5.2 ③), principales d'abord (s360), et le second
-  // domaine jamais proscrit (C3, s362).
-  let religion: ReligionMonde | undefined;
-  if (classe === "pretre" && elementEffectif) {
-    const candidates = religionsCandidates(
-      monde,
-      elementEffectif,
-      element2
-    );
-    if (candidates.length === 0) {
-      return {
-        ok: false,
-        raison: `Aucune foi ne porte le domaine ${elementEffectif} en principal.`,
-      };
-    }
-    religion = piocher(candidates, alea);
-  }
-
-  // ⑥ Composer — décision 17 : 🎲 déroule les QUATRE couches (③ tirée).
+  // ⑤ Composer — décision 17 : 🎲 déroule les QUATRE couches (③ tirée).
   const ctxBase: ContexteComposition = {
     classe,
     roleId: role.id,
@@ -425,6 +406,41 @@ export function tirerPersonnage(
   const composition = composerClasse(cats, contenu, { ...ctxBase, essentiels });
   if (!composition.ok) return { ok: false, raison: composition.raison };
 
+  // ⑥ [s366, option A Fred] LA FICHE DIT VRAI : `element2` n'est un CANDIDAT
+  // que jusqu'ici — l'entrée « Un SECOND cercle/domaine » est une entrée de
+  // couche ③ parmi d'autres, son tirage n'est pas garanti. Mesuré s366 :
+  // 680 candidats sur 779 n'étaient pas achetés, et la fiche les affichait.
+  // L'EFFECTIF est ce que la composition a réellement acheté — rien d'autre
+  // ne sort du tirage.
+  const element2Effectif = composition.achats.some(
+    (a) =>
+      (a.nom === "Acquisition de Cercle" || a.nom === "Acquisition de Domaine") &&
+      a.choix === element2
+  )
+    ? element2
+    : undefined;
+
+  // ⑦ La religion — EN SORTIE, prêtre seulement : « archétype d'abord,
+  // religion ensuite » (§5.2 ③), principales d'abord (s360), et le second
+  // domaine — s'il est EFFECTIF — jamais proscrit (C3, s362). Tirée APRÈS la
+  // composition (s366) : un candidat mangé ne restreint plus les fois pour
+  // un domaine que le personnage n'a pas.
+  let religion: ReligionMonde | undefined;
+  if (classe === "pretre" && elementEffectif) {
+    const candidates = religionsCandidates(
+      monde,
+      elementEffectif,
+      element2Effectif
+    );
+    if (candidates.length === 0) {
+      return {
+        ok: false,
+        raison: `Aucune foi ne porte le domaine ${elementEffectif} en principal.`,
+      };
+    }
+    religion = piocher(candidates, alea);
+  }
+
   return {
     ok: true,
     tirage: {
@@ -434,7 +450,7 @@ export function tirerPersonnage(
       classe,
       roleId: role.id,
       element: elementEffectif,
-      element2,
+      element2: element2Effectif,
       religionId: religion?.id,
       religionNom: religion?.nom,
       inapteMagie: inapte,

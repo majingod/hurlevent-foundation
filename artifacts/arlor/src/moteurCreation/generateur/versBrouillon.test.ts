@@ -47,6 +47,14 @@ const gratuiteAChoix = (classe: Classe, typeChoix: string) => {
   return comp;
 };
 
+/** Une compétence RÉELLE du snapshot, par nom — jamais d'id factice (s366) :
+ *  le convertisseur lève désormais sur toute compétence absente du snapshot. */
+const compReelle = (nom: string) => {
+  const c = snap.tables.competences.find((x) => x.nom === nom);
+  if (!c) throw new Error(`compétence introuvable au snapshot : ${nom}`);
+  return c;
+};
+
 /** Les langues anciennes actives, triées par id — l'ordre du convertisseur. */
 const languesAnciennesTriees = snap.tables.langues
   .filter((l) => l.est_ancienne === true && l.est_actif === true)
@@ -172,7 +180,11 @@ describe("convertirTirageEnBrouillon — achats", () => {
       {
         tirage: tirage({ classe: "guerrier" }),
         composition: compo({
-          achats: [achat("comp-A", 1), achat("comp-A", 2), achat("comp-B", 1)],
+          achats: [
+            achat(compReelle("Mineur").id, 1),
+            achat(compReelle("Mineur").id, 2),
+            achat(compReelle("Forge").id, 1),
+          ],
         }),
       },
       aleaFixe(0),
@@ -181,9 +193,9 @@ describe("convertirTirageEnBrouillon — achats", () => {
     expect(
       b.acquisitions.competences.map((c) => [c.competenceId, c.niveauAcquis]),
     ).toEqual([
-      ["comp-A", 1],
-      ["comp-A", 2],
-      ["comp-B", 1],
+      [compReelle("Mineur").id, 1],
+      [compReelle("Mineur").id, 2],
+      [compReelle("Forge").id, 1],
     ]);
     const ids = new Set(b.acquisitions.competences.map((c) => c.instanceId));
     expect(ids.size).toBe(3);
@@ -195,7 +207,9 @@ describe("convertirTirageEnBrouillon — achats", () => {
       {
         tirage: tirage({ classe: "pretre", religionId: "rel-1" }),
         composition: compo({
-          achats: Array.from({ length: 8 }, () => achat("dev-spirituel", 1)),
+          achats: Array.from({ length: 8 }, () =>
+            achat(compReelle("Développement Spirituel").id, 1),
+          ),
         }),
       },
       aleaFixe(0),
@@ -206,7 +220,9 @@ describe("convertirTirageEnBrouillon — achats", () => {
     ).toBe(8);
     expect(
       b.acquisitions.competences.every(
-        (c) => c.competenceId === "dev-spirituel" && c.niveauAcquis === 1,
+        (c) =>
+          c.competenceId === compReelle("Développement Spirituel").id &&
+          c.niveauAcquis === 1,
       ),
     ).toBe(true);
   });
@@ -217,7 +233,10 @@ describe("convertirTirageEnBrouillon — achats", () => {
       {
         tirage: tirage({ classe: "pretre", religionId: "rel-1" }),
         composition: compo({
-          achats: [achat("acq-domaine", 1, "Ordre"), achat("comp-B", 1)],
+          achats: [
+            achat(compReelle("Acquisition de Domaine").id, 1, "Ordre"),
+            achat(compReelle("Forge").id, 1),
+          ],
         }),
       },
       aleaFixe(0),
@@ -262,6 +281,171 @@ describe("convertirTirageEnBrouillon — achats", () => {
 /* ------------------------------------------------------------------ */
 /* Décision 32 — les deux gratuites à choix                            */
 /* ------------------------------------------------------------------ */
+
+describe("convertirTirageEnBrouillon — s366 : les achats à choix reçoivent leur choix", () => {
+  const languesCourantesIds = new Set(
+    snap.tables.langues
+      .filter((l) => l.est_ancienne === false && l.est_actif === true)
+      .map((l) => l.id),
+  );
+  const languesAnciennesIds = new Set(
+    snap.tables.langues
+      .filter((l) => l.est_ancienne === true && l.est_actif === true)
+      .map((l) => l.id),
+  );
+  const nomsFamilles = new Set(
+    (snap.tables.familles_criminelles ?? []).flatMap((f) =>
+      f.est_actif === true && f.nom ? [f.nom] : [],
+    ),
+  );
+
+  it("Langue supplémentaire ×3 → 3 langues COURANTES distinctes (jumeau : jamais une ancienne)", () => {
+    const langueSup = compReelle("Langue supplémentaire");
+    const b = convertirTirageEnBrouillon(
+      snap,
+      {
+        tirage: tirage({ classe: "voleur" }),
+        composition: compo({
+          achats: Array.from({ length: 3 }, () => achat(langueSup.id, 1)),
+        }),
+      },
+      aleaFixe(0.4),
+    );
+    const choix = b.acquisitions.competences.map((c) => c.choixAchat);
+    expect(choix.every((v) => v != null)).toBe(true);
+    expect(new Set(choix).size).toBe(3); // distincts (contrainte serveur mesurée)
+    for (const v of choix) {
+      expect(languesCourantesIds.has(v as string)).toBe(true);
+      expect(languesAnciennesIds.has(v as string)).toBe(false);
+    }
+  });
+
+  it("Connaissances Criminelles : @1 SANS choix (manuel — le jumeau clé), @2 AVEC une famille du snapshot", () => {
+    const crim = compReelle("Connaissances Criminelles");
+    const b = convertirTirageEnBrouillon(
+      snap,
+      {
+        tirage: tirage({ classe: "voleur" }),
+        composition: compo({
+          achats: [achat(crim.id, 1), achat(crim.id, 2)],
+        }),
+      },
+      aleaFixe(0.4),
+    );
+    const [n1, n2] = b.acquisitions.competences;
+    expect(n1.niveauAcquis).toBe(1);
+    expect(n1.choixAchat).toBeNull(); // « les groupes de la région » — pas de famille
+    expect(n2.niveauAcquis).toBe(2);
+    expect(n2.choixAchat).not.toBeNull(); // « un contact parmi l'une des familles »
+    expect(nomsFamilles.has(n2.choixAchat as string)).toBe(true);
+  });
+
+  it("Décryptage ACHETÉ par un mage → une ancienne ≠ la gratuite (sans remise croisée gratuite/achat)", () => {
+    const decryptage = compReelle("Décryptage");
+    const b = convertirTirageEnBrouillon(
+      snap,
+      {
+        tirage: tirage({ classe: "mage", element: "Feu" }),
+        composition: compo({ achats: [achat(decryptage.id, 1)] }),
+      },
+      aleaFixe(0.4),
+    );
+    const gratuite = b.etape4.choixParCompetence?.[decryptage.id];
+    const achete = b.acquisitions.competences[0].choixAchat;
+    expect(gratuite).toBeDefined();
+    expect(achete).not.toBeNull();
+    expect(languesAnciennesIds.has(achete as string)).toBe(true);
+    expect(achete).not.toBe(gratuite); // la remise croisée mord vraiment
+  });
+
+  it("Connaissances des Religions achetée par un PRÊTRE → une foi ≠ la sienne (gravée en gratuite)", () => {
+    const rel = snap.tables.religions.find((r) => r.est_actif === true);
+    if (!rel) throw new Error("aucune religion active au snapshot");
+    const conRel = compReelle("Connaissances des Religions");
+    const b = convertirTirageEnBrouillon(
+      snap,
+      {
+        tirage: tirage({ classe: "pretre", religionId: rel.id }),
+        composition: compo({ achats: [achat(conRel.id, 1)] }),
+      },
+      aleaFixe(0.4),
+    );
+    const achete = b.acquisitions.competences[0].choixAchat;
+    expect(achete).not.toBeNull();
+    expect(achete).not.toBe(rel.id);
+    expect(snap.tables.religions.some((r) => r.id === achete)).toBe(true);
+  });
+
+  it("épuisement de la liste → ErreurConversionTirage (jumeau positif : pile le plein passe)", () => {
+    const langueSup = compReelle("Langue supplémentaire");
+    const n = languesCourantesIds.size;
+    const plein = convertirTirageEnBrouillon(
+      snap,
+      {
+        tirage: tirage({ classe: "voleur" }),
+        composition: compo({
+          achats: Array.from({ length: n }, () => achat(langueSup.id, 1)),
+        }),
+      },
+      aleaFixe(0.4),
+    );
+    expect(
+      new Set(plein.acquisitions.competences.map((c) => c.choixAchat)).size,
+    ).toBe(n);
+    expect(() =>
+      convertirTirageEnBrouillon(
+        snap,
+        {
+          tirage: tirage({ classe: "voleur" }),
+          composition: compo({
+            achats: Array.from({ length: n + 1 }, () => achat(langueSup.id, 1)),
+          }),
+        },
+        aleaFixe(0.4),
+      ),
+    ).toThrow(ErreurConversionTirage);
+  });
+
+  it("un accès (cercle/domaine) sans choix → erreur DÉDIÉE : la rampe (R1a) est la seule autorité", () => {
+    const acq = compReelle("Acquisition de Domaine");
+    expect(() =>
+      convertirTirageEnBrouillon(
+        snap,
+        {
+          tirage: tirage({ classe: "pretre", religionId: "rel-1" }),
+          composition: compo({ achats: [achat(acq.id, 1)] }),
+        },
+        aleaFixe(0.4),
+      ),
+    ).toThrow(/nommé par la rampe/);
+  });
+
+  it("type_choix inconnu du convertisseur → échec bruyant, jamais un brouillon amputé", () => {
+    const exotique = {
+      ...compReelle("Forge"),
+      id: "comp-exotique",
+      nom: "Compétence exotique",
+      type_choix: "totem",
+    };
+    const snapEtendu = {
+      ...snap,
+      tables: {
+        ...snap.tables,
+        competences: [...snap.tables.competences, exotique],
+      },
+    };
+    expect(() =>
+      convertirTirageEnBrouillon(
+        snapEtendu,
+        {
+          tirage: tirage({ classe: "guerrier" }),
+          composition: compo({ achats: [achat("comp-exotique", 1)] }),
+        },
+        aleaFixe(0.4),
+      ),
+    ).toThrow(/totem/);
+  });
+});
 
 describe("convertirTirageEnBrouillon — décision 32 (gratuites à choix)", () => {
   it("prêtre : la religion TIRÉE est gravée sur la gratuite `religion` + étape 1 croyante", () => {
