@@ -28,7 +28,8 @@ import {
  *   neuves du résolveur (s362) sont affichées ici ;
  * - indice « sac vide » : cas de PREMIER ORDRE (décision 31), le levier
  *   (🎒 puis Relancer) est nommé au lieu d'un re-roll monotone ;
- * - « ← Ajuster » n'existe pas à ce lot (décision 28 — arrive avec 🧭) ;
+ * - 🧭 réutilise la fiche TELLE QUELLE (décision 33) : `onAjuster` remplace
+ *   alors « Relancer » — revenir à l'escalier sans rien perdre ;
  * - « Continuer dans le créateur → » n'est rendu que si `onContinuer`
  *   est fourni (PR-B, `appliquerComposition`) : jamais de bouton mort.
  */
@@ -38,7 +39,10 @@ interface FicheTirageProps {
   composition: CompositionOk;
   /** Taille de l'inventaire coché — 0 déclenche l'indice « sac vide ». */
   nbInventaire: number;
-  onRelancer: () => void;
+  /** 🎲 : re-tirer. Absent en 🧭 (un re-roll jetterait les choix). */
+  onRelancer?: () => void;
+  /** 🧭 (PR-β2) : revenir à l'escalier, choix conservés. */
+  onAjuster?: () => void;
   /** PR-B (appliquerComposition). Absent = bouton non rendu. */
   onContinuer?: () => void;
 }
@@ -133,6 +137,7 @@ const FicheTirage = ({
   composition,
   nbInventaire,
   onRelancer,
+  onAjuster,
   onContinuer,
 }: FicheTirageProps) => {
   const [ouverts, setOuverts] = useState<ReadonlySet<string>>(new Set());
@@ -284,13 +289,24 @@ const FicheTirage = ({
 
       {/* Actions */}
       <div className="mt-4 flex flex-col gap-2.5">
-        <button
-          type="button"
-          onClick={onRelancer}
-          className="rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/90 transition-colors hover:border-gold/40"
-        >
-          🎲 Relancer
-        </button>
+        {onRelancer && (
+          <button
+            type="button"
+            onClick={onRelancer}
+            className="rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/90 transition-colors hover:border-gold/40"
+          >
+            🎲 Relancer
+          </button>
+        )}
+        {onAjuster && (
+          <button
+            type="button"
+            onClick={onAjuster}
+            className="rounded-lg border border-white/15 px-4 py-2.5 text-sm font-semibold text-white/90 transition-colors hover:border-gold/40"
+          >
+            ← Ajuster mes choix
+          </button>
+        )}
         {onContinuer && (
           <button
             type="button"

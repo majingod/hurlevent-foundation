@@ -13,7 +13,9 @@ import {
   depsDepuisSnapshot,
 } from "@/moteurCreation/generateur/pontSnapshot";
 import {
+  resoudreChoix,
   tirerPersonnage,
+  type ChoixJoueur,
   type DepsResolveur,
   type ResultatTirage,
   type TiragePersonnage,
@@ -22,6 +24,7 @@ import type { CompositionOk } from "@/moteurCreation/generateur/types";
 import { getSnapshot } from "@/moteurCreation/snapshot";
 
 import AccueilPortes, { type PorteAffichee } from "./AccueilPortes";
+import EcranBoussole from "./EcranBoussole";
 import EcranInventaire, { CaseInventaire, TITRES_GROUPES } from "./EcranInventaire";
 import EcranRace from "./EcranRace";
 import FicheTirage from "./FicheTirage";
@@ -41,8 +44,10 @@ import { PORTES } from "./portes";
  * Une porte n'est rendue que si elle est branchée — jamais de bouton mort
  * (décision 28, symétrie) :
  * - 🛠️ « Je bâtis moi-même » → `onBatirMoiMeme` (le wizard actuel) ;
- * - 🧭 « Guide-moi » → écrans de constats ; la suite s'y branchera au
- *   lot 🧭 via `onConstatsTermines` ;
+ * - 🧭 « Guide-moi » → constats (équipement, race) puis l'ESCALIER
+ *   (PR-β2) : voie → rôle → cercle/domaine → foi, `resoudreChoix`, et
+ *   la MÊME fiche que 🎲 (décision 33) — « Ajuster » y revient sans
+ *   rien perdre ;
  * - 🎲 « Surprends-moi » → tirage DIRECT depuis l'inventaire coché
  *   (contrat s346, décision 31), fiche par couches, re-roll. La porte
  *   n'apparaît que quand `onAppliquerTirage` est fourni : sans le
@@ -55,12 +60,19 @@ import { PORTES } from "./portes";
  * s'affiche en clair au lieu de tirer des races sans exigence de costume.
  */
 
-type EcranGenerateur = "accueil" | "inventaire" | "race" | "tirage";
+type EcranGenerateur =
+  | "accueil"
+  | "inventaire"
+  | "race"
+  | "boussole"
+  | "tirage"
+  | "ficheChoix";
 
 /** Fil d'ariane de la phase 1 (constats 🧭) — la fiche 🎲 n'en fait pas partie. */
 const FIL: readonly { id: EcranGenerateur; label: string }[] = [
   { id: "inventaire", label: "1. Équipement" },
   { id: "race", label: "2. Race" },
+  { id: "boussole", label: "3. Grandes lignes" },
 ];
 
 interface GenerateurProps {
@@ -77,21 +89,12 @@ interface GenerateurProps {
     tirage: TiragePersonnage;
     composition: CompositionOk;
   }) => void;
-  /**
-   * Fin des constats (race retenue) — branché au lot résolveur.
-   * Tant qu'absent, l'écran race retient le choix sans naviguer.
-   */
-  onConstatsTermines?: (constats: {
-    inventaire: ReadonlySet<string>;
-    raceId: string;
-  }) => void;
 }
 
 const Generateur = ({
   modeVisiteur,
   onBatirMoiMeme,
   onAppliquerTirage,
-  onConstatsTermines,
 }: GenerateurProps) => {
   const [ecran, setEcran] = useState<EcranGenerateur>("accueil");
   const [inventaire, setInventaire] = useState<ReadonlySet<string>>(new Set());
@@ -99,13 +102,18 @@ const Generateur = ({
   const [sacOuvert, setSacOuvert] = useState(false);
   const [resultat, setResultat] = useState<ResultatTirage | null>(null);
   const [erreurPont, setErreurPont] = useState<string | null>(null);
+  /** Refus parlant du dernier `resoudreChoix` — affiché dans l'escalier. */
+  const [refusBoussole, setRefusBoussole] = useState<string | null>(null);
 
-  /** Dépendances du résolveur — construites UNE fois, au premier 🎲. */
+  /** Dépendances du résolveur — construites UNE fois, au premier besoin
+   *  (🎲 comme escalier 🧭). Lève `ErreurPontSnapshot` si le snapshot ne
+   *  porte pas la carte d'équipement ([SNAPSHOT-COMMIT-STUB]). */
   const depsRef = useRef<DepsResolveur | null>(null);
+  const obtenirDeps = (): DepsResolveur =>
+    (depsRef.current ??= depsDepuisSnapshot(getSnapshot()));
   const lancerTirage = () => {
     try {
-      depsRef.current ??= depsDepuisSnapshot(getSnapshot());
-      setResultat(tirerPersonnage(depsRef.current, Math.random, inventaire));
+      setResultat(tirerPersonnage(obtenirDeps(), Math.random, inventaire));
       setErreurPont(null);
     } catch (e) {
       setErreurPont(
@@ -134,7 +142,30 @@ const Generateur = ({
 
   const choisirRace = (raceId: string) => {
     setRaceRetenueId(raceId);
-    onConstatsTermines?.({ inventaire, raceId });
+    setRefusBoussole(null);
+    try {
+      obtenirDeps();
+      setErreurPont(null);
+    } catch (e) {
+      setErreurPont(
+        e instanceof ErreurPontSnapshot
+          ? e.message
+          : "Le générateur n'a pas pu démarrer. Réessaie, ou passe par « Je bâtis moi-même »."
+      );
+    }
+    setEcran("boussole");
+  };
+
+  /** 🧭 → moteur : le refus parlant reste DANS l'escalier, jamais avalé. */
+  const voirFiche = (choix: ChoixJoueur) => {
+    const res = resoudreChoix(obtenirDeps(), choix);
+    if (res.ok) {
+      setResultat(res);
+      setRefusBoussole(null);
+      setEcran("ficheChoix");
+    } else {
+      setRefusBoussole(res.raison);
+    }
   };
 
   const portes: PorteAffichee[] = PORTES.flatMap((p) => {
@@ -146,7 +177,8 @@ const Generateur = ({
   });
 
   const surAccueil = ecran === "accueil";
-  const surTirage = ecran === "tirage";
+  /** Les deux fiches (🎲 et 🧭) sortent du fil d'ariane. */
+  const surTirage = ecran === "tirage" || ecran === "ficheChoix";
   const indexCourant = FIL.findIndex((f) => f.id === ecran);
 
   return (
@@ -185,7 +217,15 @@ const Generateur = ({
             <button
               type="button"
               onClick={() =>
-                setEcran(ecran === "race" ? "inventaire" : "accueil")
+                setEcran(
+                  ecran === "race"
+                    ? "inventaire"
+                    : ecran === "boussole"
+                      ? "race"
+                      : ecran === "ficheChoix"
+                        ? "boussole"
+                        : "accueil"
+                )
               }
               className="rounded border border-white/15 px-2.5 py-0.5 text-xs text-white/80 hover:border-gold/40"
             >
@@ -215,7 +255,6 @@ const Generateur = ({
                     </button>
                   );
                 })}
-                <span className="opacity-60">› …</span>
               </>
             )}
           </div>
@@ -249,6 +288,51 @@ const Generateur = ({
           raceRetenueId={raceRetenueId}
           onChoisir={choisirRace}
           onCocherObjets={cocherTous}
+        />
+      )}
+      {ecran === "boussole" && (
+        <>
+          {erreurPont && (
+            <div className="mx-auto max-w-2xl px-4 py-6">
+              <div className="rounded-lg border border-white/10 border-l-2 border-l-bordeaux bg-white/5 px-3.5 py-3 text-sm text-white/80">
+                ⚠️ {erreurPont}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEcran("accueil")}
+                className="mt-3 rounded-lg border border-white/15 px-4 py-2 text-sm text-white/80 transition-colors hover:border-gold/40"
+              >
+                ← Retour au menu
+              </button>
+            </div>
+          )}
+          {!erreurPont && raceRetenueId && (
+            <EcranBoussole
+              deps={obtenirDeps()}
+              raceId={raceRetenueId}
+              inventaire={inventaire}
+              onVoirFiche={voirFiche}
+              onSurprendsMoi={lancerTirage}
+              refus={refusBoussole}
+            />
+          )}
+        </>
+      )}
+      {ecran === "ficheChoix" && resultat?.ok && (
+        <FicheTirage
+          tirage={resultat.tirage}
+          composition={resultat.composition}
+          nbInventaire={inventaire.size}
+          onAjuster={() => setEcran("boussole")}
+          onContinuer={
+            onAppliquerTirage
+              ? () =>
+                  onAppliquerTirage({
+                    tirage: resultat.tirage,
+                    composition: resultat.composition,
+                  })
+              : undefined
+          }
         />
       )}
       {ecran === "tirage" && (

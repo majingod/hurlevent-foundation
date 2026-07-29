@@ -1,0 +1,315 @@
+/**
+ * [VIS-8 lot 🧭 PR-β2, s367] Logique de l'ESCALIER — mesurée sur les VRAIES
+ * fixtures du résolveur (mêmes montages que generateur.proposables.test.ts).
+ *
+ * Chaque garde a sa preuve par le contraire (règle s355) ; les comptes sont
+ * MESURÉS puis gravés avec leur décomposition (règle s362).
+ */
+import { describe, expect, it } from "vitest";
+
+import { CatalogueCompetences } from "@/moteurCreation/generateur/catalogue";
+import {
+  CatalogueMagie,
+  type PriereModele,
+  type SortModele,
+} from "@/moteurCreation/generateur/catalogueMagie";
+import type { Catalogues } from "@/moteurCreation/generateur/composer";
+import { type ContenuClasse } from "@/moteurCreation/generateur/contenu/commun";
+import { CONTENU_GUERRIER } from "@/moteurCreation/generateur/contenu/guerrier";
+import { CONTENU_MAGE } from "@/moteurCreation/generateur/contenu/mage";
+import { CONTENU_PRETRE } from "@/moteurCreation/generateur/contenu/pretre";
+import { CONTENU_VOLEUR } from "@/moteurCreation/generateur/contenu/voleur";
+import fxGuerrier from "@/moteurCreation/generateur/fixtures/competences_guerrier.fixture.json";
+import fxMage from "@/moteurCreation/generateur/fixtures/competences_mage.fixture.json";
+import fxMagie from "@/moteurCreation/generateur/fixtures/magie_generateur.fixture.json";
+import fxMonde from "@/moteurCreation/generateur/fixtures/monde_resolveur.fixture.json";
+import fxPretre from "@/moteurCreation/generateur/fixtures/competences_pretre.fixture.json";
+import fxVoleur from "@/moteurCreation/generateur/fixtures/competences_voleur.fixture.json";
+import {
+  religionsProposables,
+  resoudreChoix,
+  type DepsResolveur,
+  type MondeResolveur,
+} from "@/moteurCreation/generateur/resoudre";
+import type {
+  CompetenceCatalogue,
+  ContexteComposition,
+} from "@/moteurCreation/generateur/types";
+
+import {
+  EMOJIS_CLASSES,
+  PARCOURS_VIDE,
+  avertissementElement,
+  construireChoix,
+  pretPourFiche,
+  resumeFois,
+  roleAttendElement,
+  roleEstCaster,
+  type ParcoursBoussole,
+} from "./boussole.logic";
+import { LABELS_CLASSES } from "./ficheTirage.logic";
+
+/* ------------------------------------------------------------------ */
+
+const magie = new CatalogueMagie(
+  fxMagie as unknown as { sorts: SortModele[]; prieres: PriereModele[] }
+);
+const magieVide = new CatalogueMagie({ sorts: [], prieres: [] });
+const catalogue = (fx: unknown): CatalogueCompetences =>
+  new CatalogueCompetences(
+    (fx as { competences: unknown[] }).competences as CompetenceCatalogue[]
+  );
+type ClasseId = ContexteComposition["classe"];
+const parClasse: Record<
+  ClasseId,
+  { cats: Catalogues; contenu: ContenuClasse }
+> = {
+  guerrier: {
+    cats: { competences: catalogue(fxGuerrier), magie: magieVide },
+    contenu: CONTENU_GUERRIER,
+  },
+  pretre: {
+    cats: { competences: catalogue(fxPretre), magie },
+    contenu: CONTENU_PRETRE,
+  },
+  voleur: {
+    cats: { competences: catalogue(fxVoleur), magie: magieVide },
+    contenu: CONTENU_VOLEUR,
+  },
+  mage: {
+    cats: { competences: catalogue(fxMage), magie },
+    contenu: CONTENU_MAGE,
+  },
+};
+const monde = fxMonde as unknown as MondeResolveur;
+const deps: DepsResolveur = { parClasse, monde };
+const RICHE: ReadonlySet<string> = new Set([
+  "contondante_moyenne", "ecu", "armure_cuir", "bandages", "pavois",
+  "armure_plaques", "lame_longue", "lame_courte", "deux_armes_identiques",
+  "targe", "fioles", "armure_maille", "bourse", "feuille_crayon",
+  "contondante_longue", "contondante_courte", "arme_distance",
+  "baton_sceptre_baguette", "oreilles_pointues", "masque", "maquillage_vert",
+  "maquillage_fonce", "costume_animal", "costume_creature", "barbe",
+]);
+const CLASSES: ClasseId[] = ["guerrier", "voleur", "mage", "pretre"];
+const raceParNom = (nom: string) => {
+  const r = monde.races.find((x) => x.nom === nom);
+  if (!r) throw new Error(`race introuvable : ${nom}`);
+  return r;
+};
+
+/* ------------------------------------------------------------------ */
+
+describe("🧭 escalier — quels rôles attendent un élément", () => {
+  it("comptes MESURÉS par classe (attend un choix / caster)", () => {
+    const table: Record<string, [number, number, number]> = {};
+    for (const c of CLASSES) {
+      const { cats, contenu } = parClasse[c];
+      const attend = contenu.roles.filter((r) =>
+        roleAttendElement(contenu, cats, r, RICHE)
+      ).length;
+      const casters = contenu.roles.filter((r) =>
+        roleEstCaster(contenu, cats, r, RICHE)
+      ).length;
+      table[c] = [contenu.roles.length, attend, casters];
+    }
+    // MESURÉ [nb rôles, attendent un choix, casters] :
+    // guerrier/voleur : jamais · mage : 4/5 choisissent leur cercle,
+    // ⚗️ l'alchimiste vit sans magie · prêtre : ⛪ ✝️ choisissent leur
+    // domaine, 🕊️ 📿 l'ont imposé — les 4 sont casters.
+    expect(table).toEqual({
+      guerrier: [3, 0, 0],
+      voleur: [3, 0, 0],
+      mage: [5, 4, 4],
+      pretre: [4, 2, 4],
+    });
+  });
+
+  it("un rôle à magie imposée n'attend JAMAIS un choix — mais reste caster", () => {
+    const { cats, contenu } = parClasse.pretre;
+    const imposes = contenu.roles.filter((r) => r.magieImposee);
+    expect(imposes.length).toBe(2);
+    for (const r of imposes) {
+      expect(roleAttendElement(contenu, cats, r, RICHE)).toBe(false);
+      expect(roleEstCaster(contenu, cats, r, RICHE)).toBe(true);
+    }
+  });
+});
+
+describe("🧭 escalier — avertissements du catalogue complet", () => {
+  it("cercles : les 2 jamais-tirés portent la LOI, les 11 autres rien", () => {
+    const cercles = parClasse.mage.cats.magie.cercles();
+    const avertis = cercles.filter(
+      (c) => avertissementElement("cercle", c, monde) !== null
+    );
+    expect(avertis.sort()).toEqual(["Magie Noire", "Nécromancie"]);
+    expect(avertissementElement("cercle", "Nécromancie", monde)).toContain(
+      "Hors-la-loi"
+    );
+    // Le motif CERCLE ne parle jamais de religion (§5.1 ② ≠ §5.2 ②).
+    expect(avertissementElement("cercle", "Nécromancie", monde)).not.toContain(
+      "religion"
+    );
+  });
+
+  it("domaines : Nécromancie seule, avec des comptes DÉRIVÉS du monde", () => {
+    const domaines = parClasse.pretre.cats.magie.domaines();
+    const avertis = domaines.filter(
+      (d) => avertissementElement("domaine", d, monde) !== null
+    );
+    expect(avertis).toEqual(["Nécromancie"]);
+    const texte = avertissementElement("domaine", "Nécromancie", monde)!;
+    // Dérivés, pas rédigés : 6 proscrivent / 9 honorent (15 actives).
+    expect(texte).toContain("6 religions la proscrivent");
+    expect(texte).toContain("9 l'honorent");
+    // PREUVE PAR LE CONTRAIRE : un monde où une religion de plus la
+    // proscrit change le texte — le compte vient bien du monde injecté.
+    const mondePlus: MondeResolveur = {
+      ...monde,
+      religions: monde.religions.map((r, i) =>
+        i === monde.religions.findIndex(
+          (x) => x.est_actif && !x.domaines_proscrits.includes("Nécromancie")
+        )
+          ? { ...r, domaines_proscrits: [...r.domaines_proscrits, "Nécromancie"] }
+          : r
+      ),
+    };
+    expect(avertissementElement("domaine", "Nécromancie", mondePlus)).toContain(
+      "7 religions la proscrivent"
+    );
+  });
+});
+
+describe("🧭 escalier — l'intro de l'étape Foi", () => {
+  it("les trois comptes, dérivés de religionsProposables (Guerre : 8·3·4)", () => {
+    const fois = religionsProposables(monde, "Guerre");
+    expect(resumeFois(fois, "Guerre")).toBe(
+      "8 fois portent Guerre en prédilection · 3 le tolèrent · 4 le proscrivent (grisées)."
+    );
+  });
+});
+
+describe("🧭 escalier — le bouton « Voir ma fiche »", () => {
+  const parcours = (x: Partial<ParcoursBoussole>): ParcoursBoussole => ({
+    ...PARCOURS_VIDE,
+    ...x,
+  });
+  const pret = (p: ParcoursBoussole) =>
+    pretPourFiche(
+      p,
+      p.classe ? parClasse[p.classe].contenu : null,
+      p.classe ? parClasse[p.classe].cats : null,
+      RICHE
+    );
+
+  it("guerrier : classe + rôle suffisent (ni élément, ni foi)", () => {
+    expect(pret(parcours({ classe: "guerrier" }))).toBe(false);
+    expect(pret(parcours({ classe: "guerrier", roleId: "gForgeron" }))).toBe(true);
+  });
+
+  it("mage à choix libre : l'élément est ATTENDU — l'alchimiste non", () => {
+    expect(pret(parcours({ classe: "mage", roleId: "mCanalisateur" }))).toBe(false);
+    expect(
+      pret(parcours({ classe: "mage", roleId: "mCanalisateur", element: "Feu" }))
+    ).toBe(true);
+    expect(pret(parcours({ classe: "mage", roleId: "mAlchimiste" }))).toBe(true);
+  });
+
+  it("second coché sans second choisi = pas prêt", () => {
+    const base = parcours({
+      classe: "mage",
+      roleId: "mCanalisateur",
+      element: "Feu",
+      second: true,
+    });
+    expect(pret(base)).toBe(false);
+    expect(pret({ ...base, element2: "Eau" })).toBe(true);
+  });
+
+  it("prêtre : la foi est OBLIGATOIRE (versBrouillon la refuse absente)", () => {
+    const sansFoi = parcours({
+      classe: "pretre",
+      roleId: "pMissionnaire",
+    });
+    expect(pret(sansFoi)).toBe(false);
+    const religion = monde.religions.find(
+      (r) => r.est_actif && r.domaines_principaux.includes("Guerre")
+    )!;
+    expect(pret({ ...sansFoi, religionId: religion.id })).toBe(true);
+  });
+});
+
+describe("🧭 escalier — construireChoix → resoudreChoix (bout en bout)", () => {
+  it("⛪ + Guerre + foi de prédilection : le moteur compose (parcours démo s366)", () => {
+    const religion = monde.religions.find(
+      (r) => r.est_actif && r.domaines_principaux.includes("Guerre")
+    )!;
+    const choix = construireChoix(
+      {
+        classe: "pretre",
+        roleId: "pRite",
+        element: "Guerre",
+        second: false,
+        element2: null,
+        religionId: religion.id,
+      },
+      raceParNom("Humain").id,
+      RICHE
+    );
+    // Arbitrage s367 : PAS de traitsChoisis — le modèle fait foi.
+    expect("traitsChoisis" in choix).toBe(false);
+    const res = resoudreChoix(deps, choix);
+    expect(res.ok, res.ok ? "" : res.raison).toBe(true);
+    if (res.ok) {
+      expect(res.tirage.element).toBe("Guerre");
+      expect(res.tirage.religionId).toBe(religion.id);
+      expect(res.composition.reliquat).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("second décoché ⇒ element2 n'est JAMAIS envoyé, même si un reste posé", () => {
+    const choix = construireChoix(
+      {
+        classe: "mage",
+        roleId: "mCanalisateur",
+        element: "Feu",
+        second: false,
+        element2: "Eau",
+        religionId: null,
+      },
+      raceParNom("Humain").id,
+      RICHE
+    );
+    expect(choix.element2).toBeUndefined();
+  });
+
+  it("la ceinture du moteur : une foi proscrite est refusée AVEC SA PHRASE", () => {
+    // L'écran grise les proscrites (pas cliquables) ; si un choix proscrit
+    // arrivait quand même au moteur, il est refusé — jamais composé.
+    const proscrivante = monde.religions.find(
+      (r) => r.est_actif && r.domaines_proscrits.includes("Guerre")
+    )!;
+    const res = resoudreChoix(deps, {
+      classe: "pretre",
+      roleId: "pRite",
+      raceId: raceParNom("Humain").id,
+      inventaire: RICHE,
+      element: "Guerre",
+      religionId: proscrivante.id,
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.raison).toContain(proscrivante.nom);
+      expect(res.raison).toContain("Guerre");
+    }
+  });
+});
+
+describe("🧭 escalier — éditorial", () => {
+  it("chaque voie a son émoji ET son libellé (les 4, pas 3)", () => {
+    for (const c of CLASSES) {
+      expect(EMOJIS_CLASSES[c].length).toBeGreaterThan(0);
+      expect(LABELS_CLASSES[c].length).toBeGreaterThan(0);
+    }
+  });
+});
