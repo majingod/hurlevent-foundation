@@ -8,6 +8,11 @@ import {
   type RoleClasse,
 } from "./commun";
 
+/** [s366] Label du « second cercle » — consommé par l'entrée du pool ③
+ *  ET par `resoudreChoix` (essentielSecond) : une seule maison. */
+export const ESSENTIEL_SECOND_CERCLE =
+  "Un SECOND cercle — et un premier sort dedans";
+
 /**
  * [VIS-8 lot A2-Mage, s358] Contenu MAGE — les 5 archétypes MESURÉS sur les
  * mages de la prod (CONCEPTION §4.0.3), et non plus les rôles conçus.
@@ -201,7 +206,7 @@ const POOL3_MAGE: Record<string, EntreePool[]> = {
       condition: (_inv, o) => !!o.element,
     },
     {
-      label: "Un SECOND cercle — et un premier sort dedans",
+      label: ESSENTIEL_SECOND_CERCLE,
       note: "Mesuré 2/2 chez ✨ et ᚱ : Mérèkor (Air+Charmes), Valen (Charmes+Illusion), Cendre Neige (Illusion+Nécromancie), Félis (Magie Pure+Nécromancie).",
       // ⭐ [R1a s361] `rachat` = un NOUVEAU choix au prix du niveau 1 — c'est
       // exactement un second cercle, et il porte enfin son nom.
@@ -407,4 +412,5 @@ export const CONTENU_MAGE: ContenuClasse = {
   pool3: POOL3_MAGE,
   pond4: POND4_MAGE,
   filet: FILET_CASTER,
+  essentielSecond: ESSENTIEL_SECOND_CERCLE,
 };

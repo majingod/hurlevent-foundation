@@ -22,7 +22,7 @@ import { type Catalogues } from "./composer";
 import { exigeDesPS, type ContenuClasse } from "./contenu/commun";
 import { CONTENU_GUERRIER } from "./contenu/guerrier";
 import { CONTENU_MAGE } from "./contenu/mage";
-import { CONTENU_PRETRE } from "./contenu/pretre";
+import { CONTENU_PRETRE, ESSENTIEL_SECOND_DOMAINE } from "./contenu/pretre";
 import { CONTENU_VOLEUR } from "./contenu/voleur";
 import fxGuerrier from "./fixtures/competences_guerrier.fixture.json";
 import fxMage from "./fixtures/competences_mage.fixture.json";
@@ -453,7 +453,10 @@ describe("🧭 resoudreChoix — refus avec phrase, jamais en silence (G5)", () 
       expect(h.composition.budget).toBe(80);
       // Le filet ④ Guerrier a posé du Développement Spirituel → le trait
       // « Inapte » est incompatible avec CETTE fiche (conduite 3).
-      expect(h.traitsIncompatibles).toEqual(["Inapte à la magie"]);
+      expect(h.tirage.traitsIncompatibles).toEqual(["Inapte à la magie"]);
+      // Forme UNIFIÉE (s366) : 🧭 rend le même ResultatTirage que 🎲.
+      expect(h.tirage.budget).toBe(80);
+      expect(h.tirage.raceNom).toBe("Humain");
     }
     const g = resoudreChoix(
       deps,
@@ -485,7 +488,124 @@ describe("🧭 resoudreChoix — refus avec phrase, jamais en silence (G5)", () 
         )
       ).toBe(false);
       expect(inapte.composition.achatsMagie).toHaveLength(0);
-      expect(inapte.traitsIncompatibles).toEqual([]);
+      expect(inapte.tirage.traitsIncompatibles).toEqual([]);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 3 bis. 🧭 s366 — forme unifiée + element2 demandé ⇒ acheté.         */
+/* ------------------------------------------------------------------ */
+
+describe("🧭 resoudreChoix — s366 : forme unifiée, element2 demandé ⇒ acheté", () => {
+  const relGuerre = () =>
+    religionsCandidates(monde, "Guerre")[0];
+
+  it("rôle à domaine IMPOSÉ : l'imposé remonte dans tirage.element (la fiche l'affiche)", () => {
+    const r = resoudreChoix(deps, {
+      classe: "pretre",
+      roleId: "pMissionnaire",
+      raceId: raceParNom("Humain").id,
+      inventaire: RICHE,
+      religionId: relGuerre().id,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.tirage.element).toBe("Guerre");
+      expect(r.tirage.religionNom).toBe(relGuerre().nom);
+      expect(r.tirage.element2).toBeUndefined();
+    }
+  });
+
+  it("INVARIANT : element2 demandé ⇒ Acquisition achetée + une magie dedans + element2 en sortie", () => {
+    const base = {
+      classe: "pretre" as const,
+      roleId: "pRite",
+      raceId: raceParNom("Humain").id,
+      inventaire: RICHE,
+      element: "Guerre",
+      religionId: relGuerre().id,
+    };
+    // Jumeau négatif : SANS demande, jamais d'element2 ni de 2e Acquisition.
+    const sans = resoudreChoix(deps, base);
+    expect(sans.ok).toBe(true);
+    if (sans.ok) {
+      expect(sans.tirage.element2).toBeUndefined();
+      expect(
+        sans.composition.achats.filter((a) => a.nom === "Acquisition de Domaine")
+      ).toHaveLength(1);
+    }
+    // La demande : le contenu déclare le label (essentielSecond), le
+    // résolveur le joint — l'écran ne connaît AUCUN label.
+    const avec = resoudreChoix(deps, { ...base, element2: "Ordre" });
+    expect(avec.ok).toBe(true);
+    if (avec.ok) {
+      expect(avec.tirage.element2).toBe("Ordre");
+      expect(
+        avec.composition.achats.some(
+          (a) => a.nom === "Acquisition de Domaine" && a.choix === "Ordre"
+        )
+      ).toBe(true);
+      // Jamais un accès sec (décision 16) : mesuré s366, la 2e prière suit.
+      expect(
+        avec.composition.achatsMagie.filter((m) => m.type === "priere")
+      ).toHaveLength(2);
+      expect(avec.composition.reliquat).toBe(2);
+    }
+    // Déduplication : l'appelant qui fournit DÉJÀ l'essentiel n'obtient
+    // qu'UNE seule Acquisition d'Ordre (pas de doublon).
+    const double = resoudreChoix(deps, {
+      ...base,
+      element2: "Ordre",
+      essentiels: [{ label: ESSENTIEL_SECOND_DOMAINE }],
+    });
+    expect(double.ok).toBe(true);
+    if (double.ok) {
+      expect(
+        double.composition.achats.filter(
+          (a) => a.nom === "Acquisition de Domaine" && a.choix === "Ordre"
+        )
+      ).toHaveLength(1);
+    }
+  });
+
+  it("le second rentre AUSSI à 60 XP (Gobelin ⛪ Guerre + Ordre → reliquat 0, mesuré s366)", () => {
+    const r = resoudreChoix(deps, {
+      classe: "pretre",
+      roleId: "pRite",
+      raceId: raceParNom("Gobelin").id,
+      inventaire: RICHE,
+      element: "Guerre",
+      element2: "Ordre",
+      religionId: relGuerre().id,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.tirage.budget).toBe(60);
+      expect(r.tirage.element2).toBe("Ordre");
+      expect(r.composition.reliquat).toBe(0);
+    }
+  });
+
+  it("mage : Feu + second cercle Charmes → Cercle(Charmes) acheté et son sort dans le SECOND cercle", () => {
+    const r = resoudreChoix(deps, {
+      classe: "mage",
+      roleId: "mGuilde",
+      raceId: raceParNom("Humain").id,
+      inventaire: RICHE,
+      element: "Feu",
+      element2: "Charmes",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.tirage.element2).toBe("Charmes");
+      expect(
+        r.composition.achats.some(
+          (a) => a.nom === "Acquisition de Cercle" && a.choix === "Charmes"
+        )
+      ).toBe(true);
+      // Mesuré s366 : 4 sorts (3 du rôle + celui du second cercle).
+      expect(r.composition.achatsMagie).toHaveLength(4);
     }
   });
 });

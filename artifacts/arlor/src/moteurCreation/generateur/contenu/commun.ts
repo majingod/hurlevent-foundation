@@ -105,6 +105,11 @@ export interface ContenuClasse {
   pool3: Record<string, EntreePool[]>;
   pond4: Record<string, EtapePond[]>;
   filet: EtapePond[];
+  /** ⭐ [s366, lot 🧭] Le LABEL de l'entrée « second cercle/domaine » du
+   *  pool ③ — déclaré ICI (une seule maison) pour que `resoudreChoix`
+   *  garantisse « element2 demandé ⇒ acheté ou refus » sans que l'écran ne
+   *  connaisse un seul label du contenu. */
+  essentielSecond?: string;
 }
 
 export const comp = (
