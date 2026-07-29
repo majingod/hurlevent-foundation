@@ -51,6 +51,7 @@ import { construireIndex, raceAccessible } from "../exigences";
 import type { ObjetRequis } from "../snapshot";
 import {
   composerClasse,
+  raisonRoleInapte,
   tirerEssentielsClasse,
   type Catalogues,
 } from "./composer";
@@ -97,6 +98,12 @@ const TRAIT_INAPTE = "Inapte à la magie";
 /** Ordre FIXE du tirage de classe — chaque grande famille a la même chance
  *  (¼), quel que soit son nombre d'archétypes (choix C1, s362). */
 const CLASSES: readonly ClasseId[] = ["guerrier", "mage", "pretre", "voleur"];
+
+/** ⭐ [s367, lot 🧭] Ordre d'AFFICHAGE des voies — du moins au plus
+ *  contraint (maquette validée Fred s366). Distinct de `CLASSES`, qui est
+ *  l'ordre de TIRAGE et dont le motif est l'équiprobabilité (choix C1) :
+ *  deux maisons parce que deux motifs. */
+const ORDRE_VOIES: readonly ClasseId[] = ["guerrier", "voleur", "mage", "pretre"];
 
 /* ------------------------------------------------------------------ */
 /* Types d'entrée / sortie                                             */
@@ -159,6 +166,33 @@ export type ResultatTirage =
   | { ok: true; tirage: TiragePersonnage; composition: CompositionOk }
   | { ok: false; raison: string };
 
+/* ------------------------------------------------------------------ */
+/* Ce que la porte 🧭 AFFICHE — l'ouvert ET le fermé, avec sa raison.  */
+/* (Décision 6 : griser, jamais cacher.)                              */
+/* ------------------------------------------------------------------ */
+
+export interface RoleProposable {
+  role: RoleClasse;
+  ouvert: boolean;
+  /** Phrase joueur — présente si et seulement si `ouvert` est faux. */
+  raison?: string;
+}
+
+export interface ClasseProposable {
+  classe: ClasseId;
+  ouverte: boolean;
+  raison?: string;
+}
+
+export type StatutFoi = "predilection" | "toleree" | "proscrite";
+
+export interface FoiProposable {
+  religion: ReligionMonde;
+  statut: StatutFoi;
+  /** Phrase joueur — présente si et seulement si `statut` vaut proscrite. */
+  raison?: string;
+}
+
 export interface ChoixJoueur {
   classe: ClasseId;
   roleId: string;
@@ -209,35 +243,158 @@ export function domainesTirables(cats: Catalogues): string[] {
     .filter((d) => !DOMAINES_JAMAIS_TIRES.includes(d));
 }
 
-/** Rôles qu'un 🎲 peut proposer : porte ouverte (`requiert === null`) ET,
- *  si le personnage est inapte, pas de PS au noyau/signature (conduite 2 —
- *  le pré-filtre évite de tirer un rôle que le composeur refuserait).
+/** Sonde d'élément du pré-filtre de rôles (piège C71, mesuré s362) : les
+ *  portes des casters à choix libre (🎭🔮✨ᚱ⛪✝️) répondent « choisis d'abord
+ *  ton cercle/domaine » quand `o.element` manque — une porte 🧭, pas une
+ *  porte d'inventaire. On sonde donc avec un élément du pool ; les 6 portes
+ *  testent sa PRÉSENCE, jamais son identité, et le composeur re-vérifie de
+ *  toute façon avec le vrai. */
+const sondeElement = (
+  contenu: ContenuClasse,
+  cats: Catalogues
+): string | undefined =>
+  contenu.classe === "pretre"
+    ? domainesTirables(cats)[0]
+    : contenu.classe === "mage"
+      ? cerclesTirables(cats)[0]
+      : undefined;
+
+/** ⭐ [s367, lot 🧭] TOUS les rôles de la classe, ouverts ET fermés, chacun
+ *  avec SA RAISON — « griser, jamais cacher » (décision 6). C'est la liste
+ *  que la porte 🧭 affiche ; `rolesTirables` n'en est que la projection
+ *  sèche, pour que les deux portes ne puissent pas diverger.
  *
- *  ⚠️ SONDE D'ÉLÉMENT (mesuré s362) : les portes des casters à choix libre
- *  (🎭🔮✨ᚱ⛪✝️) répondent « choisis d'abord ton cercle/domaine » quand
- *  `o.element` manque — une porte 🧭, pas une porte d'inventaire. En 🎲 le
- *  résolveur TIRE l'élément APRÈS le rôle : on sonde donc avec un élément
- *  du pool. Les 6 portes testent sa PRÉSENCE, jamais son identité (mesuré
- *  sur le contenu) ; le composeur re-vérifie de toute façon avec le vrai. */
+ *  Les raisons ne sont jamais rédigées ici : celle de l'équipement vient du
+ *  CONTENU (`role.requiert`, une seule maison), celle de l'inaptitude du
+ *  COMPOSEUR (`raisonRoleInapte`, la même phrase qu'un refus après coup). */
+export function rolesProposables(
+  contenu: ContenuClasse,
+  cats: Catalogues,
+  inventaire: ReadonlySet<string>,
+  inapte: boolean
+): RoleProposable[] {
+  const o = { element: sondeElement(contenu, cats) };
+  return contenu.roles.map((role) => {
+    const refus = role.requiert(inventaire, o);
+    if (refus !== null) return { role, ouvert: false, raison: refus };
+    if (inapte && archetypeDemandeDesPS(contenu, role.id, inventaire, o)) {
+      return { role, ouvert: false, raison: raisonRoleInapte(role) };
+    }
+    return { role, ouvert: true };
+  });
+}
+
+/** Rôles qu'un 🎲 peut proposer — la projection sèche de `rolesProposables`.
+ *  Une seule maison du pré-filtre : ce que 🧭 grise, 🎲 l'écarte. */
 export function rolesTirables(
   contenu: ContenuClasse,
   cats: Catalogues,
   inventaire: ReadonlySet<string>,
   inapte: boolean
 ): RoleClasse[] {
-  const sonde =
-    contenu.classe === "pretre"
-      ? domainesTirables(cats)[0]
-      : contenu.classe === "mage"
-        ? cerclesTirables(cats)[0]
-        : undefined;
-  const o = { element: sonde };
-  return contenu.roles.filter((r) => {
-    if (r.requiert(inventaire, o) !== null) return false;
-    if (inapte && archetypeDemandeDesPS(contenu, r.id, inventaire, o))
-      return false;
-    return true;
+  return rolesProposables(contenu, cats, inventaire, inapte)
+    .filter((r) => r.ouvert)
+    .map((r) => r.role);
+}
+
+/** ⭐ [s367, lot 🧭] Les 4 voies, ouvertes ET fermées, avec leur raison.
+ *  Une voie est ouverte dès qu'UN de ses rôles l'est — jamais un cul-de-sac
+ *  au barreau suivant (motif de l'ordre α, décision 36).
+ *
+ *  ⚠️ ARBITRAGE FRED s367 — LE MODÈLE FERME, PAS L'INSTANCE. Une race dont
+ *  le POOL de traits porte « Inapte à la magie » voit les voies à PS se
+ *  fermer, même si le joueur n'a pas encore choisi ce trait (il en prend 1
+ *  sur 6). C'est une DIVERGENCE DÉLIBÉRÉE avec la décision 33 (« archétype
+ *  d'abord, trait ensuite ») et avec le manuel : elle vit dans
+ *  `divergences_deliberees.md`. L'échappatoire est nommée au joueur —
+ *  « Je bâtis moi-même » reste ouvert. Passer `traitsChoisis` bascule sur
+ *  l'instance sans toucher à ce code.
+ *
+ *  Le MOTIF de la fermeture est MESURÉ, jamais deviné : on re-déroule le
+ *  pool en supposant le personnage apte ; s'il s'ouvre, la cause est
+ *  l'inaptitude, sinon c'est l'équipement. */
+export function classesProposables(
+  deps: DepsResolveur,
+  raceId: string,
+  inventaire: ReadonlySet<string>,
+  traitsChoisis?: readonly string[]
+): ClasseProposable[] {
+  const { monde } = deps;
+  const race = monde.races.find((r) => r.id === raceId);
+  const inapte = traitsChoisis
+    ? traitsChoisis.includes(TRAIT_INAPTE)
+    : !!race && raceInapteMagie(mondeInapte(monde), race.id);
+
+  return ORDRE_VOIES.map((classe): ClasseProposable => {
+    const { cats, contenu } = deps.parClasse[classe];
+    const ouverts = rolesProposables(contenu, cats, inventaire, inapte).filter(
+      (r) => r.ouvert
+    ).length;
+    if (ouverts > 0) return { classe, ouverte: true };
+
+    const ouvertsSiApte = inapte
+      ? rolesProposables(contenu, cats, inventaire, false).filter(
+          (r) => r.ouvert
+        ).length
+      : 0;
+    const nom = race?.nom ?? "Ton peuple";
+    return {
+      classe,
+      ouverte: false,
+      raison:
+        ouvertsSiApte > 0
+          ? `Les ${contenu.roles.length} rôles de cette voie vivent de points de spiritualité, et ${nom} peut naître inapte à la magie. « Je bâtis moi-même » reste ouvert.`
+          : `Aucun rôle de cette voie n'est ouvert avec ton équipement — ajoute de quoi dans ton 🎒.`,
+    };
   });
+}
+
+/** ⭐ [s367, lot 🧭, arbitrage Fred] LES 15 FOI, JAMAIS 8. Le tri de 🎲
+ *  (`religionsCandidates`, priorité aux domaines PRINCIPAUX — arbitrage
+ *  s360) est un tri de TIRAGE : l'appliquer à un CHOIX cacherait des foi
+ *  parfaitement légitimes. Mesuré s367 : un nécromancien n'en verrait que
+ *  3 sur les 9 qui l'acceptent, et les 6 qui le refusent disparaîtraient
+ *  avec leur raison.
+ *
+ *  Conduite : tout est rendu, trié prédilection → tolérée → proscrite ; les
+ *  proscrites portent leur phrase et l'écran les grise (décision 6).
+ *  ⚠️ `religionsCandidates` reste la maison du 🎲 : ne pas fusionner. */
+export function religionsProposables(
+  monde: MondeResolveur,
+  domaine?: string,
+  domaine2?: string
+): FoiProposable[] {
+  const rang: Record<StatutFoi, number> = {
+    predilection: 0,
+    toleree: 1,
+    proscrite: 2,
+  };
+  return monde.religions
+    .filter((r) => r.est_actif)
+    .map((religion): FoiProposable => {
+      const proscrit = [domaine, domaine2].find(
+        (d): d is string => !!d && religion.domaines_proscrits.includes(d)
+      );
+      if (proscrit) {
+        return {
+          religion,
+          statut: "proscrite",
+          raison: `${religion.nom} proscrit le domaine ${proscrit}.`,
+        };
+      }
+      return {
+        religion,
+        statut:
+          domaine && religion.domaines_principaux.includes(domaine)
+            ? "predilection"
+            : "toleree",
+      };
+    })
+    .sort(
+      (a, b) =>
+        rang[a.statut] - rang[b.statut] ||
+        a.religion.nom.localeCompare(b.religion.nom, "fr")
+    );
 }
 
 /** Religions candidates pour un prêtre tiré : le domaine (imposé ou tiré)

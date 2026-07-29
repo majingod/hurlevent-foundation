@@ -11,6 +11,7 @@ import {
   type EntreePool,
   type EtapePond,
   type OptionsRole,
+  type RoleClasse,
 } from "./contenu/commun";
 import { CONTENU_GUERRIER } from "./contenu/guerrier";
 import {
@@ -378,6 +379,17 @@ function resoudreEssentiel(
   return { label: e.nom, achats: [comp(e.nom, e.niveauCible)] };
 }
 
+/**
+ * ⭐ [s367, lot 🧭] Phrase de refus « ce rôle demande de la magie, et ton
+ * personnage y est inapte » — UNE SEULE MAISON. Deux surfaces la lisent, et
+ * elles ne doivent jamais diverger :
+ *  - `composerClasse` la rend APRÈS coup, quand le joueur a déjà choisi ;
+ *  - `rolesProposables` (résolveur) l'affiche AVANT, sur la carte grisée,
+ *    pour que la porte 🧭 dise pourquoi au lieu de fermer en silence.
+ */
+export const raisonRoleInapte = (role: RoleClasse): string =>
+  `${role.emoji} ${role.titre} demande de la magie, et ton personnage y est inapte : choisis un autre rôle, ou une autre origine.`;
+
 export function composerClasse(
   cats: Catalogues,
   contenu: ContenuClasse,
@@ -399,7 +411,7 @@ export function composerClasse(
   if (ctx.inapteMagie && archetypeDemandeDesPS(contenu, ctx.roleId, ctx.inventaire, o)) {
     return {
       ok: false,
-      raison: `${role.emoji} ${role.titre} demande de la magie, et ton personnage y est inapte : choisis un autre rôle, ou une autre origine.`,
+      raison: raisonRoleInapte(role),
     };
   }
 
