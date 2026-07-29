@@ -42,6 +42,8 @@ import fxMonde from "@/moteurCreation/generateur/fixtures/monde_resolveur.fixtur
 import fxPretre from "@/moteurCreation/generateur/fixtures/competences_pretre.fixture.json";
 import fxVoleur from "@/moteurCreation/generateur/fixtures/competences_voleur.fixture.json";
 import {
+  religionsCandidates,
+  resoudreChoix,
   tirerPersonnage,
   type Alea,
   type DepsResolveur,
@@ -235,6 +237,39 @@ describe("appliquerComposition — bout-en-bout clientVisiteur", () => {
     expect(b.etape1.estCroyant).toBe(false);
     const nbSorts = res.composition.achatsMagie.filter((m) => m.type === "sort").length;
     expect(b.acquisitions.sorts).toHaveLength(nbSorts);
+  });
+
+  it("🧭 s366 : resoudreChoix s'applique BOUT-EN-BOUT, second domaine compris", async () => {
+    const humain = monde.races.find((r) => r.nom === "Humain")!;
+    const rel = religionsCandidates(monde, "Guerre")[0];
+    const res = resoudreChoix(deps, {
+      classe: "pretre",
+      roleId: "pRite",
+      raceId: humain.id,
+      inventaire: RICHE,
+      element: "Guerre",
+      element2: "Ordre",
+      religionId: rel.id,
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    // Même forme que 🎲 : appliquerComposition la consomme TELLE QUELLE.
+    const resultat = await appliquerComposition(
+      clientVisiteur,
+      res,
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(11) },
+    );
+    expect(resultat.echecs).toEqual([]);
+    expect(resultat.statut).toBe("complet");
+    const b = brouillonStocke();
+    // La religion CHOISIE (pas tirée) est gravée aux deux endroits.
+    expect(b.etape1.religionId).toBe(rel.id);
+    // Le SECOND domaine demandé est réellement écrit : Acquisition de
+    // Domaine (Ordre) figure dans les acquisitions du brouillon.
+    expect(
+      b.acquisitions.competences.some((c) => c.choixAchat === "Ordre")
+    ).toBe(true);
   });
 
   it("mage : la langue est DÉTERMINISTE sur l'aléa injecté (même seed → même langue)", async () => {

@@ -8,6 +8,10 @@ import {
   type RoleClasse,
 } from "./commun";
 
+/** [s366] Label du « second domaine » — consommé par l'entrée du pool ③
+ *  ET par `resoudreChoix` (essentielSecond) : une seule maison. */
+export const ESSENTIEL_SECOND_DOMAINE = "Un SECOND domaine de prière";
+
 /**
  * [VIS-8 lot A2-Prêtre, s360] Contenu PRÊTRE — les 4 archétypes MESURÉS sur
  * les prêtres de la prod (CONCEPTION §4.0.3), et non plus les rôles conçus.
@@ -232,7 +236,7 @@ const POOL3_PRETRE: Record<string, EntreePool[]> = {
       achats: () => [priereAuChoix(2)],
     },
     {
-      label: "Un SECOND domaine de prière",
+      label: ESSENTIEL_SECOND_DOMAINE,
       note: "Mesuré 2/2 chez 🕊️ et 📿 : Aymon (Guerre+Ordre), Virgile (4 domaines), Kaelen (Bénédiction+Nécromancie), Orion (Bénédiction+Nature).",
       // ⭐ [R1a s361] Jumeau du second cercle. C'est `element2` — donc le
       // RÉSOLVEUR — qui porte la décision Fred « proposable 🧭, jamais
@@ -341,4 +345,5 @@ export const CONTENU_PRETRE: ContenuClasse = {
   pool3: POOL3_PRETRE,
   pond4: POND4_PRETRE,
   filet: FILET_CASTER,
+  essentielSecond: ESSENTIEL_SECOND_DOMAINE,
 };

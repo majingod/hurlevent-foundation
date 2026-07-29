@@ -173,15 +173,6 @@ export interface ChoixJoueur {
   essentiels?: ContexteComposition["essentiels"];
 }
 
-export type ResultatResolution =
-  | {
-      ok: true;
-      contexte: ContexteComposition;
-      composition: CompositionOk;
-      traitsIncompatibles: string[];
-    }
-  | { ok: false; raison: string };
-
 /* ------------------------------------------------------------------ */
 /* Pools — exportés pour que la simulation énumère EXACTEMENT           */
 /* l'espace atteignable (jumeau positif, règle s346).                  */
@@ -412,13 +403,7 @@ export function tirerPersonnage(
   // 680 candidats sur 779 n'étaient pas achetés, et la fiche les affichait.
   // L'EFFECTIF est ce que la composition a réellement acheté — rien d'autre
   // ne sort du tirage.
-  const element2Effectif = composition.achats.some(
-    (a) =>
-      (a.nom === "Acquisition de Cercle" || a.nom === "Acquisition de Domaine") &&
-      a.choix === element2
-  )
-    ? element2
-    : undefined;
+  const element2Effectif = element2Achete(composition, element2);
 
   // ⑦ La religion — EN SORTIE, prêtre seulement : « archétype d'abord,
   // religion ensuite » (§5.2 ③), principales d'abord (s360), et le second
@@ -462,12 +447,29 @@ export function tirerPersonnage(
 
 /* ------------------------------------------------------------------ */
 /* 🧭 — la validation des choix du joueur                              */
+/** [s366] L'element2 EFFECTIF : le candidat n'entre dans la sortie que si
+ *  la composition l'a RÉELLEMENT acheté — la fiche dit vrai (option A,
+ *  Fred s366). Une seule maison du critère, pour 🎲 ET 🧭. */
+function element2Achete(
+  composition: CompositionOk,
+  candidat: string | undefined
+): string | undefined {
+  if (!candidat) return undefined;
+  const achete = composition.achats.some(
+    (a) =>
+      (a.nom === "Acquisition de Cercle" ||
+        a.nom === "Acquisition de Domaine") &&
+      a.choix === candidat
+  );
+  return achete ? candidat : undefined;
+}
+
 /* ------------------------------------------------------------------ */
 
 export function resoudreChoix(
   deps: DepsResolveur,
   choix: ChoixJoueur
-): ResultatResolution {
+): ResultatTirage {
   const { monde } = deps;
   const { cats, contenu } = deps.parClasse[choix.classe];
 
@@ -514,6 +516,19 @@ export function resoudreChoix(
     }
   }
 
+  // ⭐ [s366, lot 🧭] ELEMENT2 DEMANDÉ ⇒ ACHETÉ OU REFUS — un invariant
+  // MOTEUR, pas une convention d'écran : quand le joueur pose un second
+  // cercle/domaine, l'entrée du pool ③ correspondante (label déclaré par le
+  // CONTENU dans `essentielSecond` — une seule maison) est jointe à ses
+  // essentiels. L'écran ne connaît aucun label.
+  let essentiels = choix.essentiels;
+  if (choix.element2 && contenu.essentielSecond) {
+    const label = contenu.essentielSecond;
+    if (!essentiels?.some((e) => "label" in e && e.label === label)) {
+      essentiels = [...(essentiels ?? []), { label }];
+    }
+  }
+
   const contexte: ContexteComposition = {
     classe: choix.classe,
     roleId: choix.roleId,
@@ -521,16 +536,30 @@ export function resoudreChoix(
     budget: race.xp_depart,
     element: choix.element,
     element2: choix.element2,
-    essentiels: choix.essentiels,
+    essentiels,
     inapteMagie: inapte,
   };
   const composition: Composition = composerClasse(cats, contenu, contexte);
   if (!composition.ok) return { ok: false, raison: composition.raison };
 
+  // Même forme de sortie que 🎲 (ResultatTirage) : la fiche, la conversion
+  // et l'application se réutilisent TELLES QUELLES (décision 33).
+  const element2Effectif = element2Achete(composition, choix.element2);
   return {
     ok: true,
-    contexte,
+    tirage: {
+      raceId: race.id,
+      raceNom: race.nom,
+      budget: race.xp_depart,
+      classe: choix.classe,
+      roleId: choix.roleId,
+      element: choix.element ?? role?.magieImposee,
+      element2: element2Effectif,
+      religionId: religion?.id,
+      religionNom: religion?.nom,
+      inapteMagie: inapte,
+      traitsIncompatibles: traitsIncompatiblesDe(composition),
+    },
     composition,
-    traitsIncompatibles: traitsIncompatiblesDe(composition),
   };
 }
