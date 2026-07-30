@@ -901,7 +901,11 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       if (!b) return repBrouillonAbsent();
 
       const payload = {
-        nom: params.p_nom,
+        // [s368 #1] Chaque monde son « pas de nom » : le serveur stocke NULL
+        // (contrainte `personnages_nom_longueur`), le brouillon visiteur
+        // stocke "" (son schéma type `nom: string`). Le pont envoie null ;
+        // le miroir coalesce ici — même donnée, deux néants.
+        nom: params.p_nom ?? "",
         gnCompletes: params.p_gn_completes,
         miniGnCompletes: params.p_mini_gn_completes,
         ouverturesTerrain: params.p_ouvertures_terrain,

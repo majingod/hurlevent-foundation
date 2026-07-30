@@ -102,14 +102,33 @@ export function avertissementElement(
  *  que `religionsProposables` a déjà triée. */
 export function resumeFois(
   fois: readonly FoiProposable[],
-  domaine: string
+  domaine: string,
+  domaine2?: string | null
 ): string {
   const n = (s: FoiProposable["statut"]) =>
     fois.filter((f) => f.statut === s).length;
-  return (
+  const tete =
     `${n("predilection")} fois portent ${domaine} en prédilection · ` +
-    `${n("toleree")} le tolèrent · ${n("proscrite")} le proscrivent (grisées).`
+    `${n("toleree")} le tolèrent · `;
+  // [s368 #5] Avec un SECOND domaine, chaque compte porte SA cause — un
+  // total à deux causes ne s'impute jamais au premier domaine (mesuré en
+  // prod : « 9 le proscrivent » imputait à Guerre 5 refus dus au second).
+  const proscrites = fois.filter((f) => f.statut === "proscrite");
+  if (!domaine2 || proscrites.length === 0) {
+    return tete + `${n("proscrite")} le proscrivent (grisées).`;
+  }
+  const compte = (garde: (p: readonly string[]) => boolean) =>
+    proscrites.filter((f) => garde(f.proscrits ?? [])).length;
+  const brutes: Array<[number, string]> = [
+    [compte((p) => p.includes(domaine) && !p.includes(domaine2)), domaine],
+    [compte((p) => !p.includes(domaine) && p.includes(domaine2)), domaine2],
+    [compte((p) => p.includes(domaine) && p.includes(domaine2)), "les deux"],
+  ];
+  const pleines = brutes.filter(([c]) => c > 0);
+  const parts = pleines.map(([c, l], i) =>
+    i === 0 ? `${c} proscri${c > 1 ? "vent" : "t"} ${l}` : `${c} ${l}`
   );
+  return tete + `${proscrites.length} grisées — ${parts.join(" · ")}.`;
 }
 
 /** Étiquette de la case « second » — le 5 XP est la GRILLE d'accès niveau 1

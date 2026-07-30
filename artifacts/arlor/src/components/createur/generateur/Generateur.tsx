@@ -25,6 +25,7 @@ import { getSnapshot } from "@/moteurCreation/snapshot";
 
 import AccueilPortes, { type PorteAffichee } from "./AccueilPortes";
 import EcranBoussole from "./EcranBoussole";
+import { PARCOURS_VIDE, type ParcoursBoussole } from "./boussole.logic";
 import EcranInventaire, { CaseInventaire, TITRES_GROUPES } from "./EcranInventaire";
 import EcranRace from "./EcranRace";
 import FicheTirage from "./FicheTirage";
@@ -104,6 +105,11 @@ const Generateur = ({
   const [erreurPont, setErreurPont] = useState<string | null>(null);
   /** Refus parlant du dernier `resoudreChoix` — affiché dans l'escalier. */
   const [refusBoussole, setRefusBoussole] = useState<string | null>(null);
+  /** [s368 #2] L'état de l'escalier 🧭 vit ICI : « ← Ajuster » démonte
+   *  `EcranBoussole`, et le joueur doit retrouver ses réponses intactes
+   *  (même maison que l'inventaire et la race — mesuré : l'écran les
+   *  perdait toutes en revenant de la fiche). */
+  const [parcours, setParcours] = useState<ParcoursBoussole>(PARCOURS_VIDE);
 
   /** Dépendances du résolveur — construites UNE fois, au premier besoin
    *  (🎲 comme escalier 🧭). Lève `ErreurPontSnapshot` si le snapshot ne
@@ -140,7 +146,17 @@ const Generateur = ({
       return n;
     });
 
+  /** [s368 #6] Nom de la race retenue pour le fil — `depsRef` est posé par
+   *  `choisirRace` AVANT le set d'état, donc présent à ce rendu-ci. */
+  const raceNomRetenu = raceRetenueId
+    ? (depsRef.current?.monde.races.find((r) => r.id === raceRetenueId)?.nom ??
+      null)
+    : null;
+
   const choisirRace = (raceId: string) => {
+    // [s368 #2] Changer de race invalide l'escalier (voies et rôles en
+    // dépendent) — repartir à vide. Re-choisir la MÊME race ne perd rien.
+    if (raceId !== raceRetenueId) setParcours(PARCOURS_VIDE);
     setRaceRetenueId(raceId);
     setRefusBoussole(null);
     try {
@@ -212,6 +228,8 @@ const Generateur = ({
             </button>
           )}
         </div>
+        {/* [s368 #6] Le fil porte les CHOIX FAITS (équipement compté, race
+            nommée) — le joueur ne remonte plus vérifier ce qu'il a posé. */}
         {!surAccueil && (
           <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-2.5 px-4 pb-2 text-[11px] text-white/40">
             <button
@@ -250,7 +268,11 @@ const Generateur = ({
                             : "text-white/40"
                       }
                     >
-                      {f.label}
+                      {f.id === "inventaire" && inventaire.size > 0
+                        ? `${f.label} (${inventaire.size})`
+                        : f.id === "race" && raceNomRetenu
+                          ? `2. ${raceNomRetenu}`
+                          : f.label}
                       {i < FIL.length - 1 ? " ›" : ""}
                     </button>
                   );
@@ -311,6 +333,8 @@ const Generateur = ({
               deps={obtenirDeps()}
               raceId={raceRetenueId}
               inventaire={inventaire}
+              parcours={parcours}
+              onParcours={setParcours}
               onVoirFiche={voirFiche}
               onSurprendsMoi={lancerTirage}
               refus={refusBoussole}

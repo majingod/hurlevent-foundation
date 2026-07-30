@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, type Dispatch, type SetStateAction } from "react";
 
 import { raceInapteMagie } from "@/moteurCreation/deriveurs";
 import type { Catalogues } from "@/moteurCreation/generateur/composer";
@@ -56,6 +56,11 @@ interface EcranBoussoleProps {
   deps: DepsResolveur;
   raceId: string;
   inventaire: ReadonlySet<string>;
+  /** [s368 #2] Le parcours vit dans le CONTENEUR, pas ici — « ← Ajuster »
+   *  démonte cet écran, et l'état doit lui survivre (même maison que
+   *  l'inventaire et la race). Écran contrôlé, zéro état propre. */
+  parcours: ParcoursBoussole;
+  onParcours: Dispatch<SetStateAction<ParcoursBoussole>>;
   onVoirFiche: (choix: ChoixJoueur) => void;
   /** Raccourci de la maquette : « 🎲 Surprends-moi plutôt ». */
   onSurprendsMoi: () => void;
@@ -152,11 +157,12 @@ const EcranBoussole = ({
   deps,
   raceId,
   inventaire,
+  parcours: p,
+  onParcours: setP,
   onVoirFiche,
   onSurprendsMoi,
   refus,
 }: EcranBoussoleProps) => {
-  const [p, setP] = useState<ParcoursBoussole>(PARCOURS_VIDE);
 
   const race = deps.monde.races.find((r) => r.id === raceId);
   /** Modèle, pas instance (arbitrage s367) — le MÊME dériveur que le moteur. */
@@ -419,7 +425,7 @@ const EcranBoussole = ({
           >
             {elementEffectif && (
               <div className="mb-2 text-[11px] text-white/40">
-                {resumeFois(fois, elementEffectif)}
+                {resumeFois(fois, elementEffectif, p.second ? p.element2 : null)}
               </div>
             )}
             <div className="flex flex-col gap-2">

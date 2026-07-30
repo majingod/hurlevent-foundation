@@ -214,6 +214,31 @@ describe("🧭 classesProposables — les 4 voies, ouvertes ou grisées", () => 
     }
   });
 
+  it("[s368 #4] voie fermée à DEUX causes : la phrase les SÉPARE (Demi-Orc, masque seul)", () => {
+    const voies = classesProposables(
+      deps,
+      raceParNom("Demi-Orc").id,
+      new Set(["masque"])
+    );
+    const mage = voies.find((v) => v.classe === "mage")!;
+    expect(mage.ouverte).toBe(false);
+    // Chaîne LUE à la machine (sonde s368) — 2 fermés par l'inaptitude,
+    // 3 par l'équipement : jamais « les 5 rôles » imputés à une seule cause.
+    expect(mage.raison).toBe(
+      "2 des 5 rôles de cette voie vivent de points de spiritualité — et Demi-Orc peut naître inapte à la magie. ⚗️ L'alchimiste · ✨ L'enchanteur · ᚱ Le runiste attendent encore ton 🎒. « Je bâtis moi-même » reste ouvert."
+    );
+    // PREUVE PAR LE CONTRAIRE de l'ancien texte :
+    expect(mage.raison).not.toContain("Les 5 rôles");
+    // Et le chemin reste ATTEIGNABLE : des fioles ouvrent la voie (⚗️ ne
+    // vit pas de PS) — le message ne fait plus renoncer à tort.
+    const avecFioles = classesProposables(
+      deps,
+      raceParNom("Demi-Orc").id,
+      new Set(["masque", "fioles"])
+    );
+    expect(avecFioles.find((v) => v.classe === "mage")!.ouverte).toBe(true);
+  });
+
   it("ARBITRAGE s367 : le Demi-Orc voit la voie du Prêtre GRISÉE, avec sa raison", () => {
     const voies = classesProposables(deps, raceParNom("Demi-Orc").id, RICHE);
     const pretre = voies.find((c) => c.classe === "pretre")!;
@@ -334,6 +359,15 @@ describe("🧭 religionsProposables — les 15 foi, refus grisés", () => {
         expect(f.raison).toContain("Guerre");
       }
     }
+  });
+
+  it("[s368 #5] une religion proscrivant les DEUX domaines les porte tous les deux", () => {
+    const deux = religionsProposables(monde, "Guerre", "Nécromancie").find(
+      (f) => (f.proscrits ?? []).length === 2
+    )!;
+    expect(deux).toBeTruthy();
+    expect(deux.proscrits).toEqual(["Guerre", "Nécromancie"]);
+    expect(deux.raison).toContain("les domaines Guerre et Nécromancie");
   });
 
   it("le SECOND domaine ferme aussi — et sans lui, la foi rouvre", () => {

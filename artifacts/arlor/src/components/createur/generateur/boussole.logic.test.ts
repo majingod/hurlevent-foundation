@@ -187,6 +187,18 @@ describe("🧭 escalier — l'intro de l'étape Foi", () => {
       "8 fois portent Guerre en prédilection · 3 le tolèrent · 4 le proscrivent (grisées)."
     );
   });
+
+  it("[s368 #5] deux domaines : chaque compte porte SA cause (9 = 3 + 5 + 1)", () => {
+    const fois = religionsProposables(monde, "Guerre", "Nécromancie");
+    expect(resumeFois(fois, "Guerre", "Nécromancie")).toBe(
+      "4 fois portent Guerre en prédilection · 2 le tolèrent · 9 grisées — 3 proscrivent Guerre · 5 Nécromancie · 1 les deux."
+    );
+    // PREUVE PAR LE CONTRAIRE : l'ancienne phrase imputait les 9 à Guerre
+    // (« 9 le proscrivent ») alors que 5 venaient du second domaine.
+    expect(resumeFois(fois, "Guerre", "Nécromancie")).not.toContain(
+      "le proscrivent"
+    );
+  });
 });
 
 describe("🧭 escalier — le bouton « Voir ma fiche »", () => {
