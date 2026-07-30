@@ -273,10 +273,18 @@ async function executer(invoke: () => Promise<Reponse<Json>>): Promise<IssueAppe
 // le `null` transite verbatim jusqu'à la RPC, exactement comme le fait le
 // wizard natif.
 
+/** [s368 #1] `personnages_nom_longueur` : la base accepte `null` mais refuse
+ *  une chaîne vide ou d'un caractère. Un personnage TIRÉ n'a pas encore de
+ *  nom (le wizard le demandera) — le pont traduit « pas de nom » en `null`,
+ *  jamais en `""` (mesuré en prod : le premier rejeu réel plantait ici, sur
+ *  les DEUX portes). */
+const nomOuNull = (nom: string): string | null =>
+  nom.trim().length >= 2 ? nom : null;
+
 function paramsEtape1(b: BrouillonVisiteur, personnageId: string, enBrouillon?: boolean) {
   return {
     p_personnage_id: personnageId,
-    p_nom: b.etape1.nom,
+    p_nom: nomOuNull(b.etape1.nom),
     p_gn_completes: b.etape1.gnCompletes,
     p_mini_gn_completes: b.etape1.miniGnCompletes,
     p_ouvertures_terrain: b.etape1.ouverturesTerrain,

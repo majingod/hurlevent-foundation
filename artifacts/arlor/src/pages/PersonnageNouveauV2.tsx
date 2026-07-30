@@ -765,6 +765,22 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     );
   }
 
+  // [s368 #3] « Tu pourras revenir ici à tout moment » — la promesse de
+  // l'accueil. Le retour est offert EXACTEMENT quand l'accueil se
+  // ré-afficherait à un rechargement (même fonction, accueilFranchi remis à
+  // faux) : jamais en admin/campagne/reprise, jamais passé l'étape 1 — donc
+  // jamais sur un personnage avancé qu'un rejeu pourrait écraser.
+  const peutRevenirAuxPortes =
+    accueilFranchi &&
+    doitMontrerAccueil({
+      actif: GENERATEUR_ACTIF,
+      accueilFranchi: false,
+      modeAdmin,
+      modeCampagne,
+      reprise: !!personnageIdParUrl,
+      etape,
+    });
+
   // -- Rendu principal -------------------------------------------------------
   return (
     <>
@@ -841,6 +857,15 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
                 Étape {dbToUi(etape)} / {TOTAL_STEPS_UI}
                 {personnage?.nom ? ` — ${personnage.nom}` : ""}
               </p>
+              {peutRevenirAuxPortes && (
+                <button
+                  type="button"
+                  onClick={() => setAccueilFranchi(false)}
+                  className="mt-1.5 rounded border border-white/15 px-2.5 py-1 text-xs text-white/70 transition-colors hover:border-gold/40 hover:text-white"
+                >
+                  🧭 Revenir aux trois chemins
+                </button>
+              )}
             </div>
 
             <div className="rounded-lg border border-gold/30 bg-gold/5 px-4 py-2 text-right">

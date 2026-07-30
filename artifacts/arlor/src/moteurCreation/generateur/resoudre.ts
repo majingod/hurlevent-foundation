@@ -191,6 +191,10 @@ export interface FoiProposable {
   statut: StatutFoi;
   /** Phrase joueur — présente si et seulement si `statut` vaut proscrite. */
   raison?: string;
+  /** [s368 #5] Le ou les domaines CHOISIS que cette religion proscrit —
+   *  pour que le résumé impute chaque compte à SA cause, jamais tout au
+   *  premier domaine. Présent si et seulement si `statut` vaut proscrite. */
+  proscrits?: readonly string[];
 }
 
 export interface ChoixJoueur {
@@ -332,19 +336,37 @@ export function classesProposables(
     ).length;
     if (ouverts > 0) return { classe, ouverte: true };
 
-    const ouvertsSiApte = inapte
-      ? rolesProposables(contenu, cats, inventaire, false).filter(
-          (r) => r.ouvert
-        ).length
-      : 0;
+    // [s368 #4] Voie fermée : DÉCOMPOSER les causes avant de rédiger — un
+    // compte à deux causes ne s'impute jamais à une seule (jumeau du résumé
+    // des foi, même leçon). La passe « apte » sépare ce que l'inaptitude
+    // ferme de ce que l'équipement fermerait de toute façon.
+    const siApte = inapte
+      ? rolesProposables(contenu, cats, inventaire, false)
+      : null;
+    const parInaptitude = siApte ? siApte.filter((r) => r.ouvert).length : 0;
     const nom = race?.nom ?? "Ton peuple";
+    if (parInaptitude === 0) {
+      return {
+        classe,
+        ouverte: false,
+        raison: `Aucun rôle de cette voie n'est ouvert avec ton équipement — ajoute de quoi dans ton 🎒.`,
+      };
+    }
+    const parEquipement = siApte!
+      .filter((r) => !r.ouvert)
+      .map((r) => `${r.role.emoji} ${r.role.titre}`);
+    const total = contenu.roles.length;
+    if (parEquipement.length === 0) {
+      return {
+        classe,
+        ouverte: false,
+        raison: `Les ${total} rôles de cette voie vivent de points de spiritualité, et ${nom} peut naître inapte à la magie. « Je bâtis moi-même » reste ouvert.`,
+      };
+    }
     return {
       classe,
       ouverte: false,
-      raison:
-        ouvertsSiApte > 0
-          ? `Les ${contenu.roles.length} rôles de cette voie vivent de points de spiritualité, et ${nom} peut naître inapte à la magie. « Je bâtis moi-même » reste ouvert.`
-          : `Aucun rôle de cette voie n'est ouvert avec ton équipement — ajoute de quoi dans ton 🎒.`,
+      raison: `${parInaptitude} des ${total} rôles de cette voie vivent de points de spiritualité — et ${nom} peut naître inapte à la magie. ${parEquipement.join(" · ")} attend${parEquipement.length > 1 ? "ent" : ""} encore ton 🎒. « Je bâtis moi-même » reste ouvert.`,
     };
   });
 }
@@ -372,14 +394,18 @@ export function religionsProposables(
   return monde.religions
     .filter((r) => r.est_actif)
     .map((religion): FoiProposable => {
-      const proscrit = [domaine, domaine2].find(
+      const proscrits = [domaine, domaine2].filter(
         (d): d is string => !!d && religion.domaines_proscrits.includes(d)
       );
-      if (proscrit) {
+      if (proscrits.length > 0) {
         return {
           religion,
           statut: "proscrite",
-          raison: `${religion.nom} proscrit le domaine ${proscrit}.`,
+          proscrits,
+          raison:
+            proscrits.length === 2
+              ? `${religion.nom} proscrit les domaines ${proscrits[0]} et ${proscrits[1]}.`
+              : `${religion.nom} proscrit le domaine ${proscrits[0]}.`,
         };
       }
       return {

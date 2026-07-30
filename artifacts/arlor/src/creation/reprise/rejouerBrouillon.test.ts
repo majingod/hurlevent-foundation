@@ -435,6 +435,23 @@ describe("exception réseau", () => {
 });
 
 // ============================================================
+// 8 bis. [s368 #1] Le nom vide devient null — contrainte
+// `personnages_nom_longueur` (null accepté, "" refusé). Mesuré en prod :
+// le premier rejeu réel des DEUX portes plantait à l'étape 1.
+// ============================================================
+describe("[s368 #1] nom vide → p_nom null", () => {
+  it("un brouillon TIRÉ (sans nom) envoie p_nom: null, jamais \"\"", async () => {
+    const b = brouillonBase();
+    b.etape1.nom = "";
+    const { client, journal } = creerMock();
+    await rejouerBrouillon(client, catalogueFactice({}), b, PROFIL_ID);
+    const p = journal.find((a) => a.methode === "sauvegarderEtape1")!
+      .params as Record<string, unknown>;
+    expect(p.p_nom).toBeNull();
+  });
+});
+
+// ============================================================
 // 9. Mapping params byte-exact
 // ============================================================
 describe("mapping params byte-exact", () => {
@@ -457,6 +474,8 @@ describe("mapping params byte-exact", () => {
     const par = (m: string) => journal.find((a) => a.methode === m)!.params;
 
     expect(par("demarrerCreationPersonnage")).toEqual({ p_profil_id: PROFIL_ID });
+    // ⭐ [s368 #1] jumeau du test « nom vide » plus bas : ICI le nom passe
+    // verbatim (« Aldric » ≥ 2 caractères).
     expect(par("sauvegarderEtape1")).toEqual({
       p_personnage_id: PERSO_ID,
       p_nom: "Aldric",
