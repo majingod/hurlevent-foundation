@@ -10,7 +10,7 @@
  *  - gratuités de classe .......... `appliquerGratuites`   (gratuites.ts)
  *  - XP total / dépensé / dispo .... `calculerXp`           (deriveurs.ts)
  *  - PV / PS max ................... `calculerPvMax` / `calculerPsMax`
- *  - inapte magie .................. `raceInapteMagie`
+ *  - inapte magie .................. `personnageInapteMagie` (INSTANCE, s370)
  *  - niveaux artisanat ............. `deriverNiveauxArtisanat`
  *  - quotas artisanat .............. `quotaPiegesNiveau` / `quotaRecettesPalier`
  *                                    / `quotaAssemblagesTotal`
@@ -33,7 +33,7 @@ import {
   calculerXp,
   calculerPvMax,
   calculerPsMax,
-  raceInapteMagie,
+  personnageInapteMagie,
   deriverNiveauxArtisanat,
   quotaPiegesNiveau,
   quotaRecettesPalier,
@@ -308,6 +308,13 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
   const base: EtatCreationVisiteur = {
     raceId,
     classeId,
+    // s370 — l'inaptitude à la magie vient du trait CHOISI (instance), plus du
+    // pool de la race. Lu ICI, à la source brute, parce que `calculerPvMax` /
+    // `calculerPsMax` en ont besoin bien avant que `traitsAcquis` (enrichi du
+    // nom et de la provenance) ne soit construit plus bas.
+    traitsChoisis: b.etape3.traitsRaciauxChoisis.map((c) => ({
+      traitId: traitId(c),
+    })),
     religionId: b.etape1.religionId,
     estCroyant: b.etape1.estCroyant,
     competencesAcquises: competencesPayantes,
@@ -404,14 +411,18 @@ export function deriverEtat(b: BrouillonVisiteur): EtatDeriveVisiteur {
   });
 
   // 7) PV / PS / inapte-magie.
+  //    ⚠️ s370 : l'INSTANCE décide (trait choisi), pas le modèle de race.
   const pvMax = calculerPvMax(snapshot, etatAvecGratuites);
   const psMax = calculerPsMax(snapshot, etatAvecGratuites);
-  const inapteMagie = raceInapteMagie(snapshot, raceId);
+  const inapteMagie = personnageInapteMagie(
+    snapshot,
+    etatAvecGratuites.traitsChoisis
+  );
 
   // 8) Contextes des gates (shapes exactes).
   const contextePersonnage: ContextePersonnage = {
     classeNom: classeNomDepuisId(classeId),
-    raceInapteMagie: inapteMagie,
+    inapteMagie,
     xpDispo,
     psMax,
     competencesAcquises: acquis,

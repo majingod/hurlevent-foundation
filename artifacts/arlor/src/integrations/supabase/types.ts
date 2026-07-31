@@ -446,6 +446,7 @@ export type Database = {
           description: string | null
           est_actif: boolean | null
           est_general: boolean | null
+          exige_ps: boolean
           id: string
           niveaux: Json | null
           nom: string | null
@@ -463,6 +464,7 @@ export type Database = {
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
+          exige_ps?: boolean
           id?: string
           niveaux?: Json | null
           nom?: string | null
@@ -480,6 +482,7 @@ export type Database = {
           description?: string | null
           est_actif?: boolean | null
           est_general?: boolean | null
+          exige_ps?: boolean
           id?: string
           niveaux?: Json | null
           nom?: string | null
@@ -5028,10 +5031,7 @@ export type Database = {
         Args: { p_corps: string; p_terme_ua: string }
         Returns: string
       }
-      accepter_cgu: {
-        Args: { p_version: string }
-        Returns: Json
-      }
+      accepter_cgu: { Args: { p_version: string }; Returns: Json }
       acheter_assemblage: {
         Args: { p_assemblage_id: string; p_personnage_id: string }
         Returns: Json
@@ -5099,6 +5099,7 @@ export type Database = {
         }
         Returns: Json
       }
+      anonymiser_journal_purges: { Args: { p_delai?: string }; Returns: Json }
       apercu_purge: { Args: { p_id: string; p_type: string }; Returns: Json }
       apercu_rabais_acquisition: {
         Args: {
@@ -5178,6 +5179,15 @@ export type Database = {
         Returns: Json
       }
       changer_classe_personnage: {
+        Args: {
+          p_choix_par_competence?: Json
+          p_classe_id: string
+          p_dry_run?: boolean
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
+      changer_classe_personnage_interne: {
         Args: {
           p_choix_par_competence?: Json
           p_classe_id: string
@@ -5424,6 +5434,15 @@ export type Database = {
         }
         Returns: Json
       }
+      peut_acheter_competence_noyau: {
+        Args: {
+          p_choix_achat?: string
+          p_competence_id: string
+          p_niveau_desire: number
+          p_personnage_id: string
+        }
+        Returns: Json
+      }
       peut_acheter_piege: {
         Args: { p_personnage_id: string; p_piege_id: string }
         Returns: Json
@@ -5467,6 +5486,7 @@ export type Database = {
         Args: { p_joueur_id: string }
         Returns: boolean
       }
+      plafond_cout_magie: { Args: { p_niveau: number }; Returns: number }
       profils_du_compte: { Args: { c: string }; Returns: string[] }
       purger_compte: {
         Args: { p_compte_id: string; p_raison?: string }
@@ -5530,6 +5550,10 @@ export type Database = {
       reconcilier_recettes: {
         Args: { p_personnage_id: string }
         Returns: undefined
+      }
+      refus_plafond_magie: {
+        Args: { p_cout_xp: number; p_niveau: number; p_type: string }
+        Returns: string
       }
       refuser_maitre_competence: {
         Args: { p_personnage_competence_id: string; p_raison?: string }

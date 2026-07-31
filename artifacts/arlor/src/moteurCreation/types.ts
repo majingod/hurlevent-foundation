@@ -24,7 +24,16 @@ export interface VerdictAchat {
  */
 export interface ContextePersonnage {
   classeNom: "Guerrier" | "Voleur" | "Mage" | "Prêtre" | null;
-  raceInapteMagie: boolean; // la race possède le trait actif « Inapte à la magie »
+  /**
+   * Le PERSONNAGE porte-t-il le trait ACTIF « Inapte à la magie » ?
+   *
+   * ⚠️ INSTANCE, pas modèle (s370, [INAPTE-MAGIE-MODELE-INSTANCE] volet 4) :
+   * depuis s369 le serveur lit `personnages.traits_raciaux_choisis`, plus le
+   * pool `race_traits`. Un Demi-Orc qui NE prend PAS le trait garde ses PS.
+   * Ne jamais alimenter ce champ avec `raceInapteMagie()`, qui répond à une
+   * AUTRE question (« cette race peut-elle naître inapte ») — C75.
+   */
+  inapteMagie: boolean;
   xpDispo: number;
   psMax: number;
   competencesAcquises: AcquisCompetence[];

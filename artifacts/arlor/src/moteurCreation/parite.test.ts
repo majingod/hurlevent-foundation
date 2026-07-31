@@ -78,7 +78,10 @@ const contexteParRef = new Map<number, FixtureContexte>(
 function toContexte(ctx: FixtureContexte): ContextePersonnage {
   return {
     classeNom: ctx.classe_nom,
-    raceInapteMagie: ctx.race_inapte_magie,
+    // s370 : le champ dit désormais l'INSTANCE. Les 4 contextes capturés
+    // portent tous race_inapte_magie=false, donc la parité est inchangée —
+    // ce que la suite PROUVE en s'exécutant, elle n'est pas déduite.
+    inapteMagie: ctx.race_inapte_magie,
     xpDispo: ctx.xp_dispo,
     psMax: ctx.ps_max,
     competencesAcquises: ctx.competences_acquises.map((a) => ({

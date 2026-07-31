@@ -3,8 +3,9 @@
  * Couverture : toutes les branches, cas réels du snapshot
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { peutAcheterCompetence } from "./gatesCompetences";
+import { getSnapshot } from "./snapshot";
 import type {
   ContextePersonnage,
   DemandeAchatCompetence,
@@ -18,7 +19,7 @@ function ctxVierge(
 ): ContextePersonnage {
   return {
     classeNom: classe,
-    raceInapteMagie: false,
+    inapteMagie: false,
     xpDispo: 1000,
     psMax: 0,
     competencesAcquises: [],
@@ -31,7 +32,7 @@ function ctxVierge(
 function ctxPauvreXP(classe = "Guerrier"): ContextePersonnage {
   return {
     classeNom: classe,
-    raceInapteMagie: false,
+    inapteMagie: false,
     xpDispo: 1, // XP insuffisant pour quasi tout
     psMax: 0,
     competencesAcquises: [],
@@ -44,7 +45,7 @@ function ctxPauvreXP(classe = "Guerrier"): ContextePersonnage {
 function ctxPSMax(psMax: number): ContextePersonnage {
   return {
     classeNom: "Guerrier",
-    raceInapteMagie: false,
+    inapteMagie: false,
     xpDispo: 1000,
     psMax,
     competencesAcquises: [],
@@ -103,7 +104,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("verrouillage croisé — autre variante déjà acquise → refus", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Guerrier",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 1000,
       psMax: 0,
       competencesAcquises: [
@@ -138,7 +139,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("simple — séquentiel OK", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Guerrier",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 1000,
       psMax: 0,
       competencesAcquises: [
@@ -178,7 +179,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("unique_avec_choix — déjà acquis → refus", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Guerrier",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 1000,
       psMax: 0,
       competencesAcquises: [
@@ -207,7 +208,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("multiple_avec_choix_par_niveau — (niv, choix) dupliqué → refus", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Guerrier",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 1000,
       psMax: 0,
       competencesAcquises: [
@@ -233,7 +234,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("multiple_avec_choix_par_niveau — niv 2 sans niv 1 même choix → refus", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Guerrier",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 1000,
       psMax: 0,
       competencesAcquises: [
@@ -348,7 +349,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("succès : achat niv 3 général → OK (nécessite maître)", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Guerrier",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 5000, // XP suffisant
       psMax: 0,
       competencesAcquises: [
@@ -375,7 +376,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("succès : achat niv 3 propre classe → OK (nécessite maître)", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Guerrier",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 5000,
       psMax: 0,
       competencesAcquises: [
@@ -402,7 +403,7 @@ describe("peutAcheterCompetence — branches principales", () => {
   it("succès : achat niv 2 hors classe → OK (nécessite maître)", () => {
     const ctx: ContextePersonnage = {
       classeNom: "Voleur",
-      raceInapteMagie: false,
+      inapteMagie: false,
       xpDispo: 5000,
       psMax: 0,
       competencesAcquises: [
@@ -424,5 +425,102 @@ describe("peutAcheterCompetence — branches principales", () => {
       expect(result.raison).toBe("OK");
       // hors classe + niv 2 → necessiteMaitre = true
     }
+  });
+});
+
+/**
+ * [INAPTE-MAGIE-MODELE-INSTANCE] volet 4 (s370) — miroir de l'ENVELOPPE
+ * serveur `peut_acheter_competence` (s369, Gotcha C80).
+ *
+ * ⚠️ POURQUOI ON INJECTE UN SNAPSHOT : le JSON committé a été capturé AVANT
+ * la colonne `competences.exige_ps` et ne la porte pas ([SNAPSHOT-COMMIT-STUB]).
+ * Sans injection, `exige_ps` vaudrait `undefined` partout et ces tests
+ * seraient VERTS À VIDE — ils passeraient sans jamais exercer la garde.
+ * L'injection reproduit donc le snapshot RÉELLEMENT servi en prod, où la RPC
+ * `snapshot_visiteur` rend la ligne entière (mesuré 2026-07-30 : 91/91 lignes
+ * portent la clé, 14 à `true`).
+ */
+describe("Inapte à la magie × compétence à PS (volet 4)", () => {
+  const CLE = "__SNAPSHOT_HORS_LIGNE__";
+  type GlobalOverridable = typeof globalThis & { [CLE]?: unknown };
+
+  const NOM_A_PS = "Développement Spirituel";
+
+  /** Pose un snapshot où SEULE `NOM_A_PS` exige des PS. Rend son id. */
+  function injecter(): string {
+    const base = getSnapshot();
+    const competences = base.tables.competences.map((c) => ({
+      ...c,
+      exige_ps: c.nom === NOM_A_PS,
+    }));
+    (globalThis as GlobalOverridable)[CLE] = {
+      ...base,
+      tables: { ...base.tables, competences },
+    };
+    const cible = competences.find((c) => c.nom === NOM_A_PS);
+    if (!cible) throw new Error(`compétence « ${NOM_A_PS} » absente du snapshot`);
+    return cible.id;
+  }
+
+  /** Une compétence qui n'exige AUCUN PS, pour le second jumeau. */
+  function idSansPs(): string {
+    const base = getSnapshot();
+    const c = base.tables.competences.find(
+      (x) => x.nom !== NOM_A_PS && x.est_actif === true
+    );
+    if (!c) throw new Error("aucune compétence active sans PS dans le snapshot");
+    return c.id;
+  }
+
+  afterEach(() => {
+    delete (globalThis as GlobalOverridable)[CLE];
+  });
+
+  const PHRASE_SERVEUR =
+    "Inapte à la magie : Développement Spirituel repose sur les points de " +
+    "spiritualité, que ce personnage ne pourra jamais posséder.";
+
+  it("l'inapte est refusé, avec la phrase EXACTE du serveur", () => {
+    const competenceId = injecter();
+    const ctx: ContextePersonnage = { ...ctxVierge("Mage"), inapteMagie: true };
+    const demande: DemandeAchatCompetence = {
+      competenceId,
+      niveauDesire: 1,
+      choixAchat: null,
+    };
+
+    const r = peutAcheterCompetence(ctx, demande);
+    expect(r.peutAcheter).toBe(false);
+    // Texte destiné au JOUEUR → chaîne ENTIÈRE, jamais `toContain`.
+    expect(r.raison).toBe(PHRASE_SERVEUR);
+  });
+
+  it("JUMEAU — SANS l'inaptitude, la MÊME demande ne reçoit PAS ce refus", () => {
+    const competenceId = injecter();
+    const ctx: ContextePersonnage = { ...ctxVierge("Mage"), inapteMagie: false };
+    const demande: DemandeAchatCompetence = {
+      competenceId,
+      niveauDesire: 1,
+      choixAchat: null,
+    };
+
+    const r = peutAcheterCompetence(ctx, demande);
+    // Sans la garde, ce refus ne peut PAS apparaître : c'est elle qui refuse.
+    expect(r.raison ?? "").not.toContain("Inapte à la magie");
+  });
+
+  it("JUMEAU — l'inapte n'est PAS bloqué sur une compétence SANS PS", () => {
+    injecter();
+    const ctx: ContextePersonnage = { ...ctxVierge("Mage"), inapteMagie: true };
+    const demande: DemandeAchatCompetence = {
+      competenceId: idSansPs(),
+      niveauDesire: 1,
+      choixAchat: null,
+    };
+
+    const r = peutAcheterCompetence(ctx, demande);
+    // C'est bien `exige_ps` qui SÉLECTIONNE, pas l'inaptitude seule — sinon on
+    // tuerait ⚗️ l'alchimiste, mage/prêtre et sans le moindre PS.
+    expect(r.raison ?? "").not.toContain("Inapte à la magie");
   });
 });

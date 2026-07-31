@@ -90,7 +90,21 @@ function snapshotActif(): typeof snapshotJsonImporte {
 }
 
 export function getCompetence(id: string): Competence | undefined {
-  const competences = snapshotActif().tables.competences as Competence[];
+  // ⚠️ DOUBLE ASSERTION VOULUE ([SNAPSHOT-COMMIT-STUB], élargi s370).
+  // Le JSON COMMITTÉ est un instantané DATÉ : il a été capturé avant la
+  // colonne `competences.exige_ps` (s369) et ne la porte donc pas, alors que
+  // le type généré l'exige. Le snapshot SERVI est régénéré au build par
+  // `scripts/snapshot-visiteur.mjs` (RPC `snapshot_visiteur`, qui fait
+  // `to_jsonb(x)` sur la ligne entière) — mesuré le 2026-07-30 : 91/91 lignes
+  // portent la clé, 14 à `true`. La forme du build fait donc autorité.
+  //
+  // CONSÉQUENCE À CONNAÎTRE, pas un détail : tant que le JSON committé n'est
+  // pas recapturé, `exige_ps` vaut `undefined` en DEV et dans tout test qui
+  // lit le singleton — la garde d'inaptitude y est donc INERTE (elle échoue
+  // « ouvert », comme avant s369, jamais en erreur). Les tests de garde
+  // injectent pour cette raison un snapshot via `__SNAPSHOT_HORS_LIGNE__`.
+  const competences = snapshotActif().tables
+    .competences as unknown as Competence[];
   return competences.find((c) => c.id === id);
 }
 
