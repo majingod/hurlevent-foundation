@@ -8,7 +8,8 @@
  *  - A. recalculer_xp_valeurs   → calculerXp
  *  - B. recalculer_pv_max       → calculerPvMax
  *  - C. recalculer_ps_max       → calculerPsMax
- *  - D. personnage_inapte_magie → raceInapteMagie
+ *  - D. personnage_inapte_magie → personnageInapteMagie (INSTANCE, s370)
+ *       `raceInapteMagie` reste le dériveur de MODÈLE, pour le générateur.
  */
 
 import type { SnapshotVisiteur, Classe, Race, Competence, Religion } from "./snapshot";
@@ -41,6 +42,15 @@ export interface CompetenceAcquiseLocale {
  */
 export interface EtatCreationVisiteur {
   raceId: string | null;
+  /**
+   * Traits raciaux CHOISIS par le joueur (ordre de choix).
+   *
+   * Miroir de `personnages.traits_raciaux_choisis`. Source de vérité de
+   * l'inaptitude à la magie depuis s369 — voir `personnageInapteMagie`.
+   * Absent = aucun trait choisi (donc APTE), ce qui est le verdict du
+   * serveur pour un personnage sans trait.
+   */
+  traitsChoisis?: readonly { traitId: string }[];
   classeId: string | null;
   religionId?: string | null;
   estCroyant?: boolean;
@@ -118,6 +128,42 @@ export function raceInapteMagie(
     );
 
   return traitsActifsDeLaRace.some((t) => t.nom === "Inapte à la magie");
+}
+
+/**
+ * Le PERSONNAGE porte-t-il le trait ACTIF « Inapte à la magie » ?
+ *
+ * Portage 1:1 de `public.personnage_inapte_magie(uuid)` **après s369** :
+ * le serveur traverse `personnages.traits_raciaux_choisis` et joint
+ * `traits_raciaux` sur le NOM + `est_actif`. Jamais sur un id en dur.
+ *
+ * ⚠️ NE PAS CONFONDRE AVEC `raceInapteMagie` (C75, deux verbes, deux
+ * maisons) : celle-ci répond « ce personnage EST-il inapte » (instance),
+ * l'autre « cette race PEUT-elle naître inapte » (modèle). Le générateur a
+ * besoin de la seconde telle quelle pour composer ses pools.
+ */
+export function personnageInapteMagie(
+  snapshot: {
+    tables: {
+      traits_raciaux: readonly {
+        id: string;
+        nom: string;
+        est_actif: boolean | null;
+      }[];
+    };
+  },
+  traitsChoisis: readonly { traitId: string }[] | undefined
+): boolean {
+  if (!traitsChoisis || traitsChoisis.length === 0) return false;
+  const traitsRaciaux = snapshot.tables.traits_raciaux;
+  return traitsChoisis.some((choix) => {
+    const trait = traitsRaciaux.find((t) => t.id === choix.traitId);
+    return (
+      trait != null &&
+      trait.est_actif === true &&
+      trait.nom === "Inapte à la magie"
+    );
+  });
 }
 
 // ============================================================
@@ -203,7 +249,9 @@ export function calculerXp(
 // ============================================================
 
 /**
- * pv_max = COALESCE(classes.pv_depart, 4) + (1 si race inapte magie).
+ * pv_max = COALESCE(classes.pv_depart, 4) + (1 si le PERSONNAGE est inapte).
+ *
+ * ⚠️ s370 : bonus dérivé du trait CHOISI, plus du pool de la race.
  */
 export function calculerPvMax(
   snapshot: SnapshotVisiteur,
@@ -211,7 +259,7 @@ export function calculerPvMax(
 ): number {
   const classe = getClasse(snapshot, etat.classeId);
   const pvDepart = classe?.pv_depart ?? 4;
-  const bonus = raceInapteMagie(snapshot, etat.raceId) ? 1 : 0;
+  const bonus = personnageInapteMagie(snapshot, etat.traitsChoisis) ? 1 : 0;
   return pvDepart + bonus;
 }
 
@@ -220,7 +268,7 @@ export function calculerPvMax(
 // ============================================================
 
 /**
- * ps_max = 0 si race inapte magie ; sinon
+ * ps_max = 0 si le PERSONNAGE est inapte (trait CHOISI, s370) ; sinon
  *   COALESCE(classes.ps_depart, 5)
  *   + nb(« Développement Spirituel »)
  *   + nb(« Développement Spirituel Supérieur »)
@@ -230,7 +278,7 @@ export function calculerPsMax(
   snapshot: SnapshotVisiteur,
   etat: EtatCreationVisiteur
 ): number {
-  if (raceInapteMagie(snapshot, etat.raceId)) return 0;
+  if (personnageInapteMagie(snapshot, etat.traitsChoisis)) return 0;
 
   const classe = getClasse(snapshot, etat.classeId);
   const psDepart = classe?.ps_depart ?? 5;

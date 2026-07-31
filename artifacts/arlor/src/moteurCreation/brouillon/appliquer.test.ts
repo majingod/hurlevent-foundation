@@ -93,7 +93,7 @@ describe("aucun champ dérivé dans le brouillon sérialisé", () => {
       "psMax",
       "gratuites",
       "quotas",
-      "raceInapteMagie",
+      "inapteMagie",
       "niveauxArtisanat",
     ]) {
       expect(json.includes(interdit)).toBe(false);

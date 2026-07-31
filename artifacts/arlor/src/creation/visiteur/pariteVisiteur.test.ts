@@ -58,7 +58,7 @@ function installerLocalStorage(): void {
 // ── Fabrique d'un EtatDeriveVisiteur neutre dont on surcharge un contexte ──
 function etatBase(): EtatDeriveVisiteur {
   return {
-    contextePersonnage: { classeNom: null, raceInapteMagie: false, xpDispo: 0, psMax: 0, competencesAcquises: [] },
+    contextePersonnage: { classeNom: null, inapteMagie: false, xpDispo: 0, psMax: 0, competencesAcquises: [] },
     contexteMagie: { xpDispo: 0, competencesAcquises: [] },
     contextePiege: { xpDispo: 0, competencesAcquises: [], piegesAcquis: [] },
     contexteRecette: { xpDispo: 0, competencesAcquises: [], recettesAcquises: [] },
@@ -68,7 +68,7 @@ function etatBase(): EtatDeriveVisiteur {
     xpDispo: 0,
     pvMax: 0,
     psMax: 0,
-    raceInapteMagie: false,
+    inapteMagie: false,
     niveauxArtisanat: { niveauAlchimie: 0, niveauRunes: 0, niveauPieges: 0, niveauForge: 0, niveauJoaillerie: 0 },
     quotas: { piegesParNiveau: { 1: 0, 2: 0, 3: 0 }, recettesParPalier: { 1: 0, 2: 0, 3: 0 }, assemblagesTotal: 0 },
     gratuites: [],
@@ -139,7 +139,7 @@ describe("parité clientVisiteur — acheterCompetence (88)", () => {
       etatCourant = etatBase();
       etatCourant.contextePersonnage = {
         classeNom: ctx.classe_nom,
-        raceInapteMagie: ctx.race_inapte_magie,
+        inapteMagie: ctx.race_inapte_magie,
         xpDispo: ctx.xp_dispo,
         psMax: ctx.ps_max,
         competencesAcquises: mapAcquis(ctx.competences_acquises),

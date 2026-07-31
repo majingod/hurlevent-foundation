@@ -25,15 +25,33 @@ export function peutAcheterCompetence(
   ctx: ContextePersonnage,
   demande: DemandeAchatCompetence
 ): VerdictAchat {
-  // 1. Race inapte magie + Développement Spirituel(*)
-  // (pas de race_id fourni, donc on saute — l'appelant devrait vérifier avant appel)
-
   // 2. gate_edition_personnage et « Personnage introuvable » — OMIS
   // Raison : pas de gel pour un perso local (créateur offline)
   // L'appelant valide l'existence du contexte avant appel.
 
-  // 3. Compétence introuvable/inactive
   const competence = getCompetence(demande.competenceId);
+
+  // 1. INAPTE À LA MAGIE × compétence à PS — miroir de l'ENVELOPPE serveur
+  //    `peut_acheter_competence` (s369, Gotcha C80). Portage 1:1, y compris
+  //    l'ORDRE : la règle passe AVANT le noyau, et le SELECT de l'enveloppe
+  //    ne filtre PAS sur `est_actif` — une compétence à PS inactive est donc
+  //    refusée avec CE motif, pas avec « Compétence inactive ».
+  //    ⚠️ La liste des compétences à PS n'est PAS réécrite ici : elle vit dans
+  //    `competences.exige_ps` (14 lignes / 10 noms), une seule maison pour le
+  //    serveur et pour le miroir. Ne jamais la dériver de `categorie` :
+  //    Alchimie, Décryptage, Premiers Soins et Réveil Expéditif sont
+  //    mage/prêtre et sans PS.
+  if (ctx.inapteMagie && competence?.exige_ps === true) {
+    return {
+      peutAcheter: false,
+      raison:
+        "Inapte à la magie : " +
+        (competence.nom ?? "") +
+        " repose sur les points de spiritualité, que ce personnage ne pourra jamais posséder.",
+    };
+  }
+
+  // 3. Compétence introuvable/inactive (noyau)
   if (!competence) {
     return {
       peutAcheter: false,

@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Juillet 2026",
+    titre: "Les demi-orcs ont accès à la magie : c'est le trait choisi, plus la race, qui décide",
+    description:
+      "Jusqu'ici, la plateforme tenait TOUT demi-orc pour inapte à la magie : zéro point de spiritualité, quel que soit le personnage. Le manuel dit l'inverse — les demi-orcs, ayant du sang humain, ont accès à la magie, et « Inapte à la magie » y est un trait racial que le joueur PEUT choisir, pas une fatalité de naissance. C'est maintenant le trait réellement choisi qui décide. Un demi-orc qui ne le prend pas garde ses points de spiritualité et peut suivre les voies magiques que le manuel lui reconnaît, shaman ou forgeron de runes. Celui qui le prend, lui, ne peut plus acheter les compétences qui reposent sur la spiritualité : le créateur te l'annonce désormais avant le clic, avec le nom de la compétence concernée, au lieu de refuser l'achat au dernier moment. Deux fiches de demi-orc ont été recalculées : elles récupèrent leurs points de spiritualité et perdent le point de vie supplémentaire qui compensait l'inaptitude. Si tu joues un demi-orc et que tes valeurs ont bougé, c'est cette correction — ce sont désormais celles du manuel. Enfin, le trait ne peut plus être choisi par un personnage qui possède déjà des sorts ou des prières : la combinaison produisait un prêtre incapable de prier.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Juillet 2026",
     titre: "Fiches imprimées : une écriture deux fois plus grosse, lisible en forêt",
     description:
       "Les deux versions imprimables de ta fiche — Abrégé et Intégral — étaient réglées pour économiser le papier, au prix d'une écriture minuscule, pénible à lire le soir en forêt. Le texte passe au double sur les deux. L'Abrégé garde son format dense en colonnes, avec le bandeau de tes statistiques en gras. L'Intégral change aussi de mise en page : chaque règle, sort, prière et recette s'affiche maintenant en pleine largeur, comme une page de manuel, au lieu d'être comprimée en colonnes étroites. Partout, les textes gris ont été assombris pour rester nets à la lampe frontale. Les fiches prennent plus de pages : c'est voulu — sur le terrain, lire vite passe avant économiser du papier.",

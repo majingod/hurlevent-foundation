@@ -7,6 +7,7 @@ import { getSnapshot } from "./snapshot";
 import type { EtatCreationVisiteur, CompetenceAcquiseLocale } from "./deriveurs";
 import {
   raceInapteMagie,
+  personnageInapteMagie,
   calculerXp,
   calculerPvMax,
   calculerPsMax,
@@ -29,6 +30,19 @@ function competenceId(nom: string): string {
   const c = snapshot.tables.competences.find((x) => x.nom === nom);
   if (!c) throw new Error(`compétence « ${nom} » absente du snapshot`);
   return c.id;
+}
+
+function traitInapteId(): string {
+  const t = snapshot.tables.traits_raciaux.find(
+    (x) => x.nom === "Inapte à la magie"
+  );
+  if (!t) throw new Error("trait « Inapte à la magie » absent du snapshot");
+  return t.id;
+}
+
+/** Le trait CHOISI, sous la forme que porte `EtatCreationVisiteur`. */
+function avecTraitInapte() {
+  return [{ traitId: traitInapteId() }];
 }
 
 function acquise(
@@ -104,6 +118,29 @@ describe("calculerXp (annexe A)", () => {
   });
 });
 
+describe("personnageInapteMagie (INSTANCE, s370)", () => {
+  it("le trait CHOISI → true", () => {
+    expect(personnageInapteMagie(snapshot, avecTraitInapte())).toBe(true);
+  });
+  it("aucun trait choisi → false, même pour une race qui PEUT l'avoir", () => {
+    expect(personnageInapteMagie(snapshot, [])).toBe(false);
+    expect(personnageInapteMagie(snapshot, undefined)).toBe(false);
+  });
+  it("un AUTRE trait choisi → false", () => {
+    const autre = snapshot.tables.traits_raciaux.find(
+      (t) => t.nom !== "Inapte à la magie"
+    )!;
+    expect(personnageInapteMagie(snapshot, [{ traitId: autre.id }])).toBe(false);
+  });
+  it("deux verbes, deux maisons : le dériveur de MODÈLE ne bouge pas (C75)", () => {
+    // `raceInapteMagie` répond « cette RACE peut-elle naître inapte » — le
+    // générateur en dépend tel quel. Il reste vrai pour le Demi-Orc même
+    // quand l'instance, elle, est apte.
+    expect(raceInapteMagie(snapshot, raceId("Demi-Orc"))).toBe(true);
+    expect(personnageInapteMagie(snapshot, [])).toBe(false);
+  });
+});
+
 describe("calculerPvMax (annexe B)", () => {
   it("classe pv_depart, non inapte (Guerrier=6)", () => {
     const pv = snapshot.tables.classes.find((c) => c.nom === "Guerrier")!.pv_depart!;
@@ -111,11 +148,28 @@ describe("calculerPvMax (annexe B)", () => {
       calculerPvMax(snapshot, etat({ classeId: classeId("Guerrier"), raceId: raceId("Humain") }))
     ).toBe(pv);
   });
-  it("+1 si race inapte magie (Guerrier + Demi-Orc)", () => {
+  it("+1 si le PERSONNAGE porte le trait « Inapte à la magie » (s370)", () => {
     const pv = snapshot.tables.classes.find((c) => c.nom === "Guerrier")!.pv_depart!;
     expect(
-      calculerPvMax(snapshot, etat({ classeId: classeId("Guerrier"), raceId: raceId("Demi-Orc") }))
+      calculerPvMax(
+        snapshot,
+        etat({
+          classeId: classeId("Guerrier"),
+          raceId: raceId("Demi-Orc"),
+          traitsChoisis: avecTraitInapte(),
+        })
+      )
     ).toBe(pv + 1);
+  });
+  it("JUMEAU — un Demi-Orc SANS le trait n'a PAS le +1 (le modèle ne décide plus)", () => {
+    const pv = snapshot.tables.classes.find((c) => c.nom === "Guerrier")!.pv_depart!;
+    // Rougit sur le code d'avant s369, où la RACE suffisait à donner le bonus.
+    expect(
+      calculerPvMax(
+        snapshot,
+        etat({ classeId: classeId("Guerrier"), raceId: raceId("Demi-Orc") })
+      )
+    ).toBe(pv);
   });
   it("classe nulle → défaut 4", () => {
     expect(calculerPvMax(snapshot, etat({ raceId: raceId("Humain") }))).toBe(4);
@@ -123,10 +177,28 @@ describe("calculerPvMax (annexe B)", () => {
 });
 
 describe("calculerPsMax (annexe C)", () => {
-  it("0 si race inapte magie", () => {
+  it("0 si le PERSONNAGE porte le trait « Inapte à la magie » (s370)", () => {
     expect(
-      calculerPsMax(snapshot, etat({ classeId: classeId("Mage"), raceId: raceId("Demi-Orc") }))
+      calculerPsMax(
+        snapshot,
+        etat({
+          classeId: classeId("Mage"),
+          raceId: raceId("Demi-Orc"),
+          traitsChoisis: avecTraitInapte(),
+        })
+      )
     ).toBe(0);
+  });
+  it("JUMEAU — un Demi-Orc SANS le trait garde les PS de sa classe (Mage=10)", () => {
+    const ps = snapshot.tables.classes.find((c) => c.nom === "Mage")!.ps_depart!;
+    // C'est EXACTEMENT le changement de règle de s369 : le manuel donne accès
+    // à la magie aux demi-orcs ; seul le trait choisi la retire.
+    expect(
+      calculerPsMax(
+        snapshot,
+        etat({ classeId: classeId("Mage"), raceId: raceId("Demi-Orc") })
+      )
+    ).toBe(ps);
   });
 
   it("classe ps_depart sans Dév. Spirituel (Mage=10)", () => {

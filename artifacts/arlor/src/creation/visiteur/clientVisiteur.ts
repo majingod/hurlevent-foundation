@@ -1135,6 +1135,12 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           classeId: casse.etape4.classeId || null,
           religionId: casse.etape1.religionId,
           estCroyant: casse.etape1.estCroyant,
+          // C68 (s370) : `EtatCreationVisiteur` porte désormais les traits
+          // CHOISIS. Renseigné ici aussi pour qu'aucun état reconstruit ne
+          // puisse rendre un verdict d'inaptitude faux par omission.
+          traitsChoisis: casse.etape3.traitsRaciauxChoisis.map((t) => ({
+            traitId: t.trait_id ?? "",
+          })),
           competencesAcquises: [],
         };
         const { erreurs: erreursGratuites } = appliquerGratuites(getSnapshot(), etatBase, choix ?? {});
