@@ -142,19 +142,20 @@ describe("🧭 rolesProposables — l'ouvert, le fermé, et la raison", () => {
     }
   });
 
-  it("inaptitude : les 4 rôles de prêtre ferment — ET s'ouvrent sans elle", () => {
+  it("inaptitude (D40 s372) : 3 rôles de prêtre ferment, ✝️ RESTE OUVERT — jumeau : sans elle, tout ouvre", () => {
     const { cats, contenu } = parClasse.pretre;
-    const fermes = rolesProposables(contenu, cats, RICHE, true);
-    expect(fermes.every((r) => !r.ouvert)).toBe(true);
-    // MESURÉ : les 4 rôles de Prêtre vivent tous de points de spiritualité.
-    expect(fermes.length).toBe(4);
-    // La phrase vient du COMPOSEUR — la même qu'un refus après coup.
-    for (const r of fermes) {
+    const verdicts = rolesProposables(contenu, cats, RICHE, true);
+    expect(verdicts.length).toBe(4);
+    // ⭐ [DÉCISION 40] ✝️ n'EXIGE plus de magie (sonde à nu) : un inapte peut
+    // le jouer sans domaine — mesuré : 60 XP, reliquat 0, zéro PS.
+    const ouverts = verdicts.filter((r) => r.ouvert).map((r) => r.role.id);
+    expect(ouverts).toEqual(["pSoigne"]);
+    for (const r of verdicts.filter((x) => !x.ouvert)) {
       expect(r.raison).toBe(raisonRoleInapte(r.role));
     }
     // PREUVE PAR LE CONTRAIRE : sans l'inaptitude, les mêmes rôles ouvrent.
-    const ouverts = rolesProposables(contenu, cats, RICHE, false);
-    expect(ouverts.every((r) => r.ouvert)).toBe(true);
+    const apte = rolesProposables(contenu, cats, RICHE, false);
+    expect(apte.every((r) => r.ouvert)).toBe(true);
   });
 
   it("équipement : la raison vient du CONTENU, et l'objet la lève", () => {
@@ -239,17 +240,16 @@ describe("🧭 classesProposables — les 4 voies, ouvertes ou grisées", () => 
     expect(avecFioles.find((v) => v.classe === "mage")!.ouverte).toBe(true);
   });
 
-  it("ARBITRAGE s367 : le Demi-Orc voit la voie du Prêtre GRISÉE, avec sa raison", () => {
+  it("D40 s372 : la voie Prêtre s'OUVRE au Demi-Orc — ✝️ jouable sans domaine (effet émergent, sert la décision 41)", () => {
+    // Avant D40, les 4 rôles Prêtre vivaient de PS → voie grisée au MODÈLE
+    // (arbitrage s367). ✝️ n'exigeant plus de magie, UN rôle suffit à ouvrir
+    // la voie : le grisage de rôle (3 sur 4) reste attesté plus haut.
     const voies = classesProposables(deps, raceParNom("Demi-Orc").id, RICHE);
     const pretre = voies.find((c) => c.classe === "pretre")!;
-    expect(pretre.ouverte).toBe(false);
-    expect(pretre.raison).toContain("points de spiritualité");
-    expect(pretre.raison).toContain("Demi-Orc");
-    // L'échappatoire est NOMMÉE au joueur (divergence délibérée assumée).
-    expect(pretre.raison).toContain("Je bâtis moi-même");
+    expect(pretre.ouverte).toBe(true);
     // Le Mage reste OUVERT : l'alchimiste ne vit pas de PS.
     expect(voies.find((c) => c.classe === "mage")!.ouverte).toBe(true);
-    // PREUVE PAR LE CONTRAIRE : traitsChoisis sans le trait ⇒ tout ouvre.
+    // Et l'instance sans le trait ouvre tout, comme avant.
     const instance = classesProposables(deps, raceParNom("Demi-Orc").id, RICHE, []);
     expect(instance.every((c) => c.ouverte)).toBe(true);
   });

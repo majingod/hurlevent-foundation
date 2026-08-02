@@ -44,6 +44,7 @@ import {
   pretPourFiche,
   resumeFois,
   roleAttendElement,
+  roleElementOptionnel,
   roleEstCaster,
   type ParcoursBoussole,
 } from "./boussole.logic";
@@ -115,14 +116,28 @@ describe("🧭 escalier — quels rôles attendent un élément", () => {
     }
     // MESURÉ [nb rôles, attendent un choix, casters] :
     // guerrier/voleur : jamais · mage : 4/5 choisissent leur cercle,
-    // ⚗️ l'alchimiste vit sans magie · prêtre : ⛪ ✝️ choisissent leur
-    // domaine, 🕊️ 📿 l'ont imposé — les 4 sont casters.
+    // ⚗️ l'alchimiste vit sans magie · prêtre : ⛪ EXIGE son domaine,
+    // ✝️ l'a OPTIONNEL depuis D40 (s372), 🕊️ 📿 l'ont imposé — les 4
+    // restent casters (l'étape s'affiche pour tous).
     expect(table).toEqual({
       guerrier: [3, 0, 0],
       voleur: [3, 0, 0],
       mage: [5, 4, 4],
-      pretre: [4, 2, 4],
+      pretre: [4, 1, 4],
     });
+  });
+
+  it("D40 s372 : ✝️ est LE SEUL rôle à élément optionnel — dérivé, jamais une liste", () => {
+    const optionnels: string[] = [];
+    for (const c of CLASSES) {
+      const { cats, contenu } = parClasse[c];
+      for (const r of contenu.roles) {
+        if (roleElementOptionnel(contenu, cats, r, RICHE)) {
+          optionnels.push(r.id);
+        }
+      }
+    }
+    expect(optionnels).toEqual(["pSoigne"]);
   });
 
   it("un rôle à magie imposée n'attend JAMAIS un choix — mais reste caster", () => {

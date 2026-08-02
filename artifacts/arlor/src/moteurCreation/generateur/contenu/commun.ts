@@ -75,6 +75,14 @@ export interface RoleClasse {
    * et 1 la Bénédiction. Le filtrage par religion vit dans le RÉSOLVEUR.
    */
   magieImposee?: string;
+  /**
+   * ⭐ [DÉCISION 40, s372] Le cercle/domaine SUGGÉRÉ quand le choix est
+   * optionnel — jamais imposé, jamais tiré différemment. L'écran 🧭 le met
+   * en tête avec sa puce ; c'est la SEULE maison du nom (l'écran ne connaît
+   * aucun label du contenu). ✝️ : `Bénédiction`, mesurée 3/4 chez les vrais
+   * soigneurs.
+   */
+  magieSuggeree?: string;
 }
 
 export interface EntreePool {
@@ -90,8 +98,20 @@ export type EtapePond =
       type: "achats";
       label: string;
       achats: (inv: ReadonlySet<string>, o: OptionsRole) => Achat[];
+      /** ⭐ [D40 s372] Hors condition, l'étape est SAUTÉE — symétrique de
+       *  `EntreePool.condition`. Née pour le ✝️ sans domaine : son ④ change
+       *  de visage selon `o.element`. Rien d'existant n'en pose. */
+      condition?: (inv: ReadonlySet<string>, o: OptionsRole) => boolean;
     }
-  | { type: "jauge"; nom: string; plafondRachats: number };
+  | {
+      type: "jauge";
+      nom: string;
+      plafondRachats: number;
+      /** ⭐ [D40 s372] Même contrat que la variante `achats` : une jauge hors
+       *  condition ne verse rien. Le plafond reste GLOBAL par nom — deux
+       *  jauges du même nom sous conditions opposées ne débordent pas. */
+      condition?: (inv: ReadonlySet<string>, o: OptionsRole) => boolean;
+    };
 
 export interface ContenuClasse {
   classe: ClasseId;

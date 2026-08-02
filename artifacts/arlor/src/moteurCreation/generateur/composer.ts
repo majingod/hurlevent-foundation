@@ -511,6 +511,10 @@ export function composerClasse(
   // ④ La pondération du rôle, puis le FILET (règle s346).
   const derouler = (etapes: EtapePond[]) => {
     for (const e of etapes) {
+      // ⭐ [D40 s372] Une étape ④ hors condition est sautée — c'est ce qui
+      // permet au même rôle de porter DEUX profils de remplissage (✝️ avec
+      // ou sans domaine) sans dupliquer le rôle ni deviner dans le moteur.
+      if (e.condition && !e.condition(ctx.inventaire, o)) continue;
       if (e.type === "achats") {
         const cout = planifierEntree(
           cats,
