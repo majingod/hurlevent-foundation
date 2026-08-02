@@ -252,8 +252,9 @@ export function domainesTirables(cats: Catalogues): string[] {
  *  ton cercle/domaine » quand `o.element` manque — une porte 🧭, pas une
  *  porte d'inventaire. On sonde donc avec un élément du pool ; les 6 portes
  *  testent sa PRÉSENCE, jamais son identité, et le composeur re-vérifie de
- *  toute façon avec le vrai. */
-const sondeElement = (
+ *  toute façon avec le vrai. [D40 s372] Exportée : la boussole en a besoin
+ *  pour dériver « élément optionnel » — une seule maison de la sonde. */
+export const sondeElement = (
   contenu: ContenuClasse,
   cats: Catalogues
 ): string | undefined =>
@@ -278,10 +279,22 @@ export function rolesProposables(
   inapte: boolean
 ): RoleProposable[] {
   const o = { element: sondeElement(contenu, cats) };
+  // ⭐ [D40 s372] DEUX QUESTIONS, DEUX SONDES (leçon C75 : « pour quel verbe
+  // la sonde a-t-elle été écrite ? »).
+  //  · `requiert` se sonde AVEC un élément (piège C71) : c'est une porte
+  //    d'ÉQUIPEMENT, pas une porte 🧭.
+  //  · le verdict d'INAPTITUDE se sonde À NU : il mesure la NÉCESSITÉ de
+  //    magie, pas sa possibilité. Depuis la décision 40, ✝️ n'exige plus de
+  //    domaine — sondé avec un élément il « demanderait » des PS et se
+  //    fermerait à un inapte qui peut parfaitement le jouer sans domaine
+  //    (mesuré s372 : 60 XP, reliquat 0, zéro PS). Les rôles dont le noyau
+  //    déclare sa magie sans condition (⛪🎭🔮✨ᚱ🕊️📿) répondent pareil aux
+  //    deux sondes : seul ✝️ les sépare.
+  const oNu = {};
   return contenu.roles.map((role) => {
     const refus = role.requiert(inventaire, o);
     if (refus !== null) return { role, ouvert: false, raison: refus };
-    if (inapte && archetypeDemandeDesPS(contenu, role.id, inventaire, o)) {
+    if (inapte && archetypeDemandeDesPS(contenu, role.id, inventaire, oNu)) {
       return { role, ouvert: false, raison: raisonRoleInapte(role) };
     }
     return { role, ouvert: true };
@@ -528,7 +541,18 @@ export function tirerPersonnage(
 
   // ③ Le cercle / domaine — imposé par l'archétype, sinon tiré dans le pool
   // légitime (jamais un interdit : §5.1 ② / §5.2 ②).
-  const besoinMagie = archetypeDemandeDesPS(contenu, role.id, inventaire, {});
+  // ⭐ [D40 s372] La sonde répond « ce rôle UTILISERAIT-IL la magie si on lui
+  // en donne ? » — sondée AVEC un élément, comme `rolesProposables` pour le
+  // requiert (C71). Sondée à nu, ✝️ répondrait non depuis que sa prière a
+  // quitté le noyau, et 🎲 cesserait de lui tirer un domaine — contraire à la
+  // décision 40 (« proposition ≠ tirage » : 🧭 propose le sans-domaine, 🎲 ne
+  // le tire jamais). Un INAPTE, lui, ne reçoit JAMAIS d'élément : il tire le
+  // seul ✝️ que `rolesTirables` lui laisse, et le compose sans domaine.
+  const besoinMagie =
+    !inapte &&
+    archetypeDemandeDesPS(contenu, role.id, inventaire, {
+      element: sondeElement(contenu, cats),
+    });
   let elementTire: string | undefined;
   if (!role.magieImposee && besoinMagie) {
     elementTire =

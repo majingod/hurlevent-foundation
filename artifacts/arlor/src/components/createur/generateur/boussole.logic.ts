@@ -7,8 +7,7 @@ import type { Catalogues } from "@/moteurCreation/generateur/composer";
 import {
   CERCLES_JAMAIS_TIRES,
   DOMAINES_JAMAIS_TIRES,
-  cerclesTirables,
-  domainesTirables,
+  sondeElement,
   type ChoixJoueur,
   type FoiProposable,
   type MondeResolveur,
@@ -37,11 +36,15 @@ export const EMOJIS_CLASSES: Record<ClasseId, string> = {
   pretre: "🙏",
 };
 
-/** Le rôle attend-il un cercle/domaine CHOISI par le joueur ?
- *  Vrai pour les casters à choix libre (🎭🔮✨ᚱ⛪✝️), faux pour les rôles à
- *  magie imposée (🕊️📿 — l'élément est déjà connu) et pour tout rôle sans
- *  spirituel. Le critère est celui du MOTEUR (`archetypeDemandeDesPS`, sondé
- *  avec un élément du pool — piège C71), jamais une liste de rôles en dur. */
+/** Le rôle EXIGE-t-il un cercle/domaine choisi par le joueur ?
+ *  Vrai pour les casters dont le noyau DÉCLARE sa magie même sans élément
+ *  (🎭🔮✨ᚱ⛪ — `sortAuChoix`/`priereAuChoix` sont des déclarations, leur
+ *  résolution vient après) ; faux pour la magie imposée (🕊️📿) et pour tout
+ *  rôle sans spirituel. ⭐ [D40 s372] Sondé À NU : c'est la NÉCESSITÉ qu'on
+ *  mesure — ✝️, dont la prière est désormais conditionnée au domaine, répond
+ *  non ici et oui à `roleElementOptionnel`. (Le piège C71 concernait
+ *  `requiert`, une porte d'équipement qui se sonde AVEC élément — deux
+ *  verbes, deux sondes, comme au résolveur.) */
 export function roleAttendElement(
   contenu: ContenuClasse,
   cats: Catalogues,
@@ -50,25 +53,41 @@ export function roleAttendElement(
 ): boolean {
   if (role.magieImposee) return false;
   if (contenu.classe !== "mage" && contenu.classe !== "pretre") return false;
-  const sonde =
-    contenu.classe === "pretre"
-      ? domainesTirables(cats)[0]
-      : cerclesTirables(cats)[0];
+  return archetypeDemandeDesPS(contenu, role.id, inventaire, {});
+}
+
+/** ⭐ [DÉCISION 40, s372] Le rôle PEUT-il porter un élément sans l'exiger ?
+ *  Dérivé, jamais une liste en dur : il n'en demande pas à nu, mais en
+ *  utiliserait un si on lui en donne (sonde du résolveur — même élément que
+ *  `rolesProposables`). Aujourd'hui : ✝️ seul. L'étape « Ton domaine »
+ *  s'affiche alors sans jamais bloquer la fiche. */
+export function roleElementOptionnel(
+  contenu: ContenuClasse,
+  cats: Catalogues,
+  role: RoleClasse,
+  inventaire: ReadonlySet<string>
+): boolean {
+  if (role.magieImposee) return false;
+  if (contenu.classe !== "mage" && contenu.classe !== "pretre") return false;
+  if (archetypeDemandeDesPS(contenu, role.id, inventaire, {})) return false;
   return archetypeDemandeDesPS(contenu, role.id, inventaire, {
-    element: sonde,
+    element: sondeElement(contenu, cats),
   });
 }
 
-/** Un rôle est « caster » s'il porte un élément — choisi OU imposé. C'est la
- *  condition de la case « un second cercle/domaine ? » (en 🧭 elle est
- *  offerte à TOUS les casters — politique s361, le résolveur fait foi). */
+/** Un rôle est « caster » s'il PEUT porter un élément — imposé, exigé ou
+ *  optionnel (D40). C'est la visibilité de l'étape cercle/domaine ; la case
+ *  « un second ? » suit l'ÉLÉMENT POSÉ, pas ce prédicat (pas de second sans
+ *  premier). */
 export const roleEstCaster = (
   contenu: ContenuClasse,
   cats: Catalogues,
   role: RoleClasse,
   inventaire: ReadonlySet<string>
 ): boolean =>
-  !!role.magieImposee || roleAttendElement(contenu, cats, role, inventaire);
+  !!role.magieImposee ||
+  roleAttendElement(contenu, cats, role, inventaire) ||
+  roleElementOptionnel(contenu, cats, role, inventaire);
 
 /** L'avertissement d'un cercle/domaine du catalogue complet, ou `null`.
  *

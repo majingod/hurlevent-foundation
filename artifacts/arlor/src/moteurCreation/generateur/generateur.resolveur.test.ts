@@ -258,8 +258,8 @@ describe("pools — races et rôles (G7/G8) et leurs jumeaux", () => {
     ]);
   });
 
-  it("G7 : un inapte perd les 4 rôles Prêtre et les 5 Mage sauf l'alchimiste (arbitrage s355) — jumeau : sans l'inaptitude, tout revient", () => {
-    expect(idsRoles("pretre", RICHE, true)).toEqual([]);
+  it("G7 (D40 s372) : un inapte garde ✝️ et ⚗️ — les 3 autres Prêtre et 4 autres Mage ferment ; jumeau : sans l'inaptitude, tout revient", () => {
+    expect(idsRoles("pretre", RICHE, true)).toEqual(["pSoigne"]);
     expect(idsRoles("mage", RICHE, true)).toEqual(["mAlchimiste"]);
     expect(idsRoles("guerrier", RICHE, true)).toEqual([
       "gForgeron", "gTient", "gFrappe",
@@ -698,9 +698,27 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
       races.add(t.tirage.raceNom);
       roles.add(t.tirage.roleId);
       if (t.tirage.raceNom === "Demi-Orc") {
-        // Conduite 1 : un Demi-Orc tiré est traité inapte → jamais caster.
-        expect(["guerrier", "voleur", "mage"]).toContain(t.tirage.classe);
+        // Conduite 1 + D40 : un Demi-Orc tiré est traité inapte → JAMAIS de
+        // magie. Depuis la décision 40 il peut tirer ✝️ — sans domaine.
         expect(t.composition.achatsMagie).toHaveLength(0);
+        if (t.tirage.classe === "pretre") {
+          expect(t.tirage.roleId).toBe("pSoigne");
+          expect(t.tirage.element).toBeUndefined();
+        } else {
+          expect(["guerrier", "voleur", "mage"]).toContain(t.tirage.classe);
+        }
+      }
+      // ⭐ [D40, décision 34] GATE « la fiche dit vrai » : tout ✝️ tiré AVEC
+      // un domaine a sa prière ET son accès ACHETÉS — le 🎲 tient parole.
+      if (t.tirage.roleId === "pSoigne" && t.tirage.element) {
+        expect(t.composition.achatsMagie.length, `seed ${i}`).toBeGreaterThan(0);
+        expect(
+          t.composition.achats.some(
+            (a) =>
+              a.nom === "Acquisition de Domaine" && a.choix === t.tirage.element
+          ),
+          `seed ${i}`
+        ).toBe(true);
       }
     }
     expect(races.size).toBeGreaterThanOrEqual(4);
@@ -715,7 +733,11 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
 /* ------------------------------------------------------------------ */
 
 describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
-  it("997 résolutions (180 à vide + 405×2 budgets + 7 inapte) : ok partout, reliquat ≤ 3, religion jamais en tension — pire cas cité", () => {
+  it("1061 résolutions (196 à vide + 421×2 budgets + 23 inapte) : ok partout, reliquat ≤ 3, religion jamais en tension — pire cas cité", () => {
+    // ⭐ [D40 s372] Compte MACHINE (jamais annoncé) : 997 avant + 64 feuilles
+    // « ✝️ sans domaine » (1 nue + 15 fois) × 4 combos (∅/Humain, RICHE ×
+    // Humain·autres·Demi-Orc inapte). L'inapte passe de 7 à 23 : ✝️ est
+    // désormais sa 8e forme prêtre — sa SEULE forme prêtre.
     // Classes d'équivalence de race (mesure la plus étroite qui tranche) :
     // seules budget et inaptitude entrent dans la composition. Preuve :
     for (const r of monde.races.filter((x) => x.est_jouable)) {
@@ -764,6 +786,22 @@ describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
             if (!besoinMagie || role.id === "mAlchimiste") {
               verifier({ ...base, roleId: role.id }, desc0);
               continue;
+            }
+            // ⭐ [DÉCISION 40, s372] ✝️ : le domaine est OPTIONNEL. Feuilles
+            // « sans domaine » — nue (l'espace 🎲 de l'inapte) puis une par
+            // foi active (l'espace 🧭 : sans domaine, aucune ne proscrit
+            // rien). Pour l'INAPTE c'est la SEULE forme : le composeur
+            // refuse ✝️ + domaine à un inapte, et le tirage ne lui donne
+            // jamais d'élément.
+            if (role.id === "pSoigne") {
+              verifier({ ...base, element: undefined }, `${desc0}(sans domaine)`);
+              for (const rel of monde.religions.filter((r) => r.est_actif)) {
+                verifier(
+                  { ...base, element: undefined, religionId: rel.id },
+                  `${desc0}(sans domaine, ${rel.nom})`
+                );
+              }
+              if (eq.inapte) continue;
             }
             const impose = role.magieImposee;
             const elements = impose
@@ -817,7 +855,7 @@ describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
     }
     // Le COMPTE est une égalité exacte, jamais un encadrement (règle s361) —
     // le pire cas est CITÉ, pas promis.
-    expect(nb, `pire cas : ${pire.desc} → reliquat ${pire.reliquat}`).toBe(997);
+    expect(nb, `pire cas : ${pire.desc} → reliquat ${pire.reliquat}`).toBe(1061);
     expect(pire.reliquat).toBeLessThanOrEqual(3);
   });
 });

@@ -90,16 +90,22 @@ const ROLES_PRETRE: readonly RoleClasse[] = [
     // n = 4, cohésion 0.65 · Muir-Natha Dagon, Zoé, Bas-Blanc Tamalou,
     // Nathanaël di Vitae. ② mesuré : Réveil Expéditif 4/4 · Premiers Soins 4/4.
     // ⚠️ `Domaine:Bénédiction` est à 3/4 — donc ③, PAS ② : on ne l'impose pas.
+    //
+    // ⭐⭐ [DÉCISION 40, s368→s372] LE DOMAINE EST OPTIONNEL. La prière a
+    // quitté le noyau ② pour la signature ③a (conditionnée au domaine) :
+    // sans domaine, ✝️ est un soigneur NON MAGIQUE — Réveil Expéditif et
+    // Premiers Soins soignent AU TEMPS, pas aux PS (manuel, vérifié s372).
+    // C'est la symétrie avec ⚗️ que Fred a relevée. `magieSuggeree` porte la
+    // suggestion (jamais l'imposition) : 3 des 4 soigneurs réels vivent de
+    // Bénédiction. Le 🎲, lui, continue de TIRER un domaine (proposition ≠
+    // tirage, #30-bis) — c'est la sonde « avec élément » du résolveur.
     id: "pSoigne",
     emoji: "✝️",
     titre: "Le soigneur",
     phrase: "Tu remets les tiens debout.",
-    requiert: (_inv, o) => (o.element ? null : SANS_DOMAINE),
-    noyau: () => [
-      comp("Réveil Expéditif", 1),
-      comp("Premiers Soins", 1),
-      priereAuChoix(1),
-    ],
+    magieSuggeree: "Bénédiction",
+    requiert: () => null,
+    noyau: () => [comp("Réveil Expéditif", 1), comp("Premiers Soins", 1)],
   },
   {
     // n = 2, cohésion 0.78 · Virgile Azmir Saren, Aymon Le missionnaire.
@@ -160,6 +166,20 @@ const SIGNATURE3_PRETRE: Record<string, EntreePool[]> = {
     },
   ],
   pSoigne: [
+    /* ⭐⭐ [DÉCISION 40, s372] LA PRIÈRE DU SOIGNEUR VIT ICI, plus au noyau.
+     * En ③a DÉTERMINISTE (jamais tirée) et CONDITIONNÉE au domaine :
+     *  · 🎲 tire toujours un domaine à ✝️ (résolveur, sonde avec élément)
+     *    → cette entrée achète la prière ET son accès (rampe) à tous coups —
+     *    la fiche « Domaine : X » dit vrai, décision 34.
+     *  · 🧭 sans domaine → condition fausse, entrée sautée, budget au ④.
+     * L'ordre la met AVANT `Premiers Soins@2` : la magie est l'identité du
+     * soigneur croyant, la montée vient après. */
+    {
+      label: "Ta prière",
+      note: "Ton domaine, et une prière dedans.",
+      achats: () => [priereAuChoix(1)],
+      condition: (_inv, o) => !!o.element,
+    },
     {
       label: "Premiers Soins 2",
       note: "Tu soignes plus vite et plus fort.",
@@ -313,6 +333,42 @@ const POND4_PRETRE: ContenuClasse["pond4"] = {
       type: "achats",
       label: "Diagnostic",
       achats: () => [comp("Diagnostic", 1)],
+    },
+    /* ⭐⭐ [DÉCISION 40, s372] LE PROFIL « SANS DOMAINE » — la compensation
+     * mesurée à la sonde (l'ancien ④ versait 24-32 XP, soit 40 % du budget,
+     * en points de spiritualité que RIEN ne consomme ; l'inapte, lui,
+     * laissait 14 XP sur la table). Tout vient du pool « Soin » MESURÉ
+     * (§4.0.3) — rien d'inventé :
+     *  · Chirurgien achète son chemin (Diagnostic@2 en prérequis) — le
+     *    médecin qui opère, pas seulement recoud.
+     *  · puis les herbes, puis les langues AVANT la jauge de PS : ce qui
+     *    reste en PS est de la petite monnaie (≤ le précédent guerrier),
+     *    jamais un placement.
+     * ⚠️ `Premiers Soins@3` est ABSENT à dessein : plafond de création = 2
+     * (§2.5) — la sonde l'a vu sauter en silence. */
+    {
+      type: "achats",
+      label: "Chirurgien",
+      achats: () => [comp("Chirurgien", 1)],
+      condition: (_inv, o) => !o.element,
+    },
+    {
+      type: "achats",
+      label: "Connaissances des Herbes Communes",
+      achats: () => [comp("Connaissances des Herbes Communes", 1)],
+      condition: (_inv, o) => !o.element,
+    },
+    {
+      type: "achats",
+      label: "Herbalisme",
+      achats: () => [comp("Herbalisme", 1)],
+      condition: (_inv, o) => !o.element,
+    },
+    {
+      type: "jauge",
+      nom: "Langue supplémentaire",
+      plafondRachats: 4,
+      condition: (_inv, o) => !o.element,
     },
     { type: "jauge", nom: "Développement Spirituel", plafondRachats: 10 },
     { type: "jauge", nom: "Langue supplémentaire", plafondRachats: 4 },

@@ -23,6 +23,7 @@ import {
   type SortModele,
 } from "./catalogueMagie";
 import { composerClasse, type Catalogues } from "./composer";
+import { estCompetenceAPS } from "./contenu/commun";
 import { CONTENU_PRETRE } from "./contenu/pretre";
 import { configGenerateur, ordonnerPrieresRepresentatives } from "./coutsMagie";
 import fxPretre from "./fixtures/competences_pretre.fixture.json";
@@ -70,6 +71,12 @@ const coutCouche = (c: Extract<Composition, { ok: true }>, couche: number) =>
     .filter((m) => m.couche === couche)
     .reduce((s, m) => s + m.coutXp, 0);
 
+/** [D40 s372] L'XP partie en compétences à PS — le thermomètre de l'indigence. */
+const psXp = (c: Extract<Composition, { ok: true }>) =>
+  c.achats
+    .filter((a) => estCompetenceAPS(a.nom))
+    .reduce((s, a) => s + a.coutXp, 0);
+
 /** Le ② d'un rôle, dérivé par le MOTEUR sur chaque domaine. */
 const bornes2 = (roleId: string) => {
   const v = DOMAINES.map((d) => coutCouche(ok(composer(roleId, d)), 2));
@@ -93,10 +100,28 @@ describe("PRÊTRE — les 4 archétypes mesurés (§4.0.3), ② dérivé du cata
     );
   });
 
-  it("✝️ le soigneur : ② = 18–25 sur les 8 domaines, ③ signature = 10", () => {
-    expect(bornes2("pSoigne")).toEqual([18, 25]);
+  it("✝️ le soigneur (D40 s372) : ② = 10 POINT sur les 8 domaines — le domaine vit en ③ (18–25)", () => {
+    // Avant D40 le ② portait la prière : 18–25 selon le domaine. La prière a
+    // quitté le noyau (décision 40) : le ② redevient un POINT, la fourchette
+    // se déplace en ③ (accès 5 + prière 2–10 + Premiers Soins@2 10).
+    expect(bornes2("pSoigne")).toEqual([10, 10]);
+    const bornes3 = DOMAINES.map((d) =>
+      coutCouche(ok(composer("pSoigne", d)), 3)
+    );
+    expect([Math.min(...bornes3), Math.max(...bornes3)]).toEqual([18, 25]);
     const c = ok(composer("pSoigne", "Bénédiction"));
-    expect(coutCouche(c, 3)).toBe(10); // Premiers Soins 2
+    // ③ Bénédiction, chiffres machine s372 : accès 5 + Soins 4 + PS@2 10.
+    expect(coutCouche(c, 3)).toBe(19);
+    expect(c.achatsMagie.filter((m) => m.couche === 3)).toHaveLength(1);
+    // Fiche dit vrai (décision 34) : l'accès porte le CHOIX du domaine.
+    expect(
+      c.achats.some(
+        (a) =>
+          a.nom === "Acquisition de Domaine" &&
+          a.couche === 3 &&
+          a.choix === "Bénédiction"
+      )
+    ).toBe(true);
     expect(c.achats.filter((a) => a.couche === 2).map((a) => a.nom)).toEqual(
       expect.arrayContaining(["Réveil Expéditif", "Premiers Soins"])
     );
@@ -262,15 +287,88 @@ describe("PRÊTRE — ce que le lot RETIRE", () => {
 });
 
 describe("PRÊTRE — les refus parlent au joueur", () => {
-  it("⛪ et ✝️ sans domaine : le refus dit quoi choisir, et parle de religion", () => {
-    for (const roleId of ["pRite", "pSoigne"]) {
-      const c = composer(roleId, undefined);
-      expect(c.ok).toBe(false);
-      if (!c.ok) {
-        expect(c.raison).toMatch(/domaine/i);
-        expect(c.raison).toMatch(/religion/i);
-      }
+  it("⛪ sans domaine : le refus dit quoi choisir, et parle de religion", () => {
+    // [D40 s372] ✝️ ne refuse PLUS — son bloc dédié atteste le sans-domaine.
+    const c = composer("pRite", undefined);
+    expect(c.ok).toBe(false);
+    if (!c.ok) {
+      expect(c.raison).toMatch(/domaine/i);
+      expect(c.raison).toMatch(/religion/i);
     }
+  });
+
+  it("✝️ DÉCISION 40 — sans domaine : soigneur NON MAGIQUE, compensation active, reliquat 0 (chiffres machine s372)", () => {
+    const c60 = ok(composer("pSoigne", undefined, 60));
+    expect(c60.achatsMagie).toHaveLength(0);
+    expect(c60.achats.some((a) => a.nom === "Acquisition de Domaine")).toBe(
+      false
+    );
+    expect(c60.reliquat).toBe(0);
+    expect(psXp(c60)).toBe(0);
+    // La chaîne du médecin (pool Soin mesuré) : Chirurgien tire Diagnostic@2
+    // en prérequis — c'est le moteur qui achète le chemin, pas le contenu.
+    expect(c60.achats.map((a) => `${a.nom}@${a.niveau}`)).toEqual(
+      expect.arrayContaining([
+        "Chirurgien@1",
+        "Diagnostic@2",
+        "Premiers Soins@2",
+      ])
+    );
+    const c80 = ok(composer("pSoigne", undefined, 80));
+    expect(c80.reliquat).toBe(0);
+    // UN rachat de Développement Spirituel — la petite monnaie qui termine
+    // la cascade (précédent guerrier ≤ 5), jamais un placement.
+    expect(psXp(c80)).toBe(2);
+    expect(c80.achats.map((a) => a.nom)).toEqual(
+      expect.arrayContaining([
+        "Connaissances des Herbes Communes",
+        "Herbalisme",
+      ])
+    );
+  });
+
+  it("✝️ DÉCISION 40 — un INAPTE compose sans domaine : reliquat 0, zéro PS (le trou de 14 XP est réparé)", () => {
+    const c = composerClasse(cats, CONTENU_PRETRE, {
+      classe: "pretre",
+      roleId: "pSoigne",
+      inventaire: new Set<string>(),
+      budget: 60,
+      inapteMagie: true,
+    });
+    expect(c.ok).toBe(true);
+    if (!c.ok) return;
+    expect(c.achatsMagie).toHaveLength(0);
+    expect(c.reliquat).toBe(0);
+    expect(psXp(c)).toBe(0);
+  });
+
+  it("✝️ DÉCISION 40 — PREUVE PAR LE CONTRAIRE : sans la compensation conditionnelle, les PS morts reviennent", () => {
+    // On retire les entrées ④ conditionnelles (la compensation) : l'ancien ④
+    // réapparaît et déverse 24 XP de PS que rien ne consomme — c'est le
+    // défaut mesuré s372 que la décision 40 corrige.
+    const pond4Nu = {
+      ...CONTENU_PRETRE.pond4,
+      pSoigne: CONTENU_PRETRE.pond4.pSoigne.filter((e) => !e.condition),
+    };
+    const nu = composerClasse(
+      cats,
+      { ...CONTENU_PRETRE, pond4: pond4Nu },
+      {
+        classe: "pretre",
+        roleId: "pSoigne",
+        inventaire: new Set<string>(),
+        budget: 60,
+        inapteMagie: false,
+      }
+    );
+    expect(nu.ok).toBe(true);
+    if (nu.ok) expect(psXp(nu)).toBe(24);
+  });
+
+  it("✝️ DÉCISION 40 — avec domaine, la compensation est INERTE : pas de Chirurgien, ② reste 10", () => {
+    const c = ok(composer("pSoigne", "Bénédiction", 80));
+    expect(c.achats.some((a) => a.nom === "Chirurgien")).toBe(false);
+    expect(coutCouche(c, 2)).toBe(10);
   });
 
   it("🕊️ et 📿 n'ont RIEN à demander : leur domaine vient de l'archétype", () => {

@@ -21,6 +21,7 @@ import {
   pretPourFiche,
   resumeFois,
   roleAttendElement,
+  roleElementOptionnel,
   roleEstCaster,
   type ParcoursBoussole,
 } from "./boussole.logic";
@@ -206,6 +207,17 @@ const EcranBoussole = ({
     !!role &&
     !!classeCourante &&
     roleAttendElement(classeCourante.contenu, classeCourante.cats, role, inventaire);
+  // ⭐ [D40 s372] Troisième état : l'élément est OPTIONNEL (✝️). L'étape
+  // s'affiche, ne bloque jamais, et « Sans domaine » est un état légitime.
+  const elementOptionnel =
+    !!role &&
+    !!classeCourante &&
+    roleElementOptionnel(
+      classeCourante.contenu,
+      classeCourante.cats,
+      role,
+      inventaire
+    );
   const caster =
     !!role &&
     !!classeCourante &&
@@ -213,23 +225,29 @@ const EcranBoussole = ({
   const genre: "cercle" | "domaine" = p.classe === "pretre" ? "domaine" : "cercle";
   const elementEffectif = role?.magieImposee ?? p.element;
 
-  /** Catalogue COMPLET — jamais une liste en dur (dérivé des modèles). */
+  /** Catalogue COMPLET — jamais une liste en dur (dérivé des modèles).
+   *  ⭐ [D40] Le suggéré du CONTENU (`magieSuggeree`) passe en tête ; le
+   *  reste garde l'ordre du catalogue. */
   const catalogueComplet: string[] = useMemo(() => {
     if (!classeCourante) return [];
     const m = classeCourante.cats.magie;
-    return genre === "domaine" ? m.domaines() : m.cercles();
-  }, [classeCourante, genre]);
+    const tous = genre === "domaine" ? m.domaines() : m.cercles();
+    const sug = role?.magieSuggeree;
+    return sug && tous.includes(sug)
+      ? [sug, ...tous.filter((n) => n !== sug)]
+      : tous;
+  }, [classeCourante, genre, role]);
 
   const fois = useMemo(
     () =>
-      p.classe === "pretre" && elementEffectif
+      p.classe === "pretre" && (elementEffectif || elementOptionnel)
         ? religionsProposables(
             deps.monde,
-            elementEffectif,
+            elementEffectif ?? undefined,
             p.second ? (p.element2 ?? undefined) : undefined
           )
         : [],
-    [deps, p.classe, elementEffectif, p.second, p.element2]
+    [deps, p.classe, elementEffectif, elementOptionnel, p.second, p.element2]
   );
 
   const etapeElementFaite = !attendElement || !!p.element;
@@ -242,7 +260,7 @@ const EcranBoussole = ({
   );
 
   const numeroElement = 3;
-  const numeroFoi = caster && (attendElement || role?.magieImposee) ? 4 : 3;
+  const numeroFoi = caster ? 4 : 3;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
@@ -325,46 +343,83 @@ const EcranBoussole = ({
           </div>
         </Etape>
 
-        {/* 3 · CERCLE / DOMAINE (casters seulement) */}
+        {/* 3 · CERCLE / DOMAINE (casters — exigé, imposé ou optionnel D40) */}
         {caster && (
           <Etape
             n={numeroElement}
             titre={
               role?.magieImposee
                 ? `Ton domaine — ${role.magieImposee} (imposé par le rôle)`
-                : `Ton ${genre}`
+                : elementOptionnel
+                  ? `Ton ${genre} — optionnel`
+                  : `Ton ${genre}`
             }
             faite={etapeElementFaite && (!p.second || !!p.element2)}
             ouverte={!!p.roleId}
           >
-            {attendElement && (
-              <div className="grid grid-cols-2 gap-2">
-                {catalogueComplet.map((nom) => {
-                  const avert = avertissementElement(genre, nom, deps.monde);
-                  return (
+            {(attendElement || elementOptionnel) && (
+              <>
+                {elementOptionnel && inapte && (
+                  <div className="mb-2 text-[11px] text-white/50">
+                    {race?.nom ?? "Ton peuple"} peut naître inapte à la magie —
+                    sans domaine, le soigneur reste jouable.
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {elementOptionnel && (
                     <Carte
-                      key={nom}
-                      actif={p.element === nom}
-                      lisere={!!avert}
+                      actif={p.element === null}
                       onClick={() =>
-                        setP((q) => ({ ...q, element: nom, element2: null, religionId: null }))
+                        setP((q) => ({
+                          ...q,
+                          element: null,
+                          second: false,
+                          element2: null,
+                        }))
                       }
                     >
                       <span className="font-heading text-[14px] text-gold-accent">
-                        {nom}
+                        Sans domaine
                       </span>
-                      {avert && (
-                        <div className="mt-1 text-[11px] text-bordeaux brightness-150">
-                          {avert}
-                        </div>
-                      )}
+                      <div className="mt-1 text-[11px] text-white/50">
+                        Soigneur non magique — tes soins marchent au temps, pas
+                        aux points de spiritualité.
+                      </div>
                     </Carte>
-                  );
-                })}
-              </div>
+                  )}
+                  {catalogueComplet.map((nom) => {
+                    const avert = avertissementElement(genre, nom, deps.monde);
+                    return (
+                      <Carte
+                        key={nom}
+                        actif={p.element === nom}
+                        grise={elementOptionnel && inapte}
+                        lisere={!!avert}
+                        onClick={() =>
+                          setP((q) => ({ ...q, element: nom, element2: null, religionId: null }))
+                        }
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-heading text-[14px] text-gold-accent">
+                            {nom}
+                          </span>
+                          {role?.magieSuggeree === nom && <Puce or>suggéré</Puce>}
+                        </div>
+                        {avert && (
+                          <div className="mt-1 text-[11px] text-bordeaux brightness-150">
+                            {avert}
+                          </div>
+                        )}
+                      </Carte>
+                    );
+                  })}
+                </div>
+              </>
             )}
 
-            {/* + SECOND — offert à TOUS les casters (politique 🧭, s361). */}
+            {/* + SECOND — offert à TOUS les casters (politique 🧭, s361).
+                [D40] Pour l'optionnel : seulement quand l'élément est posé. */}
+            {(!elementOptionnel || !!elementEffectif) && (
             <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-card p-3">
               <input
                 type="checkbox"
@@ -384,6 +439,7 @@ const EcranBoussole = ({
                 <span className="text-white/50">{etiquetteSecond(genre)}</span>
               </span>
             </label>
+            )}
             {p.second && (
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {catalogueComplet
@@ -420,14 +476,16 @@ const EcranBoussole = ({
             titre="Ta foi"
             faite={!!p.religionId}
             ouverte={
-              !!p.roleId && !!elementEffectif && (!p.second || !!p.element2)
+              !!p.roleId &&
+              (!!elementEffectif || elementOptionnel) &&
+              (!p.second || !!p.element2)
             }
           >
-            {elementEffectif && (
-              <div className="mb-2 text-[11px] text-white/40">
-                {resumeFois(fois, elementEffectif, p.second ? p.element2 : null)}
-              </div>
-            )}
+            <div className="mb-2 text-[11px] text-white/40">
+              {elementEffectif
+                ? resumeFois(fois, elementEffectif, p.second ? p.element2 : null)
+                : "Sans domaine, aucune foi ne te refuse — les 15 t'accueillent."}
+            </div>
             <div className="flex flex-col gap-2">
               {fois.map((f) => (
                 <Carte
