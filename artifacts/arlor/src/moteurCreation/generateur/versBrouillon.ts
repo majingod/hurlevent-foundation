@@ -49,7 +49,7 @@ import type {
   BrouillonVisiteur,
 } from "../brouillon/types";
 import type { Classe, Competence, Langue, SnapshotVisiteur } from "../snapshot";
-import type { Alea, TiragePersonnage } from "./resoudre";
+import { TRAIT_INAPTE, type Alea, type TiragePersonnage } from "./resoudre";
 import type { CompositionOk } from "./types";
 
 /** Erreur de conversion — snapshot inutilisable ou tirage incomplet. */
@@ -66,6 +66,19 @@ function normaliser(nom: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+/** [Décision 42] uuid du trait « Inapte à la magie » — par NOM, jamais en dur. */
+function traitInapteId(snapshot: SnapshotVisiteur): string {
+  const trait = snapshot.tables.traits_raciaux.find(
+    (t) => t.nom === TRAIT_INAPTE
+  );
+  if (!trait) {
+    throw new ErreurConversionTirage(
+      `Trait « ${TRAIT_INAPTE} » introuvable dans le snapshot — la pose du trait auto (décision 42) est impossible.`,
+    );
+  }
+  return trait.id;
 }
 
 /** `ClasseId` moteur → uuid `classes.id` du snapshot (par nom normalisé). */
@@ -338,7 +351,22 @@ export function convertirTirageEnBrouillon(
       // Sous-type Chiméride : choisi au wizard (le tirage ne le porte pas).
     },
     etape3: {
-      traitsRaciauxChoisis: [],
+      // ⭐⭐ [DÉCISION 42, s372] Un tirage `inapteMagie` (Demi-Orc martial —
+      // la seule source aujourd'hui) POSE le trait racial : c'est l'arbitrage
+      // Fred « trait auto pour guerrier/voleur en 🎲 ». Le trait est GRATUIT
+      // (quota `nb_traits_raciaux` = 1, format serveur mesuré C79). Résolu
+      // par NOM au snapshot — échec bruyant si absent, jamais un id en dur.
+      // 🧭 ne passe jamais ici avec `inapteMagie` (le visiteur est apte,
+      // décisions 41+42) : le joueur 🧭 choisit son trait au wizard.
+      traitsRaciauxChoisis: tirage.inapteMagie
+        ? [
+            {
+              trait_id: traitInapteId(snapshot),
+              est_gratuit: true,
+              xp_depense: 0,
+            },
+          ]
+        : [],
     },
     etape4: {
       classeId: classe.id,

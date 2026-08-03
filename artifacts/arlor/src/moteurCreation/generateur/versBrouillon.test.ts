@@ -447,6 +447,43 @@ describe("convertirTirageEnBrouillon — s366 : les achats à choix reçoivent l
   });
 });
 
+describe("convertirTirageEnBrouillon — décision 42 (trait auto, s372)", () => {
+  it("tirage inapteMagie ⇒ « Inapte à la magie » est POSÉ : gratuit, 0 XP, id résolu au snapshot", () => {
+    const b = convertirTirageEnBrouillon(
+      snap,
+      { tirage: tirage({ classe: "guerrier", inapteMagie: true }), composition: compo() },
+      aleaFixe(0.4),
+    );
+    const attendu = snap.tables.traits_raciaux.find(
+      (t) => t.nom === "Inapte à la magie",
+    );
+    expect(attendu).toBeDefined();
+    expect(b.etape3.traitsRaciauxChoisis).toEqual([
+      { trait_id: attendu!.id, est_gratuit: true, xp_depense: 0 },
+    ]);
+    // La preuve par le contraire du cas apte vit au test « squelette » :
+    // inapteMagie false ⇒ traitsRaciauxChoisis === [] (le joueur choisira).
+  });
+
+  it("échec bruyant : snapshot sans le trait ⇒ conversion impossible — et gratuite pour les aptes", () => {
+    const sans = { ...snap, tables: { ...snap.tables, traits_raciaux: [] } };
+    expect(() =>
+      convertirTirageEnBrouillon(
+        sans,
+        { tirage: tirage({ classe: "guerrier", inapteMagie: true }), composition: compo() },
+        aleaFixe(0.4),
+      ),
+    ).toThrow(/Inapte/);
+    expect(() =>
+      convertirTirageEnBrouillon(
+        sans,
+        { tirage: tirage({ classe: "guerrier" }), composition: compo() },
+        aleaFixe(0.4),
+      ),
+    ).not.toThrow();
+  });
+});
+
 describe("convertirTirageEnBrouillon — décision 32 (gratuites à choix)", () => {
   it("prêtre : la religion TIRÉE est gravée sur la gratuite `religion` + étape 1 croyante", () => {
     const b = convertirTirageEnBrouillon(

@@ -93,7 +93,7 @@ export const ROLES_ELEMENT2: readonly string[] = [
   "pConsecrateur",
 ];
 
-const TRAIT_INAPTE = "Inapte à la magie";
+export const TRAIT_INAPTE = "Inapte à la magie";
 
 /** Ordre FIXE du tirage de classe — chaque grande famille a la même chance
  *  (¼), quel que soit son nombre d'archétypes (choix C1, s362). */
@@ -338,9 +338,10 @@ export function classesProposables(
 ): ClasseProposable[] {
   const { monde } = deps;
   const race = monde.races.find((r) => r.id === raceId);
-  const inapte = traitsChoisis
-    ? traitsChoisis.includes(TRAIT_INAPTE)
-    : !!race && raceInapteMagie(mondeInapte(monde), race.id);
+  // ⭐ [Décisions 41+42, s372] Le MODÈLE ne grise plus : sans traits connus,
+  // le visiteur est APTE et voit tout ouvert. L'INSTANCE (traits choisis)
+  // reste la seule à fermer — c'est la bascule annoncée par la décision 41.
+  const inapte = traitsChoisis ? traitsChoisis.includes(TRAIT_INAPTE) : false;
 
   return ORDRE_VOIES.map((classe): ClasseProposable => {
     const { cats, contenu } = deps.parClasse[classe];
@@ -515,18 +516,29 @@ export function tirerPersonnage(
   const race = piocher(races, alea);
   const budget = race.xp_depart;
 
-  // Conduite 1 (§2.2) : avant le fix, l'inaptitude se lit sur le POOL de la
-  // race — le dériveur partagé du moteur hors-ligne, une seule maison.
-  const inapte = raceInapteMagie(mondeInapte(monde), race.id);
+  // ⭐⭐⭐ [DÉCISION 42, s372 — arbitrage Fred, remplace la « Conduite 1 »]
+  // LE MODÈLE NE FILTRE PLUS LE POOL. Un Demi-Orc tiré accède aux 15 rôles :
+  // tiré MAGIQUE, il naît APTE (sorts/prières composés, PS normaux — le
+  // manuel : « les demi-orcs, ayant du sang humain, ont accès à la magie ») ;
+  // tiré MARTIAL (guerrier/voleur, la lettre de l'arbitrage s369), il reçoit
+  // « Inapte à la magie » D'OFFICE (+1 PV, jamais de PS) — `inapteMagie` sur
+  // le tirage SIGNIFIE « le trait est posé », et `versBrouillon` le traduit
+  // en trait racial gratuit à l'étape 3. La composition martiale se fait
+  // inapte (zéro achat à PS — 🛡️ perd sa Méditation, entre autres).
+  // 🧭, lui, ne pose JAMAIS de trait : le joueur choisit à l'étape 3, et
+  // `traitsIncompatibles` guide le wizard (Inapte grisé si magie composée).
+  const racePeutInapte = raceInapteMagie(mondeInapte(monde), race.id);
 
-  // ② La classe (¼ chacune) puis le rôle — pools pré-filtrés à la source.
+  // ② La classe (¼ parmi celles à pool non vide) puis le rôle — pools APTES
+  // (décision 42) ; pour guerrier/voleur, pool apte ≡ pool inapte (mesuré
+  // s369 : 0 rôle perdu), le tirage martial-inapte reste donc dans son pool.
   const classes = CLASSES.filter(
     (c) =>
       rolesTirables(
         deps.parClasse[c].contenu,
         deps.parClasse[c].cats,
         inventaire,
-        inapte
+        false
       ).length > 0
   );
   if (classes.length === 0) {
@@ -537,7 +549,11 @@ export function tirerPersonnage(
   }
   const classe = piocher(classes, alea);
   const { cats, contenu } = deps.parClasse[classe];
-  const role = piocher(rolesTirables(contenu, cats, inventaire, inapte), alea);
+  // ⭐ [Décision 42] L'inaptitude SE DÉRIVE de la classe tirée : martial →
+  // le trait sera posé, composition inapte ; magique → apte complet.
+  const inapte =
+    racePeutInapte && (classe === "guerrier" || classe === "voleur");
+  const role = piocher(rolesTirables(contenu, cats, inventaire, false), alea);
 
   // ③ Le cercle / domaine — imposé par l'archétype, sinon tiré dans le pool
   // légitime (jamais un interdit : §5.1 ② / §5.2 ②).
@@ -685,11 +701,14 @@ export function resoudreChoix(
     return { ok: false, raison: "Ce peuple n'existe pas — choisis ta race." };
   }
 
-  // Conduite 1 : le modèle (pool de race) fait foi… sauf si l'appelant
-  // connaît les traits CHOISIS — l'instance prime (monde post-fix).
+  // ⭐ [Décisions 41+42, s372] L'INSTANCE seule ferme : si l'appelant connaît
+  // les traits CHOISIS, ils font foi ; sinon le personnage est APTE — le
+  // modèle (pool de la race) ne présume plus rien en 🧭. Un Demi-Orc visiteur
+  // compose donc en caster complet ; s'il prend « Inapte » ensuite au wizard,
+  // la gate serveur `valider_etape_3` refuse le trait à qui porte de la magie.
   const inapte = choix.traitsChoisis
     ? choix.traitsChoisis.includes(TRAIT_INAPTE)
-    : raceInapteMagie(mondeInapte(monde), race.id);
+    : false;
 
   let religion: ReligionMonde | undefined;
   if (choix.religionId) {

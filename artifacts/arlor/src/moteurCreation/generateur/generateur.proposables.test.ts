@@ -9,7 +9,6 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { raceInapteMagie } from "../deriveurs";
 import { CatalogueCompetences } from "./catalogue";
 import {
   CatalogueMagie,
@@ -30,6 +29,7 @@ import fxPretre from "./fixtures/competences_pretre.fixture.json";
 import fxVoleur from "./fixtures/competences_voleur.fixture.json";
 import {
   classesProposables,
+  TRAIT_INAPTE,
   religionsProposables,
   rolesProposables,
   rolesTirables,
@@ -190,23 +190,25 @@ describe("🧭 classesProposables — les 4 voies, ouvertes ou grisées", () => 
     }
   });
 
-  it("une voie ouverte ⟺ au moins un de ses rôles est ouvert", () => {
+  it("une voie ouverte ⟺ au moins un de ses rôles est ouvert — visiteur (apte) ET instance (Inapte)", () => {
     for (const race of monde.races.filter((r) => r.est_actif && r.est_jouable)) {
       for (const inv of [VIDE, RICHE]) {
-        // L'inaptitude est re-dérivée ICI par le dériveur partagé, jamais
-        // par un nom de race en dur : sinon le test suivrait le code.
-        const inapte = raceInapteMagie(
-          {
-            tables: {
-              race_traits: monde.race_traits,
-              traits_raciaux: monde.traits_raciaux,
-            },
-          },
-          race.id
-        );
+        // ⭐ [Décision 42, s372] Sans traits connus, les DEUX fonctions sont
+        // aptes — le modèle ne présume plus rien.
         for (const c of classesProposables(deps, race.id, inv)) {
           const { cats, contenu } = parClasse[c.classe];
-          const ouverts = rolesProposables(contenu, cats, inv, inapte).filter(
+          const ouverts = rolesProposables(contenu, cats, inv, false).filter(
+            (r) => r.ouvert
+          ).length;
+          expect(c.ouverte).toBe(ouverts > 0);
+        }
+        // Et l'équivalence tient AUSSI à l'INSTANCE (le trait choisi) —
+        // c'est elle, désormais, la seule source de fermeture.
+        for (const c of classesProposables(deps, race.id, inv, [
+          TRAIT_INAPTE,
+        ])) {
+          const { cats, contenu } = parClasse[c.classe];
+          const ouverts = rolesProposables(contenu, cats, inv, true).filter(
             (r) => r.ouvert
           ).length;
           expect(c.ouverte).toBe(ouverts > 0);
@@ -215,11 +217,21 @@ describe("🧭 classesProposables — les 4 voies, ouvertes ou grisées", () => 
     }
   });
 
-  it("[s368 #4] voie fermée à DEUX causes : la phrase les SÉPARE (Demi-Orc, masque seul)", () => {
-    const voies = classesProposables(
+  it("[s368 #4 + décision 42] voie fermée à DEUX causes : la phrase les SÉPARE — à l'INSTANCE ; le visiteur, lui, voit ouvert", () => {
+    // ⭐ [Décision 42] Le VISITEUR (traits inconnus) est apte : masque seul,
+    // 🎭 et 🔮 s'ouvrent (aucune exigence d'équipement) → voie mage OUVERTE.
+    const visiteur = classesProposables(
       deps,
       raceParNom("Demi-Orc").id,
       new Set(["masque"])
+    );
+    expect(visiteur.find((v) => v.classe === "mage")!.ouverte).toBe(true);
+    // L'INSTANCE (porteur du trait) retrouve la double cause, DÉCOMPOSÉE.
+    const voies = classesProposables(
+      deps,
+      raceParNom("Demi-Orc").id,
+      new Set(["masque"]),
+      [TRAIT_INAPTE]
     );
     const mage = voies.find((v) => v.classe === "mage")!;
     expect(mage.ouverte).toBe(false);
@@ -235,7 +247,8 @@ describe("🧭 classesProposables — les 4 voies, ouvertes ou grisées", () => 
     const avecFioles = classesProposables(
       deps,
       raceParNom("Demi-Orc").id,
-      new Set(["masque", "fioles"])
+      new Set(["masque", "fioles"]),
+      [TRAIT_INAPTE]
     );
     expect(avecFioles.find((v) => v.classe === "mage")!.ouverte).toBe(true);
   });

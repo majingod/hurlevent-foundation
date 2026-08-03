@@ -19,7 +19,7 @@ import {
   type SortModele,
 } from "./catalogueMagie";
 import { type Catalogues } from "./composer";
-import { exigeDesPS, type ContenuClasse } from "./contenu/commun";
+import { estCompetenceAPS, exigeDesPS, type ContenuClasse } from "./contenu/commun";
 import { CONTENU_GUERRIER } from "./contenu/guerrier";
 import { CONTENU_MAGE } from "./contenu/mage";
 import { CONTENU_PRETRE, ESSENTIEL_SECOND_DOMAINE } from "./contenu/pretre";
@@ -404,22 +404,23 @@ describe("🧭 resoudreChoix — refus avec phrase, jamais en silence (G5)", () 
     expect(proscrit.ok).toBe(false);
   });
 
-  it("inapte, quadrant complet : Demi-Orc refusé sur un rôle à PS (conduite 1), Humain ok, traitsChoisis prime dans les deux sens", () => {
+  it("décision 42 : le MODÈLE ne ferme plus — Demi-Orc sans traits compose ✝️+domaine ; l'INSTANCE prime dans les deux sens", () => {
     const demiOrc = raceParNom("Demi-Orc").id;
     const humain = raceParNom("Humain").id;
-    // Conduite 1 (modèle) : tout Demi-Orc est traité inapte avant le fix DB.
-    const refus = resoudreChoix(
+    // ⭐ [Décision 42, s372] Sans traits connus, le visiteur est APTE : un
+    // Demi-Orc compose en caster complet (« ont accès à la magie », manuel).
+    const apte = resoudreChoix(
       deps,
       choixBase({ roleId: "pSoigne", raceId: demiOrc, element: "Bénédiction" })
     );
-    expect(refus.ok).toBe(false);
-    if (!refus.ok) expect(refus.raison).toContain("inapte");
+    expect(apte.ok).toBe(true);
+    if (apte.ok) expect(apte.composition.achatsMagie.length).toBeGreaterThan(0);
     const ok = resoudreChoix(
       deps,
       choixBase({ roleId: "pSoigne", raceId: humain, element: "Bénédiction" })
     );
     expect(ok.ok).toBe(true);
-    // L'INSTANCE prime (monde post-fix) : un Demi-Orc sans le trait est mage…
+    // L'INSTANCE prime : un Demi-Orc avec un AUTRE trait reste apte…
     const sansTrait = resoudreChoix(
       deps,
       choixBase({
@@ -430,6 +431,19 @@ describe("🧭 resoudreChoix — refus avec phrase, jamais en silence (G5)", () 
       })
     );
     expect(sansTrait.ok).toBe(true);
+    // …un Demi-Orc PORTEUR du trait est refusé sur ✝️+domaine (preuve par le
+    // contraire du premier cas — c'est bien l'instance qui ferme)…
+    const orcInapte = resoudreChoix(
+      deps,
+      choixBase({
+        roleId: "pSoigne",
+        raceId: demiOrc,
+        element: "Bénédiction",
+        traitsChoisis: ["Inapte à la magie"],
+      })
+    );
+    expect(orcInapte.ok).toBe(false);
+    if (!orcInapte.ok) expect(orcInapte.raison).toContain("inapte");
     // …et un Humain qui l'aurait (défensif) serait refusé.
     const avecTrait = resoudreChoix(
       deps,
@@ -690,6 +704,7 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
 
   it("un inventaire fourni élargit le tirage (jumeau de G8) : sur 300 tirages RICHE, d'autres races et ✨/ᚱ sortent", () => {
     const races = new Set<string>();
+    let demiOrcApte = false;
     const roles = new Set<string>();
     for (let i = 0; i < 300; i++) {
       const t = tirerPersonnage(deps, lcg(i * 104729 + 3), RICHE);
@@ -698,14 +713,20 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
       races.add(t.tirage.raceNom);
       roles.add(t.tirage.roleId);
       if (t.tirage.raceNom === "Demi-Orc") {
-        // Conduite 1 + D40 : un Demi-Orc tiré est traité inapte → JAMAIS de
-        // magie. Depuis la décision 40 il peut tirer ✝️ — sans domaine.
-        expect(t.composition.achatsMagie).toHaveLength(0);
-        if (t.tirage.classe === "pretre") {
-          expect(t.tirage.roleId).toBe("pSoigne");
-          expect(t.tirage.element).toBeUndefined();
+        // ⭐ [Décision 42, s372] Martial → le trait est posé (`inapteMagie`
+        // sur le tirage), zéro magie, zéro achat à PS ; magique → APTE
+        // complet, le tirage compose sorts/prières comme tout le monde.
+        const martial =
+          t.tirage.classe === "guerrier" || t.tirage.classe === "voleur";
+        expect(t.tirage.inapteMagie, `seed ${i}`).toBe(martial);
+        if (martial) {
+          expect(t.composition.achatsMagie).toHaveLength(0);
+          expect(
+            t.composition.achats.some((a) => estCompetenceAPS(a.nom)),
+            `seed ${i} : achat à PS chez un martial inapte`
+          ).toBe(false);
         } else {
-          expect(["guerrier", "voleur", "mage"]).toContain(t.tirage.classe);
+          demiOrcApte = true;
         }
       }
       // ⭐ [D40, décision 34] GATE « la fiche dit vrai » : tout ✝️ tiré AVEC
@@ -722,6 +743,9 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
       }
     }
     expect(races.size).toBeGreaterThanOrEqual(4);
+    // La branche APTE de la décision 42 doit être ATTESTÉE, pas déduite :
+    // au moins un Demi-Orc magique sur 300 tirages (lu à la machine).
+    expect(demiOrcApte).toBe(true);
     expect([...roles].some((r) => r === "mEnchanteur" || r === "mRuniste")).toBe(
       true
     );
@@ -747,6 +771,8 @@ describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
     const equivalences = [
       { desc: "Humain(80)", race: raceParNom("Humain"), inapte: false },
       { desc: "autres(60)", race: raceParNom("Gobelin"), inapte: false },
+      // [Décision 42] « inapte » = INSTANCE (traitsChoisis explicite) — elle
+      // couvre le 🎲 martial (trait posé) ET le porteur en 🧭/wizard.
       { desc: "Demi-Orc(60,inapte)", race: raceParNom("Demi-Orc"), inapte: true },
     ];
     let nb = 0;
