@@ -31,9 +31,13 @@
  *  - exception (réseau) → journalisée `code:"exception"`, STOP (`partiel`) : la
  *    reprise se fera dans le wizard, pas de retry dans ce lot.
  *
- * AUCUN appel à `avancer_etape`/`valider_*` : le rejeu laisse `etape_creation`
- * là où `sauvegarder_etape_4` l'a mis ; le joueur re-parcourt les étapes 5+ dans
- * le wizard (validation native).
+ * AUCUN appel à `avancer_etape`/`valider_*` ICI : le rejeu laisse
+ * `etape_creation` là où `sauvegarder_etape_4` l'a mis (depuis la migration
+ * `20260803145513`, l'étape 4 complète avance vers 5 depuis toute étape ≤ 4).
+ * [s373] Pour le GÉNÉRATEUR, c'est `appliquerComposition` qui enchaîne ensuite
+ * `avancer_etape` 5→9 (vraies validations) pour déverrouiller le wizard ; les
+ * appelants VIS-6 (`RepriseEssai`, `preVolBrouillon`) gardent le comportement
+ * séquentiel d'origine.
  *
  * [PR-B 🎲 s365] Le CŒUR du rejeu est extrait en `executerRejeu` : exécution
  * du plan sur un personnage EXISTANT, sans démarrage. `rejouerBrouillon`

@@ -19,7 +19,12 @@ import BasculeAbregeIntegral from "@/components/shared/BasculeAbregeIntegral";
 import ErreurChargement from "@/components/shared/ErreurChargement";
 import { useModeAffichage } from "@/contexts/ModeAffichageContext";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
-import { gainDepartProjete, xpDisponibleJaugeEtape2 } from "./Etape2_V2.calc";
+import { TRAIT_INAPTE } from "@/moteurCreation/generateur/resoudre";
+import {
+  gainDepartProjete,
+  raisonTraitInapteBloque,
+  xpDisponibleJaugeEtape2,
+} from "./Etape2_V2.calc";
 
 const CHIMERIDE_ID = "926b6948-e192-4d41-9909-efabaa3059b5";
 const NON_RACES_ID = "4d7e2226-76cb-4b94-9df4-b8f12ff486e1";
@@ -140,6 +145,24 @@ const Etape2_V2 = ({
     // navigation SPA, l'init one-shot (initFait) fige la valeur perimee du cache
     // et ignore le refetch frais → la race / les traits persistes n'apparaissent
     // qu'apres un vrai reload. gcTime:0 jette le cache a la sortie => fetch frais.
+    gcTime: 0,
+  });
+
+  // [WIZARD-TRAIT-INCOMPATIBLE-NON-GRISE s373] Magie déjà acquise : sorts et
+  // prières du personnage, pour griser « Inapte à la magie » avec sa raison
+  // (miroir de la garde `valider_etape_3`, volet 3 — même fraîcheur gcTime:0 :
+  // le joueur peut acheter un sort à l'étape 6 puis revenir ici).
+  const { data: nbMagie } = useQuery({
+    queryKey: ["v2-perso-nb-magie", personnageId],
+    queryFn: async () => {
+      const [s, p] = await Promise.all([
+        clientActif.lirePersonnageSorts(personnageId),
+        clientActif.lirePersonnagePrieres(personnageId),
+      ]);
+      if (s.error) throw s.error;
+      if (p.error) throw p.error;
+      return { sorts: (s.data ?? []).length, prieres: (p.data ?? []).length };
+    },
     gcTime: 0,
   });
 
@@ -805,6 +828,17 @@ const Etape2_V2 = ({
                             const estGratuit = gratuits.has(t.id);
                             const estAchete = achetes.has(t.id);
                             const selectionne = estGratuit || estAchete;
+                            // [s373] Miroir de valider_etape_3 (volet 3) :
+                            // reconnaissance par le NOM, jamais par l'id.
+                            // On ne bloque JAMAIS le décochage (selectionne).
+                            const raisonInapte =
+                              t.nom === TRAIT_INAPTE && !selectionne
+                                ? raisonTraitInapteBloque(
+                                    nbMagie?.sorts ?? 0,
+                                    nbMagie?.prieres ?? 0,
+                                  )
+                                : null;
+                            const bloque = raisonInapte != null;
                             const texteTrait =
                               mode === "integral"
                                 ? t.texte_manuel ?? t.description
@@ -816,15 +850,18 @@ const Etape2_V2 = ({
                                   selectionne
                                     ? "border-gold/50 bg-gold/5"
                                     : "border-white/10 bg-black/25"
-                                }`}
+                                }${bloque ? " opacity-55" : ""}`}
                               >
                                 <div
                                   role="button"
-                                  tabIndex={traitsActifs ? 0 : -1}
-                                  onClick={() => toggleTrait(t.id)}
+                                  tabIndex={traitsActifs && !bloque ? 0 : -1}
+                                  onClick={() => {
+                                    if (!bloque) toggleTrait(t.id);
+                                  }}
                                   onKeyDown={(e) => {
                                     if (
                                       traitsActifs &&
+                                      !bloque &&
                                       (e.key === "Enter" || e.key === " ")
                                     ) {
                                       e.preventDefault();
@@ -832,14 +869,14 @@ const Etape2_V2 = ({
                                     }
                                   }}
                                   className={`flex items-start gap-3 px-3 pb-2 pt-2.5 ${
-                                    traitsActifs
+                                    traitsActifs && !bloque
                                       ? "cursor-pointer"
                                       : "cursor-not-allowed"
                                   }`}
                                 >
                                   <Checkbox
                                     checked={selectionne}
-                                    disabled={!traitsActifs}
+                                    disabled={!traitsActifs || bloque}
                                     onCheckedChange={() => toggleTrait(t.id)}
                                     onClick={(e) => e.stopPropagation()}
                                     className="mt-0.5"
@@ -868,6 +905,11 @@ const Etape2_V2 = ({
                                     <p className="mt-1 whitespace-pre-line text-[12.5px] leading-relaxed text-white/[0.78]">
                                       {texteTrait}
                                     </p>
+                                    {bloque && (
+                                      <p className="mt-1.5 text-[12px] leading-relaxed text-amber-400">
+                                        {raisonInapte}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
 

@@ -354,7 +354,12 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     if (!personnageIdParUrl) return;
     if (!personnage) return;
     const finalise = (personnage.etape_creation ?? 1) > TOTAL_STEPS;
-    const cible = finalise
+    // [s373 WIZARD-ETAPES-VERROUILLEES-APRES-GENERATEUR] Un personnage SANS
+    // NOM (sortie du générateur : étapes 1-3 en brouillon, identité vierge)
+    // rouvre sur « nomme ton perso », jamais sur le récapitulatif — le nom
+    // est la clé du déverrouillage (cf. `etapeMax`).
+    const sansNomInitial = !(personnage.nom ?? "").trim();
+    const cible = finalise || sansNomInitial
       ? 1
       : Math.max(1, Math.min(personnage.etape_creation ?? 1, TOTAL_STEPS));
     // NAV-2 : positionnement réel différé à l'effet dédié (gate `chargee`).
@@ -479,9 +484,17 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
 
   // Étape la plus avancée atteinte : étapes <= etapeMax cliquables dans le stepper.
   // En mode admin OU campagne (perso finalisé), toutes les étapes sont accessibles.
+  // [s373] LE NOM EST LA CLÉ DU DÉVERROUILLAGE (demande Fred) : un personnage
+  // sans nom (sortie du générateur — un perso MANUEL ne peut pas dépasser
+  // l'étape 1 sans nom, la règle est donc auto-ciblée) reste sur l'étape 1 ;
+  // dès le nom donné, la navigation s'ouvre jusqu'à `etape_creation` (10
+  // après la chaîne d'avancement d'`appliquerComposition`).
+  const sansNom = !modeAdmin && !modeCampagne && !(personnage?.nom ?? "").trim();
   const etapeMax = modeAdmin || modeCampagne
     ? TOTAL_STEPS
-    : Math.max(etape, Math.min(personnage?.etape_creation ?? 1, TOTAL_STEPS));
+    : sansNom
+      ? 1
+      : Math.max(etape, Math.min(personnage?.etape_creation ?? 1, TOTAL_STEPS));
   const sauterEtape = (n: number) => {
     if (etapeVerrouillee(n)) return;
     // NAV-2 : clamp de sécurité — une étape non applicable n'a pas d'icône
@@ -924,6 +937,19 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
             </div>
           )}
         </header>
+
+        {/* [s373] Sortie du générateur (🧭 comme 🎲) : le personnage est
+            entièrement composé mais SANS NOM (etape_creation >= 5 + nom vide,
+            combinaison impossible en création manuelle). Le bandeau nomme la
+            cause ET la promesse : nommer déverrouille la promenade. */}
+        {sansNom && (personnage?.etape_creation ?? 1) >= 5 && (
+          <div className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-gold">
+            ✨ Ton personnage est prêt — il ne lui manque qu'un nom.
+            Donne-lui un nom ci-dessous : toutes les étapes se
+            déverrouilleront et tu pourras te promener librement entre elles
+            pour l'ajuster.
+          </div>
+        )}
 
         {/* Contenu de l'étape */}
         <main className="rounded-xl border border-white/10 bg-black/30 p-6 shadow-lg">
