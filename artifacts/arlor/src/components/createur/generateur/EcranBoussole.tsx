@@ -1,6 +1,5 @@
 import { useMemo, type Dispatch, type SetStateAction } from "react";
 
-import { raceInapteMagie } from "@/moteurCreation/deriveurs";
 import type { Catalogues } from "@/moteurCreation/generateur/composer";
 import type { RoleClasse } from "@/moteurCreation/generateur/contenu/commun";
 import {
@@ -43,8 +42,10 @@ import { LABELS_CLASSES } from "./ficheTirage.logic";
  *   Noire sont proposables ICI et nulle part ailleurs, chacune avec son
  *   avertissement — deux motifs distincts (loi du monde / affaire de foi).
  * - ARBITRAGE FRED s367 : les 15 foi, triées prédilection → tolérée →
- *   proscrite ; l'inaptitude ferme au MODÈLE (une race qui PEUT être inapte
- *   voit ses voies à PS grisées — divergence délibérée documentée).
+ *   proscrite. ⭐ [Décisions 41+42, s372] L'inaptitude ne ferme PLUS au
+ *   modèle : le visiteur est APTE partout (le trait « Inapte » se choisit au
+ *   wizard — ou se pose au 🎲 pour un Demi-Orc martial). La gate serveur
+ *   `valider_etape_3` couvre l'incohérence trait + magie.
  *
  * Écran de LECTURE pure : l'unique sortie est `onVoirFiche(choix)` — le
  * conteneur appelle le résolveur et navigue. Le refus parlant du moteur
@@ -166,20 +167,8 @@ const EcranBoussole = ({
 }: EcranBoussoleProps) => {
 
   const race = deps.monde.races.find((r) => r.id === raceId);
-  /** Modèle, pas instance (arbitrage s367) — le MÊME dériveur que le moteur. */
-  const inapte = useMemo(
-    () =>
-      raceInapteMagie(
-        {
-          tables: {
-            race_traits: deps.monde.race_traits,
-            traits_raciaux: deps.monde.traits_raciaux,
-          },
-        },
-        raceId
-      ),
-    [deps, raceId]
-  );
+  // ⭐ [Décisions 41+42, s372] Plus d'inapte-modèle : le visiteur est APTE
+  // (le trait se choisit au wizard). L'écran passe donc `false` aux pools.
 
   const voies = useMemo(
     () => classesProposables(deps, raceId, inventaire),
@@ -193,10 +182,10 @@ const EcranBoussole = ({
             classeCourante.contenu,
             classeCourante.cats,
             inventaire,
-            inapte
+            false
           )
         : [],
-    [classeCourante, inventaire, inapte]
+    [classeCourante, inventaire]
   );
 
   const role: RoleClasse | null =
@@ -359,12 +348,6 @@ const EcranBoussole = ({
           >
             {(attendElement || elementOptionnel) && (
               <>
-                {elementOptionnel && inapte && (
-                  <div className="mb-2 text-[11px] text-white/50">
-                    {race?.nom ?? "Ton peuple"} peut naître inapte à la magie —
-                    sans domaine, le soigneur reste jouable.
-                  </div>
-                )}
                 <div className="grid grid-cols-2 gap-2">
                   {elementOptionnel && (
                     <Carte
@@ -393,7 +376,6 @@ const EcranBoussole = ({
                       <Carte
                         key={nom}
                         actif={p.element === nom}
-                        grise={elementOptionnel && inapte}
                         lisere={!!avert}
                         onClick={() =>
                           setP((q) => ({ ...q, element: nom, element2: null, religionId: null }))

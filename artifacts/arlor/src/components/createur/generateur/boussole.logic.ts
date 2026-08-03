@@ -200,10 +200,12 @@ export function pretPourFiche(
 
 /** Le `ChoixJoueur` que le conteneur enverra à `resoudreChoix`.
  *
- *  ⚠️ ARBITRAGE FRED s367 : `traitsChoisis` n'est PAS posé — le résolveur
- *  dérive l'inaptitude du MODÈLE (le pool de la race), et c'est voulu : une
- *  race qui PEUT être inapte voit ses voies à PS grisées en amont
- *  (divergence délibérée avec la décision 33, documentée). */
+ *  ⭐ [Décisions 41+42, s372 — remplace l'arbitrage s367] `traitsChoisis`
+ *  n'est toujours pas posé, mais le sens a changé : le résolveur ne dérive
+ *  PLUS l'inaptitude du modèle — sans traits connus, le visiteur est APTE
+ *  partout. Le trait « Inapte » se choisit au wizard (étape 3), où
+ *  `traitsIncompatibles` du résultat grise ce qui contredit la fiche, et la
+ *  gate serveur `valider_etape_3` fait foi. */
 export function construireChoix(
   p: ParcoursBoussole,
   raceId: string,
