@@ -453,22 +453,29 @@ const AdminApprobations = () => {
                   )}
                 </div>
 
-                {grp.est_termine ? (
-                  <div className="flex items-center gap-3 flex-wrap rounded-lg border border-dashed border-primary/40 bg-primary/[0.06] px-4 py-3 text-sm">
-                    <span><span className="text-primary font-semibold">{grp.items.length}</span> présence(s) non confirmée(s)</span>
-                    <button
-                      onClick={() => bulkMarquerPresent(grp.items.map((i) => i.inscription_id))}
-                      disabled={updatingId === "bulk"}
-                      className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.76rem] font-semibold border border-green-500/50 text-green-400 hover:bg-green-500/10 disabled:opacity-40"
-                    >
-                      ✓ Tout marquer présent ({grp.items.length})
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-xs italic" style={{ color: "hsl(45 90% 60%)" }}>
-                    ⏳ Événement à venir — pas de confirmation groupée avant le jour J.
-                  </p>
-                )}
+                {/* [s372, demande Fred] Le bouton groupé est TOUJOURS là :
+                    `est_termine` ne bascule qu'à la clôture manuelle, donc le
+                    gate d'avant créait un piège après le GN (32 en attente,
+                    aucun bouton). La RPC `changer_statut_inscription` gère
+                    les deux cas — non clôturé : marque simple, XP à la
+                    clôture ; clôturé : récompense immédiate. */}
+                <div className="flex items-center gap-3 flex-wrap rounded-lg border border-dashed border-primary/40 bg-primary/[0.06] px-4 py-3 text-sm">
+                  <span>
+                    <span className="text-primary font-semibold">{grp.items.length}</span> présence(s) non confirmée(s)
+                    {!grp.est_termine && (
+                      <span className="block text-xs text-muted-foreground">
+                        XP et niveaux versés à la clôture de l'événement.
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => bulkMarquerPresent(grp.items.map((i) => i.inscription_id))}
+                    disabled={updatingId === "bulk"}
+                    className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.76rem] font-semibold border border-green-500/50 text-green-400 hover:bg-green-500/10 disabled:opacity-40"
+                  >
+                    ✓ Tout marquer présent ({grp.items.length})
+                  </button>
+                </div>
 
                 {grp.items.map((p) => (
                   <div key={p.inscription_id} className="rounded-lg border border-primary/10 bg-card/50 backdrop-blur-sm p-4">
