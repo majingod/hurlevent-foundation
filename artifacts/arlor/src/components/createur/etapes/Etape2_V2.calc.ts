@@ -36,3 +36,31 @@ export function gainDepartProjete(
       : 0
     : xpDepartCible;
 }
+
+/**
+ * [WIZARD-TRAIT-INCOMPATIBLE-NON-GRISE, s373] Miroir de la garde serveur
+ * `valider_etape_3` (volet 3, s370) : le trait « Inapte à la magie » se
+ * propose GRISÉ — avec sa raison — quand le personnage possède déjà des
+ * sorts ou des prières. La raison DÉCOMPOSE ses causes (Gotcha C78) et
+ * reprend MOT POUR MOT la phrase du refus serveur : l'écran et la gate
+ * racontent la même chose. `null` = rien à griser. Le consommateur (C84)
+ * est la carte trait d'`Etape2_V2.tsx` ; la reconnaissance du trait se
+ * fait par le NOM (`TRAIT_INAPTE`), comme au serveur.
+ */
+export function raisonTraitInapteBloque(
+  nbSorts: number,
+  nbPrieres: number,
+): string | null {
+  if (nbSorts + nbPrieres <= 0) return null;
+  const detail =
+    nbSorts > 0 && nbPrieres > 0
+      ? `${nbSorts} sort(s) et ${nbPrieres} prière(s)`
+      : nbSorts > 0
+        ? `${nbSorts} sort(s)`
+        : `${nbPrieres} prière(s)`;
+  return (
+    `Ce personnage possède déjà ${detail} : le trait « Inapte à la magie » ` +
+    `lui retirerait définitivement tous ses points de spiritualité. ` +
+    `Retirez sa magie avant de choisir ce trait.`
+  );
+}

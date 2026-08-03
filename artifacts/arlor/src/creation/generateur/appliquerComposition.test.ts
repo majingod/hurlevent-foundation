@@ -182,7 +182,7 @@ beforeEach(async () => {
 /* ------------------------------------------------------------------ */
 
 describe("appliquerComposition — bout-en-bout clientVisiteur", () => {
-  it("prêtre : COMPLET, religion tirée gravée (étape 1 + gratuite), rien n'avance", async () => {
+  it("prêtre : COMPLET, religion tirée gravée (étape 1 + gratuite), wizard déverrouillé (étape 10)", async () => {
     const res = tirageDeClasse("pretre");
     const resultat = await appliquerComposition(
       clientVisiteur,
@@ -196,11 +196,15 @@ describe("appliquerComposition — bout-en-bout clientVisiteur", () => {
     expect(resultat.personnageId).toBe(PERSONNAGE_LOCAL_ID);
 
     const b = brouillonStocke();
-    // Identité vierge : le joueur nomme au wizard ; étape courante restée à 1
-    // (étapes 1-3 en brouillon n'avancent pas ; l'étape 4 complète n'avance
-    // que depuis 4 — miroir du serveur).
+    // Identité vierge : le joueur nomme au wizard. [s373] Depuis la migration
+    // 20260803145513 (étape 4 complète avance depuis toute étape ≤ 4) et la
+    // chaîne `avancerEtape` 5→9 d'appliquerComposition, l'étape courante
+    // atteint 10 : le wizard s'ouvre entièrement (« comme si on modifiait un
+    // perso déjà fait » — demande Fred s372). L'ancien comportement attesté
+    // ici (« restée à 1 ») était le DÉFAUT corrigé, pas une règle.
     expect(b.etape1.nom).toBe("");
-    expect(b.meta.etapeCourante).toBe(1);
+    expect(b.meta.etapeCourante).toBe(10);
+    expect(resultat.etapeApresAvancement).toBe(10);
     // Décision 32 : religion TIRÉE, aux deux endroits.
     expect(b.etape1.estCroyant).toBe(true);
     expect(b.etape1.religionId).toBe(res.tirage.religionId);
@@ -352,5 +356,111 @@ describe("appliquerComposition — preuves par le contraire", () => {
     expect(resultat.echecs).toHaveLength(1);
     expect(resultat.echecs[0]).toMatchObject({ type: "etape1", code: "nom_manquant" });
     expect(resultat.faits).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* [s373] Chaîne d'avancement 5→9 (déverrouillage du wizard)           */
+/* ------------------------------------------------------------------ */
+
+describe("appliquerComposition — chaîne d'avancement 5→9 (s373)", () => {
+  it("appelle avancerEtape dans l'ordre 5,6,7,8,9 et atteint 10 (guerrier : étapes masquées comprises)", async () => {
+    const res = tirageDeClasse("guerrier");
+    const appels: number[] = [];
+    const clientEspion = {
+      ...clientVisiteur,
+      avancerEtape: async (params: { p_personnage_id: string; p_etape_courante: number }) => {
+        appels.push(params.p_etape_courante);
+        return clientVisiteur.avancerEtape(params);
+      },
+    } as typeof clientVisiteur;
+
+    const resultat = await appliquerComposition(
+      clientEspion,
+      res,
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(3) },
+    );
+
+    expect(appels).toEqual([5, 6, 7, 8, 9]);
+    expect(resultat.etapeApresAvancement).toBe(10);
+    expect(brouillonStocke().meta.etapeCourante).toBe(10);
+  });
+
+  it("un refus arrête la chaîne EN SILENCE : statu quo séquentiel, échecs d'achat intacts", async () => {
+    const res = tirageDeClasse("pretre");
+    const appels: number[] = [];
+    const clientRefuseA7 = {
+      ...clientVisiteur,
+      avancerEtape: async (params: { p_personnage_id: string; p_etape_courante: number }) => {
+        appels.push(params.p_etape_courante);
+        if (params.p_etape_courante >= 7) {
+          return {
+            data: {
+              succes: false,
+              erreurs: [{ code: "test_refus", message: "refus simulé" }],
+              avertissements: [],
+              donnees: {},
+            },
+            error: null,
+          } as Awaited<ReturnType<typeof clientVisiteur.avancerEtape>>;
+        }
+        return clientVisiteur.avancerEtape(params);
+      },
+    } as typeof clientVisiteur;
+
+    const resultat = await appliquerComposition(
+      clientRefuseA7,
+      res,
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(42) },
+    );
+
+    // La chaîne s'est arrêtée à 7 (5 et 6 passés, 7 refusé, 8-9 jamais tentés).
+    expect(appels).toEqual([5, 6, 7]);
+    expect(resultat.etapeApresAvancement).toBe(7);
+    expect(brouillonStocke().meta.etapeCourante).toBe(7);
+    // SILENCE : le refus d'avancement ne pollue PAS les échecs d'achat
+    // (le toast de la page compte `echecs` — il doit rester juste).
+    expect(resultat.echecs).toEqual([]);
+    expect(resultat.statut).toBe("complet");
+  });
+
+  it("preuve par le contraire : étape 4 refusée → avancerEtape JAMAIS appelé, phase null", async () => {
+    const res = tirageDeClasse("pretre");
+    const appels: number[] = [];
+    const clientEtape4Refuse = {
+      ...clientVisiteur,
+      sauvegarderEtape4: async () =>
+        ({
+          data: {
+            succes: false,
+            erreurs: [{ code: "test_refus_etape4", message: "refus simulé" }],
+            avertissements: [],
+            donnees: {},
+          },
+          error: null,
+        }) as Awaited<ReturnType<typeof clientVisiteur.sauvegarderEtape4>>,
+      avancerEtape: async (params: { p_personnage_id: string; p_etape_courante: number }) => {
+        appels.push(params.p_etape_courante);
+        return clientVisiteur.avancerEtape(params);
+      },
+    } as typeof clientVisiteur;
+
+    const resultat = await appliquerComposition(
+      clientEtape4Refuse,
+      res,
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(42) },
+    );
+
+    expect(resultat.statut).toBe("partiel");
+    expect(appels).toEqual([]);
+    expect(resultat.etapeApresAvancement).toBeNull();
+    // Et l'ordre du plan protège toujours : aucun achat n'est parti.
+    const achats = resultat.faits.filter((f) =>
+      ["competence", "sort", "priere"].includes(f.type),
+    );
+    expect(achats).toEqual([]);
   });
 });

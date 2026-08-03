@@ -1152,7 +1152,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           );
         }
 
-        const nb = avancerVers(casse, 4, 5);
+        const nb = avancerEtape4Vers5(casse);
         sauver(nb);
         return repOk(
           { personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante },
@@ -1177,7 +1177,7 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         }
       }
 
-      const nb = avancerVers(appliquerEtape4(b, payload), 4, 5);
+      const nb = avancerEtape4Vers5(appliquerEtape4(b, payload));
       sauver(nb);
       return repOk({ personnage_id: PERSONNAGE_LOCAL_ID, etape_creation_apres: nb.meta.etapeCourante });
     },
@@ -2184,6 +2184,19 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
 function avancerVers(b: BrouillonVisiteur, de: number, vers: number): BrouillonVisiteur {
   if (b.meta.etapeCourante !== de) return b;
   return { ...b, meta: { ...b.meta, etapeCourante: vers } };
+}
+
+/**
+ * [s373 WIZARD-ETAPES-VERROUILLEES-APRES-GENERATEUR] Miroir 1:1 de la
+ * migration `20260803145513` : l'étape 4 COMPLÈTE avance vers 5 depuis
+ * TOUTE étape ≤ 4 (le générateur la complète depuis l'étape 1, étapes 1-3
+ * en brouillon — contrat s365). Le brouillon, lui, n'avance toujours
+ * JAMAIS (retour anticipé plus haut). Les étapes 1-3 et `avancerEtape`
+ * gardent `avancerVers` strict : seule l'étape 4 porte cette règle.
+ */
+function avancerEtape4Vers5(b: BrouillonVisiteur): BrouillonVisiteur {
+  if (b.meta.etapeCourante > 4) return b;
+  return { ...b, meta: { ...b.meta, etapeCourante: 5 } };
 }
 
 /**
