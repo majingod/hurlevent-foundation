@@ -461,9 +461,14 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   // SCROLL-TO-TOP : remonter en haut du wizard à chaque changement d'étape.
   // Les étapes sont du state (setEtape), pas une route → le ScrollToTop global
   // (basé sur pathname) ne se déclenche pas ici.
+  // [s373] `accueilFranchi` EN DÉPENDANCE : en sortant du générateur (🧭/🎲),
+  // l'étape vaut DÉJÀ 1 — l'effet sur `[etape]` seul ne partait donc jamais et
+  // le joueur atterrissait au milieu du wizard, sous le bandeau doré « il ne
+  // manque qu'un nom » (constaté par Fred en aperçu). Couvre aussi le retour
+  // vers l'accueil des portes (`setAccueilFranchi(false)`).
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [etape]);
+  }, [etape, accueilFranchi]);
 
   const xpTotal = personnage?.xp_total ?? 0;
   const xpDepense = personnage?.xp_depense ?? 0;

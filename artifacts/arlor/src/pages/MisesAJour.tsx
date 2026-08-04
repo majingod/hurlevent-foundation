@@ -18,7 +18,7 @@ interface Jalon {
 }
 
 // Ordre d'affichage des mois dans la section « Fait » (plus récent d'abord).
-const PERIODES: string[] = ["Juillet 2026", "Juin 2026", "Mai 2026", "Avril 2026 · Mise en route"];
+const PERIODES: string[] = ["Août 2026", "Juillet 2026", "Juin 2026", "Mai 2026", "Avril 2026 · Mise en route"];
 
 const JALONS: Jalon[] = [
   // ===== En cours =====
@@ -27,6 +27,23 @@ const JALONS: Jalon[] = [
     titre: "Page « Nouveautés »",
     description:
       "La page que tu lis : un espace de transparence sur l'évolution de la plateforme.",
+  },
+
+  // ===== Fait — Août 2026 =====
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "Deux nouvelles façons de créer un personnage : « Guide-moi » et « Surprends-moi »",
+    description:
+      "Créer un personnage ne commence plus forcément par une page blanche. À l'ouverture du créateur, deux portes s'ajoutent à « Je bâtis moi-même », que tu peux ignorer complètement si tu préfères l'ancienne façon — elle n'a pas changé d'un pouce. « Guide-moi » 🧭 te pose quelques questions simples — ta race, ce que tu aimes jouer, l'équipement que tu possèdes déjà — et te propose les rôles qui te conviennent, en te montrant ceux qui te sont fermés ET pourquoi ils le sont, plutôt que de les cacher. « Surprends-moi » 🎲 tire un personnage complet d'un coup : race, classe, compétences, sorts ou prières, tout est choisi et payé pour toi, sans XP gaspillé. Dans les deux cas, tu tombes ensuite dans le créateur habituel avec un personnage déjà composé : il ne te reste qu'à lui donner un nom, et toutes les étapes s'ouvrent pour que tu ajustes ce que tu veux, comme sur n'importe quel personnage. Rien n'est définitif tant que tu n'as pas finalisé, et l'équipement que tu déclares possèder ne sert qu'à éviter qu'on te propose un rôle que tu ne pourrais pas costumer.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "Ta fiche se libère dès que ta présence est confirmée",
+    description:
+      "Jusqu'ici, ta fiche restait gelée après un GN jusqu'à ce que l'événement soit clôturé — parfois plusieurs jours. Désormais, dès que ta présence est confirmée, ta fiche se libère et tu peux de nouveau y faire des ajouts et des améliorations. Une photo de ton personnage est prise à cet instant précis, pour garder la trace de ta fiche telle que tu l'as jouée au GN. Attention : ton XP de GN et ton niveau, eux, arrivent toujours à la clôture de l'événement par l'animation, un peu plus tard. Voir ta fiche déverrouillée ne veut donc pas encore dire que ton XP est versée.",
   },
 
   // ===== Fait — Juillet 2026 =====
