@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "« Surprends-moi » ne dépense plus d'XP en points de spiritualité inutiles",
+    description:
+      "Les points de spiritualité ne servent qu'à lancer de la magie — sorts, prières, canalisation, runes. Le tirage 🎲 en achetait pourtant à des personnages qui n'en lanceront jamais : un forgeron pouvait naître avec 8 XP placés dans une réserve qu'aucune de ses capacités n'utilise, un alchimiste jusqu'à 20. C'est corrigé : si ton personnage tiré n'a aucun usage de sa spiritualité, cet XP n'est plus dépensé — il t'est laissé, bien visible sur ta fiche avec la mention « Il reste N XP », et tu le places toi-même dans le créateur sur ce qui sert vraiment à ton personnage. Les personnages déjà créés ne bougent pas d'un point.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Deux nouvelles façons de créer un personnage : « Guide-moi » et « Surprends-moi »",
     description:
       "Créer un personnage ne commence plus forcément par une page blanche. À l'ouverture du créateur, deux portes s'ajoutent à « Je bâtis moi-même », que tu peux ignorer complètement si tu préfères l'ancienne façon — elle n'a pas changé d'un pouce. « Guide-moi » 🧭 te pose quelques questions simples — ta race, ce que tu aimes jouer, l'équipement que tu possèdes déjà — et te propose les rôles qui te conviennent, en te montrant ceux qui te sont fermés ET pourquoi ils le sont, plutôt que de les cacher. « Surprends-moi » 🎲 tire un personnage complet d'un coup : race, classe, compétences, sorts ou prières, tout est choisi et payé pour toi, sans XP gaspillé. Dans les deux cas, tu tombes ensuite dans le créateur habituel avec un personnage déjà composé : il ne te reste qu'à lui donner un nom, et toutes les étapes s'ouvrent pour que tu ajustes ce que tu veux, comme sur n'importe quel personnage. Rien n'est définitif tant que tu n'as pas finalisé, et l'équipement que tu déclares possèder ne sert qu'à éviter qu'on te propose un rôle que tu ne pourrais pas costumer.",

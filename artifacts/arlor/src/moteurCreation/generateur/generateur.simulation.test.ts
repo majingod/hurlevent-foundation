@@ -125,6 +125,8 @@ const coutCouche = (c: Extract<Composition, { ok: true }>, couche: number) =>
 describe("simulation — tout le domaine", () => {
   it("496 compositions : ok partout, 0 ≤ reliquat ≤ 3, comptes exacts, aucun palier en double", () => {
     let nb = 0;
+    // ⭐ [s374] Reliquats > 3 : NOMMÉS (ensemble exact machine).
+    const hauts: string[] = [];
     const pire = { reliquat: -1, desc: "" };
     for (const [idx, cas] of CAS.entries()) {
       const { cats, contenu } = PAR_CLASSE[cas.classe];
@@ -155,7 +157,7 @@ describe("simulation — tout le domaine", () => {
           if (!c.ok) continue;
           nb += 1;
           expect(c.reliquat, desc).toBeGreaterThanOrEqual(0);
-          expect(c.reliquat, desc).toBeLessThanOrEqual(3);
+          if (c.reliquat > 3) hauts.push(`${desc} → ${c.reliquat}`);
           expect(c.totalDepense + c.reliquat, desc).toBe(budget);
           const somme =
             c.achats.reduce((s, a) => s + a.coutXp, 0) +
@@ -185,6 +187,22 @@ describe("simulation — tout le domaine", () => {
       }
     }
     expect(nb).toBe(616);
+    // ⭐ [s374] Le domaine du COMPOSEUR est plus fin que celui du 🎲 (il
+    // varie l'inventaire par cas) : 10 combinaisons dépassent 3 XP, toutes
+    // NOMMÉES, pire cas 20 (⚗️ n'a aucune magie à composer). L'XP est
+    // rendue au joueur (alerte décision 15) — [GENERATEUR-GRAIN-RECETTES].
+    expect(hauts.sort()).toEqual([
+      "guerrier/gForgeron inv=[] budget=80 ③absent → 5",
+      "guerrier/gForgeron inv=[] budget=80 ③tiré → 5",
+      "guerrier/gForgeron inv=[contondante_moyenne,ecu,armure_cuir,bandages] budget=80 ③absent → 5",
+      "guerrier/gFrappe inv=[lame_courte] budget=60 ③absent → 4",
+      "guerrier/gTient inv=[armure_cuir] budget=80 ③absent → 7",
+      "guerrier/gTient inv=[armure_cuir] budget=80 ③tiré → 7",
+      "mage/mAlchimiste inv=[fioles,baton_sceptre_baguette,feuille_crayon] budget=80 ③absent → 20",
+      "mage/mAlchimiste inv=[fioles,baton_sceptre_baguette,feuille_crayon] budget=80 ③tiré → 9",
+      "mage/mAlchimiste inv=[fioles] budget=80 ③absent → 20",
+      "mage/mAlchimiste inv=[fioles] budget=80 ③tiré → 9",
+    ]);
     // ⭐ ATTESTATION du pire cas (re-mesuré s353, pas promis).
     // Depuis que les filets martiaux se terminent sur `Développement
     // Spirituel` à 2 XP (plafonds mesurés en prod, arbitrage Fred s353), le
@@ -198,13 +216,15 @@ describe("simulation — tout le domaine", () => {
     // pour ⛪ et ✝️ (🕊️ et 📿 imposent le leur), donc 8 domaines × 4 cas au
     // lieu de 6 cas figés. LE DOMAINE DE LA SIMULATION CHANGE QUAND UNE RÈGLE
     // CHANGE : on le RE-COMPTE, on ne réutilise pas l'ancien effectif.
-    // ⚠️ s360 — LE MAXIMUM N'A PAS BOUGÉ (3 XP), SEUL SON PORTEUR A CHANGÉ.
-    // `pire` ne retient que le PREMIER à atteindre le maximum ; les prêtres
-    // passent avant les mages dans `CAS`, donc ⛪ prend la place de ✨ sur une
-    // ÉGALITÉ, pas sur une aggravation. Le plafond de 3 XP tient sur les 616.
+    // ⭐ [s374] LE MAXIMUM A BOUGÉ, ET C'EST VOULU : l'ancien « 3 » était
+    // tenu en partie par des PS MORTS (le composeur bouchait le budget avec
+    // du Développement Spirituel que rien ne consomme — jusqu'à 20 XP chez
+    // ⚗️, qui ne compose AUCUNE magie). La règle d'usage rend cette XP au
+    // joueur : le pire cas est désormais le reliquat VISIBLE de ⚗️, et la
+    // liste `hauts` ci-dessus en NOMME le domaine exact.
     expect(pire).toEqual({
-      reliquat: 3,
-      desc: "pretre/pRite(Bénédiction) inv=[] budget=80 ③tiré",
+      reliquat: 20,
+      desc: "mage/mAlchimiste inv=[fioles] budget=80 ③absent",
     });
 
     // Le reliquat MARTIAL, mesuré à part : c'est lui que ce lot améliore.
@@ -226,6 +246,9 @@ describe("simulation — tout le domaine", () => {
         void idx;
       }
     }
-    expect(pireMartial.reliquat).toBeLessThanOrEqual(3);
+    // ⭐ [s374] 3 → 7 (gTient/armure_cuir@80, machine) : l'ancien « ≤ 3 »
+    // martial était tenu par les jauges de PS mortes — ce lot les rend au
+    // joueur. Le domaine exact des dépassements vit dans `hauts` plus haut.
+    expect(pireMartial.reliquat).toBe(7);
   });
 });

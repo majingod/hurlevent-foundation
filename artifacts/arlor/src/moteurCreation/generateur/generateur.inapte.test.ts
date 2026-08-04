@@ -179,9 +179,15 @@ describe("composerClasse honore inapteMagie (le drapeau est LU)", () => {
     }
   );
 
-  it("sans le drapeau, le filet pose bien du Développement Spirituel — la garde change donc quelque chose", () => {
-    // Preuve par le CONTRAIRE : si ce test devenait faux, le test du dessus
-    // ne prouverait plus rien (il passerait tout seul).
+  it("s374 : même SANS le drapeau, plus aucune compétence à PS chez le voleur — l'ancienne preuve par le contraire est ABSORBÉE par la règle d'usage", () => {
+    // ⭐ [s374] Ce test affirmait l'INVERSE (« sans le drapeau, le filet pose
+    // du Développement Spirituel ») : il attestait LE DÉFAUT. Aucun rôle de
+    // voleur n'a d'usage de ses PS — la règle d'usage (arbitrage Fred) bloque
+    // donc ces jauges drapeau ou pas. La garde `inapteMagie` du composeur
+    // reste en place (défense en profondeur, elle répond à un autre verbe),
+    // mais sa preuve vit désormais dans le sweep 1061 : zéro PS sans usage
+    // sur tout le domaine, ET 954 compositions à PS chez les casters (la
+    // règle ne sur-tire pas).
     const vus = new Set<string>();
     for (const roleId of roles) {
       const c = composerClasse(cats, CONTENU_VOLEUR, {
@@ -192,7 +198,7 @@ describe("composerClasse honore inapteMagie (le drapeau est LU)", () => {
       });
       if (c.ok) c.achats.forEach((a) => vus.add(a.nom));
     }
-    expect([...vus].some((n) => estCompetenceAPS(n))).toBe(true);
+    expect([...vus].filter((n) => estCompetenceAPS(n))).toEqual([]);
   });
 
   it("l'XP de la jauge sautée ne disparaît pas : le reliquat reste borné", () => {

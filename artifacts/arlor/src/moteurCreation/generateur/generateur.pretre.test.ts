@@ -297,7 +297,7 @@ describe("PRÊTRE — les refus parlent au joueur", () => {
     }
   });
 
-  it("✝️ DÉCISION 40 — sans domaine : soigneur NON MAGIQUE, compensation active, reliquat 0 (chiffres machine s372)", () => {
+  it("✝️ DÉCISION 40 — sans domaine : soigneur NON MAGIQUE, compensation active (chiffres machine s374)", () => {
     const c60 = ok(composer("pSoigne", undefined, 60));
     expect(c60.achatsMagie).toHaveLength(0);
     expect(c60.achats.some((a) => a.nom === "Acquisition de Domaine")).toBe(
@@ -315,10 +315,13 @@ describe("PRÊTRE — les refus parlent au joueur", () => {
       ])
     );
     const c80 = ok(composer("pSoigne", undefined, 80));
-    expect(c80.reliquat).toBe(0);
-    // UN rachat de Développement Spirituel — la petite monnaie qui termine
-    // la cascade (précédent guerrier ≤ 5), jamais un placement.
-    expect(psXp(c80)).toBe(2);
+    // ⭐ [s374] reliquat 0 → 2 : les 2 XP de l'unité de DS morte reviennent
+    // au joueur (alerte décision 15).
+    expect(c80.reliquat).toBe(2);
+    // ⭐ [s374] L'ancien « psXp = 2 » attestait LE DÉFAUT : une unité de
+    // Développement Spirituel posée en petite monnaie chez un soigneur SANS
+    // magie. La règle d'usage la bloque — l'XP reste au joueur.
+    expect(psXp(c80)).toBe(0);
     expect(c80.achats.map((a) => a.nom)).toEqual(
       expect.arrayContaining([
         "Connaissances des Herbes Communes",
@@ -342,10 +345,15 @@ describe("PRÊTRE — les refus parlent au joueur", () => {
     expect(psXp(c)).toBe(0);
   });
 
-  it("✝️ DÉCISION 40 — PREUVE PAR LE CONTRAIRE : sans la compensation conditionnelle, les PS morts reviennent", () => {
-    // On retire les entrées ④ conditionnelles (la compensation) : l'ancien ④
-    // réapparaît et déverse 24 XP de PS que rien ne consomme — c'est le
-    // défaut mesuré s372 que la décision 40 corrige.
+  it("✝️ DÉCISION 40 — PREUVE PAR LE CONTRAIRE (repointée s374) : sans la compensation, l'XP n'a plus d'emploi", () => {
+    // ⭐ [s374] Avant, ce jumeau prouvait « sans compensation, 24 XP de PS
+    // morts ». La règle d'usage bloque désormais ces jauges PARTOUT — le rôle
+    // de la compensation change donc de preuve : elle est ce qui donne un
+    // EMPLOI UTILE à l'XP (Chirurgien, herbes, langues). Sans elle, l'XP ne
+    // meurt plus en PS, elle reste EN L'AIR : le reliquat explose.
+    // (Le jumeau « sans la règle d'usage, 41 fiches à PS morts » est attesté
+    // en conteneur s374 — la règle vit dans le composeur, hors d'atteinte
+    // d'un test de contenu.)
     const pond4Nu = {
       ...CONTENU_PRETRE.pond4,
       pSoigne: CONTENU_PRETRE.pond4.pSoigne.filter((e) => !e.condition),
@@ -362,7 +370,11 @@ describe("PRÊTRE — les refus parlent au joueur", () => {
       }
     );
     expect(nu.ok).toBe(true);
-    if (nu.ok) expect(psXp(nu)).toBe(24);
+    if (nu.ok) {
+      expect(psXp(nu)).toBe(0);
+      // 14 XP EN L'AIR (machine s374) — l'emploi que la compensation donne.
+      expect(nu.reliquat).toBe(14);
+    }
   });
 
   it("✝️ DÉCISION 40 — avec domaine, la compensation est INERTE : pas de Chirurgien, ② reste 10", () => {
