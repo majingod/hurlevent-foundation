@@ -78,6 +78,9 @@ const compo = (sur: Partial<CompositionOk> = {}): CompositionOk => ({
   gratuites: [],
   achats: [],
   achatsMagie: [],
+  // [C1 s375] Par défaut : aucun métier d'artisanat — les tests qui en
+  // veulent passent leurs enveloppes par `sur`.
+  artisanat: [],
   budget: 60,
   totalDepense: 0,
   reliquat: 60,

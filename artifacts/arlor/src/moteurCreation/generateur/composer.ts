@@ -29,6 +29,7 @@ import type {
   Composition,
   ConfigMagie,
   ContexteComposition,
+  PlanArtisanat,
 } from "./types";
 
 /**
@@ -45,6 +46,10 @@ import type {
 export interface Catalogues {
   competences: CatalogueCompetences;
   magie: CatalogueMagie;
+  /** [C1 s375] Tailles des catalogues d'artisanat (fournies par le pont
+   *  snapshot). Absent ⇒ AUCUNE payante n'est planifiée (les gratuites, elles,
+   *  sont toujours dues) — le test d'attestation du pont garantit le câblage. */
+  artisanat?: { recettesNiv1: number; recettesNiv2: number };
 }
 
 const CATALOGUE_MAGIE_VIDE = new CatalogueMagie({ sorts: [], prieres: [] });
@@ -575,6 +580,44 @@ export function composerClasse(
   derouler(contenu.pond4[ctx.roleId] ?? []);
   derouler(contenu.filet);
 
+  // ⭐ [C1 s375 — décision Fred] LE GÉNÉRÉ NE REPART PAS LES MAINS VIDES.
+  // Le manuel attache des acquisitions GRATUITES aux compétences d'artisanat ;
+  // le serveur les donne sous quota (coût 0). On les PLANIFIE ici pour que la
+  // fiche les annonce et que la conversion les tire (D34 : la fiche montre ce
+  // qui sera acheté). Déclencheur = la COMPÉTENCE présente (montées comprises
+  // — `ch.etat.niveaux` porte le palier atteint), jamais le rôle.
+  const artisanat: PlanArtisanat[] = [];
+  const nivAlchimie = ch.etat.niveaux.get("Alchimie") ?? 0;
+  if (nivAlchimie >= 1)
+    artisanat.push({ famille: "recette", palier: 1, nb: 5, coutUnitaire: 0,
+      motif: "5 recettes mineures offertes par Alchimie 1" });
+  if (nivAlchimie >= 2)
+    artisanat.push({ famille: "recette", palier: 2, nb: 4, coutUnitaire: 0,
+      motif: "4 recettes intermédiaires offertes par Alchimie 2" });
+  if ((ch.etat.niveaux.get("Assemblage de Runes") ?? 0) >= 1)
+    artisanat.push({ famille: "assemblage", palier: 1, nb: 2, coutUnitaire: 0,
+      motif: "2 assemblages offerts par Assemblage de Runes 1" });
+  if ((ch.etat.niveaux.get("Création et désarmement de piège") ?? 0) >= 1)
+    artisanat.push({ famille: "piege", palier: 1, nb: 3, coutUnitaire: 0,
+      motif: "3 pièges offerts par Création et désarmement de piège 1" });
+
+  // ⭐ [D-C s375] LE GRAIN : recettes payantes à 3 XP, sur le RELIQUAT
+  // SEULEMENT (jamais en concurrence avec une montée — on est APRÈS le filet).
+  // RECETTES uniquement (3 XP fixe au manuel) ; jamais runes/pièges (C66).
+  // Borné par la taille réelle du catalogue (sans remise avec les gratuites).
+  if (nivAlchimie >= 1 && cats.artisanat && reste >= 3) {
+    const capacite =
+      Math.max(0, cats.artisanat.recettesNiv1 - 5) +
+      (nivAlchimie >= 2 ? Math.max(0, cats.artisanat.recettesNiv2 - 4) : 0);
+    const n = Math.min(Math.floor(reste / 3), capacite);
+    if (n > 0) {
+      artisanat.push({ famille: "recette", palier: nivAlchimie, nb: n,
+        coutUnitaire: 3,
+        motif: `${n} recette${n > 1 ? "s" : ""} de plus (3 XP chacune) — le reliquat sert à quelque chose` });
+      reste -= n * 3;
+    }
+  }
+
   // Décision 15 : s'il reste quelque chose, le dire.
   if (reste > 0) {
     alertes.push(
@@ -588,6 +631,7 @@ export function composerClasse(
     gratuites,
     achats: ch.achats,
     achatsMagie: ch.achatsMagie,
+    artisanat,
     budget: ctx.budget,
     totalDepense,
     reliquat: reste,

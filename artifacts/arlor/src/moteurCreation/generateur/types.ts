@@ -75,6 +75,20 @@ export interface AchatPlanifie {
   choix?: string;
 }
 
+/** [C1 s375] Enveloppe chiffrée d'artisanat — les ITEMS précis se tirent à
+ *  la conversion (versBrouillon), l'enveloppe tient le budget (D34). */
+export interface PlanArtisanat {
+  famille: "recette" | "assemblage" | "piege";
+  /** Palier du tirage. Gratuites : palier EXACT (le quota serveur est par
+   *  palier). Payantes (recettes) : palier MAX débloqué — le tirage pioche
+   *  dans 1..palier. */
+  palier: number;
+  nb: number;
+  /** 0 (dû par la compétence) ou 3 (recette payante, manuel). */
+  coutUnitaire: number;
+  motif: string;
+}
+
 export interface CompositionOk {
   ok: true;
   /** Couche ① — gratuités de classe (0 XP). */
@@ -82,6 +96,8 @@ export interface CompositionOk {
   achats: AchatPlanifie[];
   /** [lot 2b] Sorts/prières planifiés (vide pour les classes martiales). */
   achatsMagie: AchatMagiePlanifie[];
+  /** [C1 s375] Enveloppes d'artisanat — vide sans compétence d'artisanat. */
+  artisanat: PlanArtisanat[];
   budget: number;
   totalDepense: number;
   reliquat: number;

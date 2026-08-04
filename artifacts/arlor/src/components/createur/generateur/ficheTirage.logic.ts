@@ -101,6 +101,17 @@ export function coutCouche(
   );
 }
 
+/** ⭐ [C1 s375] Coût XP des enveloppes d'artisanat — les gratuites pèsent 0,
+ *  seules les recettes payantes (3 XP, D-C) chargent le total. */
+export function coutArtisanat(
+  composition: Pick<CompositionOk, "artisanat">
+): number {
+  return composition.artisanat.reduce(
+    (s, p) => s + p.nb * p.coutUnitaire,
+    0
+  );
+}
+
 export const magieDeCouche = (
   composition: Pick<CompositionOk, "achatsMagie">,
   couche: 2 | 3 | 4

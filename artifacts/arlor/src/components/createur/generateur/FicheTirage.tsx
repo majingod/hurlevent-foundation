@@ -10,6 +10,7 @@ import {
   LABELS_CLASSES,
   NOMS_COUCHES,
   TEXTE_SAC_VIDE,
+  coutArtisanat,
   coutCouche,
   grouperAchats,
   magieDeCouche,
@@ -263,6 +264,39 @@ const FicheTirage = ({
           </section>
         );
       })}
+
+      {/* ⭐ [C1 s375] L'artisanat DÛ — enveloppes chiffrées (D34) : la fiche
+          annonce COMBIEN, la conversion tire QUOI. Le joueur échange ensuite
+          au wizard (étapes 8-9). Même patron de section que ②③④ : une ligne
+          par plan, le motif à gauche, le prix à droite (« offert » à 0 XP,
+          comme « incluse » côté compétences). */}
+      {composition.artisanat.length > 0 && (
+        <section className="mb-3 rounded-lg border border-white/10 bg-white/5 p-3.5">
+          <header className="flex items-baseline justify-between">
+            <h3 className="text-[11px] uppercase tracking-widest text-white/40">
+              ⚗️ Ce que ton métier te donne
+            </h3>
+            <span className="text-[13px] font-semibold text-gold-accent">
+              {coutArtisanat(composition)} XP
+            </span>
+          </header>
+          <ul className="mt-1">
+            {composition.artisanat.map((plan, i) => (
+              <li
+                key={`art-${i}`}
+                className="flex items-baseline justify-between gap-3 border-b border-white/10 px-0.5 py-2 text-sm text-white/90"
+              >
+                <span>{plan.motif}</span>
+                <b className="whitespace-nowrap">
+                  {plan.coutUnitaire === 0
+                    ? "offert"
+                    : `${plan.nb * plan.coutUnitaire} XP`}
+                </b>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Total */}
       <div className="mb-3 flex items-baseline justify-between rounded-lg border border-white/10 bg-white/5 px-3.5 py-3 text-sm">
