@@ -23,7 +23,7 @@ describe("doitMontrerAccueil", () => {
     expect(doitMontrerAccueil(BASE)).toBe(true);
   });
 
-  it("jamais quand le générateur est éteint (lot 1 : GENERATEUR_ACTIF=false)", () => {
+  it("jamais quand l'interrupteur est coupé (GENERATEUR_ACTIF=false : geste de repli)", () => {
     expect(doitMontrerAccueil({ ...BASE, actif: false })).toBe(false);
   });
 

@@ -1,5 +1,5 @@
 /**
- * [VIS-8 lot 1] Quand l'accueil des portes s'affiche-t-il ?
+ * [VIS-8] Quand l'accueil des portes s'affiche-t-il ?
  *
  * Règle mesurée sur le flux réel du wizard (s348) : l'accueil ne concerne
  * qu'un démarrage À ZÉRO. Toute reprise retombe où le joueur en était :
@@ -15,7 +15,7 @@
  */
 
 export interface ContexteAccueil {
-  /** `GENERATEUR_ACTIF` — éteint au lot 1. */
+  /** `GENERATEUR_ACTIF` — allumé depuis s373 ; `false` referme les 2 portes. */
   actif: boolean;
   /** Une porte a déjà été choisie dans cette session de wizard. */
   accueilFranchi: boolean;
