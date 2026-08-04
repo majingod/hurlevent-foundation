@@ -4,6 +4,7 @@ import {
   archetypeDemandeDesPS,
   comp,
   entreeExigeDesPS,
+  compositionUtiliseSesPS,
   estCompetenceAPS,
   exigeDesPS,
   type Achat,
@@ -531,6 +532,24 @@ export function composerClasse(
         // `FILET_GUERRIER` / `FILET_VOLEUR` lui poseraient du
         // « Développement Spirituel ». L'XP glisse à l'étape suivante.
         if (ctx.inapteMagie && estCompetenceAPS(e.nom)) continue;
+        // ⭐⭐⭐ [s374 — arbitrage Fred] UNE JAUGE DE PS NE SE VERSE QU'À QUI
+        // A UN USAGE DE SES PS. Mesuré avant : 41 des 1061 compositions du
+        // domaine 🎲 portaient du « Développement Spirituel » sans un seul
+        // sort, prière ni compétence consommatrice — jusqu'à 20 XP morts
+        // chez ⚗️ l'Alchimiste. Le manuel est net : les PS ne servent qu'à
+        // lancer de la magie (un objet enchanté est payé par son CRÉATEUR).
+        // L'XP glisse à l'étape suivante, elle n'est pas perdue.
+        // ⚠️ Le prédicat EXCLUT « Développement Spirituel » lui-même — sans
+        // ça la jauge s'autoriserait elle-même dès son premier rachat.
+        if (
+          estCompetenceAPS(e.nom) &&
+          !compositionUtiliseSesPS(
+            ch.achats.map((a) => a.nom),
+            ch.etat.niveaux.keys(),
+            ch.achatsMagie.length
+          )
+        )
+          continue;
         // Jauge d'étendue : rachats à l'unité tant que budget et plafond.
         const c = cats.competences.exiger(e.nom);
         const unit = cats.competences.coutNiveau(e.nom, 1);

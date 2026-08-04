@@ -226,6 +226,58 @@ export const COMPETENCES_A_PS: readonly string[] = [
 export const estCompetenceAPS = (nom: string): boolean =>
   COMPETENCES_A_PS.includes(nom);
 
+/* ------------------------------------------------------------------ */
+/* ⭐⭐⭐ [s374 — arbitrage Fred] LES DEUX VERBES DES POINTS DE SPIRITUALITÉ. */
+
+/**
+ * Les compétences qui **CONSOMMENT** des points de spiritualité en jeu.
+ *
+ * ⚠️ NE PAS CONFONDRE AVEC `COMPETENCES_A_PS` (Gotcha C75, deux verbes) :
+ *  · `estCompetenceAPS` répond « ce lot TOUCHE-T-IL aux PS ? » — écrit pour
+ *    REFUSER un rôle à un inapte. Il compte `Développement Spirituel`
+ *    LUI-MÊME, et c'est correct pour ce verbe-là.
+ *  · `compositionUtiliseSesPS` répond « ce personnage AURA-T-IL un usage de ses PS ? »
+ *    — écrit pour décider si la jauge de PS a un sens. Il DOIT exclure
+ *    `Développement Spirituel` et sa version Supérieure, sinon la jauge
+ *    **s'autorise elle-même** dès son premier rachat (vert partout, défaut
+ *    intact).
+ *
+ * ARBITRAGE FRED s374 : « Développement Spirituel n'est utile qu'à ceux
+ * ayant de la magie arcane, divine, ou des assemblages de runes. »
+ * Passé au manuel :
+ *  · runes ⇒ prérequis `Canalisation 1`, et Canalisation « permet d'infuser
+ *    ses points de spiritualité lors d'un rituel » — c'est elle qui porte
+ *    l'usage, d'où sa présence ici ;
+ *  · `Frénésie magique` est ÉCARTÉE : le manuel dit qu'elle brûle des POINTS
+ *    DE VIE *à la place* des PS quand le lanceur est à sec — elle ne
+ *    consomme pas de spiritualité, et elle suppose déjà des sorts ;
+ *  · `Méditation` est ÉCARTÉE aussi, dans l'autre sens : elle rend « 3 points
+ *    de spiritualité OU 2 points de vie » — elle sert donc à un martial sans
+ *    magie, et ne prouve rien sur l'usage des PS.
+ */
+export const COMPETENCES_QUI_CONSOMMENT_DES_PS: readonly string[] = [
+  "Acquisition de Cercle",
+  "Acquisition de Domaine",
+  "Canalisation",
+  "Assemblage de Runes",
+];
+
+/**
+ * Ce chantier a-t-il un USAGE de ses points de spiritualité ?
+ * Un sort ou une prière planifiés suffisent ; sinon, l'une des compétences
+ * consommatrices, qu'elle soit ACHETÉE ou GRATUITE de classe.
+ */
+export const compositionUtiliseSesPS = (
+  nomsAchetes: readonly string[],
+  nomsPossedes: Iterable<string>,
+  nbMagies: number
+): boolean =>
+  nbMagies > 0 ||
+  nomsAchetes.some((n) => COMPETENCES_QUI_CONSOMMENT_DES_PS.includes(n)) ||
+  [...nomsPossedes].some((n) =>
+    COMPETENCES_QUI_CONSOMMENT_DES_PS.includes(n)
+  );
+
 /**
  * ⭐ Un archétype DEMANDE-T-IL des PS ? — DÉRIVÉ du noyau, jamais déclaré.
  *

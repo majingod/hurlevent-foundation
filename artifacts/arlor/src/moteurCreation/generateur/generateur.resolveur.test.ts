@@ -465,9 +465,22 @@ describe("🧭 resoudreChoix — refus avec phrase, jamais en silence (G5)", () 
     expect(h.ok).toBe(true);
     if (h.ok) {
       expect(h.composition.budget).toBe(80);
-      // Le filet ④ Guerrier a posé du Développement Spirituel → le trait
-      // « Inapte » est incompatible avec CETTE fiche (conduite 3).
-      expect(h.tirage.traitsIncompatibles).toEqual(["Inapte à la magie"]);
+      // ⭐ [s374] AVANT : le filet ④ posait du Développement Spirituel sur
+      // le forgeron → « Inapte » était incompatible avec sa fiche… à cause
+      // d'un achat MORT. La règle d'usage le retire : le forgeron redevient
+      // librement inapte (c'est l'esprit de la décision 42, côté 🧭).
+      expect(h.tirage.traitsIncompatibles).toEqual([]);
+      // La branche NON-VIDE vit désormais chez un CASTER (couverture C84 du
+      // consommateur — le grisage d'écran livré s373 #746). ⚠️ Pas chez
+      // mAlchimiste : ce rôle de mage ne compose AUCUNE magie — c'est
+      // précisément pour ça qu'il portait 20 XP de PS morts avant s374.
+      const m = resoudreChoix(
+        deps,
+        choixBase({ religionId: religionParNom("Asméis").id })
+      );
+      expect(m.ok).toBe(true);
+      if (m.ok)
+        expect(m.tirage.traitsIncompatibles).toEqual(["Inapte à la magie"]);
       // Forme UNIFIÉE (s366) : 🧭 rend le même ResultatTirage que 🎲.
       expect(h.tirage.budget).toBe(80);
       expect(h.tirage.raceNom).toBe("Humain");
@@ -632,6 +645,8 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
   const N = 400;
   it(`G1/G2/G3/G6 sur ${N} tirages : jamais un interdit, religion principale, element2 ⇒ ACHETÉ (option A s366), compose toujours`, () => {
     const cerclesVus = new Set<string>();
+    // ⭐ [s374] Les reliquats > 3 du tirage : NOMMÉS, comme au sweep 1061.
+    const hautsTirage = new Set<string>();
     const rolesAvecE2 = new Set<string>();
     let prêtresVus = 0;
     let rolesE2Vus = 0; // tirages d'un rôle ✨ᚱ🕊️📿 (candidat possible)
@@ -644,7 +659,8 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
       expect(tirage.raceNom).toBe("Humain");
       expect(tirage.budget).toBe(80);
       expect(composition.reliquat).toBeGreaterThanOrEqual(0);
-      expect(composition.reliquat).toBeLessThanOrEqual(3);
+      if (composition.reliquat > 3)
+        hautsTirage.add(`${tirage.roleId} → ${composition.reliquat}`);
       if (tirage.classe === "mage" && tirage.element) {
         cerclesVus.add(tirage.element);
         expect(CERCLES_JAMAIS_TIRES).not.toContain(tirage.element);
@@ -700,6 +716,8 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
     expect(prêtresVus).toBeGreaterThan(20);
     // Le tirage BOUGE vraiment (pas un vert-à-vide) : ≥ 5 cercles distincts.
     expect(cerclesVus.size).toBeGreaterThanOrEqual(5);
+    // ⭐ [s374] Reliquats > 3 du tirage — ensemble EXACT (machine) :
+    expect([...hautsTirage].sort()).toEqual(["gForgeron → 5"]);
   });
 
   it("un inventaire fourni élargit le tirage (jumeau de G8) : sur 300 tirages RICHE, d'autres races et ✨/ᚱ sortent", () => {
@@ -757,7 +775,7 @@ describe("🎲 tirerPersonnage — sweep seedé", () => {
 /* ------------------------------------------------------------------ */
 
 describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
-  it("1061 résolutions (196 à vide + 421×2 budgets + 23 inapte) : ok partout, reliquat ≤ 3, religion jamais en tension — pire cas cité", () => {
+  it("1061 résolutions (196 à vide + 421×2 budgets + 23 inapte) : ok partout, ZÉRO PS sans usage, reliquat ≤ 3 sauf 3 cas NOMMÉS — pire cas cité", () => {
     // ⭐ [D40 s372] Compte MACHINE (jamais annoncé) : 997 avant + 64 feuilles
     // « ✝️ sans domaine » (1 nue + 15 fois) × 4 combos (∅/Humain, RICHE ×
     // Humain·autres·Demi-Orc inapte). L'inapte passe de 7 à 23 : ✝️ est
@@ -776,6 +794,22 @@ describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
       { desc: "Demi-Orc(60,inapte)", race: raceParNom("Demi-Orc"), inapte: true },
     ];
     let nb = 0;
+    // ⭐ [s374 — arbitrage Fred] L'INVARIANT À DEUX FACES :
+    //  face A — aucune composition ne porte de PS sans usage (le défaut
+    //           mesuré : 41/1061, jusqu'à 20 XP morts chez ⚗️) ;
+    //  face B — les casters en portent TOUJOURS (compte machine ci-dessous).
+    // Sans la face B, la face A serait VERTE À VIDE : une règle qui
+    // bloquerait le Développement Spirituel PARTOUT la satisferait aussi.
+    // Jumeau exécuté en conteneur s374 : règle neutralisée → 41 fiches
+    // repassent en PS morts (face A rougit bien).
+    const CONSO = new Set([
+      "Acquisition de Cercle",
+      "Acquisition de Domaine",
+      "Canalisation",
+      "Assemblage de Runes",
+    ]);
+    let avecDS = 0;
+    const hauts: string[] = [];
     const pire = { reliquat: -1, desc: "" };
     const verifier = (choix: ChoixJoueur, desc: string) => {
       const res = resoudreChoix(deps, choix);
@@ -783,7 +817,20 @@ describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
       if (!res.ok) return;
       nb += 1;
       expect(res.composition.reliquat, desc).toBeGreaterThanOrEqual(0);
-      expect(res.composition.reliquat, desc).toBeLessThanOrEqual(3);
+      if (res.composition.reliquat > 3) hauts.push(`${desc} → ${res.composition.reliquat}`);
+      {
+        const noms = [
+          ...res.composition.achats.map((a) => a.nom),
+          ...res.composition.gratuites.map((g) => g.nom),
+        ];
+        const aDS = noms.some((n) => n.startsWith("Développement Spirituel"));
+        if (aDS) avecDS += 1;
+        const usage =
+          res.composition.achatsMagie.length > 0 ||
+          noms.some((n) => CONSO.has(n));
+        // face A : des PS achetés SANS usage = le défaut, nulle part.
+        expect(aDS && !usage, `PS sans usage — ${desc}`).toBe(false);
+      }
       if (res.composition.reliquat > pire.reliquat) {
         pire.reliquat = res.composition.reliquat;
         pire.desc = desc;
@@ -882,6 +929,19 @@ describe("simulation résolveur — l'espace 🎲 exhaustif", () => {
     // Le COMPTE est une égalité exacte, jamais un encadrement (règle s361) —
     // le pire cas est CITÉ, pas promis.
     expect(nb, `pire cas : ${pire.desc} → reliquat ${pire.reliquat}`).toBe(1061);
-    expect(pire.reliquat).toBeLessThanOrEqual(3);
+    // face B (anti-sur-tirage) — compte MACHINE, gravé après lecture :
+    // 954 = 995 compositions à DS avant la règle − 41 fiches à PS MORTS
+    // (les deux chiffres lus par la sonde s374, même run).
+    expect(avecDS).toBe(954);
+    // ⭐ [s374] La promesse « ≤ 3 » reste vraie sur 1058/1061 ; les 3
+    // exceptions sont NOMMÉES (le domaine de la promesse, pas seulement la
+    // promesse). Leur XP est rendue au joueur avec l'alerte « Il reste N
+    // XP » (décision 15) — dette [GENERATEUR-GRAIN-RECETTES] pour la suite.
+    expect(hauts.sort()).toEqual([
+      "RICHE/Humain(80)/guerrier/gForgeron → 5",
+      "RICHE/Humain(80)/mage/mAlchimiste → 20",
+      "∅/Humain(80)/guerrier/gForgeron → 5",
+    ]);
+    expect(pire.reliquat).toBe(20);
   });
 });

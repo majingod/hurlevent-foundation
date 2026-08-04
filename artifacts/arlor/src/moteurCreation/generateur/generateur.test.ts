@@ -235,11 +235,18 @@ describe("③a signature — l'archétype reste reconnaissable (PR #716)", () =>
 });
 
 describe("la composition tient ses comptes", () => {
-  it("🔨 les mains vides à 60 XP : reliquat 1, dit au joueur (décision 15)", () => {
+  it("🔨 les mains vides à 60 XP : reliquat 3, dit au joueur (décision 15 ; chiffre s374)", () => {
+    // ⭐ [s374] L'ancien « reliquat 1 » attestait LE DÉFAUT, pas une règle :
+    // le forgeron dépensait 2 XP en Développement Spirituel qu'aucune magie
+    // ne consomme. La règle d'usage (arbitrage Fred) les laisse au joueur.
     const c = ok(compose("gForgeron", inv(), 60));
-    expect(c.reliquat).toBe(1);
+    expect(c.reliquat).toBe(3);
     expect(c.totalDepense + c.reliquat).toBe(60);
-    expect(c.alertes.some((a) => a.includes("Il reste 1 XP"))).toBe(true);
+    expect(c.alertes.some((a) => a.includes("Il reste 3 XP"))).toBe(true);
+    // Et plus AUCUN point de spiritualité sur cette fiche :
+    expect(
+      c.achats.filter((a) => a.nom.startsWith("Développement Spirituel"))
+    ).toEqual([]);
   });
 
   it("⭐ plus JAMAIS de rafale de Connaissances des Religions (arbitrage Fred s353)", () => {
