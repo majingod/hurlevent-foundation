@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Le personnage tiré ne repart plus les mains vides : recettes, assemblages et pièges",
+    description:
+      "Le générateur de personnage donne maintenant les recettes d'alchimie, les assemblages de runes et les pièges offerts par tes compétences — et s'il te reste de l'XP, il t'ajoute des recettes en plus. Tu peux les échanger dans le créateur.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "« Surprends-moi » ne dépense plus d'XP en points de spiritualité inutiles",
     description:
       "Les points de spiritualité ne servent qu'à lancer de la magie — sorts, prières, canalisation, runes. Le tirage 🎲 en achetait pourtant à des personnages qui n'en lanceront jamais : un forgeron pouvait naître avec 8 XP placés dans une réserve qu'aucune de ses capacités n'utilise, un alchimiste jusqu'à 20. C'est corrigé : si ton personnage tiré n'a aucun usage de sa spiritualité, cet XP n'est plus dépensé — il t'est laissé, bien visible sur ta fiche avec la mention « Il reste N XP », et tu le places toi-même dans le créateur sur ce qui sert vraiment à ton personnage. Les personnages déjà créés ne bougent pas d'un point.",

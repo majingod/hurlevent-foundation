@@ -10,6 +10,19 @@
  * - une fois une porte franchie (`accueilFranchi`), « Précédent » depuis
  *   l'étape 2 ne le fait pas réapparaître.
  *
+ * ⭐⭐ [s375-v2 défaut 1c, piège C88] `xpDepense` : LE CRITÈRE MANQUANT.
+ * L'étape ne suffit PAS. La condition d'origine (`etape === 1`) lisait
+ * l'étape AFFICHÉE du wizard — vraie pour un perso manuel, FAUSSE pour un
+ * perso généré : après un tirage appliqué, le wizard s'ouvre à l'étape 1 (le
+ * joueur nomme, D43) alors que `etape_creation` vaut 10 et que les achats
+ * sont déjà en base. Le commentaire s368 #3 « jamais sur un personnage
+ * avancé » lisait donc le mauvais état : le retour aux portes restait offert,
+ * un second tirage s'empilait sur le premier (12 refus XP, hybride ⚗️/🔮 —
+ * mesuré s375). Le seul état qui dit « ce personnage a déjà reçu quelque
+ * chose » est `personnages.xp_depense`. Le critère est posé ICI, dans la
+ * fonction PARTAGÉE, donc sur les DEUX portes (accueil initial ET retour) :
+ * aucun chemin — rechargement, brouillon local adopté — ne le contourne.
+ *
  * Fonction PURE : appelée par `PersonnageNouveauV2` APRÈS le positionnement
  * NAV-2 (l'étape passée ici est l'étape réellement affichable).
  */
@@ -25,6 +38,11 @@ export interface ContexteAccueil {
   reprise: boolean;
   /** Étape courante après positionnement (1..TOTAL_STEPS). */
   etape: number;
+  /**
+   * ⭐ [s375-v2] `personnages.xp_depense`. > 0 = le personnage porte déjà des
+   * achats (tirage appliqué, ou wizard manuel entamé) : plus aucune porte.
+   */
+  xpDepense: number;
 }
 
 export function doitMontrerAccueil(c: ContexteAccueil): boolean {
@@ -34,6 +52,7 @@ export function doitMontrerAccueil(c: ContexteAccueil): boolean {
     !c.modeAdmin &&
     !c.modeCampagne &&
     !c.reprise &&
-    c.etape === 1
+    c.etape === 1 &&
+    c.xpDepense === 0
   );
 }

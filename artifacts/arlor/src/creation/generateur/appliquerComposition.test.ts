@@ -360,6 +360,124 @@ describe("appliquerComposition — preuves par le contraire", () => {
 });
 
 /* ------------------------------------------------------------------ */
+/* ⭐⭐ [s375-v2 défaut 1] L'EMPILEMENT — un tirage ne s'applique qu'à   */
+/*    un personnage VIERGE                                             */
+/* ------------------------------------------------------------------ */
+
+/** Un tirage 🧭 déterministe de rôle mage donné (pas de seed à chasser). */
+const roleMage = (roleId: string) => {
+  const humain = monde.races.find((r) => r.nom === "Humain")!;
+  const res = resoudreChoix(deps, {
+    classe: "mage",
+    roleId,
+    raceId: humain.id,
+    inventaire: RICHE,
+    element: "Feu",
+  });
+  if (!res.ok) throw new Error(`${roleId} refusé : ${res.raison}`);
+  return res;
+};
+
+const xpDepenseCourante = async (): Promise<number> => {
+  const { data } = await clientVisiteur.lirePersonnageProgression(
+    PERSONNAGE_LOCAL_ID,
+  );
+  return (data as { xp_depense: number }).xp_depense;
+};
+
+describe("appliquerComposition — l'empilement (s375-v2 défaut 1)", () => {
+  it("⚗️ puis 🔮 sur le MÊME personnage : REFUSÉ, et pas un octet écrit", async () => {
+    const r1 = await appliquerComposition(
+      clientVisiteur,
+      roleMage("mAlchimiste"),
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(4242) },
+    );
+    expect(r1.statut).toBe("complet");
+
+    // L'état RÉEL après le 1er tirage — ce que la page lit sur `personnages`.
+    const xpDepense = await xpDepenseCourante();
+    expect(xpDepense).toBeGreaterThan(0); // mesuré : 60 sur 80
+    const avant = localStorage.getItem(CLE_BROUILLON)!;
+
+    const r2 = await appliquerComposition(
+      clientVisiteur,
+      roleMage("mRuniste"),
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(77), etatActuel: { xpDepense } },
+    );
+
+    expect(r2.statut).toBe("refuse_non_vierge");
+    expect(r2.faits).toEqual([]);
+    expect(r2.echecs).toEqual([]);
+    expect(r2.etapeApresAvancement).toBeNull();
+    expect(r2.personnageId).toBe(PERSONNAGE_LOCAL_ID);
+    // AUCUNE ÉCRITURE : le brouillon stocké est byte-identique (le refus
+    // tombe AVANT la conversion, donc avant la moindre RPC).
+    expect(localStorage.getItem(CLE_BROUILLON)).toBe(avant);
+    // Et l'XP dépensée n'a pas bougé d'un point.
+    expect(await xpDepenseCourante()).toBe(xpDepense);
+  });
+
+  /**
+   * ⭐ PREUVE PAR LE CONTRAIRE — EXÉCUTÉE, PAS DÉDUITE. Même scénario, sans
+   * `etatActuel` : c'est le comportement de s375-v1, celui que Fred a vu en
+   * aperçu. RELEVÉ DE LA SONDE (ce test, code de cette branche) :
+   *
+   *   1er ⚗️ mAlchimiste → `complet`, 0 échec, xp_depense = 60 / 80.
+   *   2e  🔮 mRuniste    → `partiel`, 18 ÉCHECS :
+   *     · 14 « XP insuffisant » — « Requis : 10 | Disponible : 2 », puis
+   *       « Requis : 8 | Disponible : 2 », « Requis : 5 », « Requis : 9 »,
+   *       et 9 × « Requis : 2 | Disponible : 0 » ;
+   *     · « Prérequis manquant(s) : Acquisition de Cercle niveau 1 » — le
+   *       prérequis a été refusé lui aussi, l'échec se propage ;
+   *     · « Nécessite 20 PS (achetez d'abord Développement Spirituel) » ;
+   *     · 1 sort `niveau_invalide` ;
+   *     · 2 × assemblage `niveau_requis_non_atteint` : « Compétence
+   *       Assemblage de Runes requise » — la compétence-mère du runiste
+   *       n'a jamais pu être achetée.
+   *   BROUILLON FINAL : 9 recettes, 0 assemblage, 0 piège, 11 compétences,
+   *   xp_depense = 80/80. C'EST L'HYBRIDE CASSÉ : Alchimie + ses 9 recettes,
+   *   et ZÉRO RUNE pour un personnage que le joueur a tiré runiste.
+   *
+   * (Le prompt s375-v2 annonçait « 12 échecs, Requis : 6 | Disponible : 1 » :
+   * même défaut, autre rôle/seed. Les chiffres ci-dessus sont ceux LUS ici.)
+   */
+  it("SANS `etatActuel` : le 2ᵉ tirage EMPILE — hybride ⚗️ + zéro rune", async () => {
+    const r1 = await appliquerComposition(
+      clientVisiteur,
+      roleMage("mAlchimiste"),
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(4242) },
+    );
+    expect(r1.statut).toBe("complet");
+    const recettesDuPremier = brouillonStocke().acquisitions.recettes.length;
+    expect(recettesDuPremier).toBeGreaterThan(0);
+
+    // ⚠️ L'OPTION EST ABSENTE — exactement l'appel de s375-v1.
+    const r2 = await appliquerComposition(
+      clientVisiteur,
+      roleMage("mRuniste"),
+      PERSONNAGE_LOCAL_ID,
+      { alea: lcg(77) },
+    );
+
+    expect(r2.statut).toBe("partiel");
+    expect(
+      r2.echecs.filter((e) => e.message.includes("XP insuffisant")).length,
+    ).toBeGreaterThan(0);
+    // La compétence-mère du runiste n'est jamais passée : ses assemblages
+    // sont refusés, et le brouillon garde les recettes de l'alchimiste.
+    expect(
+      r2.echecs.some((e) => e.type === "assemblage"),
+    ).toBe(true);
+    const b = brouillonStocke();
+    expect(b.acquisitions.assemblages).toEqual([]);
+    expect(b.acquisitions.recettes).toHaveLength(recettesDuPremier);
+  });
+});
+
+/* ------------------------------------------------------------------ */
 /* [s373] Chaîne d'avancement 5→9 (déverrouillage du wizard)           */
 /* ------------------------------------------------------------------ */
 

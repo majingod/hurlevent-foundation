@@ -16,6 +16,9 @@ const BASE = {
   modeCampagne: false,
   reprise: false,
   etape: 1,
+  // [s375-v2] Champ REQUIS depuis le défaut 1c — un démarrage à zéro n'a
+  // rien dépensé. Voir le cas dédié plus bas.
+  xpDepense: 0,
 };
 
 describe("doitMontrerAccueil", () => {
@@ -42,6 +45,22 @@ describe("doitMontrerAccueil", () => {
 
   it("jamais sur un brouillon repris à une étape > 1", () => {
     expect(doitMontrerAccueil({ ...BASE, etape: 4 })).toBe(false);
+  });
+
+  // ⭐⭐ [s375-v2 défaut 1c — piège C88] LE CAS QUE L'ÉTAPE NE VOIT PAS.
+  // Un personnage GÉNÉRÉ affiche l'étape 1 (il n'a pas encore de nom, D43)
+  // alors qu'il porte déjà tous ses achats (`etape_creation` = 10 en base).
+  // Sur ce seul critère d'étape, les portes se rouvraient et un second
+  // tirage s'empilait sur le premier (mesuré : 12 refus « XP insuffisant »,
+  // hybride ⚗️ + 9 recettes / zéro rune). `xp_depense` est l'état qui le dit.
+  it("jamais sur un personnage qui a DÉJÀ dépensé, même à l'étape 1 affichée", () => {
+    expect(doitMontrerAccueil({ ...BASE, xpDepense: 66 })).toBe(false);
+    // Le retour aux portes lit la MÊME fonction : les deux portes ferment.
+    expect(
+      doitMontrerAccueil({ ...BASE, accueilFranchi: false, xpDepense: 1 })
+    ).toBe(false);
+    // Et le critère ne mord PAS sur un démarrage à zéro (non-régression).
+    expect(doitMontrerAccueil({ ...BASE, xpDepense: 0 })).toBe(true);
   });
 });
 

@@ -74,6 +74,12 @@ interface ModeleMagieSnapshotRow {
   est_actif: boolean | null;
 }
 
+/** [C1 s375] Ligne de `recettes_alchimie` — seuls ces 2 champs comptent ici. */
+interface RecetteSnapshotRow {
+  est_actif: boolean | null;
+  niveau_requis: number | null;
+}
+
 function table<T>(
   snapshot: SnapshotVisiteur,
   nom: string,
@@ -166,6 +172,40 @@ export function modelesMagieNiveau1(snapshot: SnapshotVisiteur): {
 }
 
 /* ------------------------------------------------------------------ */
+/* 2 bis. Artisanat                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ⭐ [C1 s375] LES TAILLES DES CATALOGUES D'ARTISANAT — ce que le composeur
+ * doit connaître pour BORNER les recettes payantes (D-C) : au-delà du
+ * catalogue, une recette de plus n'existe pas, et le tirage sans remise de
+ * `versBrouillon` rendrait moins d'items que la fiche n'en annonce (D34).
+ *
+ * ⚠️ TOLÉRANT, à l'inverse des tables de `table<T>()` : un vieux snapshot
+ * sans `recettes_alchimie` rend 0/0 ⇒ zéro payante planifiée. Les GRATUITES,
+ * elles, restent dues (elles ne dépendent d'aucun compte). Refuser de
+ * construire le pont pour ça fermerait le générateur ENTIER alors que seul
+ * le grain manque. Le compte réel est attesté par le test du pont.
+ *
+ * Typage : le snapshot committé peut être en retard sur le type généré
+ * (dette [SNAPSHOT-COMMIT-STUB]) — même assertion structurelle que les
+ * autres tables, sur le sous-ensemble de champs réellement lu.
+ */
+export function taillesArtisanat(snapshot: SnapshotVisiteur): {
+  recettesNiv1: number;
+  recettesNiv2: number;
+} {
+  const rows = snapshot.tables.recettes_alchimie;
+  const recettes: readonly RecetteSnapshotRow[] = Array.isArray(rows)
+    ? (rows as readonly RecetteSnapshotRow[])
+    : [];
+  const compte = (niveau: number) =>
+    recettes.filter((r) => r.est_actif === true && r.niveau_requis === niveau)
+      .length;
+  return { recettesNiv1: compte(1), recettesNiv2: compte(2) };
+}
+
+/* ------------------------------------------------------------------ */
 /* 3. Assemblage                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -203,6 +243,10 @@ export function depsDepuisSnapshot(snapshot: SnapshotVisiteur): DepsResolveur {
     voleur: CONTENU_VOLEUR,
   };
 
+  // ⭐ [C1 s375] Les tailles vont à TOUTES les classes : l'Alchimie n'est pas
+  // réservée au mage (un guerrier qui la prend a droit à ses recettes aussi).
+  const artisanat = taillesArtisanat(snapshot);
+
   const parClasse = {} as Record<
     ClasseId,
     { cats: Catalogues; contenu: ContenuClasse }
@@ -214,6 +258,7 @@ export function depsDepuisSnapshot(snapshot: SnapshotVisiteur): DepsResolveur {
           competencesPourClasse(competences, classe)
         ),
         magie: classe === "mage" || classe === "pretre" ? magie : magieVide,
+        artisanat,
       },
       contenu: contenus[classe],
     };

@@ -20,7 +20,11 @@ import {
   type ResultatTirage,
   type TiragePersonnage,
 } from "@/moteurCreation/generateur/resoudre";
-import type { CompositionOk } from "@/moteurCreation/generateur/types";
+import type {
+  ArtisanatTire,
+  CompositionOk,
+} from "@/moteurCreation/generateur/types";
+import { tirerArtisanatNomme } from "@/moteurCreation/generateur/versBrouillon";
 import { getSnapshot } from "@/moteurCreation/snapshot";
 
 import AccueilPortes, { type PorteAffichee } from "./AccueilPortes";
@@ -61,6 +65,16 @@ import { PORTES } from "./portes";
  * s'affiche en clair au lieu de tirer des races sans exigence de costume.
  */
 
+/**
+ * ⭐ [C2 s375-v2] Le résultat du résolveur AUGMENTÉ des items d'artisanat
+ * NOMMÉS. C'est ICI que l'aléa du tirage vit (`Math.random`, `lancerTirage` /
+ * `voirFiche`) et ici que le snapshot est en main — donc ici qu'on tire les
+ * items UNE FOIS : la fiche les nomme, la conversion les consomme tels quels
+ * (D34, tiré = affiché = acheté). Les tirer à la conversion nommerait sur la
+ * fiche autre chose que ce que le joueur recevrait.
+ */
+type ResultatAffiche = ResultatTirage & { artisanatTire?: ArtisanatTire };
+
 type EcranGenerateur =
   | "accueil"
   | "inventaire"
@@ -89,6 +103,7 @@ interface GenerateurProps {
   onAppliquerTirage?: (resultat: {
     tirage: TiragePersonnage;
     composition: CompositionOk;
+    artisanatTire?: ArtisanatTire;
   }) => void;
 }
 
@@ -101,7 +116,7 @@ const Generateur = ({
   const [inventaire, setInventaire] = useState<ReadonlySet<string>>(new Set());
   const [raceRetenueId, setRaceRetenueId] = useState<string | null>(null);
   const [sacOuvert, setSacOuvert] = useState(false);
-  const [resultat, setResultat] = useState<ResultatTirage | null>(null);
+  const [resultat, setResultat] = useState<ResultatAffiche | null>(null);
   const [erreurPont, setErreurPont] = useState<string | null>(null);
   /** Refus parlant du dernier `resoudreChoix` — affiché dans l'escalier. */
   const [refusBoussole, setRefusBoussole] = useState<string | null>(null);
@@ -117,9 +132,29 @@ const Generateur = ({
   const depsRef = useRef<DepsResolveur | null>(null);
   const obtenirDeps = (): DepsResolveur =>
     (depsRef.current ??= depsDepuisSnapshot(getSnapshot()));
+
+  /** [C2 s375-v2] Les items d'artisanat, tirés UNE FOIS sur le résultat qui
+   *  vient d'être produit — même aléa de session, même instant. Une
+   *  composition sans enveloppe ne pose rien (le champ reste absent, et la
+   *  conversion garde son comportement v1). */
+  const avecArtisanat = (res: ResultatTirage): ResultatAffiche =>
+    res.ok && res.composition.artisanat.length > 0
+      ? {
+          ...res,
+          artisanatTire: tirerArtisanatNomme(
+            getSnapshot(),
+            res.composition.artisanat,
+            new Set<string>(),
+            Math.random
+          ),
+        }
+      : res;
+
   const lancerTirage = () => {
     try {
-      setResultat(tirerPersonnage(obtenirDeps(), Math.random, inventaire));
+      setResultat(
+        avecArtisanat(tirerPersonnage(obtenirDeps(), Math.random, inventaire))
+      );
       setErreurPont(null);
     } catch (e) {
       setErreurPont(
@@ -176,7 +211,7 @@ const Generateur = ({
   const voirFiche = (choix: ChoixJoueur) => {
     const res = resoudreChoix(obtenirDeps(), choix);
     if (res.ok) {
-      setResultat(res);
+      setResultat(avecArtisanat(res));
       setRefusBoussole(null);
       setEcran("ficheChoix");
     } else {
@@ -346,6 +381,7 @@ const Generateur = ({
         <FicheTirage
           tirage={resultat.tirage}
           composition={resultat.composition}
+          artisanatTire={resultat.artisanatTire}
           nbInventaire={inventaire.size}
           onAjuster={() => setEcran("boussole")}
           onContinuer={
@@ -354,6 +390,7 @@ const Generateur = ({
                   onAppliquerTirage({
                     tirage: resultat.tirage,
                     composition: resultat.composition,
+                    artisanatTire: resultat.artisanatTire,
                   })
               : undefined
           }
@@ -393,6 +430,7 @@ const Generateur = ({
             <FicheTirage
               tirage={resultat.tirage}
               composition={resultat.composition}
+              artisanatTire={resultat.artisanatTire}
               nbInventaire={inventaire.size}
               onRelancer={lancerTirage}
               onContinuer={
@@ -401,6 +439,7 @@ const Generateur = ({
                       onAppliquerTirage({
                         tirage: resultat.tirage,
                         composition: resultat.composition,
+                        artisanatTire: resultat.artisanatTire,
                       })
                   : undefined
               }

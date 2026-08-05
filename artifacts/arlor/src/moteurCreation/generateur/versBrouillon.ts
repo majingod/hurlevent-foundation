@@ -43,14 +43,29 @@
  */
 
 import type {
+  BrouillonAssemblage,
   BrouillonCompetence,
+  BrouillonPiege,
   BrouillonPriere,
+  BrouillonRecette,
   BrouillonSort,
   BrouillonVisiteur,
 } from "../brouillon/types";
 import type { Classe, Competence, Langue, SnapshotVisiteur } from "../snapshot";
+import {
+  POIDS_ASSEMBLAGES,
+  POIDS_PIEGES,
+  POIDS_RECETTES,
+  poidsDe,
+  tirerSansRemisePondere,
+} from "./contenu/artisanat";
 import { TRAIT_INAPTE, type Alea, type TiragePersonnage } from "./resoudre";
-import type { CompositionOk } from "./types";
+import type {
+  ArtisanatTire,
+  CompositionOk,
+  ItemTire,
+  PlanArtisanat,
+} from "./types";
 
 /** Erreur de conversion — snapshot inutilisable ou tirage incomplet. */
 export class ErreurConversionTirage extends Error {
@@ -284,15 +299,184 @@ function tirerChoix(
   return libres[Math.min(libres.length - 1, Math.floor(alea() * libres.length))];
 }
 
+/* ------------------------------------------------------------------ */
+/* ⭐ [C1 s375] L'ARTISANAT — l'enveloppe devient des items                */
+/* ------------------------------------------------------------------ */
+
+/** Ligne d'artisanat du snapshot — le sous-ensemble que le tirage lit. */
+interface LigneArtisanat {
+  id: string;
+  nom: string | null;
+  est_actif: boolean | null;
+  /** `recettes_alchimie` (palier de la recette). */
+  niveau_requis?: number | null;
+  /** `pieges` (le palier y s'appelle `niveau`). */
+  niveau?: number | null;
+}
+
+const TABLE_DE: Record<PlanArtisanat["famille"], string> = {
+  recette: "recettes_alchimie",
+  assemblage: "assemblages_runes",
+  piege: "pieges",
+};
+
+const POIDS_DE: Record<PlanArtisanat["famille"], Record<string, number>> = {
+  recette: POIDS_RECETTES,
+  assemblage: POIDS_ASSEMBLAGES,
+  piege: POIDS_PIEGES,
+};
+
+/**
+ * Le POOL d'un plan : les entrées ACTIVES du snapshot, du bon palier, moins
+ * celles déjà tirées. Tri par id AVANT tirage — l'ordre du snapshot n'est pas
+ * contractuel, un aléa seedé doit rendre les mêmes items quelle que soit la
+ * régénération (même discipline que `langueAncienneAuHasard`).
+ *
+ * TOLÉRANT sur la table absente (vieux JSON) : pool vide ⇒ tirage vide, pas
+ * d'exception. Les 3 tables sont dans le JSON committé (mesuré : 40/15/27),
+ * mais un brouillon amputé vaut mieux qu'un écran mort.
+ */
+function poolArtisanat(
+  snapshot: SnapshotVisiteur,
+  plan: PlanArtisanat,
+  dejaPris: ReadonlySet<string>,
+): LigneArtisanat[] {
+  const rows = snapshot.tables[TABLE_DE[plan.famille]];
+  if (!Array.isArray(rows)) return [];
+  const lignes = rows as readonly LigneArtisanat[];
+  return lignes
+    .filter((l) => {
+      if (l.est_actif !== true || dejaPris.has(l.id)) return false;
+      switch (plan.famille) {
+        case "recette":
+          // Gratuites : le quota serveur est PAR PALIER — palier EXACT.
+          // Payantes (3 XP, tous paliers confondus au manuel) : 1..palier.
+          return plan.coutUnitaire === 0
+            ? l.niveau_requis === plan.palier
+            : (l.niveau_requis ?? 0) <= plan.palier &&
+                (l.niveau_requis ?? 0) >= 1;
+        case "piege":
+          return l.niveau === plan.palier;
+        default:
+          return true; // assemblages : le catalogue entier, sans palier
+      }
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * ⭐ [C1 s375] LES ENVELOPPES DEVIENNENT DES ITEMS. Plan par plan, DANS
+ * L'ORDRE (les gratuites précèdent les payantes dans `composition.artisanat`,
+ * et le tirage est SANS REMISE d'un plan à l'autre : une payante ne peut pas
+ * redonner une recette déjà offerte).
+ *
+ * Pondéré par les goûts MESURÉS des vrais joueurs (`contenu/artisanat.ts`) ;
+ * un item non mesuré pèse `POIDS_DEFAUT` — tout le catalogue reste tirable.
+ *
+ * Un pool plus petit que `nb` rend moins d'items sans lever : c'est le
+ * catalogue qui manque, pas le tirage qui casse.
+ *
+ * ⭐ [C2 s375-v2] LE TIRAGE REND DES ITEMS NOMMÉS. C'est LA fonction de
+ * tirage — `tirerArtisanat` n'en est plus que l'habillage `Brouillon*`. Le
+ * nom sort d'ici parce que la FICHE en a besoin AVANT la conversion (D34) :
+ * ce que le joueur lit est ce qui sera acheté, pas un second tirage.
+ */
+export function tirerArtisanatNomme(
+  snapshot: SnapshotVisiteur,
+  plans: readonly PlanArtisanat[],
+  dejaPris: Set<string>,
+  alea: Alea,
+): ArtisanatTire {
+  const tire: ArtisanatTire = { recettes: [], assemblages: [], pieges: [] };
+
+  plans.forEach((plan, indexPlan) => {
+    const pool = poolArtisanat(snapshot, plan, dejaPris);
+    const table = POIDS_DE[plan.famille];
+    const tires = tirerSansRemisePondere(
+      pool,
+      (l) => poidsDe(l.nom ?? "", table),
+      plan.nb,
+      alea,
+    );
+    for (const l of tires) {
+      dejaPris.add(l.id);
+      // `nom` nullable côté types générés (C72) : jamais de token inventé,
+      // la chaîne vide se voit et ne ment pas.
+      const item: ItemTire = {
+        id: l.id,
+        nom: l.nom ?? "",
+        estGratuit: plan.coutUnitaire === 0,
+        plan: indexPlan,
+      };
+      if (plan.famille === "recette") tire.recettes.push(item);
+      else if (plan.famille === "assemblage") tire.assemblages.push(item);
+      else tire.pieges.push(item);
+    }
+  });
+  return tire;
+}
+
+/**
+ * ⭐ [C2 s375-v2] Les items tirés → les lignes du brouillon, DANS L'ORDRE,
+ * un `instanceId` neuf par ligne. Aucun tirage ici : c'est la CONSOMMATION
+ * (celle de la fiche comme celle du tirage à la conversion).
+ */
+export function artisanatEnBrouillon(tire: ArtisanatTire): {
+  recettes: BrouillonRecette[];
+  assemblages: BrouillonAssemblage[];
+  pieges: BrouillonPiege[];
+} {
+  return {
+    recettes: tire.recettes.map((i) => ({
+      instanceId: crypto.randomUUID(),
+      recetteId: i.id,
+    })),
+    assemblages: tire.assemblages.map((i) => ({
+      instanceId: crypto.randomUUID(),
+      assemblageId: i.id,
+    })),
+    pieges: tire.pieges.map((i) => ({
+      instanceId: crypto.randomUUID(),
+      piegeId: i.id,
+    })),
+  };
+}
+
+/** Tirage + habillage `Brouillon*` — la porte historique (contrat v1 intact). */
+export function tirerArtisanat(
+  snapshot: SnapshotVisiteur,
+  plans: readonly PlanArtisanat[],
+  dejaPris: Set<string>,
+  alea: Alea,
+): {
+  recettes: BrouillonRecette[];
+  assemblages: BrouillonAssemblage[];
+  pieges: BrouillonPiege[];
+} {
+  return artisanatEnBrouillon(
+    tirerArtisanatNomme(snapshot, plans, dejaPris, alea),
+  );
+}
+
 /**
  * CONVERSION — `{ tirage, composition }` → `BrouillonVisiteur`.
  * Pure : `snapshot` et `alea` injectés. `alea` sert aux CHOIX TIRÉS —
  * gratuites à `type_choix` (décision 32) ET achats à `type_choix` (s366) ;
  * un tirage sans aucun choix à remplir ne le consomme pas.
+ *
+ * ⭐ [C2 s375-v2] `resultat.artisanatTire` — quand l'appelant a DÉJÀ tiré les
+ * items (pour les nommer sur la fiche), ils sont CONSOMMÉS TELS QUELS : la
+ * fiche et le brouillon portent les mêmes ids, jamais deux tirages (D34).
+ * Absent ⇒ comportement d'origine (tirage ici même) : les appels v1 et les
+ * tests du lot ne changent pas d'un octet.
  */
 export function convertirTirageEnBrouillon(
   snapshot: SnapshotVisiteur,
-  resultat: { tirage: TiragePersonnage; composition: CompositionOk },
+  resultat: {
+    tirage: TiragePersonnage;
+    composition: CompositionOk;
+    artisanatTire?: ArtisanatTire;
+  },
   alea: Alea,
 ): BrouillonVisiteur {
   const { tirage, composition } = resultat;
@@ -328,6 +512,15 @@ export function convertirTirageEnBrouillon(
       prieres.push({ ...reste, priereId: m.modeleId, niveauPriere: m.config.niveau });
     }
   }
+
+  // ⭐ [C1 s375] L'artisanat DÛ : la composition porte les enveloppes, les
+  // items se tirent ICI (D34) — SAUF si l'appelant les a déjà tirés pour les
+  // NOMMER sur la fiche (C2 s375-v2), auquel cas on les consomme tels quels.
+  // Le rejeu (`rejouerBrouillon`) les joue APRÈS les compétences — la gate
+  // serveur exige la compétence-mère.
+  const artisanat = resultat.artisanatTire
+    ? artisanatEnBrouillon(resultat.artisanatTire)
+    : tirerArtisanat(snapshot, composition.artisanat, new Set<string>(), alea);
 
   return {
     schemaVersion: 2,
@@ -376,9 +569,9 @@ export function convertirTirageEnBrouillon(
       competences,
       sorts,
       prieres,
-      pieges: [],
-      recettes: [],
-      assemblages: [],
+      pieges: artisanat.pieges,
+      recettes: artisanat.recettes,
+      assemblages: artisanat.assemblages,
     },
   };
 }

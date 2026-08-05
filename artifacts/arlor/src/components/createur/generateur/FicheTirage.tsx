@@ -3,15 +3,20 @@ import { useState } from "react";
 import type { TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
 import type {
   AchatMagiePlanifie,
+  ArtisanatTire,
   CompositionOk,
+  ItemTire,
+  PlanArtisanat,
 } from "@/moteurCreation/generateur/types";
 
 import {
   LABELS_CLASSES,
   NOMS_COUCHES,
   TEXTE_SAC_VIDE,
+  coutArtisanat,
   coutCouche,
   grouperAchats,
+  itemsDuPlan,
   magieDeCouche,
   metaRole,
   texteTraitsIncompatibles,
@@ -37,6 +42,13 @@ import {
 interface FicheTirageProps {
   tirage: TiragePersonnage;
   composition: CompositionOk;
+  /**
+   * ⭐ [C2 s375-v2] Les items d'artisanat DÉJÀ TIRÉS (par le conteneur, sur
+   * ce résultat-ci). Fournis ⇒ la fiche les NOMME sous leur enveloppe, comme
+   * les sorts ; absents ⇒ la fiche s'en tient aux enveloppes chiffrées
+   * (comportement s375-v1, aucun re-tirage ici).
+   */
+  artisanatTire?: ArtisanatTire;
   /** Taille de l'inventaire coché — 0 déclenche l'indice « sac vide ». */
   nbInventaire: number;
   /** 🎲 : re-tirer. Absent en 🧭 (un re-roll jetterait les choix). */
@@ -132,9 +144,45 @@ const LigneMagie = ({
   </li>
 );
 
+/**
+ * ⭐ [C2 s375-v2] UN ITEM D'ARTISANAT NOMMÉ — même rendu qu'un sort
+ * (`LigneMagie`) : badge de nature à gauche, nom, prix en gras à droite.
+ * Le prix vient du PLAN (0 ⇒ « offert », 3 ⇒ « 3 XP ») : c'est la même
+ * lecture que « incluse » côté compétences. Aucune classe nouvelle (C76).
+ */
+const LigneItem = ({
+  item,
+  badge,
+  coutUnitaire,
+}: {
+  item: ItemTire;
+  badge: string;
+  coutUnitaire: number;
+}) => (
+  <li className="flex items-baseline justify-between gap-3 border-b border-white/10 px-0.5 py-2 text-sm text-white/90">
+    <span>
+      <span className="rounded border border-white/15 px-1.5 py-px text-[10px] uppercase tracking-wider text-white/50">
+        {badge}
+      </span>{" "}
+      {item.nom}
+    </span>
+    <b className="whitespace-nowrap">
+      {coutUnitaire === 0 ? "offert" : `${coutUnitaire} XP`}
+    </b>
+  </li>
+);
+
+/** Le mot de la famille, tel que le manuel la nomme (aucun terme inventé). */
+const BADGE_FAMILLE: Record<PlanArtisanat["famille"], string> = {
+  recette: "recette",
+  assemblage: "assemblage",
+  piege: "piège",
+};
+
 const FicheTirage = ({
   tirage,
   composition,
+  artisanatTire,
   nbInventaire,
   onRelancer,
   onAjuster,
@@ -263,6 +311,54 @@ const FicheTirage = ({
           </section>
         );
       })}
+
+      {/* ⭐ [C1 s375 · C2 s375-v2] L'artisanat DÛ. Même patron de section que
+          ②③④ : une ligne par enveloppe (motif à gauche, total à droite), et
+          SOUS chaque enveloppe les items NOMMÉS — demande Fred s375-v2 : les
+          sorts sont nommés sur la fiche, les recettes/assemblages/pièges ne
+          l'étaient qu'au wizard. Ces items ne sont pas tirés ici : ce sont
+          EXACTEMENT ceux que la conversion achètera (D34, `artisanatTire`). */}
+      {composition.artisanat.length > 0 && (
+        <section className="mb-3 rounded-lg border border-white/10 bg-white/5 p-3.5">
+          <header className="flex items-baseline justify-between">
+            <h3 className="text-[11px] uppercase tracking-widest text-white/40">
+              ⚗️ Ce que ton métier te donne
+            </h3>
+            <span className="text-[13px] font-semibold text-gold-accent">
+              {coutArtisanat(composition)} XP
+            </span>
+          </header>
+          <ul className="mt-1">
+            {composition.artisanat.map((plan, i) => {
+              const items = itemsDuPlan(artisanatTire, plan.famille, i);
+              return (
+                <li key={`art-${i}`}>
+                  <div className="flex items-baseline justify-between gap-3 border-b border-white/10 px-0.5 py-2 text-sm text-white/90">
+                    <span>{plan.motif}</span>
+                    <b className="whitespace-nowrap">
+                      {plan.coutUnitaire === 0
+                        ? "offert"
+                        : `${plan.nb * plan.coutUnitaire} XP`}
+                    </b>
+                  </div>
+                  {items.length > 0 && (
+                    <ul className="pl-3">
+                      {items.map((item) => (
+                        <LigneItem
+                          key={item.id}
+                          item={item}
+                          badge={BADGE_FAMILLE[plan.famille]}
+                          coutUnitaire={plan.coutUnitaire}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* Total */}
       <div className="mb-3 flex items-baseline justify-between rounded-lg border border-white/10 bg-white/5 px-3.5 py-3 text-sm">

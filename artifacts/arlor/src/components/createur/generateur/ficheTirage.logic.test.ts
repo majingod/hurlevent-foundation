@@ -1,11 +1,15 @@
 /** [VIS-8 lot 🎲, s364] Logique de la fiche du tirage — tests purs. */
 import { describe, expect, it } from "vitest";
 
-import type { AchatPlanifie } from "@/moteurCreation/generateur/types";
+import type {
+  AchatPlanifie,
+  ArtisanatTire,
+} from "@/moteurCreation/generateur/types";
 
 import {
   coutCouche,
   grouperAchats,
+  itemsDuPlan,
   metaRole,
   texteTraitsIncompatibles,
 } from "./ficheTirage.logic";
@@ -110,5 +114,46 @@ describe("texteTraitsIncompatibles", () => {
     const t = texteTraitsIncompatibles(["A", "B"]);
     expect(t).toContain("« A » et « B »");
     expect(t).toContain("ne seront pas proposés");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* ⭐ [C2 s375-v2] Les items nommés, sous LEUR enveloppe                */
+/* ------------------------------------------------------------------ */
+
+describe("itemsDuPlan", () => {
+  // ⚗️ Alchimie 2 : DEUX enveloppes `recette` gratuites (index 0 = 5
+  // mineures, index 1 = 4 intermédiaires) + une payante (index 2). C'est le
+  // cas qu'un filtre (famille, gratuité) confondrait.
+  const TIRE: ArtisanatTire = {
+    recettes: [
+      { id: "r1", nom: "Potion de soins", estGratuit: true, plan: 0 },
+      { id: "r2", nom: "Poison de sommeil", estGratuit: true, plan: 0 },
+      { id: "r3", nom: "Antidote universel", estGratuit: true, plan: 1 },
+      { id: "r4", nom: "Remède curatif", estGratuit: false, plan: 2 },
+    ],
+    assemblages: [
+      { id: "a1", nom: "Rune de force", estGratuit: true, plan: 3 },
+    ],
+    pieges: [],
+  };
+
+  it("chaque enveloppe ne reçoit QUE ses items (jamais ceux de sa jumelle)", () => {
+    expect(itemsDuPlan(TIRE, "recette", 0).map((i) => i.id)).toEqual(["r1", "r2"]);
+    expect(itemsDuPlan(TIRE, "recette", 1).map((i) => i.id)).toEqual(["r3"]);
+    expect(itemsDuPlan(TIRE, "recette", 2).map((i) => i.id)).toEqual(["r4"]);
+    // Preuve par le contraire : un filtre par famille seule en rendrait 4
+    // sous CHACUNE des trois enveloppes, soit 12 lignes pour 4 acquisitions.
+    expect(TIRE.recettes).toHaveLength(4);
+  });
+
+  it("la famille compte : une enveloppe d'assemblage ne pioche pas dans les recettes", () => {
+    expect(itemsDuPlan(TIRE, "assemblage", 3).map((i) => i.id)).toEqual(["a1"]);
+    expect(itemsDuPlan(TIRE, "assemblage", 0)).toEqual([]);
+    expect(itemsDuPlan(TIRE, "piege", 0)).toEqual([]);
+  });
+
+  it("sans tirage fourni : liste vide — la fiche retombe sur l'enveloppe seule", () => {
+    expect(itemsDuPlan(undefined, "recette", 0)).toEqual([]);
   });
 });
