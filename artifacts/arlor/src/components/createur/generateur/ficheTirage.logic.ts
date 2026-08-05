@@ -11,8 +11,11 @@ import { CONTENU_VOLEUR } from "@/moteurCreation/generateur/contenu/voleur";
 import type {
   AchatMagiePlanifie,
   AchatPlanifie,
+  ArtisanatTire,
   ClasseId,
   CompositionOk,
+  ItemTire,
+  PlanArtisanat,
 } from "@/moteurCreation/generateur/types";
 
 export const NOMS_COUCHES: Record<2 | 3 | 4, string> = {
@@ -110,6 +113,32 @@ export function coutArtisanat(
     (s, p) => s + p.nb * p.coutUnitaire,
     0
   );
+}
+
+/**
+ * ⭐ [C2 s375-v2] Les items NOMMÉS d'une enveloppe donnée, dans l'ordre du
+ * tirage. Filtre sur `item.plan` (l'index de l'enveloppe) et NON sur
+ * (famille, gratuité) : ⚗️ Alchimie 2 porte DEUX enveloppes `recette`
+ * gratuites (5 mineures palier 1 + 4 intermédiaires palier 2) — un filtre par
+ * famille afficherait les 9 mêmes items sous chacune, 18 lignes pour 9
+ * acquisitions.
+ *
+ * `artisanatTire` absent (fiche rendue sans tirage préalable) ⇒ liste vide :
+ * la fiche retombe sur l'enveloppe chiffrée seule, jamais sur un re-tirage.
+ */
+export function itemsDuPlan(
+  artisanatTire: ArtisanatTire | undefined,
+  famille: PlanArtisanat["famille"],
+  indexPlan: number
+): ItemTire[] {
+  if (!artisanatTire) return [];
+  const source =
+    famille === "recette"
+      ? artisanatTire.recettes
+      : famille === "assemblage"
+        ? artisanatTire.assemblages
+        : artisanatTire.pieges;
+  return source.filter((i) => i.plan === indexPlan);
 }
 
 export const magieDeCouche = (

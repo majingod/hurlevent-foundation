@@ -12,7 +12,10 @@ import { appliquerComposition } from "@/creation/generateur/appliquerComposition
 import { PROFIL_VISITEUR_LOCAL } from "@/creation/visiteur/clientVisiteur";
 import { effacerBrouillon } from "@/creation/visiteur/stockageBrouillon";
 import type { TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
-import type { CompositionOk } from "@/moteurCreation/generateur/types";
+import type {
+  ArtisanatTire,
+  CompositionOk,
+} from "@/moteurCreation/generateur/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfil } from "@/contexts/ProfilContext";
 import { Progress } from "@/components/ui/progress";
@@ -715,6 +718,7 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
       modeCampagne,
       reprise: !!personnageIdParUrl,
       etape,
+      xpDepense,
     })
   ) {
     // [VIS-8 PR-B] 🎲 « Continuer dans le créateur » : applique la composition
@@ -725,11 +729,25 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     const appliquerTirage = async (resultat: {
       tirage: TiragePersonnage;
       composition: CompositionOk;
+      artisanatTire?: ArtisanatTire;
     }) => {
       if (applicationTirage) return;
       setApplicationTirage(true);
       try {
-        const res = await appliquerComposition(clientActif, resultat, personnageId);
+        // [s375-v2 défaut 1b] L'état RÉEL du personnage part avec la demande :
+        // un perso qui porte déjà un tirage refuse le second (il s'empilerait).
+        const res = await appliquerComposition(
+          clientActif,
+          resultat,
+          personnageId,
+          { etatActuel: { xpDepense } },
+        );
+        if (res.statut === "refuse_non_vierge") {
+          toast.error(
+            "Ce personnage a déjà reçu un tirage. Pour en tirer un autre, supprime-le et repars de « Nouveau personnage ».",
+          );
+          return; // on reste sur la fiche
+        }
         if (!res.faits.some((f) => f.type === "etape4")) {
           // Échec AVANT l'étape 4 : les achats n'ont pas commencé (ordre du
           // plan), rien d'irréversible — on reste sur la fiche (retry sûr).
@@ -786,8 +804,13 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   // [s368 #3] « Tu pourras revenir ici à tout moment » — la promesse de
   // l'accueil. Le retour est offert EXACTEMENT quand l'accueil se
   // ré-afficherait à un rechargement (même fonction, accueilFranchi remis à
-  // faux) : jamais en admin/campagne/reprise, jamais passé l'étape 1 — donc
-  // jamais sur un personnage avancé qu'un rejeu pourrait écraser.
+  // faux) : jamais en admin/campagne/reprise, jamais passé l'étape 1.
+  // [s375-v2 défaut 1c] Le commentaire d'origine disait « donc jamais sur un
+  // personnage avancé qu'un rejeu pourrait écraser » : la prémisse est tombée
+  // avec le générateur (piège C88). Un perso GÉNÉRÉ est avancé — achats en
+  // base, `etape_creation` = 10 — tout en AFFICHANT l'étape 1 (il n'a pas
+  // encore de nom, D43). L'étape ne suffit donc plus ; `xpDepense` est le
+  // critère qui tient, et il vit maintenant DANS `doitMontrerAccueil`.
   const peutRevenirAuxPortes =
     accueilFranchi &&
     doitMontrerAccueil({
@@ -797,6 +820,7 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
       modeCampagne,
       reprise: !!personnageIdParUrl,
       etape,
+      xpDepense,
     });
 
   // -- Rendu principal -------------------------------------------------------

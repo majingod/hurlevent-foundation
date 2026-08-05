@@ -25,7 +25,10 @@
  */
 
 import type { Alea, TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
-import type { CompositionOk } from "@/moteurCreation/generateur/types";
+import type {
+  ArtisanatTire,
+  CompositionOk,
+} from "@/moteurCreation/generateur/types";
 import { convertirTirageEnBrouillon } from "@/moteurCreation/generateur/versBrouillon";
 import { getSnapshot } from "@/moteurCreation/snapshot";
 
@@ -44,6 +47,13 @@ export interface OptionsApplication {
   /** Catalogue du plan de rejeu. Défaut : `catalogueDepuisSnapshot()`. */
   catalogue?: CatalogueRejeu;
   onProgres?: (fait: FaitRejeu) => void;
+  /**
+   * ⭐ [s375-v2 défaut 1] L'état du personnage VISÉ, lu par l'appelant.
+   * Absent = pas de garde (contrat v1 : les tests du lot appliquent sur un
+   * brouillon frais). Fourni avec `xpDepense > 0` ⇒ refus AVANT toute
+   * écriture, cf. `refuse_non_vierge`.
+   */
+  etatActuel?: { xpDepense: number };
 }
 
 /**
@@ -53,10 +63,17 @@ export interface OptionsApplication {
  * par `personnages.etape_creation`, que `etapeMax` (le stepper du wizard)
  * lit pour déverrouiller la navigation.
  */
-export interface ResultatApplication extends ResultatRejeu {
+export interface ResultatApplication extends Omit<ResultatRejeu, "statut"> {
+  /**
+   * Les statuts du rejeu, PLUS `refuse_non_vierge` (s375-v2) : un tirage
+   * refusé d'entrée parce que le personnage porte déjà des achats. La valeur
+   * est ajoutée ICI et non dans `ResultatRejeu` — c'est une règle du
+   * générateur, le rejoueur VIS-6 ne la connaît pas.
+   */
+  statut: ResultatRejeu["statut"] | "refuse_non_vierge";
   /** 10 = wizard entièrement déverrouillé · 5..9 = chaîne arrêtée sur un
    * refus (statu quo séquentiel à partir de là) · null = étape 4 refusée,
-   * la phase n'a pas couru. */
+   * la phase n'a pas couru (ou tirage refusé : rien n'a couru). */
   etapeApresAvancement: number | null;
 }
 
@@ -76,13 +93,39 @@ export interface ResultatApplication extends ResultatRejeu {
  * façon les 10 étapes — un perso sans nom reste infinalisable). Les échecs
  * d'ACHAT n'empêchent PAS la phase : naviguer librement aide justement à
  * compléter, et chaque étape reste gardée par sa propre validation.
+ *
+ * ⭐⭐ [s375-v2 défaut 1] UN TIRAGE NE S'APPLIQUE QU'À UN PERSONNAGE VIERGE.
+ * Le rejeu n'est PAS un remplacement : il s'EMPILE. Mesuré s375 sur cette
+ * branche (sonde, code de la branche) — appliquer ⚗️ puis re-tirer un 🔮
+ * runiste sur le MÊME personnage part avec un budget déjà mangé : 12 échecs
+ * « XP insuffisant. Requis : 6 | Disponible : 1 », `Assemblage de Runes`
+ * refusé (ses propres prérequis refusés), et le joueur atterrit au wizard
+ * avec Alchimie + 9 recettes ET ZÉRO RUNE — un hybride cassé. D'où la garde
+ * `options.etatActuel` : `xpDepense > 0` ⇒ `refuse_non_vierge` AVANT toute
+ * écriture. Pour recommencer : supprimer le personnage.
  */
 export async function appliquerComposition(
   client: ClientCreation,
-  resultat: { tirage: TiragePersonnage; composition: CompositionOk },
+  resultat: {
+    tirage: TiragePersonnage;
+    composition: CompositionOk;
+    /** [C2 s375-v2] Items déjà tirés pour la fiche — consommés tels quels. */
+    artisanatTire?: ArtisanatTire;
+  },
   personnageId: string,
   options: OptionsApplication = {},
 ): Promise<ResultatApplication> {
+  // ⭐ La garde d'abord : AVANT la conversion, avant la moindre RPC.
+  if ((options.etatActuel?.xpDepense ?? 0) > 0) {
+    return {
+      personnageId,
+      statut: "refuse_non_vierge",
+      faits: [],
+      echecs: [],
+      etapeApresAvancement: null,
+    };
+  }
+
   const brouillon = convertirTirageEnBrouillon(
     getSnapshot(),
     resultat,

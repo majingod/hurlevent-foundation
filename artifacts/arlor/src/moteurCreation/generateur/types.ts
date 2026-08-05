@@ -89,6 +89,35 @@ export interface PlanArtisanat {
   motif: string;
 }
 
+/**
+ * ⭐ [C2 s375-v2] UN ITEM D'ARTISANAT NOMMÉ — ce que la fiche AFFICHE et ce
+ * que la conversion ACHÈTE, la même ligne (D34 : tiré = affiché = acheté).
+ *
+ * `plan` est l'INDEX de l'enveloppe (`composition.artisanat[plan]`) qui a
+ * produit cet item. Nécessaire à la fiche : deux enveloppes de la même
+ * famille et du même prix coexistent (⚗️ Alchimie 2 : « 5 mineures » palier 1
+ * ET « 4 intermédiaires » palier 2, toutes deux `recette` / gratuites) — sans
+ * cet index elles s'affichent l'une sous l'autre avec les MÊMES 9 items, soit
+ * 18 lignes pour 9 acquisitions. Un curseur séquentiel ne suffit pas : un
+ * pool plus court que `nb` décale tous les plans suivants.
+ */
+export interface ItemTire {
+  id: string;
+  nom: string;
+  /** `plan.coutUnitaire === 0` — badge « offert » vs « 3 XP » sur la fiche. */
+  estGratuit: boolean;
+  /** Index dans `composition.artisanat` du plan qui a tiré cet item. */
+  plan: number;
+}
+
+/** ⭐ [C2 s375-v2] Les items tirés UNE FOIS, par famille, dans l'ordre des
+ *  plans. Produit AVANT la fiche, consommé tel quel à la conversion. */
+export interface ArtisanatTire {
+  recettes: ItemTire[];
+  assemblages: ItemTire[];
+  pieges: ItemTire[];
+}
+
 export interface CompositionOk {
   ok: true;
   /** Couche ① — gratuités de classe (0 XP). */

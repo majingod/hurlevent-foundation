@@ -46,7 +46,11 @@ import fxVoleur from "./fixtures/competences_voleur.fixture.json";
 import { depsDepuisSnapshot, taillesArtisanat } from "./pontSnapshot";
 import type { Alea, TiragePersonnage } from "./resoudre";
 import type { Composition, CompositionOk } from "./types";
-import { convertirTirageEnBrouillon, tirerArtisanat } from "./versBrouillon";
+import {
+  convertirTirageEnBrouillon,
+  tirerArtisanat,
+  tirerArtisanatNomme,
+} from "./versBrouillon";
 
 /* ------------------------------------------------------------------ */
 /* Montage — mêmes fixtures que les autres tests du composeur.         */
@@ -474,6 +478,143 @@ describe("artisanat — conversion : les items précis se tirent ici", () => {
     const c = tirerArtisanat(snap, plans, new Set(), lcg(12345));
     expect(c.recettes.map((r) => r.recetteId)).not.toEqual(
       a.recettes.map((r) => r.recetteId)
+    );
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* ⭐ 4bis. [C2 s375-v2] TIRÉ = AFFICHÉ = ACHETÉ (D34)                  */
+/* ------------------------------------------------------------------ */
+
+describe("artisanat — la fiche nomme EXACTEMENT ce que le brouillon achète", () => {
+  const plansAlchimiste = () =>
+    alchimiste({
+      ...catsMage,
+      artisanat: { recettesNiv1: 14, recettesNiv2: 16 },
+    });
+
+  it("⭐ `artisanatTire` fourni : les ids du brouillon SONT ceux de la fiche", () => {
+    const composition = plansAlchimiste();
+    // 1. Le conteneur tire les items UNE FOIS — c'est ce que la fiche nomme.
+    const artisanatTire = tirerArtisanatNomme(
+      snap,
+      composition.artisanat,
+      new Set<string>(),
+      lcg(4242)
+    );
+    expect(artisanatTire.recettes.length).toBeGreaterThan(0);
+
+    // 2. La conversion les CONSOMME — aléa DIFFÉRENT exprès : si elle
+    //    re-tirait, les listes divergeraient immanquablement.
+    const b = convertirTirageEnBrouillon(
+      snap,
+      { tirage: tirageMage(), composition, artisanatTire },
+      lcg(999)
+    );
+
+    const idsFiche = artisanatTire.recettes.map((i) => i.id);
+    const idsBrouillon = b.acquisitions.recettes.map((r) => r.recetteId);
+    // Égalité d'ENSEMBLE et de TAILLE (et ici même ordre : la consommation
+    // ne réordonne rien).
+    expect(idsBrouillon).toHaveLength(idsFiche.length);
+    expect(new Set(idsBrouillon)).toEqual(new Set(idsFiche));
+    expect(idsBrouillon).toEqual(idsFiche);
+    // Chaque ligne reçoit tout de même son `instanceId` propre.
+    expect(new Set(b.acquisitions.recettes.map((r) => r.instanceId)).size).toBe(
+      idsFiche.length
+    );
+  });
+
+  it("runes et pièges suivent la même règle (les 3 familles, pas seulement ⚗️)", () => {
+    const runiste = ok(
+      composerClasse(catsMage, CONTENU_MAGE, {
+        roleId: "mRuniste",
+        inventaire: RICHE,
+        budget: 80,
+        element: "Feu",
+      })
+    );
+    const tireR = tirerArtisanatNomme(snap, runiste.artisanat, new Set(), lcg(7));
+    const bR = convertirTirageEnBrouillon(
+      snap,
+      {
+        tirage: { ...tirageMage(), roleId: "mRuniste" },
+        composition: runiste,
+        artisanatTire: tireR,
+      },
+      lcg(31337)
+    );
+    expect(bR.acquisitions.assemblages.map((a) => a.assemblageId)).toEqual(
+      tireR.assemblages.map((i) => i.id)
+    );
+
+    const eclaireur = ok(
+      composerClasse(catsVoleur, CONTENU_VOLEUR, {
+        roleId: "vEclaireur",
+        inventaire: RICHE_ECLAIREUR,
+        budget: 80,
+      })
+    );
+    const tireV = tirerArtisanatNomme(snap, eclaireur.artisanat, new Set(), lcg(11));
+    const bV = convertirTirageEnBrouillon(
+      snap,
+      {
+        tirage: {
+          ...tirageMage(),
+          classe: "voleur",
+          roleId: "vEclaireur",
+        } as TiragePersonnage,
+        composition: eclaireur,
+        artisanatTire: tireV,
+      },
+      lcg(31337)
+    );
+    expect(bV.acquisitions.pieges.map((p) => p.piegeId)).toEqual(
+      tireV.pieges.map((i) => i.id)
+    );
+    expect(tireV.pieges.length).toBe(3);
+  });
+
+  it("les items NOMMÉS portent nom, gratuité et leur enveloppe d'origine", () => {
+    const composition = plansAlchimiste();
+    const tire = tirerArtisanatNomme(snap, composition.artisanat, new Set(), lcg(4242));
+    // Aucun nom vide : le catalogue committé les porte tous (C76 — rien
+    // d'inventé, la chaîne vide se verrait).
+    expect(tire.recettes.every((i) => i.nom.length > 0)).toBe(true);
+    // `estGratuit` DÉRIVE du plan (coutUnitaire === 0), il ne s'invente pas.
+    for (const i of tire.recettes) {
+      expect(i.estGratuit).toBe(composition.artisanat[i.plan].coutUnitaire === 0);
+    }
+    // ⭐ L'INDEX D'ENVELOPPE EST LE POINT DU CHAMP `plan` : ⚗️ Alchimie 2
+    // porte DEUX enveloppes `recette` gratuites (5 mineures palier 1 + 4
+    // intermédiaires palier 2). Sans l'index, la fiche afficherait les 9
+    // mêmes items sous chacune. Les compteurs par enveloppe le prouvent.
+    const gratuites = composition.artisanat
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => p.famille === "recette" && p.coutUnitaire === 0);
+    expect(gratuites).toHaveLength(2);
+    expect(tire.recettes.filter((r) => r.plan === gratuites[0].i)).toHaveLength(5);
+    expect(tire.recettes.filter((r) => r.plan === gratuites[1].i)).toHaveLength(4);
+  });
+
+  it("COMPAT : sans `artisanatTire`, la conversion tire elle-même, à l'identique", () => {
+    const composition = plansAlchimiste();
+    const entree = { tirage: tirageMage(), composition };
+    // Le chemin v1 est INCHANGÉ : même aléa ⇒ mêmes ids, tirage bien fait à
+    // la conversion. (Les compteurs exacts du v1 — 15 recettes, paliers
+    // 1/1/1/1/1 puis 2/2/2/2 — sont épinglés plus haut, sans une ligne
+    // touchée : c'est là que vit la vraie preuve de non-régression.)
+    const a = convertirTirageEnBrouillon(snap, entree, lcg(4242));
+    const b = convertirTirageEnBrouillon(snap, entree, lcg(4242));
+    expect(a.acquisitions.recettes.map((r) => r.recetteId)).toEqual(
+      b.acquisitions.recettes.map((r) => r.recetteId)
+    );
+    expect(a.acquisitions.recettes.length).toBeGreaterThan(0);
+    // Et ce tirage-là n'est PAS celui d'un `artisanatTire` fourni : la
+    // branche « consommer » est bien distincte de la branche « tirer ».
+    const tire = tirerArtisanatNomme(snap, composition.artisanat, new Set(), lcg(4242));
+    expect(a.acquisitions.recettes.map((r) => r.recetteId)).not.toEqual(
+      tire.recettes.map((i) => i.id)
     );
   });
 });
