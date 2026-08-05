@@ -5303,6 +5303,17 @@ export type Database = {
         Args: { p_montant: number; p_personnage_id: string; p_raison?: string }
         Returns: Json
       }
+      enregistrer_generation: {
+        Args: {
+          p_composition: Json
+          p_etape_apres: number | null
+          p_mode: string
+          p_nb_echecs: number
+          p_personnage_id: string
+          p_statut: string
+        }
+        Returns: Json
+      }
       est_admin: { Args: never; Returns: boolean }
       est_animateur_ou_admin: { Args: never; Returns: boolean }
       etat_edition_personnage: {

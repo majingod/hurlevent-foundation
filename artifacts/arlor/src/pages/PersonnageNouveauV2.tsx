@@ -9,6 +9,11 @@ import {
 
 import { clientActif } from "@/creation/clientActif";
 import { appliquerComposition } from "@/creation/generateur/appliquerComposition";
+import {
+  preparerTraceGeneration,
+  type ModeGeneration,
+} from "@/creation/generateur/traceGeneration";
+import { supabase } from "@/integrations/supabase/client";
 import { PROFIL_VISITEUR_LOCAL } from "@/creation/visiteur/clientVisiteur";
 import { effacerBrouillon } from "@/creation/visiteur/stockageBrouillon";
 import type { TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
@@ -730,6 +735,7 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
       tirage: TiragePersonnage;
       composition: CompositionOk;
       artisanatTire?: ArtisanatTire;
+      mode: ModeGeneration;
     }) => {
       if (applicationTirage) return;
       setApplicationTirage(true);
@@ -770,6 +776,32 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
         await queryClient.invalidateQueries({
           predicate: (q) => q.queryKey.includes(personnageId),
         });
+        // [s376 décision B] Trace de génération — fire-and-forget : le succès
+        // du joueur ne dépend JAMAIS de la trace (échec = console.warn).
+        const trace = preparerTraceGeneration({
+          modeVisiteur,
+          personnageId,
+          mode: resultat.mode,
+          resultat: {
+            tirage: resultat.tirage,
+            composition: resultat.composition,
+            artisanatTire: resultat.artisanatTire,
+          },
+          res,
+        });
+        if (trace) {
+          void supabase
+            .rpc("enregistrer_generation", trace)
+            .then(({ data, error }) => {
+              if (error) {
+                console.warn("[trace-generation]", error.message);
+              } else if (
+                (data as { succes?: boolean } | null)?.succes !== true
+              ) {
+                console.warn("[trace-generation] refus serveur", data);
+              }
+            });
+        }
         setAccueilFranchi(true); // → wizard, étape 1 : le joueur nomme son perso
       } catch (e) {
         // `ErreurConversionTirage` (snapshot inutilisable) ou panne réseau
