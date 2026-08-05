@@ -17,8 +17,20 @@
  * - une application dont l'étape 4 n'est pas passée : les achats n'ont pas
  *   commencé et le joueur va RÉESSAYER — tracer trop tôt consommerait la
  *   place unique de la vraie application.
+ *
+ * ⚠️ FRONTIÈRE `Json` (corrigé s376, rapport CC) : la colonne est `jsonb`, donc
+ * `types.ts` — fichier GÉNÉRÉ par Supabase — déclare `p_composition: Json`, un
+ * type récursif à signature d'index. `TiragePersonnage` / `CompositionOk` sont
+ * des interfaces sans signature d'index : structurellement INCOMPATIBLES, `tsc`
+ * refuse l'appel (TS2345). Élargir le type dans `types.ts` aurait « marché » et
+ * aurait été EFFACÉ SANS BRUIT à la prochaine régénération des types — la
+ * frontière appartient donc à CE module, seul à connaître la forme du payload.
+ * Le passage se fait par un aller-retour JSON, pas par un cast sec : le cast
+ * AFFIRME que la valeur est du Json, l'aller-retour la REND telle (et
+ * `traceGeneration.test.ts` l'atteste sur un payload réaliste).
  */
 
+import type { Json } from "@/integrations/supabase/types";
 import type { TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
 import type {
   ArtisanatTire,
@@ -30,6 +42,13 @@ import type { ResultatApplication } from "./appliquerComposition";
 /** 🎲 Surprends-moi = 'de' · 🧭 Guide-moi = 'boussole' (CHECK en base). */
 export type ModeGeneration = "de" | "boussole";
 
+/** Ce que le générateur a produit — la forme AVANT passage en `jsonb`. */
+export interface CompositionTracee {
+  tirage: TiragePersonnage;
+  composition: CompositionOk;
+  artisanatTire?: ArtisanatTire;
+}
+
 /** Arguments EXACTS de la RPC `enregistrer_generation` (mêmes noms p_*). */
 export interface ArgsTraceGeneration {
   p_personnage_id: string;
@@ -37,11 +56,19 @@ export interface ArgsTraceGeneration {
   p_statut: string;
   p_etape_apres: number | null;
   p_nb_echecs: number;
-  p_composition: {
-    tirage: TiragePersonnage;
-    composition: CompositionOk;
-    artisanatTire?: ArtisanatTire;
-  };
+  /** `jsonb` côté base — voir la note FRONTIÈRE en tête de fichier. */
+  p_composition: Json;
+}
+
+/**
+ * Rend la composition réellement sérialisable (et pas seulement déclarée
+ * telle). Tout le contenu est plat — chaînes, nombres, booléens, tableaux
+ * d'objets : aucun `Set`, `Map`, `Date` ni fonction. L'aller-retour retire
+ * aussi les clés `undefined` (`artisanatTire` absent), ce que `jsonb` aurait
+ * fait de toute façon.
+ */
+export function versJson(composition: CompositionTracee): Json {
+  return JSON.parse(JSON.stringify(composition)) as Json;
 }
 
 /**
@@ -53,11 +80,7 @@ export function preparerTraceGeneration(params: {
   modeVisiteur: boolean;
   personnageId: string;
   mode: ModeGeneration;
-  resultat: {
-    tirage: TiragePersonnage;
-    composition: CompositionOk;
-    artisanatTire?: ArtisanatTire;
-  };
+  resultat: CompositionTracee;
   res: ResultatApplication;
 }): ArgsTraceGeneration | null {
   const { modeVisiteur, personnageId, mode, resultat, res } = params;
@@ -70,6 +93,6 @@ export function preparerTraceGeneration(params: {
     p_statut: res.statut,
     p_etape_apres: res.etapeApresAvancement,
     p_nb_echecs: res.echecs.length,
-    p_composition: resultat,
+    p_composition: versJson(resultat),
   };
 }

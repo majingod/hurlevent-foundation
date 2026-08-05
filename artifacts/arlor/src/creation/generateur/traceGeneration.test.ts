@@ -3,6 +3,10 @@
  * une génération ? », attestée sur ses DEUX faces : chaque garde négative a son
  * jumeau positif (le cas nominal du test 4), sinon un `null` permanent serait
  * vert aussi (assertion vraie à vide).
+ *
+ * Le dernier test porte la FRONTIÈRE `Json` (TS2345 trouvé par CC) : il prouve
+ * que l'aller-retour JSON ne PERD RIEN sur un payload réaliste — sans lui,
+ * `versJson` serait une simple formalité de typage que personne n'atteste.
  */
 
 import { describe, expect, it } from "vitest";
@@ -11,7 +15,7 @@ import type { TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
 import type { CompositionOk } from "@/moteurCreation/generateur/types";
 
 import type { ResultatApplication } from "./appliquerComposition";
-import { preparerTraceGeneration } from "./traceGeneration";
+import { preparerTraceGeneration, versJson } from "./traceGeneration";
 
 const tirage = { rolePrincipal: "test" } as unknown as TiragePersonnage;
 const composition = { achats: [] } as unknown as CompositionOk;
@@ -88,5 +92,50 @@ describe("preparerTraceGeneration", () => {
     expect(args?.p_statut).toBe("partiel");
     expect(args?.p_etape_apres).toBe(7);
     expect(args?.p_nb_echecs).toBe(2);
+  });
+
+  it("versJson ne perd RIEN d'un payload réaliste (frontière jsonb attestée)", () => {
+    const reel = {
+      tirage: {
+        raceId: "r1",
+        raceNom: "Demi-Orc",
+        budget: 60,
+        classe: "guerrier",
+        roleId: "gTient",
+        inapteMagie: true,
+        traitsIncompatibles: ["t1", "t2"],
+      },
+      composition: {
+        ok: true,
+        gratuites: [{ competenceId: "c0", nom: "Port d'armure", note: "classe" }],
+        achats: [{ competenceId: "c1", nom: "Bouclier", niveau: 2, coutXp: 8 }],
+        achatsMagie: [],
+        artisanat: [{ famille: "alchimie", palier: 1, nb: 5, cout: 0 }],
+        budget: 60,
+        totalDepense: 58,
+        reliquat: 2,
+        alertes: ["Il reste 2 XP"],
+      },
+      artisanatTire: {
+        recettes: [{ id: "rec1", nom: "Onguent" }],
+        assemblages: [],
+        pieges: [],
+      },
+    } as unknown as Parameters<typeof versJson>[0];
+
+    // Rien ne disparaît, rien ne se déforme : la valeur EST du Json.
+    expect(versJson(reel)).toEqual(reel);
+  });
+
+  it("versJson retire les clés undefined, comme le ferait jsonb", () => {
+    const sansArtisanat = {
+      tirage,
+      composition,
+      artisanatTire: undefined,
+    } as unknown as Parameters<typeof versJson>[0];
+    expect(Object.keys(versJson(sansArtisanat) as object)).toEqual([
+      "tirage",
+      "composition",
+    ]);
   });
 });
