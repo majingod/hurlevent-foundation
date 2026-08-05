@@ -104,6 +104,8 @@ interface GenerateurProps {
     tirage: TiragePersonnage;
     composition: CompositionOk;
     artisanatTire?: ArtisanatTire;
+    /** [s376] 🎲 = 'de' · 🧭 = 'boussole' — pour la trace de génération. */
+    mode: "de" | "boussole";
   }) => void;
 }
 
@@ -391,6 +393,7 @@ const Generateur = ({
                     tirage: resultat.tirage,
                     composition: resultat.composition,
                     artisanatTire: resultat.artisanatTire,
+                    mode: "boussole",
                   })
               : undefined
           }
@@ -440,6 +443,7 @@ const Generateur = ({
                         tirage: resultat.tirage,
                         composition: resultat.composition,
                         artisanatTire: resultat.artisanatTire,
+                        mode: "de",
                       })
                   : undefined
               }
