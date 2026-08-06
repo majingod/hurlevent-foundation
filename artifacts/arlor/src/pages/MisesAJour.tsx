@@ -33,6 +33,22 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Le créateur te prévient avant de verrouiller une XP qui dort",
+    description:
+      "Acheter l'accès à un cercle de magie ou à un domaine de prières coûte de l'XP — mais cet accès ne sert à rien tant que tu n'as pas acheté un sort ou une prière dedans. Jusqu'ici, rien ne te le disait, et l'XP restait bloquée là une fois la fiche verrouillée. Maintenant, quand tu cliques sur « Finaliser le personnage », une fenêtre te montre exactement quels accès n'ouvrent sur rien et combien d'XP y dort, et te propose de revenir choisir tes sorts. Tu peux finaliser quand même si c'est voulu — c'est ton personnage. Les fiches déjà verrouillées ne bougent pas.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "Annuler une compétence te dit maintenant ce que tu perds",
+    description:
+      "Quand tu annules une compétence d'artisanat, les recettes, pièges et assemblages qu'elle t'avait donnés repartent avec elle — c'est la règle, mais tu ne le voyais qu'après coup. Désormais une fenêtre te liste précisément ce qui va tomber avant que tu confirmes, et l'XP que tu avais payée pour ces éléments t'est rendue. Ce que tu as acheté en plus du quota gratuit, lui, reste à toi.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Le personnage tiré ne repart plus les mains vides : recettes, assemblages et pièges",
     description:
       "Le générateur de personnage donne maintenant les recettes d'alchimie, les assemblages de runes et les pièges offerts par tes compétences — et s'il te reste de l'XP, il t'ajoute des recettes en plus. Tu peux les échanger dans le créateur.",

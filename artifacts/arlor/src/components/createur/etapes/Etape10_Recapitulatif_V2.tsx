@@ -238,7 +238,7 @@ const Etape10_Recapitulatif_V2 = ({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Finaliser malgré des accès inutilisés ?</DialogTitle>
+            <DialogTitle className="min-w-0 break-words">Finaliser malgré des accès inutilisés ?</DialogTitle>
             <DialogDescription>
               Ces accès magiques ne t'ouvrent sur aucun sort ni aucune prière.
               Une fois la fiche verrouillée, tu ne pourras plus récupérer
@@ -255,7 +255,7 @@ const Etape10_Recapitulatif_V2 = ({
                   <li key={`${a.code}-${idx}`}>{a.message}</li>
                 ))}
               </ul>
-              <p className="pt-2 font-semibold text-green-500">
+              <p className="pt-2 font-semibold text-primary">
                 Total dormant : {totalXpDormant(fenetreAccesDormants)} XP
               </p>
             </div>
