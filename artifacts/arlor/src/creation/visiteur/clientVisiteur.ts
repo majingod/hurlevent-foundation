@@ -237,6 +237,25 @@ function getPiegeCat(id: string): PiegeCat | undefined {
   return (snap().tables.pieges as unknown as PiegeCat[]).find((p) => p.id === id);
 }
 
+interface RecetteCat {
+  id: string;
+  nom: string | null;
+  niveau_requis: number | null;
+  cout_xp: number | null;
+}
+function getRecetteCat(id: string): RecetteCat | undefined {
+  return (snap().tables.recettes_alchimie as unknown as RecetteCat[]).find((r) => r.id === id);
+}
+
+interface AssemblageCat {
+  id: string;
+  nom: string | null;
+  cout_xp: number | null;
+}
+function getAssemblageCat(id: string): AssemblageCat | undefined {
+  return (snap().tables.assemblages_runes as unknown as AssemblageCat[]).find((a) => a.id === id);
+}
+
 /**
  * `type_achat` qui CASCADE en désachat (retrait de tous les niveaux ≥ cible)
  * — miroir du `IN (...)` serveur de `desacheter_competence` (A6).
@@ -448,6 +467,138 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       const sortsRetires = purgeSortsTout ? b.acquisitions.sorts : [];
       const prieresRetirees = purgePrieresTout ? b.acquisitions.prieres : [];
 
+      // ── 4bis. Cascade artisanat (D48-bis, migration 20260806073711) : après le
+      //    retrait ci-dessus, `etat1` = niveaux/quotas d'artisanat APRÈS ce
+      //    désachat (brouillon `b1`, compétences+sorts/prières déjà retirés,
+      //    artisanat encore intact). `etat0` (état AVANT, déjà calculé §1) reste
+      //    la SEULE source des flags `estGratuit`/`niveauAcquis` "historiques" —
+      //    le brouillon ne stocke rien de dérivé (recompute from scratch), donc
+      //    c'est l'équivalent local du `est_gratuit`/`niveau_acquis` figés en
+      //    base par le serveur au moment de l'achat.
+      const b1: BrouillonVisiteur = {
+        ...b,
+        acquisitions: {
+          ...b.acquisitions,
+          competences: restantes,
+          sorts: sortsGardes,
+          prieres: prieresGardees,
+        },
+      };
+      const etat1 = deriver(b1);
+
+      // Recettes : palier au-dessus du niveau d'Alchimie restant → tombent
+      // (symétrie stricte, gratuites ET payantes — la gate d'achat exige déjà le
+      // palier, cf. commentaire migration).
+      const recettesRestantes: BrouillonVisiteur["acquisitions"]["recettes"] = [];
+      const recettesTombees: Array<{ nom: string; xp: number }> = [];
+      b.acquisitions.recettes.forEach((item, i) => {
+        const cat = getRecetteCat(item.recetteId);
+        const niveauRequis = cat?.niveau_requis ?? 0;
+        if (niveauRequis > etat1.niveauxArtisanat.niveauAlchimie) {
+          const info = etat0.contexteRecette.recettesAcquises[i];
+          recettesTombees.push({
+            nom: cat?.nom ?? "",
+            xp: info?.estGratuit ? 0 : cat?.cout_xp ?? 0,
+          });
+        } else {
+          recettesRestantes.push(item);
+        }
+      });
+
+      // Pièges : compétence à 0 → tout tombe ; sinon seuls les GRATUITS (au
+      // moment de l'achat, `etat0`) hors du NOUVEAU quota de leur palier
+      // tombent — derniers acquis d'abord (rang par ordre d'insertion, comme
+      // `date_acquisition ASC` côté serveur) — les payants restent.
+      const piegesRestants: BrouillonVisiteur["acquisitions"]["pieges"] = [];
+      const piegesTombes: Array<{ nom: string; xp: number }> = [];
+      if (etat1.niveauxArtisanat.niveauPieges === 0) {
+        b.acquisitions.pieges.forEach((item, i) => {
+          const info = etat0.contextePiege.piegesAcquis[i];
+          piegesTombes.push({
+            nom: `${info?.piegeNom ?? ""} (palier ${info?.niveauAcquis ?? 0})`,
+            xp: info?.estGratuit ? 0 : getPiegeCat(item.piegeId)?.cout_xp ?? 0,
+          });
+        });
+      } else {
+        const rangParNiveau = new Map<number, number>();
+        const quotasNouveaux: Record<number, number> = {
+          1: etat1.quotas.piegesParNiveau[1],
+          2: etat1.quotas.piegesParNiveau[2],
+          3: etat1.quotas.piegesParNiveau[3],
+        };
+        b.acquisitions.pieges.forEach((item, i) => {
+          const info = etat0.contextePiege.piegesAcquis[i];
+          const niveau = info?.niveauAcquis ?? 0;
+          if (info?.estGratuit) {
+            const rang = (rangParNiveau.get(niveau) ?? 0) + 1;
+            rangParNiveau.set(niveau, rang);
+            if (rang > (quotasNouveaux[niveau] ?? 0)) {
+              piegesTombes.push({ nom: `${info.piegeNom} (palier ${niveau})`, xp: 0 });
+              return;
+            }
+          }
+          piegesRestants.push(item);
+        });
+      }
+
+      // Assemblages : Runes à 0 → tout ; sinon gratuits hors quota global,
+      // derniers acquis d'abord ; payants restent.
+      const assemblagesRestants: BrouillonVisiteur["acquisitions"]["assemblages"] = [];
+      const assemblagesTombes: Array<{ nom: string; xp: number }> = [];
+      if (etat1.niveauxArtisanat.niveauRunes === 0) {
+        b.acquisitions.assemblages.forEach((item, i) => {
+          const info = etat0.contexteAssemblage.assemblagesAcquis[i];
+          assemblagesTombes.push({
+            nom: getAssemblageCat(item.assemblageId)?.nom ?? "",
+            xp: info?.estGratuit ? 0 : getAssemblageCat(item.assemblageId)?.cout_xp ?? 0,
+          });
+        });
+      } else {
+        let rangGratuit = 0;
+        b.acquisitions.assemblages.forEach((item, i) => {
+          const info = etat0.contexteAssemblage.assemblagesAcquis[i];
+          if (info?.estGratuit) {
+            rangGratuit += 1;
+            if (rangGratuit > etat1.quotas.assemblagesTotal) {
+              assemblagesTombes.push({ nom: getAssemblageCat(item.assemblageId)?.nom ?? "", xp: 0 });
+              return;
+            }
+          }
+          assemblagesRestants.push(item);
+        });
+      }
+
+      const itemsRecettes = recettesTombees
+        .map((r) => ({
+          type: "recette",
+          type_label: "Recette d'alchimie",
+          nom: r.nom,
+          quantite: 1,
+          xp_unitaire: r.xp,
+          xp_total: r.xp,
+        }))
+        .sort((x, y) => cmp(x.nom, y.nom));
+      const itemsPieges = piegesTombes
+        .map((p) => ({
+          type: "piege",
+          type_label: "Piège",
+          nom: p.nom,
+          quantite: 1,
+          xp_unitaire: p.xp,
+          xp_total: p.xp,
+        }))
+        .sort((x, y) => cmp(x.nom, y.nom));
+      const itemsAssemblages = assemblagesTombes
+        .map((a) => ({
+          type: "assemblage",
+          type_label: "Assemblage de runes",
+          nom: a.nom,
+          quantite: 1,
+          xp_unitaire: a.xp,
+          xp_total: a.xp,
+        }))
+        .sort((x, y) => cmp(x.nom, y.nom));
+
       // ── 5. dry_run FIDÈLE : `donnees` reflète la cascade réelle (mêmes clés que le serveur).
       const parNom = new Map<string, { niveaux: number[]; xps: number[] }>();
       for (const c of retirees) {
@@ -499,6 +650,9 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
       const xpComp = itemsComp.reduce((a, it) => a + it.xp_total, 0);
       const xpSorts = itemsSorts.reduce((a, it) => a + it.xp_total, 0);
       const xpPrieres = itemsPrieres.reduce((a, it) => a + it.xp_total, 0);
+      const xpRecettes = itemsRecettes.reduce((a, it) => a + it.xp_total, 0);
+      const xpPieges = itemsPieges.reduce((a, it) => a + it.xp_total, 0);
+      const xpAssemblages = itemsAssemblages.reduce((a, it) => a + it.xp_total, 0);
       const countComp = retirees.length;
       const countCompDistinctes = itemsComp.length;
       const cascade = countCompDistinctes > 1 || purgeSortsTout || purgePrieresTout;
@@ -509,8 +663,18 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         count_competences_distinctes: countCompDistinctes,
         count_sorts: sortsRetires.length,
         count_prieres: prieresRetirees.length,
-        xp_rembourse: xpComp + xpSorts + xpPrieres,
-        items_detail: [...itemsComp, ...itemsSorts, ...itemsPrieres],
+        count_recettes: itemsRecettes.length,
+        count_pieges: itemsPieges.length,
+        count_assemblages: itemsAssemblages.length,
+        xp_rembourse: xpComp + xpSorts + xpPrieres + xpRecettes + xpPieges + xpAssemblages,
+        items_detail: [
+          ...itemsComp,
+          ...itemsSorts,
+          ...itemsPrieres,
+          ...itemsRecettes,
+          ...itemsPieges,
+          ...itemsAssemblages,
+        ],
       };
 
       if (params.p_dry_run) return repOk(donnees); // aperçu : pas de sauvegarde
@@ -522,6 +686,9 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
           competences: restantes,
           sorts: sortsGardes,
           prieres: prieresGardees,
+          recettes: recettesRestantes,
+          pieges: piegesRestants,
+          assemblages: assemblagesRestants,
         },
         meta: { ...b.meta, modifieLe: new Date().toISOString() },
       };

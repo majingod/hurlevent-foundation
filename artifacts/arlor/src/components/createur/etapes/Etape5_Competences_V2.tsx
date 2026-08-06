@@ -29,6 +29,7 @@ import JaugeXP from "@/components/createur/aide/JaugeXP";
 import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtape";
 import Astuce from "@/components/createur/aide/Astuce";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
+import { doitOuvrirModaleCascade } from "./Etape5_Competences_V2.cascade";
 
 // =========================================================================
 // TYPES
@@ -1515,6 +1516,9 @@ const Etape5_Competences_V2 = ({
       const nbComp = d.count_competences ?? 0;
       const nbSorts = d.count_sorts ?? 0;
       const nbPrieres = d.count_prieres ?? 0;
+      const nbRecettes = d.count_recettes ?? 0;
+      const nbPieges = d.count_pieges ?? 0;
+      const nbAssemblages = d.count_assemblages ?? 0;
       const xpRembourse = d.xp_rembourse ?? 0;
       const parts: string[] = [];
       if (nbComp > 0)
@@ -1522,6 +1526,11 @@ const Etape5_Competences_V2 = ({
       if (nbSorts > 0) parts.push(`${nbSorts} sort${nbSorts > 1 ? "s" : ""}`);
       if (nbPrieres > 0)
         parts.push(`${nbPrieres} prière${nbPrieres > 1 ? "s" : ""}`);
+      if (nbRecettes > 0)
+        parts.push(`${nbRecettes} recette${nbRecettes > 1 ? "s" : ""}`);
+      if (nbPieges > 0) parts.push(`${nbPieges} piège${nbPieges > 1 ? "s" : ""}`);
+      if (nbAssemblages > 0)
+        parts.push(`${nbAssemblages} assemblage${nbAssemblages > 1 ? "s" : ""}`);
       const resume = parts.length > 0 ? parts.join(", ") : "achat";
       toast.success(`${resume} annulé(s) — ${xpRembourse} XP remboursés`);
     },
@@ -1660,14 +1669,10 @@ const Etape5_Competences_V2 = ({
       }
 
       const items = (donnees.items_detail ?? []) as CascadeItem[];
-      const nbLignes = (donnees.count_competences as number) ?? 0;
-      const aDesSortsOuPrieres =
-        ((donnees.count_sorts as number) ?? 0) > 0 ||
-        ((donnees.count_prieres as number) ?? 0) > 0;
 
       // Pas de cascade réelle (1 seul niveau d'1 seule compétence, aucun
-      // sort/prière) → suppression directe sans modale.
-      if (nbLignes <= 1 && !aDesSortsOuPrieres) {
+      // sort/prière/artisanat) → suppression directe sans modale.
+      if (!doitOuvrirModaleCascade(donnees)) {
         desacheterMutation.mutate({ p_personnage_competence_id: achat.id });
         return;
       }

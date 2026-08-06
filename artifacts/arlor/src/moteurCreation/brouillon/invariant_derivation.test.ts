@@ -46,9 +46,25 @@ const COMP_DECRYPTAGE = "0b0fba09-77d5-4078-946f-9add150f695d"; // gratuité Mag
 
 const SORT_FEU = "018f508e-fe3f-414a-9a95-3248692c5d3b"; // Bouclier de Feu (cercle Feu, cout_xp_base 0.5)
 const PRIERE = "00d4c3ea-1f4e-44ec-a320-230ba2d97c00"; // Ami/Ennemi (domaine Chaos, cout_xp_base 1)
-const PIEGE = "0103730b-4829-41e9-b3cb-8f0e3e1c653f"; // Piège brise-doigts (cout_xp 7)
-const RECETTE = "046e79fe-1a66-4864-a6ca-db495b0d6e37"; // recette payante (cout_xp 3)
-const ASSEMBLAGE = "073c3517-e1ba-4172-9e18-37d7975c2a92"; // assemblage payant (cout_xp 4)
+const PIEGE = "0103730b-4829-41e9-b3cb-8f0e3e1c653f"; // Piège brise-doigts, palier 3 (cout_xp 7 catalogue)
+const RECETTE = "046e79fe-1a66-4864-a6ca-db495b0d6e37"; // recette palier 2 (cout_xp 3 catalogue)
+const ASSEMBLAGE = "073c3517-e1ba-4172-9e18-37d7975c2a92"; // assemblage (cout_xp 4 catalogue)
+
+// [D48-bis] La cascade artisanat purge tout item orphelin (compétence d'artisanat
+// absente) sur CHAQUE désachat, même sans rapport — cf. commentaire migration
+// 20260806073711 (« Purge aussi les orphelins preexistants »). Le brouillon doit
+// donc porter les compétences d'artisanat qui légitiment PIEGE/RECETTE/ASSEMBLAGE
+// (paliers exacts), sans quoi ce test-filet se ferait purger ses propres items.
+// `cascadeParPrerequis` (boucle prérequis du désachat, cf. prerequis.ts) tourne
+// aussi sur CHAQUE désachat et retire toute compétence dont les prérequis ne sont
+// pas satisfaits — il faut donc AUSSI porter les prérequis de ces 3 compétences.
+const COMP_PIEGES = "5b82c487-dd4c-48cb-a472-255019bbe835"; // Création et désarmement de piège (aucun prérequis)
+const COMP_ALCHIMIE = "3f018622-a2ad-443a-882b-483ef3e2bd23"; // Alchimie (prérequis : Herbes Communes/Rares)
+const COMP_RUNES = "16361c8e-a173-40b2-ae6f-4f670d8010d4"; // Assemblage de Runes, mage (prérequis : Runes/Canalisation)
+const COMP_HERBES_COMMUNES = "c601901b-2a26-46e0-a42e-2e3077fe99e2"; // prérequis Alchimie niv 1
+const COMP_HERBES_RARES = "72a3db25-ed40-49c1-96f0-ec9f60f62fa3"; // prérequis Alchimie niv 2
+const COMP_CONNAISSANCE_RUNES = "1135db5a-9161-4cc3-bc50-e0e0bed3ce5a"; // prérequis Runes niv 1
+const COMP_CANALISATION = "4250ebd9-a93d-4611-94d5-feba449407fc"; // prérequis Runes niv 1
 
 // Choix magie communs sort + prière (labels réels des barèmes).
 const ZONE = "Personnelle"; // COUT_ZONE 1
@@ -88,6 +104,15 @@ function construireBrouillonComplet(): BrouillonVisiteur {
         // Acquisition de Cercle « Feu » niveau 2 : base 10, RABAIS = 1 sort Feu
         // déjà possédé (niveau ≤ 5) → coût effectif 9. (gratuité Mage = provenance.)
         { instanceId: crypto.randomUUID(), competenceId: COMP_CERCLE, niveauAcquis: 2, choixAchat: "Feu" },
+        // Compétences d'artisanat (paliers exacts requis par PIEGE/RECETTE/ASSEMBLAGE
+        // ci-dessous), + leurs prérequis — cf. note [D48-bis] plus haut.
+        { instanceId: crypto.randomUUID(), competenceId: COMP_PIEGES, niveauAcquis: 3, choixAchat: null },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_ALCHIMIE, niveauAcquis: 2, choixAchat: null },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_RUNES, niveauAcquis: 1, choixAchat: null },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_HERBES_COMMUNES, niveauAcquis: 1, choixAchat: null },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_HERBES_RARES, niveauAcquis: 1, choixAchat: null },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_CONNAISSANCE_RUNES, niveauAcquis: 1, choixAchat: null },
+        { instanceId: crypto.randomUUID(), competenceId: COMP_CANALISATION, niveauAcquis: 1, choixAchat: null },
       ],
       // 1 sort Feu (sert aussi de matière au rabais du cercle ci-dessus).
       sorts: [
@@ -130,9 +155,16 @@ const XP_CERCLE_RABAIS = 10 - 1; // Acquisition de Cercle niv 2 : base 10 − 1 
 const XP_GRATUITES = 0; //     Linguistique + Décryptage (provenance classe)
 const XP_SORT = 2; //          COUT_SORT (cross-vérifié ci-dessous)
 const XP_PRIERE = 3; //        COUT_PRIERE
-const XP_PIEGE = 7; //         Piège brise-doigts (quota 0 → payant)
-const XP_RECETTE = 3; //       recette (quota 0 → payant)
-const XP_ASSEMBLAGE = 4; //    assemblage (quota 0 → payant)
+const XP_COMP_PIEGES = 18; //  Création et désarmement de piège niveau 3
+const XP_COMP_ALCHIMIE = 14; // Alchimie niveau 2
+const XP_COMP_RUNES = 8; //    Assemblage de Runes niveau 1
+const XP_COMP_HERBES_COMMUNES = 6; // prérequis Alchimie niv 1
+const XP_COMP_HERBES_RARES = 9; //    prérequis Alchimie niv 2
+const XP_COMP_CONNAISSANCE_RUNES = 12; // prérequis Runes niv 1
+const XP_COMP_CANALISATION = 6; //       prérequis Runes niv 1
+const XP_PIEGE = 0; //         Piège brise-doigts palier 3 (quota 1 au niveau 3 → gratuit)
+const XP_RECETTE = 0; //       recette palier 2 (quota 4 au niveau Alchimie 2 → gratuite)
+const XP_ASSEMBLAGE = 0; //    assemblage (quota 2 au niveau Runes 1 → gratuit)
 
 const XP_DEPENSE_ATTENDU =
   XP_TRAIT_PAYANT + // 10
@@ -141,9 +173,16 @@ const XP_DEPENSE_ATTENDU =
   XP_GRATUITES + //      0
   XP_SORT + //           2
   XP_PRIERE + //         3
-  XP_PIEGE + //          7
-  XP_RECETTE + //        3
-  XP_ASSEMBLAGE; //      4   ⇒ TOTAL 47
+  XP_COMP_PIEGES + //   18
+  XP_COMP_ALCHIMIE + // 14
+  XP_COMP_RUNES + //     8
+  XP_COMP_HERBES_COMMUNES + //     6
+  XP_COMP_HERBES_RARES + //        9
+  XP_COMP_CONNAISSANCE_RUNES + // 12
+  XP_COMP_CANALISATION + //        6
+  XP_PIEGE + //          0
+  XP_RECETTE + //        0
+  XP_ASSEMBLAGE; //      0   ⇒ TOTAL 106
 
 // xpTotal = xp_depart(Humain 80) + gn(2×15 + 1×15 + 1×10 = 55) = 135.
 const XP_DEPART_HUMAIN = snap.tables.races.find((r) => r.id === RACE_HUMAIN)!.xp_depart ?? 0;
@@ -155,7 +194,7 @@ describe("invariant de dérivation — filet anti-« famille oubliée »", () =>
     expect(COUT_SORT).toBe(XP_SORT);
     expect(COUT_PRIERE).toBe(XP_PRIERE);
     expect(XP_DEPART_HUMAIN).toBe(80);
-    expect(XP_DEPENSE_ATTENDU).toBe(47);
+    expect(XP_DEPENSE_ATTENDU).toBe(106);
     expect(XP_TOTAL_ATTENDU).toBe(135);
   });
 
@@ -166,12 +205,12 @@ describe("invariant de dérivation — filet anti-« famille oubliée »", () =>
 
   it("xpDepense exact = somme famille par famille (rabais cercle inclus)", () => {
     const d = deriverEtat(construireBrouillonComplet());
-    expect(d.xpDepense).toBe(XP_DEPENSE_ATTENDU); // 47
+    expect(d.xpDepense).toBe(XP_DEPENSE_ATTENDU); // 106
   });
 
   it("xpDispo = xpTotal − xpDepense", () => {
     const d = deriverEtat(construireBrouillonComplet());
-    expect(d.xpDispo).toBe(XP_TOTAL_ATTENDU - XP_DEPENSE_ATTENDU); // 88
+    expect(d.xpDispo).toBe(XP_TOTAL_ATTENDU - XP_DEPENSE_ATTENDU); // 29
     expect(d.xpDispo).toBe(d.xpTotal - d.xpDepense);
   });
 
