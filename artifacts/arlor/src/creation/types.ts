@@ -157,9 +157,13 @@ export interface ClientCreation {
     params: ArgsR<"avancer_etape">,
   ): Promise<Reponse<RetourR<"avancer_etape">>>;
 
-  /** RPC: valider_personnage_final */
+  /**
+   * RPC: valider_personnage_final. `p_dry_run` (migration 20260806204026,
+   * s379/D51) devance la génération des types Supabase (C93) : le frontière
+   * s'assume ici plutôt que dans `integrations/supabase/types.ts` (généré).
+   */
   validerPersonnageFinal(
-    params: ArgsR<"valider_personnage_final">,
+    params: ArgsR<"valider_personnage_final"> & { p_dry_run?: boolean },
   ): Promise<Reponse<RetourR<"valider_personnage_final">>>;
 
   /** RPC: corriger_xp_personnage */

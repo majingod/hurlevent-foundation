@@ -136,6 +136,11 @@ interface ErrItem {
   code?: string;
   message: string;
   champ?: string;
+  // Champs propres aux avertissements « accès sans effet » (s379/D51) —
+  // mêmes clés que le serveur (`valider_etape_6`/`valider_etape_7`).
+  voie?: string;
+  niveaux?: number[];
+  xp?: number;
 }
 
 function jsonify(payload: unknown): Json {
@@ -1413,7 +1418,12 @@ export function creerClientVisiteur(deps: DepsVisiteur = {}): ClientCreation {
         avertissements.push(...v.avertissements);
       }
       if (erreurs.length > 0) {
-        return rep({ valide: false, est_verrouille: false, erreurs, avertissements });
+        return rep({ valide: false, est_verrouille: false, dry_run: params.p_dry_run ?? false, erreurs, avertissements });
+      }
+      // p_dry_run (s379/D51, migration 20260806204026) : ne verrouille rien,
+      // ne touche pas le brouillon, rend les mêmes erreurs/avertissements.
+      if (params.p_dry_run) {
+        return rep({ valide: true, est_verrouille: false, dry_run: true, erreurs: [], avertissements });
       }
       // Marque le brouillon (aucune écriture serveur — sync = lot a4).
       const marque: BrouillonVisiteur = {
@@ -2411,6 +2421,39 @@ interface ResultatValidation {
 }
 
 /**
+ * Accès magiques dormants (s379/D51, migrations 20260806203944/204004) :
+ * groupe les acquisitions payantes de `nomCompetence` (« Acquisition de
+ * Cercle » ou « Acquisition de Domaine ») par `choix_achat`, somme le coût
+ * EFFECTIF payé (rabais inclus, comme `xp_depense` côté serveur) et ne garde
+ * que les groupes dont la somme est > 0 — miroir de la clause SQL
+ * `HAVING sum(pc.xp_depense) > 0`. Le filtre « aucun item dans cette voie »
+ * est appliqué par l'appelant (cas 6 : sorts: cas 7 : prières), pas ici.
+ */
+function accesSecsPourCompetence(
+  b: BrouillonVisiteur,
+  nomCompetence: string,
+): Array<{ voie: string; niveaux: number[]; xp: number }> {
+  const parVoie = new Map<string, { niveaux: number[]; xp: number }>();
+  for (const c of b.acquisitions.competences) {
+    if (c.choixAchat == null) continue;
+    if (getCompetenceCat(c.competenceId)?.nom !== nomCompetence) continue;
+    const xp = coutAchatCompetence(b, c.competenceId, c.niveauAcquis, c.choixAchat);
+    const agg = parVoie.get(c.choixAchat) ?? { niveaux: [], xp: 0 };
+    agg.niveaux.push(c.niveauAcquis);
+    agg.xp += xp;
+    parVoie.set(c.choixAchat, agg);
+  }
+  return [...parVoie.entries()]
+    .map(([voie, agg]) => ({
+      voie,
+      niveaux: [...new Set(agg.niveaux)].sort((x, y) => x - y),
+      xp: agg.xp,
+    }))
+    .filter((g) => g.xp > 0)
+    .sort((a, b2) => cmp(a.voie, b2.voie));
+}
+
+/**
  * Portage des `valider_etape_N` (messages VERBATIM). Étapes 1-4 : identité déjà
  * validée à la sauvegarde ; ici on couvre 5-10 (magie/artisanat/xp) + rappel 1-4
  * pour la finalisation agrégée. Cf. §B1-B10 du SQL.
@@ -2455,7 +2498,21 @@ function validerEtape(
       return ok;
     }
     case 6: {
-      if (b.acquisitions.sorts.length === 0) return ok; // ignoree
+      // Accès dormants, calculés AVANT la garde ci-dessous (cause Mélias/C78 :
+      // le TOTAL de sorts n'éteint plus l'avertissement, seul LE CERCLE compte).
+      const avertissementsCercle: ErrItem[] = accesSecsPourCompetence(b, "Acquisition de Cercle")
+        .filter((g) => !b.acquisitions.sorts.some((s) => getSortCat(s.sortId)?.cercle === g.voie))
+        .map((g) => ({
+          code: "info_cercle_sans_sort",
+          voie: g.voie,
+          niveaux: g.niveaux,
+          xp: g.xp,
+          message: `Cercle ${g.voie} (niv ${g.niveaux.join(", ")}) : aucun sort acheté dans ce cercle — ${g.xp} XP dorment.`,
+        }));
+
+      if (b.acquisitions.sorts.length === 0) {
+        return { valide: true, erreurs: [], avertissements: avertissementsCercle }; // ignoree
+      }
       const etat = deriver(b);
       const cercles = deriverCerclesDisponibles(etat.contexteMagie.competencesAcquises);
       for (const s of b.acquisitions.sorts) {
@@ -2464,16 +2521,39 @@ function validerEtape(
         const nom = (cat?.nom as string) ?? "";
         const max = cercles.get(cercle);
         if (max == null) {
-          return err("sort_cercle_non_debloque", `Le sort ${nom} appartient au cercle ${cercle}, non débloqué`, "personnage_sorts");
+          return {
+            valide: false,
+            erreurs: [{ code: "sort_cercle_non_debloque", message: `Le sort ${nom} appartient au cercle ${cercle}, non débloqué`, champ: "personnage_sorts" }],
+            avertissements: avertissementsCercle,
+          };
         }
         if (s.niveauSort > max) {
-          return err("sort_niveau_trop_eleve", `Le sort ${nom} (niveau ${s.niveauSort}) dépasse le max ${max} du cercle ${cercle}`, "personnage_sorts");
+          return {
+            valide: false,
+            erreurs: [{ code: "sort_niveau_trop_eleve", message: `Le sort ${nom} (niveau ${s.niveauSort}) dépasse le max ${max} du cercle ${cercle}`, champ: "personnage_sorts" }],
+            avertissements: avertissementsCercle,
+          };
         }
       }
-      return ok;
+      return { valide: true, erreurs: [], avertissements: avertissementsCercle };
     }
     case 7: {
-      if (b.acquisitions.prieres.length === 0) return ok;
+      // Jumeau du cas 6, volet prières (Azaëlle : domaine ouvert sans la
+      // compétence « Acquisition de Prière » → l'avertissement doit sortir
+      // même quand l'étape est « ignoree » plus bas).
+      const avertissementsDomaine: ErrItem[] = accesSecsPourCompetence(b, "Acquisition de Domaine")
+        .filter((g) => !b.acquisitions.prieres.some((p) => getPriereCat(p.priereId)?.domaine === g.voie))
+        .map((g) => ({
+          code: "info_domaine_sans_priere",
+          voie: g.voie,
+          niveaux: g.niveaux,
+          xp: g.xp,
+          message: `Domaine ${g.voie} (niv ${g.niveaux.join(", ")}) : aucune prière achetée dans ce domaine — ${g.xp} XP dorment.`,
+        }));
+
+      if (b.acquisitions.prieres.length === 0) {
+        return { valide: true, erreurs: [], avertissements: avertissementsDomaine };
+      }
       const etat = deriver(b);
       const domaines = deriverDomainesDisponibles(etat.contexteMagie.competencesAcquises, etat.contexteMagie.religionId ?? null);
       for (const p of b.acquisitions.prieres) {
@@ -2482,13 +2562,21 @@ function validerEtape(
         const nom = (cat?.nom as string) ?? "";
         const max = domaines.get(domaine);
         if (max == null) {
-          return err("priere_domaine_non_debloque", `La prière ${nom} appartient au domaine ${domaine}, non débloqué`, "personnage_prieres");
+          return {
+            valide: false,
+            erreurs: [{ code: "priere_domaine_non_debloque", message: `La prière ${nom} appartient au domaine ${domaine}, non débloqué`, champ: "personnage_prieres" }],
+            avertissements: avertissementsDomaine,
+          };
         }
         if (p.niveauPriere > max) {
-          return err("priere_niveau_trop_eleve", `La prière ${nom} (niveau ${p.niveauPriere}) dépasse le max ${max} du domaine ${domaine}`, "personnage_prieres");
+          return {
+            valide: false,
+            erreurs: [{ code: "priere_niveau_trop_eleve", message: `La prière ${nom} (niveau ${p.niveauPriere}) dépasse le max ${max} du domaine ${domaine}`, champ: "personnage_prieres" }],
+            avertissements: avertissementsDomaine,
+          };
         }
       }
-      return ok;
+      return { valide: true, erreurs: [], avertissements: avertissementsDomaine };
     }
     case 8: {
       const etat = deriver(b);
