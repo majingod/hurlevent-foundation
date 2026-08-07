@@ -86,203 +86,253 @@
   "race_traits": [
     {
       "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
-      "trait_id": "01302682-1182-4bf8-85a7-a91f87817101"
+      "trait_id": "01302682-1182-4bf8-85a7-a91f87817101",
+      "sous_type": null
     },
     {
       "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
-      "trait_id": "a5973fb1-8c4b-42e2-8184-f949a4982345"
+      "trait_id": "a5973fb1-8c4b-42e2-8184-f949a4982345",
+      "sous_type": null
     },
     {
       "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
-      "trait_id": "c36596fb-6d6e-490f-8886-3e0d08c5c099"
+      "trait_id": "c36596fb-6d6e-490f-8886-3e0d08c5c099",
+      "sous_type": null
     },
     {
       "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
-      "trait_id": "c9e21d23-34b1-40fb-8860-357b89a17358"
+      "trait_id": "c9e21d23-34b1-40fb-8860-357b89a17358",
+      "sous_type": null
     },
     {
       "race_id": "491495ec-e48f-48a5-b8ca-3798015bc336",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "4d7e2226-76cb-4b94-9df4-b8f12ff486e1",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "4d7e2226-76cb-4b94-9df4-b8f12ff486e1",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "561534b1-0375-41ce-b318-7a0e29a9d2b3",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "561534b1-0375-41ce-b318-7a0e29a9d2b3",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
-      "trait_id": "160abee1-2096-456a-8578-4ab8438bfaba"
+      "trait_id": "160abee1-2096-456a-8578-4ab8438bfaba",
+      "sous_type": null
     },
     {
       "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
-      "trait_id": "1db17667-e112-451e-b691-e53b0daf3970"
+      "trait_id": "1db17667-e112-451e-b691-e53b0daf3970",
+      "sous_type": null
     },
     {
       "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
-      "trait_id": "a61750bc-a82b-44b9-8d79-3594b42e40fa"
+      "trait_id": "a61750bc-a82b-44b9-8d79-3594b42e40fa",
+      "sous_type": null
     },
     {
       "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
-      "trait_id": "b6e46414-4a68-4cc0-a3f0-3d223c1c9f67"
+      "trait_id": "b6e46414-4a68-4cc0-a3f0-3d223c1c9f67",
+      "sous_type": null
     },
     {
       "race_id": "824bd609-1ae4-436a-88b2-d74883377bae",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "91181212-4a6d-4d59-b668-808f32dc46be",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "91181212-4a6d-4d59-b668-808f32dc46be",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "1db17667-e112-451e-b691-e53b0daf3970"
+      "trait_id": "1db17667-e112-451e-b691-e53b0daf3970",
+      "sous_type": "carnivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "371f712e-83b0-4684-b65f-9cb6113c915b"
+      "trait_id": "371f712e-83b0-4684-b65f-9cb6113c915b",
+      "sous_type": "herbivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "44c97fb5-deba-4879-8cda-2bedc4dc3382"
+      "trait_id": "44c97fb5-deba-4879-8cda-2bedc4dc3382",
+      "sous_type": "herbivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "44c97fb5-deba-4879-8cda-2bedc4dc3382"
+      "trait_id": "44c97fb5-deba-4879-8cda-2bedc4dc3382",
+      "sous_type": "carnivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": "herbivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": "carnivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "98f20cb6-6978-414b-bfe8-34bafe81d175"
+      "trait_id": "98f20cb6-6978-414b-bfe8-34bafe81d175",
+      "sous_type": "carnivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "98f20cb6-6978-414b-bfe8-34bafe81d175"
+      "trait_id": "98f20cb6-6978-414b-bfe8-34bafe81d175",
+      "sous_type": "herbivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": "carnivore"
     },
     {
       "race_id": "926b6948-e192-4d41-9909-efabaa3059b5",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": "herbivore"
     },
     {
       "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
-      "trait_id": "01302682-1182-4bf8-85a7-a91f87817101"
+      "trait_id": "01302682-1182-4bf8-85a7-a91f87817101",
+      "sous_type": null
     },
     {
       "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
-      "trait_id": "20d1ccad-2446-406e-a111-9a75cb8777df"
+      "trait_id": "20d1ccad-2446-406e-a111-9a75cb8777df",
+      "sous_type": null
     },
     {
       "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
-      "trait_id": "cbf32861-e0ea-49e8-b315-568588569fa8"
+      "trait_id": "cbf32861-e0ea-49e8-b315-568588569fa8",
+      "sous_type": null
     },
     {
       "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
-      "trait_id": "f82081ce-764b-4e2b-9b20-e497801a8fa1"
+      "trait_id": "f82081ce-764b-4e2b-9b20-e497801a8fa1",
+      "sous_type": null
     },
     {
       "race_id": "963cc1f8-0b27-4a88-aa68-74d4af4ec153",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "d9cfea0e-acbb-4f02-9eaa-12efa6fbf9b9",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "d9cfea0e-acbb-4f02-9eaa-12efa6fbf9b9",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
-      "trait_id": "371f712e-83b0-4684-b65f-9cb6113c915b"
+      "trait_id": "371f712e-83b0-4684-b65f-9cb6113c915b",
+      "sous_type": null
     },
     {
       "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
-      "trait_id": "7bfb8e13-2466-48d3-8ad1-a2aba76949fa"
+      "trait_id": "7bfb8e13-2466-48d3-8ad1-a2aba76949fa",
+      "sous_type": null
     },
     {
       "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
-      "trait_id": "a3039c0b-525d-4282-a92b-09d939b801f2"
+      "trait_id": "a3039c0b-525d-4282-a92b-09d939b801f2",
+      "sous_type": null
     },
     {
       "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
-      "trait_id": "c9e21d23-34b1-40fb-8860-357b89a17358"
+      "trait_id": "c9e21d23-34b1-40fb-8860-357b89a17358",
+      "sous_type": null
     },
     {
       "race_id": "e6fa1198-4acf-4854-bdc1-2174ecd3d6d4",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
-      "trait_id": "a61750bc-a82b-44b9-8d79-3594b42e40fa"
+      "trait_id": "a61750bc-a82b-44b9-8d79-3594b42e40fa",
+      "sous_type": null
     },
     {
       "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
-      "trait_id": "cbf32861-e0ea-49e8-b315-568588569fa8"
+      "trait_id": "cbf32861-e0ea-49e8-b315-568588569fa8",
+      "sous_type": null
     },
     {
       "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
-      "trait_id": "e550c444-7e31-4abe-a35e-95297afa3e4e"
+      "trait_id": "e550c444-7e31-4abe-a35e-95297afa3e4e",
+      "sous_type": null
     },
     {
       "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
-      "trait_id": "f02c7c2a-a18c-4670-8781-6d45121591e3"
+      "trait_id": "f02c7c2a-a18c-4670-8781-6d45121591e3",
+      "sous_type": null
     },
     {
       "race_id": "f6fb2d30-23d9-4c80-b7f5-ad495c1b222f",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     },
     {
       "race_id": "fd1f6125-d2bc-4be8-ac0c-426196a1eb43",
-      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba"
+      "trait_id": "4675941e-481c-410d-a14f-9c2672d219ba",
+      "sous_type": null
     },
     {
       "race_id": "fd1f6125-d2bc-4be8-ac0c-426196a1eb43",
-      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f"
+      "trait_id": "fad7ba5d-df90-4f24-88b4-987eb9a4891f",
+      "sous_type": null
     }
   ],
   "traits_raciaux": [

@@ -10,6 +10,7 @@ import {
   coutCouche,
   grouperAchats,
   itemsDuPlan,
+  ligneTraitRacial,
   metaRole,
   texteTraitsIncompatibles,
 } from "./ficheTirage.logic";
@@ -114,6 +115,46 @@ describe("texteTraitsIncompatibles", () => {
     const t = texteTraitsIncompatibles(["A", "B"]);
     expect(t).toContain("« A » et « B »");
     expect(t).toContain("ne seront pas proposés");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* ⭐ [D52 s380] LA FICHE ANNONCE LE TRAIT — ou ne dit rien             */
+/* ------------------------------------------------------------------ */
+
+describe("ligneTraitRacial", () => {
+  it("null quand le tirage n'en porte pas (fiche rendue sans tirage de trait)", () => {
+    // Cas de PREMIER ORDRE, pas un oubli : 🧭 laisse le joueur choisir son
+    // trait au wizard, et les appelants v1 ne connaissent pas le champ. La
+    // carte identité ne doit alors afficher NI ligne vide, NI « — ».
+    expect(ligneTraitRacial({})).toBeNull();
+    expect(
+      ligneTraitRacial({
+        traitRacialTire: undefined,
+        sousTypeChimeride: undefined,
+      })
+    ).toBeNull();
+  });
+
+  it("rend le trait tiré quand il existe", () => {
+    expect(
+      ligneTraitRacial({ traitRacialTire: { id: "t1", nom: "Fortuné" } })
+    ).toEqual({ sousType: null, trait: "Fortuné" });
+  });
+
+  it("le sous-type voyage avec — il qualifie le PEUPLE, pas le trait", () => {
+    expect(
+      ligneTraitRacial({
+        sousTypeChimeride: "carnivore",
+        traitRacialTire: { id: "t2", nom: "Charognard" },
+      })
+    ).toEqual({ sousType: "carnivore", trait: "Charognard" });
+    // Un sous-type SEUL suffit à rendre la ligne (la carte affiche alors
+    // « Chiméride carnivore » sans ligne 🧬) — l'inverse aussi.
+    expect(ligneTraitRacial({ sousTypeChimeride: "herbivore" })).toEqual({
+      sousType: "herbivore",
+      trait: null,
+    });
   });
 });
 
