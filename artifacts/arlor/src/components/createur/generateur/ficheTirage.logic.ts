@@ -143,7 +143,24 @@ export function itemsDuPlan(
 }
 
 /**
- * ⭐ [D52, s380] CE QUE LA FICHE ANNONCE DU TRAIT RACIAL — la ligne, ou rien.
+ * ⭐ [D52-bis, s380] La note « offert » — cas par défaut : le trait racial
+ * est un GAIN tiré pour le joueur. Verbatim validé par Fred.
+ */
+export const TEXTE_TRAIT_OFFERT = "offert, tiré pour toi";
+
+/**
+ * ⭐ [D52-bis, s380] La note pour le SEUL cas où le trait racial n'est pas un
+ * cadeau mais un CONSTAT : `inapteMagie` (Demi-Orc guerrier/voleur tiré en
+ * 🎲, D42) supprime les points de spiritualité à la création, interdit d'en
+ * acheter à tout jamais, et donne +1 PV en échange (manuel lignes 1353,
+ * 1491 ; mesuré en prod). Verbatim validé par Fred — ne pas reformuler.
+ */
+export const TEXTE_TRAIT_INAPTE =
+  "ta race et ta voie le posent : pas d'accès à la magie, et +1 PV";
+
+/**
+ * ⭐ [D52, s380 / D52-bis] CE QUE LA FICHE ANNONCE DU TRAIT RACIAL — la
+ * ligne, ou rien.
  *
  * « Rien » est un cas de PREMIER ORDRE, pas un oubli : une fiche rendue sans
  * tirage de trait (🧭, où le joueur choisit au wizard ; un pool vide ; les
@@ -151,13 +168,25 @@ export function itemsDuPlan(
  *
  * Le sous-type voyage dans la même ligne parce qu'il qualifie le peuple, pas
  * le trait : « Chiméride carnivore », comme la base le nomme.
+ *
+ * La porte qui décide de la note est `tirage.inapteMagie` — la même que lit
+ * `versBrouillon` à l'étape 3 — jamais le NOM du trait (qui marcherait par
+ * accident aujourd'hui mais casserait si le trait était renommé).
  */
 export function ligneTraitRacial(
-  tirage: Pick<TiragePersonnage, "traitRacialTire" | "sousTypeChimeride">
-): { sousType: string | null; trait: string | null } | null {
+  tirage: Pick<
+    TiragePersonnage,
+    "traitRacialTire" | "sousTypeChimeride" | "inapteMagie"
+  >
+): { sousType: string | null; trait: string | null; note: string | null } | null {
   const sousType = tirage.sousTypeChimeride ?? null;
   const trait = tirage.traitRacialTire?.nom ?? null;
-  return sousType === null && trait === null ? null : { sousType, trait };
+  if (sousType === null && trait === null) return null;
+  return {
+    sousType,
+    trait,
+    note: trait === null ? null : tirage.inapteMagie ? TEXTE_TRAIT_INAPTE : TEXTE_TRAIT_OFFERT,
+  };
 }
 
 export const magieDeCouche = (

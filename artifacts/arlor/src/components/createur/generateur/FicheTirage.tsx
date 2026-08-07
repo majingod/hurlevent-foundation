@@ -261,9 +261,7 @@ const FicheTirage = ({
         {trait?.trait && (
           <div className="mt-1 text-[13px] text-white/90">
             🧬 Trait racial : <b>{trait.trait}</b>{" "}
-            <span className="text-xs text-white/50">
-              — offert, tiré pour toi
-            </span>
+            <span className="text-xs text-white/50">— {trait.note}</span>
           </div>
         )}
       </div>
