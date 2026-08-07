@@ -17,6 +17,7 @@ import {
   coutCouche,
   grouperAchats,
   itemsDuPlan,
+  ligneTraitRacial,
   magieDeCouche,
   metaRole,
   texteTraitsIncompatibles,
@@ -200,6 +201,10 @@ const FicheTirage = ({
   const role = metaRole(tirage.classe, tirage.roleId);
   const noteTraits = texteTraitsIncompatibles(tirage.traitsIncompatibles);
   const libelleMagie = tirage.classe === "pretre" ? "Domaine" : "Cercle";
+  /** ⭐ [D52 s380] Le sous-type et le trait racial tirés — `null` si le tirage
+   *  n'en porte pas (🧭, appels v1) : la carte identité n'affiche alors rien
+   *  de plus, jamais une ligne vide. */
+  const trait = ligneTraitRacial(tirage);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-5">
@@ -219,7 +224,13 @@ const FicheTirage = ({
           </p>
         )}
         <div className="text-sm text-white/90">
-          <b>{tirage.raceNom}</b> · {LABELS_CLASSES[tirage.classe]} ·{" "}
+          {/* Le SOUS-TYPE qualifie le peuple, pas le trait : « Chiméride
+              carnivore », exactement comme la base le nomme. */}
+          <b>
+            {tirage.raceNom}
+            {trait?.sousType ? ` ${trait.sousType}` : ""}
+          </b>{" "}
+          · {LABELS_CLASSES[tirage.classe]} ·{" "}
           <b className="text-gold-accent">{tirage.budget} XP</b>
         </div>
         {tirage.element && (
@@ -237,6 +248,21 @@ const FicheTirage = ({
             ⛪ Religion : <b>{tirage.religionNom}</b>{" "}
             <span className="text-xs text-white/50">
               — appariée à tes domaines
+            </span>
+          </div>
+        )}
+        {/* ⭐ [D52, s380] LE TRAIT RACIAL, ANNONCÉ. Même idiome que les lignes
+            ⛪ et ✨ juste au-dessus — un trait racial est un GAIN (C98) : ni le
+            bordeaux des alertes, ni le liseré gold-accent de l'indice « 🎒 sac
+            vide », qui signalent tous deux « attention / il te manque quelque
+            chose ». Ici : texte neutre, valeur en gras, note grise, comme la
+            religion et le cercle. L'emoji 🧬 est celui que la fiche emploie
+            déjà pour les traits (note « traits incompatibles » plus bas). */}
+        {trait?.trait && (
+          <div className="mt-1 text-[13px] text-white/90">
+            🧬 Trait racial : <b>{trait.trait}</b>{" "}
+            <span className="text-xs text-white/50">
+              — offert, tiré pour toi
             </span>
           </div>
         )}

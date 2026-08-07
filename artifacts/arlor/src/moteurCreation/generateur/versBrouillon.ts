@@ -541,7 +541,13 @@ export function convertirTirageEnBrouillon(
     },
     etape2: {
       raceId: tirage.raceId,
-      // Sous-type Chiméride : choisi au wizard (le tirage ne le porte pas).
+      // ⭐ [D52 s380] Le sous-type Chiméride, TIRÉ par le résolveur quand la
+      // race en exige un. Absent (10 races sur 11) ⇒ champ `undefined`, que
+      // `rejouerBrouillon` traduit en `p_sous_type_chimeride: null` — la gate
+      // `valider_etape_2` refuse un sous-type sur une race qui n'en veut pas.
+      // Avant ce lot, un Chiméride tiré restait bloqué là
+      // (`sous_type_chimeride_manquant`), quoi qu'il fasse.
+      sousTypeChimeride: tirage.sousTypeChimeride,
     },
     etape3: {
       // ⭐⭐ [DÉCISION 42, s372] Un tirage `inapteMagie` (Demi-Orc martial —
@@ -551,6 +557,20 @@ export function convertirTirageEnBrouillon(
       // par NOM au snapshot — échec bruyant si absent, jamais un id en dur.
       // 🧭 ne passe jamais ici avec `inapteMagie` (le visiteur est apte,
       // décisions 41+42) : le joueur 🧭 choisit son trait au wizard.
+      //
+      // ⭐⭐ [D52, s380] SINON, LE TRAIT TIRÉ. Le 🎲 tire désormais le trait
+      // racial gratuit (pondéré par le terrain) et le NOMME sur la fiche ; la
+      // conversion se contente de le poser, sans re-tirer — même contrat que
+      // `artisanatTire` (D34 : tiré = affiché = acheté). Quota 1, `est_gratuit`
+      // vrai, 0 XP (manuel ligne 1314 ; `races.nb_traits_raciaux = 1` pour les
+      // 11 races). Format C79 : un tableau d'OBJETS, gabarit inchangé.
+      //
+      // ⛔ L'ORDRE DES BRANCHES EST LA NON-RÉGRESSION D42 : `inapteMagie`
+      // passe D'ABORD et se résout exactement comme avant (par le NOM, échec
+      // bruyant si le trait manque au snapshot). Le 🎲 ne pose jamais deux
+      // traits : le résolveur n'en nomme qu'un, et ces deux branches sont
+      // exclusives. `traitRacialTire` absent (tirage v1, 🧭, pool vide) ⇒
+      // liste vide, comportement d'avant le lot.
       traitsRaciauxChoisis: tirage.inapteMagie
         ? [
             {
@@ -559,7 +579,15 @@ export function convertirTirageEnBrouillon(
               xp_depense: 0,
             },
           ]
-        : [],
+        : tirage.traitRacialTire
+          ? [
+              {
+                trait_id: tirage.traitRacialTire.id,
+                est_gratuit: true,
+                xp_depense: 0,
+              },
+            ]
+          : [],
     },
     etape4: {
       classeId: classe.id,

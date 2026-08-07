@@ -8,6 +8,7 @@ import { CONTENU_GUERRIER } from "@/moteurCreation/generateur/contenu/guerrier";
 import { CONTENU_MAGE } from "@/moteurCreation/generateur/contenu/mage";
 import { CONTENU_PRETRE } from "@/moteurCreation/generateur/contenu/pretre";
 import { CONTENU_VOLEUR } from "@/moteurCreation/generateur/contenu/voleur";
+import type { TiragePersonnage } from "@/moteurCreation/generateur/resoudre";
 import type {
   AchatMagiePlanifie,
   AchatPlanifie,
@@ -139,6 +140,24 @@ export function itemsDuPlan(
         ? artisanatTire.assemblages
         : artisanatTire.pieges;
   return source.filter((i) => i.plan === indexPlan);
+}
+
+/**
+ * ⭐ [D52, s380] CE QUE LA FICHE ANNONCE DU TRAIT RACIAL — la ligne, ou rien.
+ *
+ * « Rien » est un cas de PREMIER ORDRE, pas un oubli : une fiche rendue sans
+ * tirage de trait (🧭, où le joueur choisit au wizard ; un pool vide ; les
+ * appels v1) ne doit RIEN afficher plutôt qu'une ligne vide ou un « — ».
+ *
+ * Le sous-type voyage dans la même ligne parce qu'il qualifie le peuple, pas
+ * le trait : « Chiméride carnivore », comme la base le nomme.
+ */
+export function ligneTraitRacial(
+  tirage: Pick<TiragePersonnage, "traitRacialTire" | "sousTypeChimeride">
+): { sousType: string | null; trait: string | null } | null {
+  const sousType = tirage.sousTypeChimeride ?? null;
+  const trait = tirage.traitRacialTire?.nom ?? null;
+  return sousType === null && trait === null ? null : { sousType, trait };
 }
 
 export const magieDeCouche = (

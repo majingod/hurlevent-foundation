@@ -61,6 +61,13 @@ import {
   type ContenuClasse,
   type RoleClasse,
 } from "./contenu/commun";
+import {
+  POIDS_SOUS_TYPE_CHIMERIDE,
+  POIDS_TRAITS,
+  cleRaceTraits,
+  poidsDe,
+  tirerSansRemisePondere,
+} from "./contenu/traits";
 import type {
   Composition,
   CompositionOk,
@@ -130,7 +137,18 @@ export interface ReligionMonde {
  *  `monde_resolveur.fixture.json` (capture MCP prod, s362). */
 export interface MondeResolveur {
   races: readonly RaceMonde[];
-  race_traits: readonly { race_id: string; trait_id: string }[];
+  /**
+   * ⚠️ [C99, s380] `sous_type` FAIT PARTIE DU CONTRAT. La colonne existe en
+   * base et le snapshot la porte (`snapshot.ts` : `RaceTrait = Row` complet) ;
+   * tant que ce type local l'ignorait, le filtrage par sous-type était
+   * invisible à la compilation et un Chiméride carnivore pouvait recevoir
+   * « Instinct de survie » (herbivore). `null` = trait de toute la race.
+   */
+  race_traits: readonly {
+    race_id: string;
+    trait_id: string;
+    sous_type: string | null;
+  }[];
   traits_raciaux: readonly { id: string; nom: string; est_actif: boolean }[];
   religions: readonly ReligionMonde[];
   objets_requis: readonly ObjetRequis[];
@@ -160,6 +178,27 @@ export interface TiragePersonnage {
   inapteMagie: boolean;
   /** Conduite 3 (§2.2) : traits que le préfill devra écarter du pool. */
   traitsIncompatibles: string[];
+  /**
+   * ⭐ [D52, s380] Le SOUS-TYPE tiré, quand la race en exige un (le Chiméride,
+   * seul concerné aujourd'hui). Absent pour les 10 autres races. Sans lui, la
+   * fiche du 🎲 était bloquée à l'étape 2 (`sous_type_chimeride_manquant`) :
+   * le générateur ne posait rien et le joueur ne savait pas où aller.
+   * Tiré AVANT le trait — le pool de traits en dépend.
+   */
+  sousTypeChimeride?: string;
+  /**
+   * ⭐ [D52, s380] LE TRAIT RACIAL GRATUIT, NOMMÉ (patron `ItemTire` de
+   * l'artisanat, D34 : tiré = affiché = acheté). Le nom sort du moteur parce
+   * que la FICHE en a besoin AVANT la conversion ; l'id parce que
+   * `versBrouillon` écrit `{ trait_id, est_gratuit, xp_depense }` (C79).
+   *
+   * Posé par 🎲 seulement — 🧭 laisse le joueur choisir au wizard. Quand
+   * `inapteMagie` est vrai (Demi-Orc martial, D42), c'est « Inapte à la magie »
+   * qui est nommé ici : le trait était déjà posé par la conversion, il est
+   * désormais ANNONCÉ (C84 : un champ que rien n'affiche est un champ perdu —
+   * et son inverse, un trait posé que rien n'annonce).
+   */
+  traitRacialTire?: { id: string; nom: string };
 }
 
 export type ResultatTirage =
@@ -245,6 +284,86 @@ export function domainesTirables(cats: Catalogues): string[] {
   return cats.magie
     .domaines()
     .filter((d) => !DOMAINES_JAMAIS_TIRES.includes(d));
+}
+
+/* ------------------------------------------------------------------ */
+/* ⭐ [D52, s380] LE SOUS-TYPE ET LE TRAIT RACIAL — pools et tirage.    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Les SOUS-TYPES d'une race, lus dans `race_traits` — pas une liste en dur :
+ * la base est la seule autorité. Vide pour les 10 races qui n'en ont pas ;
+ * `["carnivore", "herbivore"]` pour le Chiméride (mesuré : 5 traits chacun).
+ * Trié — l'ordre du snapshot n'est pas contractuel, un aléa seedé doit rendre
+ * le même sous-type quelle que soit la régénération.
+ */
+export function sousTypesTirables(
+  monde: MondeResolveur,
+  raceId: string
+): string[] {
+  const vus = new Set<string>();
+  for (const rt of monde.race_traits) {
+    if (rt.race_id === raceId && rt.sous_type != null) vus.add(rt.sous_type);
+  }
+  return [...vus].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * ⭐ LE POOL DU TIRAGE : les traits ACTIFS de la race, filtrés par le
+ * sous-type, MOINS « Inapte à la magie ».
+ *
+ * ⚠️ [C99] Le filtre `sous_type == null || sous_type === sousType` est
+ * EXACTEMENT la condition qu'applique `valider_etape_3` côté serveur (et
+ * `gatesTraits.peutAcheterTraitRacial` côté miroir) : un trait sans sous-type
+ * appartient à toute la race, un trait sous-typé au seul sous-type nommé.
+ *
+ * ⛔ L'EXCLUSION D'« Inapte à la magie » EST STRUCTURELLE, par le NOM
+ * (`TRAIT_INAPTE`, jamais un id en dur — même résolution que `versBrouillon`).
+ * Sorti pour un Demi-Orc MAGE ou PRÊTRE, ce trait détruirait une fiche magique
+ * et `valider_etape_3` la refuserait : on recréerait, en pire, le bug que ce
+ * lot répare. D42 reste seule à le poser, et seulement aux martiaux.
+ *
+ * Trié par nom AVANT tirage (même discipline de déterminisme que
+ * `poolArtisanat` et `langueAncienneAuHasard`).
+ */
+export function traitsTirables(
+  monde: MondeResolveur,
+  raceId: string,
+  sousType?: string
+): { id: string; nom: string }[] {
+  const actifs = new Map(
+    monde.traits_raciaux.filter((t) => t.est_actif).map((t) => [t.id, t])
+  );
+  const vus = new Set<string>();
+  const pool: { id: string; nom: string }[] = [];
+  for (const rt of monde.race_traits) {
+    if (rt.race_id !== raceId || vus.has(rt.trait_id)) continue;
+    if (rt.sous_type != null && rt.sous_type !== sousType) continue;
+    const trait = actifs.get(rt.trait_id);
+    if (!trait || trait.nom === TRAIT_INAPTE) continue;
+    vus.add(rt.trait_id);
+    pool.push({ id: trait.id, nom: trait.nom });
+  }
+  return pool.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+}
+
+/**
+ * ⭐ [D52] Le trait racial gratuit, tiré dans le pool de la race (et du
+ * sous-type), PONDÉRÉ par le terrain (`contenu/traits.ts` — poids mesurés sur
+ * les personnages FINALISÉS ; tout trait non mesuré pèse `POIDS_DEFAUT`).
+ *
+ * `undefined` si le pool est vide — un pool vide ne casse rien, la conversion
+ * laisse simplement la liste vide comme avant le lot.
+ */
+export function tirerTraitRacial(
+  monde: MondeResolveur,
+  race: Pick<RaceMonde, "id" | "nom">,
+  sousType: string | undefined,
+  alea: Alea
+): { id: string; nom: string } | undefined {
+  const pool = traitsTirables(monde, race.id, sousType);
+  const table = POIDS_TRAITS[cleRaceTraits(race.nom, sousType)] ?? {};
+  return tirerSansRemisePondere(pool, (t) => poidsDe(t.nom, table), 1, alea)[0];
 }
 
 /** Sonde d'élément du pré-filtre de rôles (piège C71, mesuré s362) : les
@@ -649,6 +768,31 @@ export function tirerPersonnage(
     religion = piocher(candidates, alea);
   }
 
+  // ⑧ ⭐⭐ [D52, s380] LE SOUS-TYPE PUIS LE TRAIT RACIAL — la fiche du 🎲
+  // devient VRAIMENT finalisable. Avant ce lot, le joueur nommait son
+  // personnage, cliquait « Finaliser », et le serveur refusait : « Vous devez
+  // choisir exactement 1 trait(s) gratuit(s), pas 0 » — sans rien lui dire du
+  // chemin. Un Chiméride, lui, restait bloqué dès l'étape 2.
+  //
+  // ⚠️ L'ORDRE COMPTE DEUX FOIS :
+  //  · le sous-type AVANT le trait — le pool de traits en dépend (C99) ;
+  //  · ces deux tirages EN DERNIER, après la composition et la religion. Ce
+  //    n'est pas cosmétique : `alea` est un flux, et les comptes MACHINE
+  //    gravés des sweeps seedés (s366/s374 : `rolesE2Vus`, `e2Poses`, la liste
+  //    exacte des reliquats > 3) décrivent le flux TEL QU'IL ÉTAIT. Tirer plus
+  //    tôt les décalerait tous, et on ne saurait plus si un compte qui bouge
+  //    est un décalage de graine ou une vraie régression.
+  const sousTypeChimeride = piocherSousType(monde, race.id, alea);
+
+  // ⛔ [D42, s372 — NON-RÉGRESSION ABSOLUE] Un Demi-Orc tiré guerrier ou
+  // voleur reçoit « Inapte à la magie » d'office : le NOUVEAU tirage ne joue
+  // QUE si `inapte` est faux. Le trait de D42 est simplement NOMMÉ ici (il
+  // était déjà posé par `versBrouillon`), pour que la fiche l'annonce comme
+  // les autres — la conversion, elle, ne change pas d'un octet.
+  const traitRacialTire = inapte
+    ? monde.traits_raciaux.find((t) => t.est_actif && t.nom === TRAIT_INAPTE)
+    : tirerTraitRacial(monde, race, sousTypeChimeride, alea);
+
   return {
     ok: true,
     tirage: {
@@ -663,9 +807,32 @@ export function tirerPersonnage(
       religionNom: religion?.nom,
       inapteMagie: inapte,
       traitsIncompatibles: traitsIncompatiblesDe(composition),
+      sousTypeChimeride,
+      traitRacialTire: traitRacialTire
+        ? { id: traitRacialTire.id, nom: traitRacialTire.nom }
+        : undefined,
     },
     composition,
   };
+}
+
+/** [D52] Le sous-type tiré, pondéré (carnivore 3 · herbivore 2, mesurés) —
+ *  `undefined` pour les races qui n'en ont pas : le champ reste absent plutôt
+ *  que faussement rempli (`valider_etape_2` refuse un sous-type sur une race
+ *  qui n'en attend pas : `sous_type_chimeride_invalide_pour_race`). */
+function piocherSousType(
+  monde: MondeResolveur,
+  raceId: string,
+  alea: Alea
+): string | undefined {
+  const sousTypes = sousTypesTirables(monde, raceId);
+  if (sousTypes.length === 0) return undefined;
+  return tirerSansRemisePondere(
+    sousTypes,
+    (st) => poidsDe(st, POIDS_SOUS_TYPE_CHIMERIDE),
+    1,
+    alea
+  )[0];
 }
 
 /* ------------------------------------------------------------------ */
