@@ -90,9 +90,11 @@ import fxPretre from "./fixtures/competences_pretre.fixture.json";
 import fxVoleur from "./fixtures/competences_voleur.fixture.json";
 import {
   TRAIT_INAPTE,
+  resoudreChoix,
   sousTypesTirables,
   tirerPersonnage,
   tirerTraitRacial,
+  traitsRaciauxProposables,
   traitsTirables,
   type Alea,
   type DepsResolveur,
@@ -100,6 +102,13 @@ import {
 } from "./resoudre";
 import type { CompetenceCatalogue, ContexteComposition } from "./types";
 import { convertirTirageEnBrouillon } from "./versBrouillon";
+import {
+  MOTIF_INAPTE_GRISE,
+  PARCOURS_VIDE,
+  construireChoix,
+  traitsRaciauxAffiches,
+  type ParcoursBoussole,
+} from "@/components/createur/generateur/boussole.logic";
 
 /* ------------------------------------------------------------------ */
 /* Montage — mêmes fixtures que `generateur.resolveur.test.ts`.        */
@@ -708,5 +717,171 @@ describe("traits — le trait tiré passe le miroir serveur (gatesTraits)", () =
     const b = convertirTirageEnBrouillon(snap, v1, lcg(1));
     expect(b.etape3.traitsRaciauxChoisis).toEqual([]);
     expect(b.etape2.sousTypeChimeride).toBeUndefined();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* ⭐⭐ [D53, s381] LE BARREAU 🧭 « TON HÉRITAGE » — le trait racial se       */
+/* CHOISIT, plus jamais un cul-de-sac au clic « Finaliser ».              */
+/* ------------------------------------------------------------------ */
+
+/** [D53] Un parcours 🧭 MINIMAL — guerrier `gForgeron` (`requiert: () =>
+ *  null`, aucun équipement) — pour composer sans dépendre de l'inventaire :
+ *  seul le barreau « Ton héritage » (race, sous-type, trait) est sous test
+ *  ici, jamais l'équipement. Guerrier n'est JAMAIS caster (mesuré plus haut :
+ *  `guerrier: [3, 0, 0]`) — `estCaster` vaut donc `false` partout ci-dessous
+ *  sauf mention contraire. */
+const PARCOURS_HERITAGE: ParcoursBoussole = {
+  ...PARCOURS_VIDE,
+  classe: "guerrier",
+  roleId: "gForgeron",
+};
+
+describe("🧭 D53 — le barreau « Ton héritage » (sous-type + trait, bout en bout)", () => {
+  // ⚠️ [contesté, cf. PR] Le §3 du prompt dit « les 11 races » pour ce
+  // balayage — mais 3 des 11 lignes de `races` (Fée, Haut-Elfe, Orc) sont
+  // `est_jouable: false` (mesuré Supabase, 2026-08-07) : un parcours 🧭 ne
+  // peut JAMAIS les atteindre (`raceId` vient de l'écran de constat, en
+  // amont, qui ne propose que les jouables). Le balayage ci-dessous couvre
+  // donc les 8 races RÉELLEMENT accessibles au 🧭 — la décomposition exacte
+  // du §3 (Humain, Les Non-Races, Chiméride, Demi-Elfe, Demi-Orc, Drow,
+  // Gobelin, Myrvalk) — jamais un chiffre rond.
+  const RACES_JOUABLES = monde.races.filter(
+    (r) => r.est_actif && r.est_jouable
+  );
+
+  const sweep = RACES_JOUABLES.map((race) => {
+    const choix = construireChoix(PARCOURS_HERITAGE, race.id, VIDE, monde, false);
+    const res = resoudreChoix(deps, choix);
+    if (!res.ok) return { race, ok: false as const, raison: res.raison };
+    return {
+      race,
+      ok: true as const,
+      brouillon: convertirTirageEnBrouillon(snap, res, lcg(1)),
+    };
+  });
+
+  it("le balayage couvre EXACTEMENT les 8 races jouables (jamais les 3 non-jouables)", () => {
+    expect(sweep.map((s) => s.race.nom).sort()).toEqual([
+      "Chiméride",
+      "Demi-Elfe",
+      "Demi-Orc",
+      "Drow",
+      "Gobelin",
+      "Humain",
+      "Les Non-Races",
+      "Myrvalk",
+    ]);
+  });
+
+  it("⭐ A-positif [rougit sur origin/main] : 8 parcours (8 races × 1) ⇒ 8 brouillons avec EXACTEMENT 1 trait, gratuit, 0 XP", () => {
+    let comptes = 0;
+    for (const s of sweep) {
+      expect(s.ok, s.ok ? "" : `${s.race.nom} : ${s.raison}`).toBe(true);
+      if (!s.ok) continue;
+      const traits = s.brouillon.etape3.traitsRaciauxChoisis;
+      expect(traits, s.race.nom).toHaveLength(1);
+      expect(traits[0].est_gratuit, s.race.nom).toBe(true);
+      expect(traits[0].xp_depense, s.race.nom).toBe(0);
+      comptes++;
+    }
+    // Décomposition : 8 races jouables × 1 parcours guerrier chacune = 8.
+    expect(comptes).toBe(8);
+  });
+
+  it("A-jumeau négatif : 0 des 8 brouillons ne porte un trait absent du pool de sa race (et de son sous-type)", () => {
+    const horsPool: string[] = [];
+    for (const s of sweep) {
+      if (!s.ok) continue;
+      const sousType = s.brouillon.etape2.sousTypeChimeride;
+      const pool = traitsRaciauxProposables(monde, s.race.id, sousType).map(
+        (t) => t.id
+      );
+      for (const t of s.brouillon.etape3.traitsRaciauxChoisis) {
+        if (!pool.includes(t.trait_id ?? "")) {
+          horsPool.push(`${s.race.nom} → ${t.trait_id}`);
+        }
+      }
+    }
+    expect(horsPool).toEqual([]);
+  });
+
+  it("⭐ B-positif [rougit sur origin/main] : le Chiméride pose un sousTypeChimeride ∈ {carnivore, herbivore}", () => {
+    const chim = sweep.find((s) => s.race.nom === "Chiméride");
+    expect(chim?.ok).toBe(true);
+    if (chim?.ok) {
+      expect(["carnivore", "herbivore"]).toContain(
+        chim.brouillon.etape2.sousTypeChimeride
+      );
+    }
+  });
+
+  it("B-jumeau négatif [vert par défaut, ne prouve rien seul] : les 7 AUTRES races jouables ne posent JAMAIS de sous-type", () => {
+    const autres = sweep.filter((s) => s.race.nom !== "Chiméride");
+    expect(autres).toHaveLength(7);
+    for (const s of autres) {
+      expect(s.ok, s.race.nom).toBe(true);
+      if (s.ok) {
+        expect(
+          s.brouillon.etape2.sousTypeChimeride,
+          s.race.nom
+        ).toBeUndefined();
+      }
+    }
+  });
+});
+
+describe("🧭 D53 — le résolveur SAIT (traitsChoisis enfin alimenté par construireChoix)", () => {
+  const demiOrc = raceParNom("Demi-Orc");
+  const inapteId = monde.traits_raciaux.find((t) => t.nom === TRAIT_INAPTE)!.id;
+  const charognardId = monde.traits_raciaux.find(
+    (t) => t.nom === "Charognard"
+  )!.id;
+
+  it("⭐ C-positif : Demi-Orc voie Guerrier + « Inapte à la magie » ⇒ inapteMagie=true, 0 achat de magie, 0 Développement Spirituel", () => {
+    const p: ParcoursBoussole = { ...PARCOURS_HERITAGE, traitRacialChoisi: inapteId };
+    const choix = construireChoix(p, demiOrc.id, VIDE, monde, false);
+    expect(choix.traitsChoisis).toEqual([TRAIT_INAPTE]);
+    const res = resoudreChoix(deps, choix);
+    expect(res.ok, res.ok ? "" : res.raison).toBe(true);
+    if (!res.ok) return;
+    expect(res.tirage.inapteMagie).toBe(true);
+    expect(res.composition.achatsMagie).toHaveLength(0);
+    expect(
+      res.composition.achats.filter((a) => a.nom === "Développement Spirituel")
+    ).toHaveLength(0);
+  });
+
+  it("jumeau : le MÊME Demi-Orc Guerrier + « Charognard » n'est PAS contraint — inapteMagie=false, composition inchangée", () => {
+    const p: ParcoursBoussole = {
+      ...PARCOURS_HERITAGE,
+      traitRacialChoisi: charognardId,
+    };
+    const choix = construireChoix(p, demiOrc.id, VIDE, monde, false);
+    expect(choix.traitsChoisis).toEqual(["Charognard"]);
+    const res = resoudreChoix(deps, choix);
+    expect(res.ok, res.ok ? "" : res.raison).toBe(true);
+    if (!res.ok) return;
+    expect(res.tirage.inapteMagie).toBe(false);
+  });
+});
+
+describe("🧭 D53 — le grisage d'« Inapte à la magie » (rôle caster, `roleEstCaster`)", () => {
+  const demiOrc = raceParNom("Demi-Orc");
+
+  it("négatif : Demi-Orc + rôle CASTER ⇒ Inapte présent dans le pool, mais grisé, motif verbatim", () => {
+    const traits = traitsRaciauxAffiches(monde, demiOrc, undefined, true);
+    const inapte = traits.find((t) => t.nom === TRAIT_INAPTE);
+    expect(inapte).toBeDefined();
+    expect(inapte?.grise).toBe(true);
+    expect(inapte?.motif).toBe(MOTIF_INAPTE_GRISE);
+  });
+
+  it("jumeau positif : le MÊME Demi-Orc, rôle NON-caster ⇒ Inapte choisissable", () => {
+    const traits = traitsRaciauxAffiches(monde, demiOrc, undefined, false);
+    const inapte = traits.find((t) => t.nom === TRAIT_INAPTE);
+    expect(inapte).toBeDefined();
+    expect(inapte?.grise).toBe(false);
+    expect(inapte?.motif).toBeUndefined();
   });
 });

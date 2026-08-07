@@ -16,12 +16,18 @@ import {
   PARCOURS_VIDE,
   avertissementElement,
   construireChoix,
+  contexteUsageTraits,
   etiquetteSecond,
+  heritageEffectif,
+  nomsAcquisDuParcours,
   pretPourFiche,
   resumeFois,
   roleAttendElement,
   roleElementOptionnel,
   roleEstCaster,
+  sousTypesAffiches,
+  texteUsageTrait,
+  traitsRaciauxAffiches,
   type ParcoursBoussole,
 } from "./boussole.logic";
 import { LABELS_CLASSES } from "./ficheTirage.logic";
@@ -245,11 +251,49 @@ const EcranBoussole = ({
     p,
     classeCourante?.contenu ?? null,
     classeCourante?.cats ?? null,
-    inventaire
+    inventaire,
+    deps.monde,
+    raceId
   );
 
   const numeroElement = 3;
   const numeroFoi = caster ? 4 : 3;
+  const numeroHeritage = numeroFoi + (etapeFoiAttendue ? 1 : 0);
+
+  // ⭐ [D53, s381] Barreau 5 « Ton héritage » — sous-type (Chiméride) puis
+  // trait racial gratuit. Une seule résolution (`heritageEffectif`) pour le
+  // suggéré affiché ET pour ce que « Voir ma fiche » enverra.
+  const sousTypesAff = useMemo(
+    () => (race ? sousTypesAffiches(deps.monde, race) : []),
+    [deps.monde, race]
+  );
+  const heritage = useMemo(
+    () => heritageEffectif(deps.monde, raceId, caster, p),
+    [deps.monde, raceId, caster, p.sousTypeChimeride, p.traitRacialChoisi]
+  );
+  const traitsAff = useMemo(
+    () =>
+      race
+        ? traitsRaciauxAffiches(deps.monde, race, heritage.sousType, caster)
+        : [],
+    [deps.monde, race, heritage.sousType, caster]
+  );
+  const nomsAcquis = useMemo(
+    () => nomsAcquisDuParcours(deps, raceId, inventaire, p),
+    // ⚠️ Dépendances CIBLÉES : `nomsAcquisDuParcours` ne lit que classe/rôle/
+    // élément(s) de `p`, jamais l'héritage — cliquer un trait/sous-type ne
+    // doit pas relancer une composition preview (`composerClasse`) inutile.
+    [deps, raceId, inventaire, p.classe, p.roleId, p.element, p.second, p.element2]
+  );
+  const usageCtx = useMemo(
+    () => contexteUsageTraits(nomsAcquis, caster),
+    [nomsAcquis, caster]
+  );
+  const etapeHeritageOuverte =
+    !!p.roleId &&
+    etapeElementFaite &&
+    (!p.second || !!p.element2) &&
+    (!etapeFoiAttendue || !!p.religionId);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
@@ -493,6 +537,98 @@ const EcranBoussole = ({
             </div>
           </Etape>
         )}
+
+        {/* 5 · TON HÉRITAGE — sous-type (Chiméride) puis trait racial gratuit. */}
+        <Etape
+          n={numeroHeritage}
+          titre="TON HÉRITAGE"
+          // ⚠️ `heritage.traitId` résout TOUJOURS (le suggéré, dès que le
+          // pool n'est pas vide) — sans le garder sous `etapeHeritageOuverte`,
+          // la pastille afficherait ✓ avant même que le joueur atteigne ce
+          // barreau (le cercle/la foi pas encore répondus).
+          faite={etapeHeritageOuverte && !!heritage.traitId}
+          ouverte={etapeHeritageOuverte}
+        >
+          {sousTypesAff.length > 0 && (
+            <div className="mb-3.5">
+              <div className="mb-1.5 text-[12.5px] text-white/50">
+                Un {race?.nom} est {sousTypesAff.map((s) => s.valeur).join(" ou ")}.
+                Ça change les traits qui te sont ouverts.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {sousTypesAff.map((s) => (
+                  <Carte
+                    key={s.valeur}
+                    actif={heritage.sousType === s.valeur}
+                    onClick={() =>
+                      setP((q) => ({
+                        ...q,
+                        sousTypeChimeride: s.valeur,
+                        traitRacialChoisi: null,
+                      }))
+                    }
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-heading text-[14px] capitalize text-gold-accent">
+                        {s.valeur}
+                      </span>
+                      {s.suggere && <Puce or>suggéré</Puce>}
+                    </div>
+                    <div className="mt-1 text-[11px] text-white/50">
+                      {s.justification}
+                    </div>
+                  </Carte>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-2 text-[12.5px] text-white/50">
+            Un trait racial, offert. Le plus porté est déjà coché — tu peux en
+            changer.
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {traitsAff.map((t) => {
+              const usage = texteUsageTrait(t.nom, usageCtx);
+              return (
+                <Carte
+                  key={t.id}
+                  actif={heritage.traitId === t.id}
+                  grise={t.grise}
+                  lisere={t.grise}
+                  onClick={() =>
+                    setP((q) => ({ ...q, traitRacialChoisi: t.id }))
+                  }
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-heading text-[14.5px] font-semibold text-gold-accent">
+                      {t.nom}
+                    </span>
+                    {t.suggere && <Puce or>suggéré</Puce>}
+                    {t.grise && <Puce>incompatible</Puce>}
+                  </div>
+                  <div className="mt-1 text-[12.5px] text-white/50">
+                    {t.description}
+                  </div>
+                  {t.grise ? (
+                    <div className="mt-1 text-[12.5px] text-[#e0a0ae]">
+                      {t.motif}
+                    </div>
+                  ) : (
+                    <div
+                      className={`mt-1 text-[12.5px] ${
+                        usage.sert ? "text-gold-accent" : "text-white/38"
+                      }`}
+                    >
+                      {usage.texte}
+                    </div>
+                  )}
+                </Carte>
+              );
+            })}
+          </div>
+        </Etape>
       </div>
 
       {/* Refus parlant du moteur — jamais avalé. */}
@@ -506,7 +642,9 @@ const EcranBoussole = ({
         <button
           type="button"
           disabled={!pret}
-          onClick={() => onVoirFiche(construireChoix(p, raceId, inventaire))}
+          onClick={() =>
+            onVoirFiche(construireChoix(p, raceId, inventaire, deps.monde, caster))
+          }
           className={`flex-1 rounded-lg bg-gold px-4 py-3 text-[15px] font-semibold text-black transition-opacity ${
             pret ? "hover:bg-gold-accent" : "cursor-not-allowed opacity-35"
           }`}

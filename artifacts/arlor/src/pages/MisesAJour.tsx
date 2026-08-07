@@ -33,6 +33,22 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "« Guide-moi » te laisse choisir ton héritage",
+    description:
+      "Il manquait un dernier palier à « Guide-moi » 🧭 : ton héritage. Après ta foi, juste avant de voir ta fiche, un dernier palier te propose ton trait racial gratuit — et, si tu joues un Chiméride, ton sous-type (carnivore ou herbivore) d'abord, puisqu'il change les traits qui te sont ouverts. Le plus porté au terrain est déjà coché, avec une phrase qui te dit à quoi il te sert vraiment (récolte, sorts, artisanat…) ou qu'il n'est là que pour la saveur. Un trait qui ne colle pas à ta fiche — comme « Inapte à la magie » pour un personnage qui lance des sorts — reste visible mais grisé, avec la raison écrite noir sur blanc. Avant ce palier, ta fiche « Guide-moi » n'avait aucun trait racial et le clic sur « Finaliser » était refusé sans explication : ce n'est plus possible.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "Surprends-moi te donne maintenant ton trait racial",
+    description:
+      "Le tirage 🎲 « Surprends-moi » pose désormais ton trait racial gratuit en même temps que le reste de ta fiche — et, si ta race en a un, ton sous-type (carnivore ou herbivore pour un Chiméride) d'abord, puisqu'il change les traits qui te sont ouverts. Ta fiche te l'annonce avant que tu l'appliques, avec ce qu'il t'apporte. Avant cette correction, le tirage ne posait aucun trait racial : tu arrivais au clic « Finaliser » avec une fiche que le serveur refusait, sans jamais te dire pourquoi.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Le créateur te prévient avant de verrouiller une XP qui dort",
     description:
       "Acheter l'accès à un cercle de magie ou à un domaine de prières coûte de l'XP — mais cet accès ne sert à rien tant que tu n'as pas acheté un sort ou une prière dedans. Jusqu'ici, rien ne te le disait, et l'XP restait bloquée là une fois la fiche verrouillée. Maintenant, quand tu cliques sur « Finaliser le personnage », une fenêtre te montre exactement quels accès n'ouvrent sur rien et combien d'XP y dort, et te propose de revenir choisir tes sorts. Tu peux finaliser quand même si c'est voulu — c'est ton personnage. Les fiches déjà verrouillées ne bougent pas.",

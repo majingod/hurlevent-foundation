@@ -550,13 +550,17 @@ export function convertirTirageEnBrouillon(
       sousTypeChimeride: tirage.sousTypeChimeride,
     },
     etape3: {
-      // ⭐⭐ [DÉCISION 42, s372] Un tirage `inapteMagie` (Demi-Orc martial —
-      // la seule source aujourd'hui) POSE le trait racial : c'est l'arbitrage
-      // Fred « trait auto pour guerrier/voleur en 🎲 ». Le trait est GRATUIT
-      // (quota `nb_traits_raciaux` = 1, format serveur mesuré C79). Résolu
-      // par NOM au snapshot — échec bruyant si absent, jamais un id en dur.
-      // 🧭 ne passe jamais ici avec `inapteMagie` (le visiteur est apte,
-      // décisions 41+42) : le joueur 🧭 choisit son trait au wizard.
+      // ⭐⭐ [DÉCISION 42, s372] Un tirage `inapteMagie` POSE le trait racial :
+      // c'est l'arbitrage Fred « trait auto pour guerrier/voleur en 🎲 ». Le
+      // trait est GRATUIT (quota `nb_traits_raciaux` = 1, format serveur
+      // mesuré C79). Résolu par NOM au snapshot — échec bruyant si absent,
+      // jamais un id en dur.
+      // ⭐ [D53, s381] Le 🎲 (Demi-Orc martial) N'EST PLUS LA SEULE SOURCE :
+      // depuis le barreau « Ton héritage », un 🧭 peut choisir « Inapte à la
+      // magie » lui-même — `resoudreChoix` pose alors `inapteMagie` à `true`
+      // exactement comme le 🎲 (`choix.traitsChoisis.includes(TRAIT_INAPTE)`),
+      // et cette branche le traduit identiquement pour les deux modes : même
+      // trait, même résolution par nom, ne pas la croire 🎲-only.
       //
       // ⭐⭐ [D52, s380] SINON, LE TRAIT TIRÉ. Le 🎲 tire désormais le trait
       // racial gratuit (pondéré par le terrain) et le NOMME sur la fiche ; la
