@@ -149,7 +149,20 @@ export interface MondeResolveur {
     trait_id: string;
     sous_type: string | null;
   }[];
-  traits_raciaux: readonly { id: string; nom: string; est_actif: boolean }[];
+  /**
+   * ⚠️ [D53, s381] `description` FAIT PARTIE DU CONTRAT, au même titre que
+   * `sous_type` (C99) : la colonne existe en base (`traits_raciaux.description`,
+   * non nullable) et le snapshot la porte déjà (cast `as unknown as
+   * MondeResolveur` dans `pontSnapshot.ts` — la vraie ligne passe intacte).
+   * Sans elle dans le type, le barreau « Ton héritage » ne pouvait pas
+   * afficher le texte du manuel sans un second accès au snapshot.
+   */
+  traits_raciaux: readonly {
+    id: string;
+    nom: string;
+    est_actif: boolean;
+    description: string;
+  }[];
   religions: readonly ReligionMonde[];
   objets_requis: readonly ObjetRequis[];
 }
@@ -247,6 +260,12 @@ export interface ChoixJoueur {
   /** Monde post-fix [INAPTE-MAGIE-MODELE-INSTANCE] : si l'appelant connaît
    *  les traits CHOISIS, l'instance prime sur le modèle (la race). */
   traitsChoisis?: readonly string[];
+  /**
+   * ⭐ [D53, s381] Le SOUS-TYPE choisi au barreau « Ton héritage » — absent
+   * pour les races qui n'en ont pas. Même valeur littérale que
+   * `race_traits.sous_type` (`p_sous_type_chimeride` côté serveur).
+   */
+  sousTypeChimeride?: string;
   essentiels?: ContexteComposition["essentiels"];
 }
 
@@ -309,24 +328,21 @@ export function sousTypesTirables(
 }
 
 /**
- * ⭐ LE POOL DU TIRAGE : les traits ACTIFS de la race, filtrés par le
- * sous-type, MOINS « Inapte à la magie ».
+ * ⭐ [D53, s381] LE POOL EXHAUSTIF : les traits ACTIFS de la race, filtrés par
+ * le sous-type — « Inapte à la magie » COMPRIS. C'est le pool que le barreau
+ * 🧭 « Ton héritage » affiche (loi `religionsProposables`, C75 : l'ouvert ET
+ * le fermé, jamais un tri qui cache). `traitsTirables`, plus bas, en retire
+ * « Inapte » pour le 🎲 — deux verbes, une seule matière première.
  *
  * ⚠️ [C99] Le filtre `sous_type == null || sous_type === sousType` est
  * EXACTEMENT la condition qu'applique `valider_etape_3` côté serveur (et
  * `gatesTraits.peutAcheterTraitRacial` côté miroir) : un trait sans sous-type
  * appartient à toute la race, un trait sous-typé au seul sous-type nommé.
  *
- * ⛔ L'EXCLUSION D'« Inapte à la magie » EST STRUCTURELLE, par le NOM
- * (`TRAIT_INAPTE`, jamais un id en dur — même résolution que `versBrouillon`).
- * Sorti pour un Demi-Orc MAGE ou PRÊTRE, ce trait détruirait une fiche magique
- * et `valider_etape_3` la refuserait : on recréerait, en pire, le bug que ce
- * lot répare. D42 reste seule à le poser, et seulement aux martiaux.
- *
  * Trié par nom AVANT tirage (même discipline de déterminisme que
  * `poolArtisanat` et `langueAncienneAuHasard`).
  */
-export function traitsTirables(
+export function traitsRaciauxProposables(
   monde: MondeResolveur,
   raceId: string,
   sousType?: string
@@ -340,11 +356,32 @@ export function traitsTirables(
     if (rt.race_id !== raceId || vus.has(rt.trait_id)) continue;
     if (rt.sous_type != null && rt.sous_type !== sousType) continue;
     const trait = actifs.get(rt.trait_id);
-    if (!trait || trait.nom === TRAIT_INAPTE) continue;
+    if (!trait) continue;
     vus.add(rt.trait_id);
     pool.push({ id: trait.id, nom: trait.nom });
   }
   return pool.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+}
+
+/**
+ * ⭐ LE POOL DU TIRAGE 🎲 : `traitsRaciauxProposables`, MOINS « Inapte à la
+ * magie ».
+ *
+ * ⛔ L'EXCLUSION D'« Inapte à la magie » EST STRUCTURELLE, par le NOM
+ * (`TRAIT_INAPTE`, jamais un id en dur — même résolution que `versBrouillon`).
+ * Sorti pour un Demi-Orc MAGE ou PRÊTRE, ce trait détruirait une fiche magique
+ * et `valider_etape_3` la refuserait : on recréerait, en pire, le bug que ce
+ * lot répare. D42 reste seule à le poser, et seulement aux martiaux — le 🧭,
+ * lui, le PROPOSE (grisé si besoin) via `traitsRaciauxProposables`.
+ */
+export function traitsTirables(
+  monde: MondeResolveur,
+  raceId: string,
+  sousType?: string
+): { id: string; nom: string }[] {
+  return traitsRaciauxProposables(monde, raceId, sousType).filter(
+    (t) => t.nom !== TRAIT_INAPTE
+  );
 }
 
 /**
@@ -938,6 +975,21 @@ export function resoudreChoix(
   // Même forme de sortie que 🎲 (ResultatTirage) : la fiche, la conversion
   // et l'application se réutilisent TELLES QUELLES (décision 33).
   const element2Effectif = element2Achete(composition, choix.element2);
+
+  // ⭐ [D53, s381] LE RÉSOLVEUR SAIT. Jusqu'ici `resoudreChoix` ignorait le
+  // sous-type et ne posait jamais `traitRacialTire` : `versBrouillon` recevait
+  // donc toujours `sousTypeChimeride: undefined` et `traitsRaciauxChoisis: []`
+  // pour une fiche 🧭 — exactement le trou que ce lot ferme. Le trait CHOISI
+  // (`choix.traitsChoisis[0]`, posé par `construireChoix`) est nommé ici, par
+  // le même NOM que sert `traitsIncompatiblesDe`/D42 : une seule maison de
+  // résolution nom→id, jamais un id en dur.
+  const nomTraitChoisi = choix.traitsChoisis?.[0];
+  const traitChoisi = nomTraitChoisi
+    ? monde.traits_raciaux.find(
+        (t) => t.est_actif && t.nom === nomTraitChoisi
+      )
+    : undefined;
+
   return {
     ok: true,
     tirage: {
@@ -952,7 +1004,58 @@ export function resoudreChoix(
       religionNom: religion?.nom,
       inapteMagie: inapte,
       traitsIncompatibles: traitsIncompatiblesDe(composition),
+      sousTypeChimeride: choix.sousTypeChimeride,
+      traitRacialTire: traitChoisi
+        ? { id: traitChoisi.id, nom: traitChoisi.nom }
+        : undefined,
     },
     composition,
   };
+}
+
+/**
+ * ⭐ [D53, s381] APERÇU des compétences que la composition tiendrait, AVANT
+ * que le joueur ait choisi son trait racial — le barreau « Ton héritage » en
+ * a besoin pour dire à quoi chaque trait SERT à CE personnage (§3, carte
+ * d'usage validée Fred s380). `classe`/`role`/`element`/`religion` sont déjà
+ * posés à ce stade de l'escalier (D53 : le barreau vit APRÈS la foi) — seul
+ * le trait manque, et un trait racial n'entre jamais dans `ContexteComposition`.
+ *
+ * ⛔ JAMAIS UNE GATE : une composition en refus (rôle bloqué, XP insuffisant)
+ * rend une liste VIDE, pas une erreur — cette fonction n'est consultée que
+ * pour de la PHRASE (« Saveur » de repli), jamais pour refuser une étape.
+ * `resoudreChoix` reste la seule porte qui peut dire non.
+ */
+export function nomsAcquisPrevisionnels(
+  deps: DepsResolveur,
+  choix: Pick<
+    ChoixJoueur,
+    "classe" | "roleId" | "raceId" | "inventaire" | "element" | "element2"
+  >
+): string[] {
+  const { monde } = deps;
+  const { cats, contenu } = deps.parClasse[choix.classe];
+  const race = monde.races.find((r) => r.id === choix.raceId);
+  if (!race) return [];
+
+  let essentiels: ContexteComposition["essentiels"];
+  if (choix.element2 && contenu.essentielSecond) {
+    essentiels = [{ label: contenu.essentielSecond }];
+  }
+
+  const composition = composerClasse(cats, contenu, {
+    classe: choix.classe,
+    roleId: choix.roleId,
+    inventaire: choix.inventaire,
+    budget: race.xp_depart,
+    element: choix.element,
+    element2: choix.element2,
+    essentiels,
+    inapteMagie: false,
+  });
+  if (!composition.ok) return [];
+  return [
+    ...composition.gratuites.map((g) => g.nom),
+    ...composition.achats.map((a) => a.nom),
+  ];
 }

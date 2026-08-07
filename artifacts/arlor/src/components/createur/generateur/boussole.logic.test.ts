@@ -221,12 +221,18 @@ describe("🧭 escalier — le bouton « Voir ma fiche »", () => {
     ...PARCOURS_VIDE,
     ...x,
   });
+  // [D53] Humain — pool de 2 traits toujours non-vide, `heritageEffectif`
+  // retombe donc TOUJOURS sur un suggéré : ces tests, antérieurs à D53,
+  // portent sur les gardes classe/rôle/élément/foi, jamais sur l'héritage.
+  const humainId = raceParNom("Humain").id;
   const pret = (p: ParcoursBoussole) =>
     pretPourFiche(
       p,
       p.classe ? parClasse[p.classe].contenu : null,
       p.classe ? parClasse[p.classe].cats : null,
-      RICHE
+      RICHE,
+      monde,
+      humainId
     );
 
   it("guerrier : classe + rôle suffisent (ni élément, ni foi)", () => {
@@ -273,6 +279,7 @@ describe("🧭 escalier — construireChoix → resoudreChoix (bout en bout)", (
     )!;
     const choix = construireChoix(
       {
+        ...PARCOURS_VIDE,
         classe: "pretre",
         roleId: "pRite",
         element: "Guerre",
@@ -281,10 +288,18 @@ describe("🧭 escalier — construireChoix → resoudreChoix (bout en bout)", (
         religionId: religion.id,
       },
       raceParNom("Humain").id,
-      RICHE
+      RICHE,
+      monde,
+      true // pRite est caster (prêtre : les 4 rôles le sont, mesuré plus haut)
     );
-    // Arbitrage s367 : PAS de traitsChoisis — le modèle fait foi.
-    expect("traitsChoisis" in choix).toBe(false);
+    // ⭐ [D53, s381 — RENOMMÉ ET INVERSÉ, remplace l'arbitrage s367] AVANT ce
+    // lot, `construireChoix` ne posait JAMAIS `traitsChoisis` (« le modèle
+    // fait foi ») : un joueur 🧭 finalisait sans trait racial, et le serveur
+    // refusait (« Vous devez choisir exactement 1 trait(s) gratuit(s) »). Le
+    // barreau « Ton héritage » alimente désormais ce champ — même à défaut
+    // (le suggéré, ici Fortuné, le trait le plus porté chez l'Humain).
+    expect("traitsChoisis" in choix).toBe(true);
+    expect(choix.traitsChoisis).toEqual(["Fortuné"]);
     const res = resoudreChoix(deps, choix);
     expect(res.ok, res.ok ? "" : res.raison).toBe(true);
     if (res.ok) {
@@ -297,6 +312,7 @@ describe("🧭 escalier — construireChoix → resoudreChoix (bout en bout)", (
   it("second décoché ⇒ element2 n'est JAMAIS envoyé, même si un reste posé", () => {
     const choix = construireChoix(
       {
+        ...PARCOURS_VIDE,
         classe: "mage",
         roleId: "mCanalisateur",
         element: "Feu",
@@ -305,7 +321,9 @@ describe("🧭 escalier — construireChoix → resoudreChoix (bout en bout)", (
         religionId: null,
       },
       raceParNom("Humain").id,
-      RICHE
+      RICHE,
+      monde,
+      true // mCanalisateur est caster
     );
     expect(choix.element2).toBeUndefined();
   });
