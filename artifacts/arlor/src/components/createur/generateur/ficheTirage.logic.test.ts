@@ -12,6 +12,8 @@ import {
   itemsDuPlan,
   ligneTraitRacial,
   metaRole,
+  TEXTE_TRAIT_INAPTE,
+  TEXTE_TRAIT_OFFERT,
   texteTraitsIncompatibles,
 } from "./ficheTirage.logic";
 
@@ -127,33 +129,87 @@ describe("ligneTraitRacial", () => {
     // Cas de PREMIER ORDRE, pas un oubli : 🧭 laisse le joueur choisir son
     // trait au wizard, et les appelants v1 ne connaissent pas le champ. La
     // carte identité ne doit alors afficher NI ligne vide, NI « — ».
-    expect(ligneTraitRacial({})).toBeNull();
+    expect(ligneTraitRacial({ inapteMagie: false })).toBeNull();
     expect(
       ligneTraitRacial({
+        inapteMagie: false,
         traitRacialTire: undefined,
         sousTypeChimeride: undefined,
       })
     ).toBeNull();
   });
 
-  it("rend le trait tiré quand il existe", () => {
+  it("rend le trait tiré quand il existe, avec la note « offert »", () => {
     expect(
-      ligneTraitRacial({ traitRacialTire: { id: "t1", nom: "Fortuné" } })
-    ).toEqual({ sousType: null, trait: "Fortuné" });
+      ligneTraitRacial({
+        inapteMagie: false,
+        traitRacialTire: { id: "t1", nom: "Fortuné" },
+      })
+    ).toEqual({ sousType: null, trait: "Fortuné", note: TEXTE_TRAIT_OFFERT });
   });
 
   it("le sous-type voyage avec — il qualifie le PEUPLE, pas le trait", () => {
     expect(
       ligneTraitRacial({
+        inapteMagie: false,
         sousTypeChimeride: "carnivore",
         traitRacialTire: { id: "t2", nom: "Charognard" },
       })
-    ).toEqual({ sousType: "carnivore", trait: "Charognard" });
+    ).toEqual({
+      sousType: "carnivore",
+      trait: "Charognard",
+      note: TEXTE_TRAIT_OFFERT,
+    });
     // Un sous-type SEUL suffit à rendre la ligne (la carte affiche alors
-    // « Chiméride carnivore » sans ligne 🧬) — l'inverse aussi.
-    expect(ligneTraitRacial({ sousTypeChimeride: "herbivore" })).toEqual({
-      sousType: "herbivore",
-      trait: null,
+    // « Chiméride carnivore » sans ligne 🧬) — l'inverse aussi. Pas de trait
+    // ⇒ pas de note à donner (rien ne sera rendu par le composant).
+    expect(
+      ligneTraitRacial({ inapteMagie: false, sousTypeChimeride: "herbivore" })
+    ).toEqual({ sousType: "herbivore", trait: null, note: null });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /* ⭐⭐ [D52-bis, s380] LA NOTE MENT SUR LE DEMI-ORC INAPTE — corrigée */
+  /* ---------------------------------------------------------------- */
+
+  it("verbatim validé par Fred — la note par défaut ne bouge pas", () => {
+    expect(TEXTE_TRAIT_OFFERT).toBe("offert, tiré pour toi");
+  });
+
+  it("verbatim validé par Fred — la note du cas inapte (manuel l.1353, 1491)", () => {
+    expect(TEXTE_TRAIT_INAPTE).toBe(
+      "ta race et ta voie le posent : pas d'accès à la magie, et +1 PV"
+    );
+  });
+
+  it("[cas inapte] inapteMagie vrai + « Inapte à la magie » ⇒ la note inapte, verbatim", () => {
+    const l = ligneTraitRacial({
+      inapteMagie: true,
+      traitRacialTire: { id: "inapte", nom: "Inapte à la magie" },
+    });
+    expect(l?.note).toBe(
+      "ta race et ta voie le posent : pas d'accès à la magie, et +1 PV"
+    );
+  });
+
+  it("[cas normal] inapteMagie faux + n'importe quel autre trait ⇒ « offert », non-régression", () => {
+    const l = ligneTraitRacial({
+      inapteMagie: false,
+      traitRacialTire: { id: "t3", nom: "Increvable" },
+    });
+    expect(l?.note).toBe("offert, tiré pour toi");
+  });
+
+  it("[Chiméride] le sous-type suffixe toujours le peuple, la note reste celle du cas normal", () => {
+    const l = ligneTraitRacial({
+      inapteMagie: false,
+      sousTypeChimeride: "carnivore",
+      traitRacialTire: { id: "t2", nom: "Charognard" },
+    });
+    expect(l).toEqual({
+      sousType: "carnivore",
+      trait: "Charognard",
+      note: "offert, tiré pour toi",
     });
   });
 });
