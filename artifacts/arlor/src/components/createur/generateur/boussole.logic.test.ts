@@ -38,14 +38,18 @@ import type {
 
 import {
   EMOJIS_CLASSES,
+  MOTIF_INAPTE_GRISE,
   PARCOURS_VIDE,
   avertissementElement,
   construireChoix,
+  contexteUsageTraits,
   pretPourFiche,
   resumeFois,
   roleAttendElement,
   roleElementOptionnel,
   roleEstCaster,
+  texteUsageTrait,
+  traitsRaciauxAffiches,
   type ParcoursBoussole,
 } from "./boussole.logic";
 import { LABELS_CLASSES } from "./ficheTirage.logic";
@@ -356,5 +360,89 @@ describe("🧭 escalier — éditorial", () => {
       expect(EMOJIS_CLASSES[c].length).toBeGreaterThan(0);
       expect(LABELS_CLASSES[c].length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("🧭 escalier — attestion s381bis : usage des traits (corrections du texte)", () => {
+  const demiOrcId = raceParNom("Demi-Orc").id;
+  const humainId = raceParNom("Humain").id;
+
+  describe("A — « Inapte à la magie » ne dit plus « aucun effet »", () => {
+    it("positif : Demi-Orc guerrier affiche le nouveau texte doré", () => {
+      const { cats, contenu } = parClasse.guerrier;
+      const role = contenu.roles.find((r) => r.id === "gForgeron")!;
+      const estCaster = roleEstCaster(contenu, cats, role, RICHE);
+      expect(estCaster).toBe(false);
+
+      const ctx = contexteUsageTraits([], estCaster);
+      const result = texteUsageTrait("Inapte à la magie", ctx);
+
+      expect(result.sert).toBe(true);
+      expect(result.texte).toBe(
+        "Tu n'auras jamais de points de spiritualité — en échange, +1 PV permanent."
+      );
+    });
+
+    it("rougissement par le contraire : sur origin/main le texte anciennement affiché rougit", () => {
+      // Cette assertion montre ce qu'il FALLAIT corriger. Sur main l'ancien texte
+      // serait retourné, ce test rougirait.
+      const { cats, contenu } = parClasse.guerrier;
+      const role = contenu.roles.find((r) => r.id === "gForgeron")!;
+      const estCaster = roleEstCaster(contenu, cats, role, RICHE);
+      const ctx = contexteUsageTraits([], estCaster);
+      const result = texteUsageTrait("Inapte à la magie", ctx);
+
+      expect(result.texte).not.toBe("Saveur — aucun effet sur ce que tu joues.");
+    });
+  });
+
+  describe("B — le repli reste le repli (renommé en TEXTE_SANS_LIEN)", () => {
+    it("positif : Mythomane chez Demi-Orc guerrier rend le repli (sert: false)", () => {
+      const { cats, contenu } = parClasse.guerrier;
+      const role = contenu.roles.find((r) => r.id === "gForgeron")!;
+      const estCaster = roleEstCaster(contenu, cats, role, RICHE);
+      const ctx = contexteUsageTraits([], estCaster);
+
+      const result = texteUsageTrait("Mythomane", ctx);
+      expect(result.sert).toBe(false);
+      expect(result.texte).toBe(
+        "Aucun lien avec tes compétences — il joue pareil pour tous."
+      );
+    });
+
+    it("négatif : aucune race jouable n'affiche l'ancienne phrase « Saveur — aucun effet »", () => {
+      const racesJouables = monde.races.filter((r) => r.est_jouable);
+      const anciennePhraseAuVieux = "Saveur — aucun effet sur ce que tu joues.";
+
+      for (const race of racesJouables) {
+        const traits = traitsRaciauxAffiches(monde, race, undefined, false);
+        for (const trait of traits) {
+          const ctx = contexteUsageTraits([], false);
+          const result = texteUsageTrait(trait.nom, ctx);
+          expect(result.texte).not.toBe(anciennePhraseAuVieux);
+        }
+      }
+    });
+  });
+
+  describe("D — non-régression du grisage d'« Inapte à la magie »", () => {
+    it("un Demi-Orc mage affiche le trait grisé avec son motif, sans ligne dorée", () => {
+      const { cats, contenu } = parClasse.mage;
+      const role = contenu.roles.find((r) => r.id === "mCanalisateur")!;
+      const estCaster = roleEstCaster(contenu, cats, role, RICHE);
+      expect(estCaster).toBe(true);
+
+      const traits = traitsRaciauxAffiches(monde, raceParNom("Demi-Orc"), undefined, estCaster);
+      const inapteAffiches = traits.find((t) => t.nom === "Inapte à la magie");
+
+      expect(inapteAffiches).toBeDefined();
+      expect(inapteAffiches!.grise).toBe(true);
+      expect(inapteAffiches!.motif).toBe(MOTIF_INAPTE_GRISE);
+
+      // Quand le trait est grisé, la ligne d'usage retourne null (pas affichée).
+      const ctx = contexteUsageTraits([], estCaster);
+      const result = texteUsageTrait("Inapte à la magie", ctx);
+      expect(result.sert).toBe(false);
+    });
   });
 });
