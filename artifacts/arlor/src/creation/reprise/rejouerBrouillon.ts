@@ -71,6 +71,14 @@ export interface CatalogueRejeu {
   cercleDuSort(sortId: string): string | null;
   /** domaine de la prière (ou null si inconnu). */
   domaineDeLaPriere(priereId: string): string | null;
+  /**
+   * D54 (s382) — 'mage' | 'pretre' si la compétence est LA PORTE (« Acquisition
+   * de Sort »/« de Prière ») posée d'office par `tg_poser_porte_magique` dès
+   * l'achat du Cercle/Domaine, sinon `null`. OPTIONNEL : absent ⇒ comportement
+   * inchangé (aucun skip) — ne casse pas les `CatalogueRejeu` factices des
+   * tests existants qui n'ont pas besoin de ce distinguo.
+   */
+  categorieSiPorteMagique?(competenceId: string): "mage" | "pretre" | null;
 }
 
 export interface FaitRejeu {
@@ -160,6 +168,13 @@ export function planifierRejeu(
 
   const sortsTentes = new Set<string>();
   const prieresTentes = new Set<string>();
+  // D54 (s382) : catégories dont l'accès (Cercle/Domaine) a déjà été planifié
+  // dans CETTE boucle. Leur porte (Sort/Prière) est alors déjà posée d'office
+  // par `tg_poser_porte_magique` — la racheter EXPLICITEMENT échouerait
+  // (compétence déjà possédée). Le générateur (`composer.ts`) compose encore
+  // la porte comme une ligne à part (rampe d'accès historique, cf. R1a s361) ;
+  // on la saute ici plutôt que d'y toucher, pour ne pas rouvrir sa composition.
+  const accesPlanifieParCategorie = new Set<"mage" | "pretre">();
 
   for (const comp of brouillon.acquisitions.competences) {
     const typeChoix = catalogue.typeChoixCompetence(comp.competenceId);
@@ -187,7 +202,14 @@ export function planifierRejeu(
         }
       }
     }
+
+    const categoriePorte = catalogue.categorieSiPorteMagique?.(comp.competenceId) ?? null;
+    if (categoriePorte && accesPlanifieParCategorie.has(categoriePorte)) {
+      continue; // déjà posée d'office par le trigger — ne pas la racheter
+    }
     plan.push({ type: "competence", instanceId: comp.instanceId });
+    if (typeChoix === "cercle") accesPlanifieParCategorie.add("mage");
+    else if (typeChoix === "domaine") accesPlanifieParCategorie.add("pretre");
   }
 
   for (const s of brouillon.acquisitions.sorts) {
@@ -559,6 +581,12 @@ export function catalogueDepuisSnapshot(): CatalogueRejeu {
     domaineDeLaPriere(priereId) {
       const prieres = (getSnapshot().tables.prieres ?? []) as PriereCatalogue[];
       return prieres.find((p) => p.id === priereId)?.domaine ?? null;
+    },
+    categorieSiPorteMagique(competenceId) {
+      const nom = getCompetence(competenceId)?.nom;
+      if (nom === "Acquisition de Sort") return "mage";
+      if (nom === "Acquisition de Prière") return "pretre";
+      return null;
     },
   };
 }

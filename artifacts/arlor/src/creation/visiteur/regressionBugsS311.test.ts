@@ -118,15 +118,12 @@ describe("BUG A — achat « Acquisition de Sort » (0 XP) préservé", () => {
     );
     expect(achatCercle.succes, JSON.stringify(achatCercle.erreurs)).toBe(true);
 
-    // Acquisition de Sort (coût 0) : prereq « Acquisition de Cercle » niveau 1.
-    const achatSort = env(
-      (await clientVisiteur.acheterCompetence({
-        p_personnage_id: PERSONNAGE_LOCAL_ID, p_competence_id: COMP_SORT, p_niveau_desire: 1,
-      })).data,
-    );
-    expect(achatSort.succes, JSON.stringify(achatSort.erreurs)).toBe(true);
+    // D54 (s382) : « Acquisition de Sort » (coût 0) n'est plus un achat séparé
+    // — elle est posée d'office par `tg_poser_porte_magique` dès l'achat du
+    // Cercle (son miroir offline, cf. B.4). La racheter à la main échouerait
+    // désormais (déjà possédée).
 
-    // Les DEUX achats survivent à la re-dérivation (BUG A : le Sort disparaissait).
+    // Les DEUX compétences survivent à la re-dérivation (BUG A : le Sort disparaissait).
     const comps = await lireComps();
     expect(comps.some((c) => c.competence_id === COMP_CERCLE)).toBe(true);
     expect(comps.some((c) => c.competence_id === COMP_SORT)).toBe(true);
