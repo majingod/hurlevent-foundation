@@ -746,16 +746,7 @@ const Etape7_Prieres_V2 = ({
             <CardDescription>{texteIndisponiblePrieres()}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
-            <p>
-              • Domaine acquis :{" "}
-              <strong
-                className={
-                  niveauAcquisition >= 1 ? "text-primary" : "text-destructive"
-                }
-              >
-                niveau {niveauAcquisition}
-              </strong>
-            </p>
+            <p>• Retourne à l'étape 5, catégorie Prêtre, pour acheter un Domaine.</p>
           </CardContent>
         </Card>
         <div className="flex justify-between pt-4">

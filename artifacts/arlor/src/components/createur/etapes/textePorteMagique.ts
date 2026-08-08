@@ -18,10 +18,10 @@ export function texteAstucePorteMagique(categorie: "mage" | "pretre"): string {
 
 /** Étape 6 — cartouche « Sorts arcaniques indisponibles ». */
 export function texteIndisponibleSorts(): string {
-  return "Pour acquérir des sorts, ce personnage doit posséder un Cercle (compétence « Acquisition de Sort » au niveau 1 minimum).";
+  return "Pour acquérir des sorts, ce personnage doit d'abord acheter un Cercle à l'étape 5 (compétence « Acquisition de Cercle »). L'accès s'ouvre en même temps.";
 }
 
 /** Étape 7 — cartouche « Prières divines indisponibles ». */
 export function texteIndisponiblePrieres(): string {
-  return "Pour acquérir des prières, ce personnage doit posséder un Domaine (compétence « Acquisition de Prière » au niveau 1 minimum).";
+  return "Pour acquérir des prières, ce personnage doit d'abord acheter un Domaine à l'étape 5 (compétence « Acquisition de Domaine »). L'accès s'ouvre en même temps.";
 }
