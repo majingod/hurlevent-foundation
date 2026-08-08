@@ -300,10 +300,10 @@ export function contexteUsageTraits(
   };
 }
 
-const TEXTE_SAVEUR = "Saveur — aucun effet sur ce que tu joues.";
+const TEXTE_SANS_LIEN = "Aucun lien avec tes compétences — il joue pareil pour tous.";
 
 /** Table éditoriale — 1 phrase par trait ACTIF (§3). Un trait absent d'ici
- *  (ou dont la condition ne tient pas) affiche `TEXTE_SAVEUR`. */
+ *  (ou dont la condition ne tient pas) affiche `TEXTE_SANS_LIEN`. */
 const USAGE_TRAITS: Record<
   string,
   (c: ContexteUsageTraits) => string | null
@@ -328,6 +328,10 @@ const USAGE_TRAITS: Record<
     c.alchimie
       ? "Tu as Alchimie : ce trait double le nombre de potions que tu ingères."
       : null,
+  "Inapte à la magie": (c) =>
+    !c.ps
+      ? "Tu n'auras jamais de points de spiritualité — en échange, +1 PV permanent."
+      : null,
 };
 
 export function texteUsageTrait(
@@ -335,7 +339,7 @@ export function texteUsageTrait(
   ctx: ContexteUsageTraits
 ): { sert: boolean; texte: string } {
   const texte = USAGE_TRAITS[nomTrait]?.(ctx) ?? null;
-  return texte ? { sert: true, texte } : { sert: false, texte: TEXTE_SAVEUR };
+  return texte ? { sert: true, texte } : { sert: false, texte: TEXTE_SANS_LIEN };
 }
 
 export interface HeritageEffectif {
