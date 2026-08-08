@@ -3019,8 +3019,8 @@ const Etape5_Competences_V2 = ({
                       storageKey={`hv-e5-astuce-${t.key}`}
                       texte={
                         t.key === "mage"
-                          ? "Achetez « Acquisition de Sort » pour créer vos sorts à l'étape 6."
-                          : "Achetez « Acquisition de Prière » pour créer vos prières à l'étape 7."
+                          ? "Achetez un Cercle pour créer vos sorts à l'étape 6."
+                          : "Achetez un Domaine pour créer vos prières à l'étape 7."
                       }
                     />
                   )}

@@ -697,13 +697,13 @@ const Etape6_Sorts_V2 = ({
               Sorts arcaniques indisponibles
             </CardTitle>
             <CardDescription>
-              Pour acquérir des sorts, ce personnage doit posséder la compétence
-              « Acquisition de Sort » au niveau 1 minimum.
+              Pour acquérir des sorts, ce personnage doit posséder un Cercle
+              (compétence « Acquisition de Sort » au niveau 1 minimum).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
             <p>
-              • Acquisition de Sort :{" "}
+              • Cercle acquis :{" "}
               <strong
                 className={
                   niveauAcquisition >= 1 ? "text-primary" : "text-destructive"

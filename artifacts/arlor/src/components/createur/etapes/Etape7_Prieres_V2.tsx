@@ -743,13 +743,13 @@ const Etape7_Prieres_V2 = ({
               Prières divines indisponibles
             </CardTitle>
             <CardDescription>
-              Pour acquérir des prières, ce personnage doit posséder la
-              compétence « Acquisition de Prière » au niveau 1 minimum.
+              Pour acquérir des prières, ce personnage doit posséder un Domaine
+              (compétence « Acquisition de Prière » au niveau 1 minimum).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
             <p>
-              • Acquisition de Prière :{" "}
+              • Domaine acquis :{" "}
               <strong
                 className={
                   niveauAcquisition >= 1 ? "text-primary" : "text-destructive"
@@ -862,8 +862,7 @@ const Etape7_Prieres_V2 = ({
         titre="Comment fonctionne cette étape ?"
       >
         <IntroEtapeItem n={1}>
-          Grâce à la compétence{" "}
-          <strong>« Acquisition de Prière »</strong>, votre personnage invoque
+          Grâce à son <strong>Domaine</strong>, votre personnage invoque
           les prières de certains <strong>domaines divins</strong> — les cartes
           ci-dessous. Ouvrez un domaine pour découvrir ses prières.
         </IntroEtapeItem>
