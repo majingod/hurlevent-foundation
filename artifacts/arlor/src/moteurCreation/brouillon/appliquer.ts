@@ -15,12 +15,14 @@
  */
 
 import type { DemandeAchatCompetence } from "../types";
+import { getSnapshot } from "../snapshot";
 import type {
   BrouillonVisiteur,
   BrouillonEtape1,
   BrouillonEtape2,
   BrouillonEtape3,
   BrouillonEtape4,
+  BrouillonCompetence,
   BrouillonSort,
   BrouillonPriere,
 } from "./types";
@@ -65,6 +67,48 @@ function patchAcquisitions(
 // Compétences
 // ============================================================
 
+/**
+ * D54 (s382) — miroir offline de `tg_poser_porte_magique` (migration
+ * 20260808062934). Acheter « Acquisition de Cercle »/« Acquisition de
+ * Domaine » pose d'office « Acquisition de Sort »/« Acquisition de Prière »
+ * (même catégorie, 0 XP), avec la MÊME idempotence que le trigger serveur :
+ * aucune ligne ajoutée si la porte est déjà posée pour ce brouillon.
+ */
+const NOM_PORTE_PAR_ACCES: Record<string, string> = {
+  "Acquisition de Cercle": "Acquisition de Sort",
+  "Acquisition de Domaine": "Acquisition de Prière",
+};
+
+function poserPorteMagiqueSiNecessaire(
+  competences: BrouillonCompetence[],
+  competenceAcheteeId: string
+): BrouillonCompetence[] {
+  const catalogue = getSnapshot().tables.competences;
+  const acces = catalogue.find((c) => c.id === competenceAcheteeId);
+  if (!acces) return competences;
+
+  const nomPorte = NOM_PORTE_PAR_ACCES[acces.nom ?? ""];
+  if (!nomPorte) return competences;
+
+  const porte = catalogue.find(
+    (c) => c.nom === nomPorte && c.categorie === acces.categorie
+  );
+  if (!porte) return competences;
+
+  const dejaPosee = competences.some((c) => c.competenceId === porte.id);
+  if (dejaPosee) return competences;
+
+  return [
+    ...competences,
+    {
+      instanceId: nouvelInstanceId(),
+      competenceId: porte.id,
+      niveauAcquis: 1,
+      choixAchat: null,
+    },
+  ];
+}
+
 export function appliquerAchatCompetence(
   b: BrouillonVisiteur,
   demande: DemandeAchatCompetence
@@ -75,9 +119,11 @@ export function appliquerAchatCompetence(
     niveauAcquis: demande.niveauDesire,
     choixAchat: demande.choixAchat,
   };
-  return patchAcquisitions(b, {
-    competences: [...b.acquisitions.competences, nouvelle],
-  });
+  const competences = poserPorteMagiqueSiNecessaire(
+    [...b.acquisitions.competences, nouvelle],
+    demande.competenceId
+  );
+  return patchAcquisitions(b, { competences });
 }
 
 /** Retire LA ligne compétence désignée par son `instanceId` (une seule copie). */

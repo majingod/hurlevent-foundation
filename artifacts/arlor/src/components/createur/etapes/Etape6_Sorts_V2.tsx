@@ -37,6 +37,7 @@ import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estSortAcquis, plancherInstanceSort } from "@/lib/acquisCampagne";
+import { texteIndisponibleSorts } from "./textePorteMagique";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -696,10 +697,7 @@ const Etape6_Sorts_V2 = ({
             <CardTitle className="text-base font-heading">
               Sorts arcaniques indisponibles
             </CardTitle>
-            <CardDescription>
-              Pour acquérir des sorts, ce personnage doit posséder un Cercle
-              (compétence « Acquisition de Sort » au niveau 1 minimum).
-            </CardDescription>
+            <CardDescription>{texteIndisponibleSorts()}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
             <p>

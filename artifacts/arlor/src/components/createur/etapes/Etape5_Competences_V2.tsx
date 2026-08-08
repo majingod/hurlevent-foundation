@@ -30,6 +30,7 @@ import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtap
 import Astuce from "@/components/createur/aide/Astuce";
 import { TapBulle, useTapBulle } from "@/components/createur/aide/TapBulle";
 import { doitOuvrirModaleCascade } from "./Etape5_Competences_V2.cascade";
+import { texteAstucePorteMagique } from "./textePorteMagique";
 
 // =========================================================================
 // TYPES
@@ -991,6 +992,20 @@ const Etape5_Competences_V2 = ({
     const grouped: Record<string, CompetenceWithNiveaux[]> = {};
     TAB_CONFIG.forEach((t) => (grouped[t.key] = []));
     (competences ?? []).forEach((c) => {
+      // D54 (s382) : « Acquisition de Sort »/« Acquisition de Prière » ne sont
+      // plus un achat séparé — elles sont posées d'office par le trigger
+      // `tg_poser_porte_magique` dès l'achat du Cercle/Domaine (manuel l.
+      // 2854/3146). On les retire de la liste d'achat tant qu'elles ne sont
+      // pas déjà possédées ; une fois posées, elles restent affichables
+      // (badge « possédée ») comme n'importe quelle autre compétence acquise.
+      const estPorteMagique =
+        c.nom === "Acquisition de Sort" || c.nom === "Acquisition de Prière";
+      if (
+        estPorteMagique &&
+        (achatsParCompetence.get(c.id) ?? []).length === 0
+      ) {
+        return;
+      }
       const cat = normalizeCategorie(c.categorie);
       const tab = TAB_CONFIG.find((t) => t.categories.includes(cat));
       if (tab) grouped[tab.key].push(c);
@@ -1005,7 +1020,7 @@ const Etape5_Competences_V2 = ({
       );
     });
     return grouped;
-  }, [competences]);
+  }, [competences, achatsParCompetence]);
 
   const needsMaster = (comp: CompetenceWithNiveaux, niveau: number): boolean => {
     const cat = normalizeCategorie(comp.categorie);
@@ -3017,11 +3032,7 @@ const Etape5_Competences_V2 = ({
                   {(t.key === "mage" || t.key === "pretre") && (
                     <Astuce
                       storageKey={`hv-e5-astuce-${t.key}`}
-                      texte={
-                        t.key === "mage"
-                          ? "Achetez un Cercle pour créer vos sorts à l'étape 6."
-                          : "Achetez un Domaine pour créer vos prières à l'étape 7."
-                      }
+                      texte={texteAstucePorteMagique(t.key)}
                     />
                   )}
                   {comps.length === 0 ? (

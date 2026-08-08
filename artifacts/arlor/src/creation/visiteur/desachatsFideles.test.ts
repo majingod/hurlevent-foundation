@@ -187,7 +187,10 @@ describe("Lot A — purge sorts/prières fidèle (bool_or « Acquisition de Sort
   it("contre-test : désacheter « Acquisition de Sort » → TOUS les sorts tombent (purge totale)", async () => {
     await wizardEtape5(CLASSE_MAGE, { [COMP_DECRYPTAGE]: "L'Ancien" });
     expect(env((await acheterComp(COMP_CERCLE, 1, "Feu")).data).succes).toBe(true);
-    expect(env((await acheterComp(COMP_SORT, 1)).data).succes).toBe(true);
+    // D54 (s382) : acheter le Cercle pose déjà « Acquisition de Sort »
+    // d'office (tg_poser_porte_magique) — la racheter à la main échouerait
+    // (déjà possédée) et n'est plus le geste joueur (B.1).
+    expect((await lireComps()).some((c) => c.competence_id === COMP_SORT)).toBe(true);
     expect(env((await acheterSort(SORT_FEU_N1, 1)).data).succes).toBe(true);
     expect((await lireSorts()).length).toBe(1);
 

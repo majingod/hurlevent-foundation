@@ -37,6 +37,7 @@ import { AvantApres } from "@/components/createur/magie/ApercuEffet";
 import FiltreTypeMagie from "@/components/createur/magie/FiltreTypeMagie";
 import { useDernierePhotoCompo } from "@/hooks/useDernierePhotoCompo";
 import { estPriereAcquise, plancherInstancePriere } from "@/lib/acquisCampagne";
+import { texteIndisponiblePrieres } from "./textePorteMagique";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -742,10 +743,7 @@ const Etape7_Prieres_V2 = ({
             <CardTitle className="text-base font-heading">
               Prières divines indisponibles
             </CardTitle>
-            <CardDescription>
-              Pour acquérir des prières, ce personnage doit posséder un Domaine
-              (compétence « Acquisition de Prière » au niveau 1 minimum).
-            </CardDescription>
+            <CardDescription>{texteIndisponiblePrieres()}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
             <p>

@@ -218,8 +218,20 @@ describe("appliquerComposition — bout-en-bout clientVisiteur", () => {
     const nbPrieres = res.composition.achatsMagie.filter((m) => m.type === "priere").length;
     expect(b.acquisitions.prieres).toHaveLength(nbPrieres);
     // Journal : un fait par action (4 étapes + achats + magie), zéro échec.
+    // D54 (s382) : la composition liste encore « Acquisition de Prière »
+    // comme une ligne d'achat à part (rampe historique, composer.ts), mais
+    // `tg_poser_porte_magique` la pose déjà d'office dès l'achat du Domaine —
+    // `planifierRejeu` saute donc sa rachat explicite (cf. B.4/rejouerBrouillon.ts).
+    // Un fait de moins que de lignes composées ; l'état final, lui, reste
+    // identique (vérifié ci-dessus par `paires(...)`).
+    const nbPortesDejaPosees = res.composition.achats.filter(
+      (a) => a.nom === "Acquisition de Sort" || a.nom === "Acquisition de Prière",
+    ).length;
     expect(resultat.faits).toHaveLength(
-      4 + res.composition.achats.length + res.composition.achatsMagie.length,
+      4 +
+        res.composition.achats.length +
+        res.composition.achatsMagie.length -
+        nbPortesDejaPosees,
     );
   });
 
