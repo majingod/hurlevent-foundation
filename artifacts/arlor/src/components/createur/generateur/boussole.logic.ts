@@ -379,9 +379,9 @@ const USAGE_TRAITS: Record<
     c.empoisonne ? "Tu empoisonnes : ce trait transforme ton sang en poison." : null,
   "Inapte à la magie": (c) =>
     !c.ps ? "Aucun sort, aucune prière, jamais : c'est un choix définitif." : null,
-  Fortuné: () => "Une action offerte à chaque événement, quoi que tu joues.",
-  "Poussière des profondeurs": () => "Une pépite par événement, sans rien acheter.",
-  "Remède des Braves": () => "Quand on te soigne, un verre te rend un PV de plus.",
+  Fortuné: () => "Le seul trait qui te sert quel que soit ton personnage.",
+  "Poussière des profondeurs": () => "Du minerai sans avoir acheté Mineur.",
+  "Remède des Braves": () => "Tu encaisses mieux les soins des autres, même sans rien acheter.",
 };
 
 /** `null` = aucune ligne dorée à rendre (grisé plus haut, condition non

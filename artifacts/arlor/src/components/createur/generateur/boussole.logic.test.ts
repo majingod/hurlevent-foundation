@@ -472,7 +472,7 @@ describe("🧭 escalier — s385 : la carte d'usage dit vrai (C108)", () => {
     it("un Myrvalk SANS Forge affiche quand même sa phrase (trait suggéré du Myrvalk)", () => {
       const ctx = contexteUsageTraits([], false);
       expect(texteUsageTrait("Poussière des profondeurs", ctx)).toBe(
-        "Une pépite par événement, sans rien acheter."
+        "Du minerai sans avoir acheté Mineur."
       );
     });
   });
@@ -481,7 +481,7 @@ describe("🧭 escalier — s385 : la carte d'usage dit vrai (C108)", () => {
     it("sans Premiers Soins, la phrase s'affiche quand même", () => {
       const ctx = contexteUsageTraits([], false);
       expect(texteUsageTrait("Remède des Braves", ctx)).toBe(
-        "Quand on te soigne, un verre te rend un PV de plus."
+        "Tu encaisses mieux les soins des autres, même sans rien acheter."
       );
     });
   });
