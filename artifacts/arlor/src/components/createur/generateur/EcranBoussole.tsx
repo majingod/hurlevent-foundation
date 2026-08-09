@@ -590,7 +590,7 @@ const EcranBoussole = ({
 
           <div className="flex flex-col gap-2">
             {traitsAff.map((t) => {
-              const usage = texteUsageTrait(t.nom, usageCtx);
+              const usage = t.grise ? null : texteUsageTrait(t.nom, usageCtx);
               return (
                 <Carte
                   key={t.id}
@@ -605,7 +605,11 @@ const EcranBoussole = ({
                     <span className="font-heading text-[14.5px] font-semibold text-gold-accent">
                       {t.nom}
                     </span>
-                    {t.suggere && <Puce or>suggéré</Puce>}
+                    {t.suggere && (
+                      <Puce or>
+                        suggéré{t.noteFrequence ? ` · ${t.noteFrequence}` : ""}
+                      </Puce>
+                    )}
                     {t.grise && <Puce>incompatible</Puce>}
                   </div>
                   <div className="mt-1 text-[12.5px] text-white/50">
@@ -616,13 +620,11 @@ const EcranBoussole = ({
                       {t.motif}
                     </div>
                   ) : (
-                    <div
-                      className={`mt-1 text-[12.5px] ${
-                        usage.sert ? "text-gold-accent" : "text-white/38"
-                      }`}
-                    >
-                      {usage.texte}
-                    </div>
+                    usage && (
+                      <div className="mt-1 text-[12.5px] text-gold-accent">
+                        {usage}
+                      </div>
+                    )
                   )}
                 </Carte>
               );

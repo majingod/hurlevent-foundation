@@ -168,6 +168,11 @@ describe("pont — bout en bout sur le vrai moteur", () => {
     expect(r.tirage.element).toBe("Bénédiction");
     expect(r.tirage.element2).toBe("Chaos");
     expect(r.tirage.religionNom).toBeTruthy();
-    expect(r.tirage.traitsIncompatibles).toContain("Inapte à la magie");
+    // ⭐ [B2, s385] Le tirage est un Humain (voir commentaire du seed
+    // ci-dessus) : « Inapte à la magie » n'est dans le pool que du Demi-Orc
+    // (`traitsRaciauxProposables`) — un Humain caster ne peut jamais le
+    // recevoir en incompatible, quelle que soit sa composition.
+    expect(r.tirage.raceNom).toBe("Humain");
+    expect(r.tirage.traitsIncompatibles).toEqual([]);
   });
 });

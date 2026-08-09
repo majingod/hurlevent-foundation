@@ -48,6 +48,7 @@ import {
   roleAttendElement,
   roleElementOptionnel,
   roleEstCaster,
+  sousTypesAffiches,
   texteUsageTrait,
   traitsRaciauxAffiches,
   type ParcoursBoussole,
@@ -363,12 +364,9 @@ describe("🧭 escalier — éditorial", () => {
   });
 });
 
-describe("🧭 escalier — attestion s381bis : usage des traits (corrections du texte)", () => {
-  const demiOrcId = raceParNom("Demi-Orc").id;
-  const humainId = raceParNom("Humain").id;
-
-  describe("A — « Inapte à la magie » ne dit plus « aucun effet »", () => {
-    it("positif : Demi-Orc guerrier affiche le nouveau texte doré", () => {
+describe("🧭 escalier — attestion s381bis, corrigée s385 (B3, C101) : usage des traits", () => {
+  describe("A — « Inapte à la magie » ne redit plus la description (B3)", () => {
+    it("positif : Demi-Orc guerrier affiche le texte doré sur la CONSÉQUENCE, pas la description", () => {
       const { cats, contenu } = parClasse.guerrier;
       const role = contenu.roles.find((r) => r.id === "gForgeron")!;
       const estCaster = roleEstCaster(contenu, cats, role, RICHE);
@@ -377,49 +375,45 @@ describe("🧭 escalier — attestion s381bis : usage des traits (corrections du
       const ctx = contexteUsageTraits([], estCaster);
       const result = texteUsageTrait("Inapte à la magie", ctx);
 
-      expect(result.sert).toBe(true);
-      expect(result.texte).toBe(
-        "Tu n'auras jamais de points de spiritualité — en échange, +1 PV permanent."
-      );
+      expect(result).toBe("Aucun sort, aucune prière, jamais : c'est un choix définitif.");
     });
 
-    it("rougissement par le contraire : sur origin/main le texte anciennement affiché rougit", () => {
-      // Cette assertion montre ce qu'il FALLAIT corriger. Sur main l'ancien texte
-      // serait retourné, ce test rougirait.
+    it("rougissement par le contraire : ne redit plus la description verbatim (B3, le radotage corrigé)", () => {
       const { cats, contenu } = parClasse.guerrier;
       const role = contenu.roles.find((r) => r.id === "gForgeron")!;
       const estCaster = roleEstCaster(contenu, cats, role, RICHE);
       const ctx = contexteUsageTraits([], estCaster);
       const result = texteUsageTrait("Inapte à la magie", ctx);
 
-      expect(result.texte).not.toBe("Saveur — aucun effet sur ce que tu joues.");
+      expect(result).not.toBe(
+        "Tu n'auras jamais de points de spiritualité — en échange, +1 PV permanent."
+      );
+      expect(result).not.toBe("Saveur — aucun effet sur ce que tu joues.");
     });
   });
 
-  describe("B — le repli reste le repli (renommé en TEXTE_SANS_LIEN)", () => {
-    it("positif : Mythomane chez Demi-Orc guerrier rend le repli (sert: false)", () => {
+  describe("B — famille 3 : AUCUNE ligne dorée, plus de repli générique (C101)", () => {
+    it("positif : Mythomane chez Demi-Orc guerrier ne rend RIEN (null, pas un repli)", () => {
       const { cats, contenu } = parClasse.guerrier;
       const role = contenu.roles.find((r) => r.id === "gForgeron")!;
       const estCaster = roleEstCaster(contenu, cats, role, RICHE);
       const ctx = contexteUsageTraits([], estCaster);
 
-      const result = texteUsageTrait("Mythomane", ctx);
-      expect(result.sert).toBe(false);
-      expect(result.texte).toBe(
-        "Aucun lien avec tes compétences — il joue pareil pour tous."
-      );
+      expect(texteUsageTrait("Mythomane", ctx)).toBeNull();
     });
 
-    it("négatif : aucune race jouable n'affiche l'ancienne phrase « Saveur — aucun effet »", () => {
+    it("négatif : aucune race jouable n'affiche l'ancienne phrase « Saveur — aucun effet » ni le repli générique supprimé", () => {
       const racesJouables = monde.races.filter((r) => r.est_jouable);
       const anciennePhraseAuVieux = "Saveur — aucun effet sur ce que tu joues.";
+      const ancienRepliSupprime = "Aucun lien avec tes compétences — il joue pareil pour tous.";
 
       for (const race of racesJouables) {
         const traits = traitsRaciauxAffiches(monde, race, undefined, false);
         for (const trait of traits) {
           const ctx = contexteUsageTraits([], false);
           const result = texteUsageTrait(trait.nom, ctx);
-          expect(result.texte).not.toBe(anciennePhraseAuVieux);
+          expect(result).not.toBe(anciennePhraseAuVieux);
+          expect(result).not.toBe(ancienRepliSupprime);
         }
       }
     });
@@ -442,7 +436,159 @@ describe("🧭 escalier — attestion s381bis : usage des traits (corrections du
       // Quand le trait est grisé, la ligne d'usage retourne null (pas affichée).
       const ctx = contexteUsageTraits([], estCaster);
       const result = texteUsageTrait("Inapte à la magie", ctx);
-      expect(result.sert).toBe(false);
+      expect(result).toBeNull();
+    });
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* [s385, LOT OPTION B] La carte d'usage se scinde en 2 familles (C108) :  */
+/* condition RÉELLE (collecte, pas fabrication) et inconditionnel — ainsi */
+/* que la note de fréquence du trait suggéré (C107).                      */
+/* ------------------------------------------------------------------ */
+describe("🧭 escalier — s385 : la carte d'usage dit vrai (C108)", () => {
+  describe("Ⓐ « Coup du destin » se conditionne à la COLLECTE (Herbalisme/Mineur), pas à la fabrication", () => {
+    it("un forgeron (Forge seul, sans Mineur) : aucune ligne dorée", () => {
+      const ctx = contexteUsageTraits(["Forge"], false);
+      expect(texteUsageTrait("Coup du destin", ctx)).toBeNull();
+    });
+
+    it("un personnage avec Mineur : la phrase minerai", () => {
+      const ctx = contexteUsageTraits(["Mineur"], false);
+      expect(texteUsageTrait("Coup du destin", ctx)).toBe(
+        "Tu as Mineur : tu repiges une carte quand tu récoltes du minerai."
+      );
+    });
+
+    it("un personnage avec Herbalisme : la phrase plantes", () => {
+      const ctx = contexteUsageTraits(["Herbalisme"], false);
+      expect(texteUsageTrait("Coup du destin", ctx)).toBe(
+        "Tu as Herbalisme : tu repiges une carte quand tu récoltes des plantes."
+      );
+    });
+  });
+
+  describe("Ⓑ « Poussière des profondeurs » ne demande AUCUNE compétence — le Myrvalk sans Forge la voit", () => {
+    it("un Myrvalk SANS Forge affiche quand même sa phrase (trait suggéré du Myrvalk)", () => {
+      const ctx = contexteUsageTraits([], false);
+      expect(texteUsageTrait("Poussière des profondeurs", ctx)).toBe(
+        "Une pépite par événement, sans rien acheter."
+      );
+    });
+  });
+
+  describe("Ⓒ « Remède des Braves » est le trait de celui qui REÇOIT le soin — inconditionnel", () => {
+    it("sans Premiers Soins, la phrase s'affiche quand même", () => {
+      const ctx = contexteUsageTraits([], false);
+      expect(texteUsageTrait("Remède des Braves", ctx)).toBe(
+        "Quand on te soigne, un verre te rend un PV de plus."
+      );
+    });
+  });
+
+  describe("⭐ le TEST JUMEAU — plus de repli menteur, et la répartition exacte", () => {
+    const racesJouables = monde.races.filter((r) => r.est_jouable);
+    const traitsAtteignables = new Map<string, string>();
+    for (const race of racesJouables) {
+      const sousTypes = sousTypesAffiches(monde, race);
+      const combos = sousTypes.length > 0 ? sousTypes.map((s) => s.valeur) : [undefined];
+      for (const st of combos) {
+        for (const t of traitsRaciauxAffiches(monde, race, st, false)) {
+          traitsAtteignables.set(t.nom, t.nom);
+        }
+      }
+    }
+    const noms = [...traitsAtteignables.keys()];
+
+    // Contexte maximaliste (tout acquis, caster) et minimaliste (rien, non-caster) —
+    // un trait « porte une ligne dorée » s'il répond non-null à AU MOINS un des deux
+    // (« Inapte à la magie » ne répond que sous ctxNone, les autres traits actifs
+    // sous ctxAll).
+    const ctxAll = contexteUsageTraits(
+      ["Alchimie", "Herbalisme", "Mineur", "Expertise en toxicologie"],
+      true
+    );
+    const ctxNone = contexteUsageTraits([], false);
+
+    it("négatif : plus aucune occurrence de « Aucun lien avec tes compétences »", () => {
+      for (const nom of noms) {
+        expect(texteUsageTrait(nom, ctxAll)).not.toBe(
+          "Aucun lien avec tes compétences — il joue pareil pour tous."
+        );
+        expect(texteUsageTrait(nom, ctxNone)).not.toBe(
+          "Aucun lien avec tes compétences — il joue pareil pour tous."
+        );
+      }
+    });
+
+    it("positif : sur les 20 traits atteignables, exactement 9 portent une ligne dorée et 11 n'en portent aucune", () => {
+      expect(noms.length).toBe(20);
+      const porteurs = noms.filter(
+        (nom) => texteUsageTrait(nom, ctxAll) !== null || texteUsageTrait(nom, ctxNone) !== null
+      );
+      // Décomposition mesurée (9) : Coup du destin, Estomac d'acier, Fortuné,
+      // Inapte à la magie, Infusé, Poigne ardente, Poussière des profondeurs,
+      // Remède des Braves, Sang toxique.
+      expect(porteurs.sort((a, b) => a.localeCompare(b, "fr"))).toEqual(
+        [
+          "Coup du destin",
+          "Estomac d'acier",
+          "Fortuné",
+          "Inapte à la magie",
+          "Infusé",
+          "Poigne ardente",
+          "Poussière des profondeurs",
+          "Remède des Braves",
+          "Sang toxique",
+        ].sort((a, b) => a.localeCompare(b, "fr"))
+      );
+      expect(porteurs.length).toBe(9);
+      expect(noms.length - porteurs.length).toBe(11);
+    });
+  });
+
+  describe("B2 — le résolveur n'annonce « Inapte à la magie » que pour une race qui l'a réellement dans son pool", () => {
+    const casterApte = (raceNom: string) =>
+      resoudreChoix(deps, {
+        classe: "pretre",
+        roleId: "pSoigne",
+        raceId: raceParNom(raceNom).id,
+        inventaire: RICHE,
+        element: "Bénédiction",
+      });
+
+    it("un Drow caster : traitsIncompatibles est VIDE (le trait n'est pas dans son pool)", () => {
+      const r = casterApte("Drow");
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.composition.achatsMagie.length).toBeGreaterThan(0);
+        expect(r.tirage.traitsIncompatibles).toEqual([]);
+      }
+    });
+
+    it("un Demi-Orc caster : traitsIncompatibles contient « Inapte à la magie » (le trait EST dans son pool)", () => {
+      const r = casterApte("Demi-Orc");
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.composition.achatsMagie.length).toBeGreaterThan(0);
+        expect(r.tirage.traitsIncompatibles).toEqual(["Inapte à la magie"]);
+      }
+    });
+  });
+
+  describe("⭐ C107 — la note de fréquence : proportion sur 10, jamais un effectif, jamais sous 20 porteurs", () => {
+    it("Fortuné (57/80 porteurs, trait suggéré du Humain) : « 7 personnages sur 10 l'ont pris. » — verbatim littéral", () => {
+      const traits = traitsRaciauxAffiches(monde, raceParNom("Humain"), undefined, false);
+      const fortune = traits.find((t) => t.nom === "Fortuné");
+      expect(fortune?.suggere).toBe(true);
+      expect(fortune?.noteFrequence).toBe("7 personnages sur 10 l'ont pris.");
+    });
+
+    it("un Drow (Créature des ténèbres, 1 seul porteur, trait suggéré du Drow) : AUCUNE note", () => {
+      const traits = traitsRaciauxAffiches(monde, raceParNom("Drow"), undefined, false);
+      const creature = traits.find((t) => t.nom === "Créature des ténèbres");
+      expect(creature?.suggere).toBe(true);
+      expect(creature?.noteFrequence).toBeUndefined();
     });
   });
 });

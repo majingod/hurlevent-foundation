@@ -474,9 +474,25 @@ describe("🧭 resoudreChoix — refus avec phrase, jamais en silence (G5)", () 
       // consommateur — le grisage d'écran livré s373 #746). ⚠️ Pas chez
       // mAlchimiste : ce rôle de mage ne compose AUCUNE magie — c'est
       // précisément pour ça qu'il portait 20 XP de PS morts avant s374.
-      const m = resoudreChoix(
+      // ⭐ [B2, s385] Un caster Humain n'a JAMAIS « Inapte à la magie » dans
+      // son pool (`traitsRaciauxProposables` : le trait n'existe que chez le
+      // Demi-Orc) — `traitsIncompatibles` reste vide même caster, jumeau
+      // ci-dessous chez un Demi-Orc où le trait EST dans le pool.
+      const mHumain = resoudreChoix(
         deps,
         choixBase({ religionId: religionParNom("Asméis").id })
+      );
+      expect(mHumain.ok).toBe(true);
+      if (mHumain.ok) {
+        expect(mHumain.composition.achatsMagie.length).toBeGreaterThan(0);
+        expect(mHumain.tirage.traitsIncompatibles).toEqual([]);
+      }
+      const m = resoudreChoix(
+        deps,
+        choixBase({
+          religionId: religionParNom("Asméis").id,
+          raceId: raceParNom("Demi-Orc").id,
+        })
       );
       expect(m.ok).toBe(true);
       if (m.ok)
