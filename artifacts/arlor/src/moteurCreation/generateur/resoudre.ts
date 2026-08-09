@@ -636,11 +636,28 @@ const coutCouche2 = (c: CompositionOk): number =>
 /** Conduite 3 (§2.2), appliquée à la FICHE produite : si la composition
  *  contient la moindre compétence/magie à PS (couche ④ comprise — le filet
  *  Guerrier/Voleur émet du Développement Spirituel), le trait « Inapte à la
- *  magie » devient incompatible et sort du pool du préfill. */
-const traitsIncompatiblesDe = (c: CompositionOk): string[] =>
-  c.achatsMagie.length > 0 || c.achats.some((a) => estCompetenceAPS(a.nom))
-    ? [TRAIT_INAPTE]
-    : [];
+ *  magie » devient incompatible et sort du pool du préfill.
+ *
+ *  ⭐ [B2, s385] ENCORE FAUT-IL QUE LE TRAIT SOIT DANS LE POOL DE CETTE RACE
+ *  (et de son sous-type) — « Inapte à la magie » n'est proposé qu'au
+ *  Demi-Orc (`traitsRaciauxProposables`, C75 : l'ouvert ET le fermé, jamais
+ *  une liste de races dupliquée en dur). Un Drow caster ne l'a jamais eu dans
+ *  son pool : lui annoncer « trait incompatible : Inapte à la magie » lui
+ *  ferait croire à un choix qu'il n'a jamais pu faire. */
+const traitsIncompatiblesDe = (
+  c: CompositionOk,
+  monde: MondeResolveur,
+  raceId: string,
+  sousType?: string
+): string[] => {
+  const exigeDeLaMagie =
+    c.achatsMagie.length > 0 || c.achats.some((a) => estCompetenceAPS(a.nom));
+  if (!exigeDeLaMagie) return [];
+  const dansLePool = traitsRaciauxProposables(monde, raceId, sousType).some(
+    (t) => t.nom === TRAIT_INAPTE
+  );
+  return dansLePool ? [TRAIT_INAPTE] : [];
+};
 
 const mondeInapte = (monde: MondeResolveur) => ({
   tables: {
@@ -843,7 +860,12 @@ export function tirerPersonnage(
       religionId: religion?.id,
       religionNom: religion?.nom,
       inapteMagie: inapte,
-      traitsIncompatibles: traitsIncompatiblesDe(composition),
+      traitsIncompatibles: traitsIncompatiblesDe(
+        composition,
+        monde,
+        race.id,
+        sousTypeChimeride
+      ),
       sousTypeChimeride,
       traitRacialTire: traitRacialTire
         ? { id: traitRacialTire.id, nom: traitRacialTire.nom }
@@ -1003,7 +1025,12 @@ export function resoudreChoix(
       religionId: religion?.id,
       religionNom: religion?.nom,
       inapteMagie: inapte,
-      traitsIncompatibles: traitsIncompatiblesDe(composition),
+      traitsIncompatibles: traitsIncompatiblesDe(
+        composition,
+        monde,
+        race.id,
+        choix.sousTypeChimeride
+      ),
       sousTypeChimeride: choix.sousTypeChimeride,
       traitRacialTire: traitChoisi
         ? { id: traitChoisi.id, nom: traitChoisi.nom }

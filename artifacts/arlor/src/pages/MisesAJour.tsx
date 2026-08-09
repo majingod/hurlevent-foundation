@@ -33,6 +33,22 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Ton héritage, expliqué",
+    description:
+      "En mode Guide-moi, chaque trait racial dit maintenant ce qu'il change pour toi, selon ce que tu as déjà choisi.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "La porte magique s'ouvre toute seule",
+    description:
+      "Acheter « Acquisition de Cercle » (ou « de Domaine ») donne désormais l'accès aux sorts (ou aux prières) sans rien payer de plus. Plus besoin de chercher la case.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "« Guide-moi » te laisse choisir ton héritage",
     description:
       "Il manquait un dernier palier à « Guide-moi » 🧭 : ton héritage. Après ta foi, juste avant de voir ta fiche, un dernier palier te propose ton trait racial gratuit — et, si tu joues un Chiméride, ton sous-type (carnivore ou herbivore) d'abord, puisqu'il change les traits qui te sont ouverts. Le plus porté au terrain est déjà coché, avec une phrase qui te dit à quoi il te sert vraiment (récolte, sorts, artisanat…) ou qu'il n'est là que pour la saveur. Un trait qui ne colle pas à ta fiche — comme « Inapte à la magie » pour un personnage qui lance des sorts — reste visible mais grisé, avec la raison écrite noir sur blanc. Avant ce palier, ta fiche « Guide-moi » n'avait aucun trait racial et le clic sur « Finaliser » était refusé sans explication : ce n'est plus possible.",

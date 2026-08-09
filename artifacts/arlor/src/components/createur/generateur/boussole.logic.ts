@@ -236,6 +236,45 @@ export interface TraitRacialAffiche {
   suggere: boolean;
   grise: boolean;
   motif?: string;
+  /** ⭐ [C107, s385] Sur le trait SUGGÉRÉ uniquement, `undefined` sous le
+   *  seuil de vie privée — voir `noteFrequenceTrait`. */
+  noteFrequence?: string;
+}
+
+/**
+ * ⭐ [C107, arbitrage Fred s385] Note de fréquence du trait SUGGÉRÉ
+ * uniquement — une proportion ARRONDIE SUR 10, jamais un effectif. Sous 20
+ * porteurs, elle ne chiffre pas du tout : à ~75 joueurs, « 1 sur 1 l'a pris »
+ * désignerait une personne précise (règle de vie privée non négociable).
+ *
+ * Mesuré en base le 2026-08-09, sur 80 personnages finalisés :
+ *   Fortuné 57 · Coup du destin 10 · Résonance magique 4 · Charognard 3 ·
+ *   Flair affûté 3 · Infusé 3 · Mythomane 3 · Créature des ténèbres 1 ·
+ *   Poussière des profondeurs 1
+ */
+const PORTEURS_FINALISES_2026_08_09: Record<string, number> = {
+  Fortuné: 57,
+  "Coup du destin": 10,
+  "Résonance magique": 4,
+  Charognard: 3,
+  "Flair affûté": 3,
+  Infusé: 3,
+  Mythomane: 3,
+  "Créature des ténèbres": 1,
+  "Poussière des profondeurs": 1,
+};
+const TOTAL_FINALISES_2026_08_09 = 80;
+const SEUIL_PORTEURS_NOTE = 20;
+
+export function noteFrequenceTrait(
+  nomTrait: string,
+  suggere: boolean
+): string | undefined {
+  if (!suggere) return undefined;
+  const porteurs = PORTEURS_FINALISES_2026_08_09[nomTrait] ?? 0;
+  if (porteurs < SEUIL_PORTEURS_NOTE) return undefined;
+  const n = Math.round((porteurs / TOTAL_FINALISES_2026_08_09) * 10);
+  return `${n} personnages sur 10 l'ont pris.`;
 }
 
 /** [D53] Le pool EXHAUSTIF (`traitsRaciauxProposables`, C75 : l'ouvert et le
@@ -263,24 +302,32 @@ export function traitsRaciauxAffiches(
   )?.id;
   return tries.map((t) => {
     const grise = t.nom === TRAIT_INAPTE && estCaster;
+    const suggere = t.id === idDefaut;
     return {
       id: t.id,
       nom: t.nom,
       description: descriptions.get(t.id) ?? "",
-      suggere: t.id === idDefaut,
+      suggere,
       grise,
       motif: grise ? MOTIF_INAPTE_GRISE : undefined,
+      noteFrequence: noteFrequenceTrait(t.nom, suggere),
     };
   });
 }
 
-/** [D53] La 2ᵉ ligne « à quoi ça te sert » (§3, carte validée Fred s380) —
- *  conditionnée à ce que la composition EN COURS achète déjà (avant même le
- *  trait racial, cf. `nomsAcquisPrevisionnels`). Les traits absents de la
- *  table servent toujours de SAVEUR — repli honnête, jamais un mensonge. */
+/** [D53, corrigé C108 s385] La 2ᵉ ligne « à quoi ça te sert » (§3, carte
+ *  validée Fred s380) — conditionnée à ce que la composition EN COURS achète
+ *  déjà (avant même le trait racial, cf. `nomsAcquisPrevisionnels`), pour la
+ *  famille de traits dont l'usage en dépend réellement. Les traits absents de
+ *  la table (famille 3) ⛔ N'AFFICHENT RIEN — C101 : un repli générique est
+ *  une promesse qu'on ne peut pas tenir pour tous, on ne l'écrit plus. */
 export interface ContexteUsageTraits {
   alchimie: boolean;
-  forge: boolean;
+  /** Collecte de plantes — `Herbalisme` (Ⓐ, C108 : la collecte, pas la
+   *  fabrication ; ⛔ jamais `Alchimie`). */
+  herbalisme: boolean;
+  /** Collecte de minerai — `Mineur` (Ⓐ, C108 ; ⛔ jamais `Forge`). */
+  mineur: boolean;
   empoisonne: boolean;
   /** Points de spiritualité — `roleEstCaster`, connu dès le rôle posé. */
   ps: boolean;
@@ -294,25 +341,29 @@ export function contexteUsageTraits(
 ): ContexteUsageTraits {
   return {
     alchimie: nomsAcquis.includes("Alchimie"),
-    forge: nomsAcquis.includes("Forge"),
+    herbalisme: nomsAcquis.includes("Herbalisme"),
+    mineur: nomsAcquis.includes("Mineur"),
     empoisonne: nomsAcquis.some((n) => COMPETENCES_POISON.includes(n)),
     ps: estCaster,
   };
 }
 
-const TEXTE_SANS_LIEN = "Aucun lien avec tes compétences — il joue pareil pour tous.";
-
-/** Table éditoriale — 1 phrase par trait ACTIF (§3). Un trait absent d'ici
- *  (ou dont la condition ne tient pas) affiche `TEXTE_SANS_LIEN`. */
+/** Table éditoriale (§3, C108) — deux familles :
+ *  - CONDITIONNÉE : la fonction lit `ContexteUsageTraits` et rend `null` si
+ *    la condition ne tient pas pour CE personnage (aucune ligne dorée).
+ *  - INCONDITIONNELLE : le trait joue pour tout le monde, la fonction ignore
+ *    le contexte et rend toujours sa phrase.
+ *  Un trait absent de cette table (famille 3) n'a pas d'entrée : `null`,
+ *  toujours — ⛔ pas de repli générique (C101). */
 const USAGE_TRAITS: Record<
   string,
   (c: ContexteUsageTraits) => string | null
 > = {
   "Coup du destin": (c) =>
-    c.alchimie
-      ? "Tu as Alchimie : tu récoltes des plantes à chaque événement."
-      : c.forge
-        ? "Tu as Forge : tu récoltes du minerai à chaque événement."
+    c.herbalisme
+      ? "Tu as Herbalisme : tu repiges une carte quand tu récoltes des plantes."
+      : c.mineur
+        ? "Tu as Mineur : tu repiges une carte quand tu récoltes du minerai."
         : null,
   "Poigne ardente": (c) =>
     c.ps ? "Tu lances des sorts : le point de spiritualité rendu te sert." : null,
@@ -320,26 +371,27 @@ const USAGE_TRAITS: Record<
     c.alchimie
       ? "Tu as Alchimie : ce trait remplace une dose mineure par ta salive."
       : null,
-  "Poussière des profondeurs": (c) =>
-    c.forge ? "Tu as Forge : tu récoltes du minerai à chaque événement." : null,
-  "Sang toxique": (c) =>
-    c.empoisonne ? "Tu empoisonnes : ce trait transforme ton sang en poison." : null,
   "Estomac d'acier": (c) =>
     c.alchimie
       ? "Tu as Alchimie : ce trait double le nombre de potions que tu ingères."
       : null,
+  "Sang toxique": (c) =>
+    c.empoisonne ? "Tu empoisonnes : ce trait transforme ton sang en poison." : null,
   "Inapte à la magie": (c) =>
-    !c.ps
-      ? "Tu n'auras jamais de points de spiritualité — en échange, +1 PV permanent."
-      : null,
+    !c.ps ? "Aucun sort, aucune prière, jamais : c'est un choix définitif." : null,
+  Fortuné: () => "Une action offerte à chaque événement, quoi que tu joues.",
+  "Poussière des profondeurs": () => "Une pépite par événement, sans rien acheter.",
+  "Remède des Braves": () => "Quand on te soigne, un verre te rend un PV de plus.",
 };
 
+/** `null` = aucune ligne dorée à rendre (grisé plus haut, condition non
+ *  tenue, ou trait de famille 3) — l'appelant ne rend alors AUCUN bloc, pas
+ *  un texte neutre (C101). */
 export function texteUsageTrait(
   nomTrait: string,
   ctx: ContexteUsageTraits
-): { sert: boolean; texte: string } {
-  const texte = USAGE_TRAITS[nomTrait]?.(ctx) ?? null;
-  return texte ? { sert: true, texte } : { sert: false, texte: TEXTE_SANS_LIEN };
+): string | null {
+  return USAGE_TRAITS[nomTrait]?.(ctx) ?? null;
 }
 
 export interface HeritageEffectif {
