@@ -5,7 +5,7 @@
 --      depuis un trigger BEFORE où NEW n'est pas en table, ET depuis un recompute lisant la table).
 --   2) Le trigger et recalculer_xp_personnage délèguent au helper (fin de la divergence qui
 --      réintroduisait le bug "remboursement compté comme gain", cf. 20260524031633).
---   3) B2 : resync de tous les persos (corrige le seul dérivé : Muir-Natha 75/75 -> 60/60).
+--   3) B2 : resync de tous les persos (corrige le seul dérivé : un personnage 75/75 -> 60/60).
 --   4) verifier_invariant_xp() : filet de sécurité (liste les persos où stocké != recompute).
 
 -- 1) HELPER : source unique de vérité de la formule XP
@@ -55,7 +55,7 @@ BEGIN
   RETURN jsonb_build_object('xp_total',v.xp_total,'xp_depense',v.xp_depense,'niveau',v.niveau);
 END; $$;
 
--- 3) B2 : resync de TOUS les persos (no-op sur les corrects, corrige Muir-Natha)
+-- 3) B2 : resync de TOUS les persos (no-op sur les corrects, corrige un personnage)
 WITH calc AS (
   SELECT p.id, v.xp_total, v.xp_depense, v.niveau
   FROM personnages p

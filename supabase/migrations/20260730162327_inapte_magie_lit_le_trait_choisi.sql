@@ -4,7 +4,7 @@
 -- d'expérience ainsi qu'UN trait racial permis par sa race », et « les
 -- demi-orcs, ayant du sang humain, ont accès à la magie ».
 -- Mesuré le 2026-07-30 : 3 demi-orcs en base sur 105 personnages, 1 seul
--- porteur réel du trait (Uld Gron, acheté 10 XP). Le verdict change donc
+-- porteur réel du trait (ce personnage, acheté 10 XP). Le verdict change donc
 -- pour 2 fiches, pas davantage.
 -- Rejouable à froid : CREATE OR REPLACE + DROP IF EXISTS + rattrapage borné
 -- aux seules fiches en dérive.

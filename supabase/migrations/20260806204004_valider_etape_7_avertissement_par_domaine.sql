@@ -1,6 +1,6 @@
 -- s379 · [CERCLES-SECS-VRAIS-JOUEURS] · decision 51 — volet PRIERES.
 -- Jumeau de valider_etape_6 : avertissement PAR DOMAINE, calcule AVANT la
--- garde personnage_a_des_prieres (cause mesuree : Azaelle Malter, 1 domaine
+-- garde personnage_a_des_prieres (cause mesuree : un personnage, 1 domaine
 -- ouvert, 0 priere, pas la competence « Acquisition de Priere »).
 
 CREATE OR REPLACE FUNCTION public.valider_etape_7(p_personnage_id uuid)
