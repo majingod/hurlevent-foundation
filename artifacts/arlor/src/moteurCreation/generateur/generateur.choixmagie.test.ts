@@ -158,7 +158,7 @@ describe("⭐ le SECOND cercle / SECOND domaine", () => {
         roleId: "pMissionnaire",
         inventaire: new Set<string>(),
         budget: 80,
-        element2: "Ordre", // Aymon : Guerre + Ordre, mesuré
+        element2: "Ordre", // Guerre + Ordre, mesuré s380
         essentiels: [{ label: "Un SECOND domaine de prière" }],
       })
     );

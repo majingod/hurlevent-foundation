@@ -162,7 +162,7 @@ const SIGNATURE3_MAGE: Record<string, EntreePool[]> = {
   mAlchimiste: [
     {
       label: "Alchimie 2",
-      note: "La montée qui fait l'alchimiste : 7 membres sur 7 l'ont.",
+      note: "La montée qui fait l'alchimiste (mesuré s350).",
       achats: () => [comp("Alchimie", 2)],
     },
   ],
@@ -177,14 +177,14 @@ const SIGNATURE3_MAGE: Record<string, EntreePool[]> = {
    *     que le générateur achète (niveau 1). Le niveau 2 n'ouvre que le 6-10.
    *
    * Mesure décisive : les 4 mages à l'accès 2 ont 150-170 XP et lancent du
-   * niveau 10 ; Petrine, la seule à 75 XP, a l'accès 1. Sur la population de
+   * niveau 10 ; le seul mage de création (75 XP) a l'accès 1. Sur la population de
    * création (60-135 XP) : 4 porteurs sur 12 — contre 16 sur 18 chez les
    * vétérans. C'est un état d'après-jeu, pas de création.
    * ⭐ Le moteur achète DÉJÀ l'accès qu'il faut, tout seul, via la rampe de
    * `planifierMagie`. Rien à déclarer ici. */
   /* ⛔ mCanalisateur — « Canalisation 2 » RETIRÉ en s361, MÊME MOTIF.
-   * La note disait « 5 membres sur 5 » — vrai, mais mesuré sur un groupe de
-   * VÉTÉRANS. Sur la population de création (60-135 XP) : 1 porteur sur 8
+   * L'ancienne note s'appuyait sur un groupe de VÉTÉRANS, pas sur la
+   * population de création. Sur la population de création (60-135 XP) : 1 porteur sur 8
    * l'a au niveau 2, contre 11 sur 21 chez les vétérans.
    * 🔮 garde son noyau (Canalisation niveau 1), qui suffit à le reconnaître. */
 };
@@ -207,7 +207,7 @@ const POOL3_MAGE: Record<string, EntreePool[]> = {
     },
     {
       label: ESSENTIEL_SECOND_CERCLE,
-      note: "Mesuré 2/2 chez ✨ et ᚱ : Mérèkor (Air+Charmes), Valen (Charmes+Illusion), Cendre Neige (Illusion+Nécromancie), Félis (Magie Pure+Nécromancie).",
+      note: "Le second cercle est la norme chez ✨ et ᚱ (mesuré s350).",
       // ⭐ [R1a s361] `rachat` = un NOUVEAU choix au prix du niveau 1 — c'est
       // exactement un second cercle, et il porte enfin son nom.
       // ⚠️ JAMAIS UN ACCÈS SEC (décision 16) : le cercle ET son sort. C'est

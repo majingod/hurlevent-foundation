@@ -29,7 +29,7 @@ export const ESSENTIEL_SECOND_DOMAINE = "Un SECOND domaine de prière";
  *     aucune prière : il demande `priereAuChoix(rang)` et le catalogue résout.
  *
  *  2. ARCHÉTYPE D'ABORD, RELIGION ENSUITE (§5.2 ③). 🕊️ et 📿 IMPOSENT leur
- *     domaine (`magieImposee`, mesuré 2/2 au noyau) ; ⛪ et ✝️ le laissent au
+ *     domaine (`magieImposee`, mesuré au noyau) ; ⛪ et ✝️ le laissent au
  *     joueur. Tirer la foi en premier rendrait les deux premiers
  *     inaccessibles au hasard — 4 religions proscrivent la Guerre, 1 la
  *     Bénédiction. Le refus motivé en 🧭 vit dans le RÉSOLVEUR, pas ici.
@@ -71,8 +71,8 @@ const SANS_DOMAINE =
 
 const ROLES_PRETRE: readonly RoleClasse[] = [
   {
-    // n = 4, cohésion 0.72 · Dahlia, Simon De Foix, Valérie Montgomery, Éléonore.
-    // ② mesuré ≥ 80 % : Méditation 4/4 · Développement Spirituel 4/4 · Revenu 4/4.
+    // n = 4, cohésion 0.72 · 4 prêtres mesurés s350.
+    // ② au noyau : Méditation · Développement Spirituel · Revenu (s350).
     // ⚠️ « des domaines variés et zéro soin » : son domaine reste au joueur.
     id: "pRite",
     emoji: "⛪",
@@ -87,8 +87,8 @@ const ROLES_PRETRE: readonly RoleClasse[] = [
     ],
   },
   {
-    // n = 4, cohésion 0.65 · Muir-Natha Dagon, Zoé, Bas-Blanc Tamalou,
-    // Nathanaël di Vitae. ② mesuré : Réveil Expéditif 4/4 · Premiers Soins 4/4.
+    // n = 4, cohésion 0.65 · 4 prêtres mesurés s350.
+    // ② Réveil Expéditif et Premiers Soins : au noyau (mesuré s350).
     // ⚠️ `Domaine:Bénédiction` est à 3/4 — donc ③, PAS ② : on ne l'impose pas.
     //
     // ⭐⭐ [DÉCISION 40, s368→s372] LE DOMAINE EST OPTIONNEL. La prière a
@@ -108,9 +108,9 @@ const ROLES_PRETRE: readonly RoleClasse[] = [
     noyau: () => [comp("Réveil Expéditif", 1), comp("Premiers Soins", 1)],
   },
   {
-    // n = 2, cohésion 0.78 · Virgile Azmir Saren, Aymon Le missionnaire.
-    // ② mesuré 2/2 : Canalisation · Développement Spirituel · Domaine:Guerre
-    //                · « ≥ 3 prières ».
+    // n = 2, cohésion 0.78 · 2 prêtres mesurés s350.
+    // ② au noyau : Canalisation · Développement Spirituel · Domaine:Guerre
+    //              · « ≥ 3 prières » (s350).
     id: "pMissionnaire",
     emoji: "🕊️",
     titre: "Le missionnaire",
@@ -126,8 +126,8 @@ const ROLES_PRETRE: readonly RoleClasse[] = [
     ],
   },
   {
-    // n = 2, cohésion 0.67 · Kaelen Fordrénus, Orion Valombre.
-    // ② mesuré 2/2 : Consécration · Domaine:Bénédiction.
+    // n = 2, cohésion 0.67 · 2 prêtres mesurés s350.
+    // ② au noyau : Consécration · Domaine:Bénédiction (s350).
     // « presque rien d'autre : tout en prières, budget compétences minimal ».
     id: "pConsecrateur",
     emoji: "📿",
@@ -151,10 +151,9 @@ const SIGNATURE3_PRETRE: Record<string, EntreePool[]> = {
      * Le manuel : l'accès N ouvre les prières de niveau ≤ 5N. L'accès 1
      * couvre donc déjà tout ce que le générateur achète (niveau 1) ; le
      * niveau 2 n'ouvre que le 6-10, que le personnage n'a pas.
-     * ⭐ MESURE (5/5, population de création 60-135 XP) : TOUS les prêtres
-     * qui ont l'accès 2 possèdent une prière de niveau 6+ — Muir-Natha (60
-     * XP, prière niv 10), Éléonore (85, niv 6), Zoé (95, niv 10), Dahlia
-     * (105, niv 10), Simon De Foix (110, niv 6). ZÉRO plafond sec.
+     * ⭐ MESURE (population de création 60-135 XP) : les prêtres qui ont
+     * l'accès 2 possèdent une prière de niveau 6+ — le groupe s'échelonne
+     * de 85 à 110 XP, prières niv 6 à 10. ZÉRO plafond sec.
      * Le patron réel est « une GROSSE PRIÈRE, et l'accès suit » — et la
      * rampe de `planifierMagie` achète déjà l'accès toute seule.
      * ⚠️ Ne pas le réécrire ici : la fixture ne porte que du niveau 1.
@@ -257,10 +256,10 @@ const POOL3_PRETRE: Record<string, EntreePool[]> = {
     },
     {
       label: ESSENTIEL_SECOND_DOMAINE,
-      note: "Mesuré 2/2 chez 🕊️ et 📿 : Aymon (Guerre+Ordre), Virgile (4 domaines), Kaelen (Bénédiction+Nécromancie), Orion (Bénédiction+Nature).",
+      note: "Le second domaine est la norme chez 🕊️ et 📿 (mesuré s350).",
       // ⭐ [R1a s361] Jumeau du second cercle. C'est `element2` — donc le
       // RÉSOLVEUR — qui porte la décision Fred « proposable 🧭, jamais
-      // tirée 🎲 » pour ⛪ (1/4) et ✝️ (0/4) : 🎲 ne pose `element2` que
+      // tirée 🎲 » pour ⛪ (1/4) et absent chez ✝️ : 🎲 ne pose `element2` que
       // pour 🕊️ et 📿. Le contenu, lui, ne connaît pas le rôle.
       // ⚠️ Le domaine est BORNÉ PAR LA RELIGION (§5.2 ①) : c'est au
       // résolveur de ne proposer que des domaines non proscrits.
@@ -308,8 +307,8 @@ const POOL3_PRETRE: Record<string, EntreePool[]> = {
  * ⚠️⚠️ `Connaissances des Religions` A ÉTÉ RETIRÉE (mesuré s360). L'ancienne
  * version l'ouvrait à `plafondRachats: 15` — le même chiffre de conception,
  * jamais mesuré, qui avait déjà été corrigé chez les martiaux en s353. Or
- * c'est une GRATUITÉ de classe, et les **17 prêtres vivants sur 17** la
- * portent à exactement **1** : aucun n'en a jamais racheté une seule. Le
+ * c'est une GRATUITÉ de classe, mesurée à exactement **1** chez les prêtres
+ * vivants (s360) : aucun n'en a jamais racheté une seule. Le
  * générateur pouvait y brûler jusqu'à 60 XP.
  *
  * Les plafonds conservés sont MESURÉS sur les 17 prêtres vivants (2026-07-25) :

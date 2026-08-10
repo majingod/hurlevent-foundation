@@ -71,7 +71,7 @@ const ROLES_GUERRIER: readonly RoleClasse[] = [
     phrase:
       "Il creuse, il fond, il forge. Jouable sans rien apporter — l'atelier vient avec lui.",
     requiert: () => null, // aucun créneau : le rôle le plus stable des trois
-    // Mesuré : Métaux Rares 6/6 · Mineur 6/6 · Métaux Communs 6/6 ·
+    // Mesuré au noyau : Métaux Rares · Mineur · Métaux Communs (s350) ·
     // Linguistique 5/6. Les Métaux Communs sont à la fois mesurés ET maillon
     // du chemin vers les deux autres — la dédup de `cheminComplet` s'en charge.
     noyau: () => [
@@ -90,7 +90,7 @@ const ROLES_GUERRIER: readonly RoleClasse[] = [
       CRENEAU_ARMURE.some((a) => inv.has(a.caseId))
         ? null
         : "Il te faut une armure — cuir, mailles ou plaques. C'est elle qui fait tenir la ligne.",
-    // Mesuré : Botte Secrète 5/5 · Revenu 5/5 · Compétence d'arme à la lame
+    // Mesuré au noyau : Botte Secrète · Revenu (s350) · Compétence d'arme à la lame
     // 4/5 · Port d'armure lourde 4/5. Arme et armure sont des CRÉNEAUX
     // (grammaire §2.11) : on n'achète jamais une compétence injouable.
     noyau: (inv) => {
@@ -119,7 +119,7 @@ const ROLES_GUERRIER: readonly RoleClasse[] = [
         ? "Un arc seul ne suffit pas : la Compétence d'arme à distance est de catégorie voleur — un Guerrier y plafonne au niveau 1, sans jamais l'effet offensif. Il te faut une arme de mêlée."
         : "Il te faut une arme de mêlée (lame, hache, masse, bâton…).";
     },
-    // Mesuré 2/2 : Berserk · Combat à deux armes. Le second est un CRÉNEAU :
+    // Mesuré au noyau : Berserk · Combat à deux armes (s350). Le second est un CRÉNEAU :
     // il exige deux armes identiques (`objets_requis`). Sans elles, la Botte
     // Secrète tient le geste offensif — mesurée 1/2 en ③ chez ce groupe.
     noyau: (inv) => [
@@ -138,14 +138,14 @@ const SIGNATURE3_GUERRIER: Record<string, EntreePool[]> = {
   gForgeron: [
     {
       label: "Mineur 2",
-      note: "Trois cartes par événement et l'accès aux expéditions de métaux rares — 6 forgerons sur 6 l'ont.",
+      note: "Trois cartes par événement et l'accès aux expéditions de métaux rares. La montée qui définit le forgeron (mesuré s350).",
       achats: () => [comp("Mineur", 2)],
     },
   ],
   gTient: [
     {
       label: "Botte Secrète 2",
-      note: "« Brise-bouclier » : après deux coups sur le bouclier adverse — 5 sur 5 l'ont.",
+      note: "« Brise-bouclier » : après deux coups sur le bouclier adverse. Signature du rôle (mesuré s350).",
       achats: () => [comp("Botte Secrète", 2)],
       condition: (inv) => uneDe(inv, MELEE),
     },
@@ -153,12 +153,12 @@ const SIGNATURE3_GUERRIER: Record<string, EntreePool[]> = {
   gFrappe: [
     {
       label: "Berserk 2",
-      note: "La fureur montée d'un cran — 2 sur 2 l'ont.",
+      note: "La fureur montée d'un cran. Signature du rôle (mesuré s350).",
       achats: () => [comp("Berserk", 2)],
     },
     {
       label: "Combat à deux armes 2",
-      note: "Deux armes moyennes, plus seulement courtes — 2 sur 2 l'ont.",
+      note: "Deux armes moyennes, plus seulement courtes. Signature du rôle (mesuré s350).",
       achats: () => [comp("Combat à deux armes", 2)],
       condition: (inv) => inv.has("deux_armes_identiques"),
     },

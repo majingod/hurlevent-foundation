@@ -60,7 +60,7 @@ const ROLES_VOLEUR: readonly RoleClasse[] = [
       inv.has("bourse")
         ? null
         : "Il te faut une bourse, pas plus grosse qu'un poing : c'est elle qui rend la Cachette secrète jouable.",
-    // Mesuré : Linguistique 6/6 · Joaillerie 5/6 · Métaux Communs 5/6 ·
+    // Mesuré au noyau : Linguistique (s350) · Joaillerie 5/6 · Métaux Communs 5/6 ·
     // Cachette secrète 5/6.
     noyau: () => [
       comp("Linguistique et Mathématique", 1),
@@ -75,7 +75,7 @@ const ROLES_VOLEUR: readonly RoleClasse[] = [
     titre: "Celui qui frappe le premier",
     phrase: "Le bras armé de la guilde : il sait qui, où, et quand.",
     requiert: () => null, // jouable sans rien apporter
-    // Mesuré 3/3 : Connaissances Criminelles · Rumeur. La montée
+    // Mesuré au noyau : Connaissances Criminelles · Rumeur (s350). La montée
     // `Connaissances Criminelles 2` n'est PAS un choix : elle est FORCÉE par
     // le prérequis de `Rumeur` — seul emploi autorisé des Connaissances
     // (décision 27). D'où une signature ③ vide : elle est déjà au noyau.
@@ -90,7 +90,7 @@ const ROLES_VOLEUR: readonly RoleClasse[] = [
       inv.has("bandages")
         ? null
         : "Il te faut des bandages : sans eux, les Premiers Soins qui définissent l'éclaireur ne sont pas jouables.",
-    // Mesuré 3/3 : Premiers Soins · Cachette secrète · Revenu · Linguistique.
+    // Mesuré au noyau : Premiers Soins · Cachette secrète · Revenu · Linguistique (s350).
     // La bourse conditionne la Cachette secrète — sans elle le noyau est plus
     // court et son XP repart dans ③ (jamais un achat injouable).
     noyau: (inv) => [
@@ -114,7 +114,7 @@ const SIGNATURE3_VOLEUR: Record<string, EntreePool[]> = {
     },
     {
       label: "Estimation 2",
-      note: "Il ne se trompe plus sur un prix — 6 orfèvres sur 6 l'ont.",
+      note: "Il ne se trompe plus sur un prix. Signature du rôle (mesuré s350).",
       achats: () => [comp("Estimation", 2)],
     },
   ],

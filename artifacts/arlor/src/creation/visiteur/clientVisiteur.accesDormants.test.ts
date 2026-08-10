@@ -5,7 +5,7 @@
  *
  * §5.3 — le dry-run ne touche pas le brouillon.
  * §5.5 — parité serveur/miroir : la phrase de l'avertissement, au mot près.
- * §5.6 — cas Mélias (mesuré en prod 2026-08-06) : un personnage qui possède des
+ * §5.6 — cas §5.6-a (mesuré en prod 2026-08-06) : un personnage qui possède des
  *   sorts dans D'AUTRES cercles mais aucun dans le cercle payé produit UN
  *   avertissement. Sur `origin/main` (avant ce lot), l'ancien code regardait le
  *   TOTAL de sorts (`b.acquisitions.sorts.length === 0`) et en produisait ZÉRO
@@ -149,9 +149,9 @@ describe("avertissement info_cercle_sans_sort — §5.5 (parité de phrase)", ()
 });
 
 // ============================================================
-// §5.6 — cas Mélias : sorts dans d'AUTRES cercles, aucun dans le cercle payé
+// §5.6 — cas §5.6-a : sorts dans d'AUTRES cercles, aucun dans le cercle payé
 // ============================================================
-describe("cas Mélias — §5.6 (rougit sur la version d'avant, C78)", () => {
+describe("cas §5.6-a — §5.6 (rougit sur la version d'avant, C78)", () => {
   it("cercle Feu payé sans sort + cercle Eau payé AVEC un sort → 1 seul avertissement (Feu)", async () => {
     await wizardEtape5(CLASSE_MAGE, { [COMP_DECRYPTAGE]: "L'Ancien" });
     expect(env((await acheterComp(COMP_CERCLE, 1, "Feu")).data).succes, "cercle Feu").toBe(true);
