@@ -17,8 +17,8 @@ export interface OptionsRole {
   /**
    * ⭐ [R1a s361] Le SECOND cercle / SECOND domaine.
    *
-   * Mesuré 2/2 chez ✨ et ᚱ (cercles) et chez 🕊️ et 📿 (domaines) ; 1/4
-   * chez ⛪ et 0/4 chez ✝️.
+   * Mesuré au noyau chez ✨ et ᚱ (cercles) et chez 🕊️ et 📿 (domaines) ; 1/4
+   * chez ⛪ et absent chez ✝️.
    *
    * ⚠️⚠️ C'EST CE CHAMP QUI PORTE LA DÉCISION « PROPOSABLE 🧭, JAMAIS
    * TIRÉE 🎲 » (arbitrage Fred s361) — pas un drapeau sur l'entrée de pool.
@@ -65,8 +65,8 @@ export interface RoleClasse {
   noyau: (inv: ReadonlySet<string>, o: OptionsRole) => Achat[];
   /**
    * ⭐ [A2-Prêtre s360] Le cercle/domaine que l'ARCHÉTYPE impose, quand la
-   * mesure en dégage un au noyau : 🕊️ `Domaine:Guerre` (2/2) et 📿
-   * `Domaine:Bénédiction` (2/2). Absent = le joueur choisit (`ctx.element`),
+   * mesure en dégage un au noyau : 🕊️ `Domaine:Guerre` et 📿
+   * `Domaine:Bénédiction` (mesuré s350). Absent = le joueur choisit (`ctx.element`),
    * comme les 5 rôles Mage dont le cercle est libre (référence §5.1 ①).
    *
    * ⚠️ C'est ce qui rend possible le patron « ARCHÉTYPE D'ABORD, RELIGION

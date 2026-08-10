@@ -2498,7 +2498,7 @@ function validerEtape(
       return ok;
     }
     case 6: {
-      // Accès dormants, calculés AVANT la garde ci-dessous (cause Mélias/C78 :
+      // Accès dormants, calculés AVANT la garde ci-dessous (cause C78 :
       // le TOTAL de sorts n'éteint plus l'avertissement, seul LE CERCLE compte).
       const avertissementsCercle: ErrItem[] = accesSecsPourCompetence(b, "Acquisition de Cercle")
         .filter((g) => !b.acquisitions.sorts.some((s) => getSortCat(s.sortId)?.cercle === g.voie))
@@ -2538,7 +2538,7 @@ function validerEtape(
       return { valide: true, erreurs: [], avertissements: avertissementsCercle };
     }
     case 7: {
-      // Jumeau du cas 6, volet prières (Azaëlle : domaine ouvert sans la
+      // Jumeau du cas 6, volet prières (cas 6 bis : domaine ouvert sans la
       // compétence « Acquisition de Prière » → l'avertissement doit sortir
       // même quand l'étape est « ignoree » plus bas).
       const avertissementsDomaine: ErrItem[] = accesSecsPourCompetence(b, "Acquisition de Domaine")
