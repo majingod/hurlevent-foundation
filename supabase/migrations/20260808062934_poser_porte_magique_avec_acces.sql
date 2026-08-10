@@ -30,7 +30,7 @@
 --
 -- PAS DE RÉTROACTIF (arbitrage Fred s382). Mesuré sur 114 personnages :
 --  0 « Cercle sans Sort » · 0 « Sort sans Cercle » · 0 « des sorts sans la
---  compétence » · 1 seul « Domaine sans Prière » = Azaëlle Malter, finalisée,
+--  compétence » · 1 seul « Domaine sans Prière » = un personnage, finalisée,
 --  0 prière — précisément le cas que D51 avertit déjà. Rien à réparer.
 --
 -- D51 INTACTE (vérifié dans le corps, pas déduit) : valider_etape_6 calcule

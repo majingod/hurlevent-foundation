@@ -4,9 +4,9 @@
 -- competence Acquisition de Sort / de Priere ».
 --
 -- MESURE EN PROD (2026-08-06) — DEUX causes distinctes, deux corrections :
---   · Melias Stormwild : 4 cercles, 4 sorts, aucun sort de Feu. L'ancien
+--   · Un personnage : 4 cercles, 4 sorts, aucun sort de Feu. L'ancien
 --     avertissement regardait le TOTAL (v_nb_sorts > 0) et se taisait.
---   · Azaelle Malter : 1 domaine ouvert, 0 priere, mais PAS la competence
+--   · Un personnage : 1 domaine ouvert, 0 priere, mais PAS la competence
 --     « Acquisition de Priere » -> l'etape 7 sortait en « ignoree » et ne
 --     rendait aucun avertissement.
 -- Ne jamais re-fusionner ces deux causes en un seul test global (C78).
@@ -37,7 +37,7 @@ BEGIN
       'avertissements', '[]'::jsonb);
   END IF;
 
-  -- Acces dormants, calcules AVANT la garde ci-dessous (cause Azaelle).
+  -- Acces dormants, calcules AVANT la garde ci-dessous (cause ce personnage).
   FOR v_sec IN
     SELECT pc.choix_achat AS voie,
            sum(pc.xp_depense) AS xp,

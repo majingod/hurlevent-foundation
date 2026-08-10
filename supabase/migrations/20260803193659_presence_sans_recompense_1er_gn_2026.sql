@@ -1,5 +1,5 @@
 -- s373 (session parallele) - 1er GN regulier de 2026 (feba0bdc-65cd-4fa9-a4e6-f5efdd28c29b)
--- Carmilla Alambic Phoenix (personnage 45afb616-054f-499c-8802-13a3e0630950,
+-- Ce personnage (personnage 45afb616-054f-499c-8802-13a3e0630950,
 -- inscription a191c083-90da-4260-8808-f78061ab2b91) : presence confirmee SANS recompense.
 -- Motif (arbitrage Fred, 2026-08-03) : sa fiche integre DEJA l'acquis de ce GN
 -- (niveau 7 = 1 + 6 gn_completes, 165 XP - inscription retroactive creee le 22/07/2026,
