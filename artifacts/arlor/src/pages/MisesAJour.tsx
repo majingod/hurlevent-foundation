@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Reprendre un personnage à peine commencé te remontre les 3 chemins",
+    description:
+      "Si tu quittais juste après avoir cliqué « Nouveau personnage », ton brouillon vide te ramenait droit dans le créateur, sans repasser par les portes. Maintenant, tant que ton personnage n'a rien reçu, le reprendre te repose la question : Guide-moi, Surprends-moi, ou Je bâtis moi-même.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Le tableau de bord répond de nouveau",
     description:
       "Pendant quelques heures, le tableau de bord et le hub affichaient une erreur au lieu de vos personnages. C'est réparé.",

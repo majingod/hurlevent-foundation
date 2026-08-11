@@ -3,7 +3,9 @@
  *
  * Règle mesurée sur le flux réel du wizard (s348) : l'accueil ne concerne
  * qu'un démarrage À ZÉRO. Toute reprise retombe où le joueur en était :
- * - reprise `?id=` (tableau de bord, admin, campagne) → jamais ;
+ * - [s394b] une reprise est permise tant que le personnage n'a rien reçu ;
+ *   ce qui ferme les portes, c'est ce que le personnage porte déjà, pas la
+ *   manière dont on est arrivé (`?id=` ou non) ;
  * - mode admin / mode campagne → jamais ;
  * - brouillon repris à une étape > 1 → jamais (on ne remet pas un joueur
  *   en route devant le menu) ;
@@ -34,10 +36,15 @@ export interface ContexteAccueil {
   accueilFranchi: boolean;
   modeAdmin: boolean;
   modeCampagne: boolean;
-  /** Reprise d'un personnage précis via `?id=`. */
-  reprise: boolean;
   /** Étape courante après positionnement (1..TOTAL_STEPS). */
   etape: number;
+  /**
+   * ⭐ [s394b] `personnages.etape_creation` — l'étape SERVEUR, pas celle qui
+   * est affichée. Un brouillon sans nom et un personnage finalisé repartent
+   * tous deux de l'étape 1 À L'ÉCRAN : seule l'étape serveur dit si le
+   * personnage est encore vierge.
+   */
+  etapeServeur: number;
   /**
    * ⭐ [s375-v2] `personnages.xp_depense`. > 0 = le personnage porte déjà des
    * achats (tirage appliqué, ou wizard manuel entamé) : plus aucune porte.
@@ -51,8 +58,8 @@ export function doitMontrerAccueil(c: ContexteAccueil): boolean {
     !c.accueilFranchi &&
     !c.modeAdmin &&
     !c.modeCampagne &&
-    !c.reprise &&
     c.etape === 1 &&
+    c.etapeServeur <= 1 &&
     c.xpDepense === 0
   );
 }
