@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Sheet,
@@ -7,6 +7,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  evenementDePorte,
+  type EvenementAccueil,
+} from "@/creation/generateur/traceAccueilGenerateur";
 import { GROUPES_OBJETS, objetsGenerateur } from "@/moteurCreation/exigences";
 import {
   ErreurPontSnapshot,
@@ -107,12 +111,15 @@ interface GenerateurProps {
     /** [s376] 🎲 = 'de' · 🧭 = 'boussole' — pour la trace de génération. */
     mode: "de" | "boussole";
   }) => void;
+  /** [s394] Trace d'accueil — fire-and-forget chez l'appelant, jamais bloquant. */
+  onEvenementAccueil?: (evenement: EvenementAccueil) => void;
 }
 
 const Generateur = ({
   modeVisiteur,
   onBatirMoiMeme,
   onAppliquerTirage,
+  onEvenementAccueil,
 }: GenerateurProps) => {
   const [ecran, setEcran] = useState<EcranGenerateur>("accueil");
   const [inventaire, setInventaire] = useState<ReadonlySet<string>>(new Set());
@@ -127,6 +134,18 @@ const Generateur = ({
    *  (même maison que l'inventaire et la race — mesuré : l'écran les
    *  perdait toutes en revenant de la fiche). */
   const [parcours, setParcours] = useState<ParcoursBoussole>(PARCOURS_VIDE);
+
+  /** [s394] Le composant n'est monté par son parent QUE quand l'accueil doit
+   *  s'afficher : le montage EST l'affichage. ⚠️ C88 : ne pas cler l'effet sur
+   *  `ecran` (qui change ensuite) — il ne doit partir qu'UNE fois, protégé
+   *  d'un ref booléen (React 19 en dev monte deux fois). */
+  const portesVuesTraceesRef = useRef(false);
+  useEffect(() => {
+    if (portesVuesTraceesRef.current) return;
+    portesVuesTraceesRef.current = true;
+    onEvenementAccueil?.("portes_vues");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Dépendances du résolveur — construites UNE fois, au premier besoin
    *  (🎲 comme escalier 🧭). Lève `ErreurPontSnapshot` si le snapshot ne
@@ -222,11 +241,19 @@ const Generateur = ({
   };
 
   const portes: PorteAffichee[] = PORTES.flatMap((p) => {
-    if (p.id === "batir") return [{ ...p, onChoisir: onBatirMoiMeme }];
+    // [s394] Signale la porte choisie avant d'exécuter son comportement —
+    // le comportement des trois portes ne change pas d'un iota.
+    const signaler = (onChoisir: () => void) => () => {
+      onEvenementAccueil?.(evenementDePorte(p.id));
+      onChoisir();
+    };
+    if (p.id === "batir") return [{ ...p, onChoisir: signaler(onBatirMoiMeme) }];
     if (p.id === "guide")
-      return [{ ...p, onChoisir: () => setEcran("inventaire") }];
+      return [{ ...p, onChoisir: signaler(() => setEcran("inventaire")) }];
     // 🎲 : affichée seulement une fois « Continuer » branché (PR-B).
-    return onAppliquerTirage ? [{ ...p, onChoisir: lancerTirage }] : [];
+    return onAppliquerTirage
+      ? [{ ...p, onChoisir: signaler(lancerTirage) }]
+      : [];
   });
 
   const surAccueil = ecran === "accueil";

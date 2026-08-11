@@ -33,6 +33,22 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Le tableau de bord répond de nouveau",
+    description:
+      "Pendant quelques heures, le tableau de bord et le hub affichaient une erreur au lieu de vos personnages. C'est réparé.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "Côté orga : le filtre dit quel sous-choix a été pris",
+    description:
+      "Dans la recherche de personnages, une compétence à choix (une langue, un domaine…) affiche maintenant lequel a été retenu, au lieu du seul nom de la compétence.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Ton héritage, expliqué",
     description:
       "En mode Guide-moi, chaque trait racial dit maintenant ce qu'il change pour toi, selon ce que tu as déjà choisi.",

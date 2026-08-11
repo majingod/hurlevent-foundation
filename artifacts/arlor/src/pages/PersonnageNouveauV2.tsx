@@ -10,6 +10,10 @@ import {
 import { clientActif } from "@/creation/clientActif";
 import { appliquerComposition } from "@/creation/generateur/appliquerComposition";
 import {
+  preparerTraceAccueil,
+  type EvenementAccueil,
+} from "@/creation/generateur/traceAccueilGenerateur";
+import {
   preparerTraceGeneration,
   type ModeGeneration,
 } from "@/creation/generateur/traceGeneration";
@@ -816,12 +820,29 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
       }
     };
 
+    // [s394] Trace d'accueil (portes vues / porte choisie) — fire-and-forget,
+    // exactement comme la trace de génération ci-dessus.
+    const tracerAccueil = (evenement: EvenementAccueil) => {
+      const args = preparerTraceAccueil({
+        modeVisiteur,
+        personnageId,
+        evenement,
+      });
+      if (!args) return;
+      void supabase
+        .rpc("enregistrer_accueil_generateur", args)
+        .then(({ error }) => {
+          if (error) console.warn("[trace-accueil]", error.message);
+        });
+    };
+
     return (
       <>
         <Generateur
           modeVisiteur={modeVisiteur}
           onBatirMoiMeme={() => setAccueilFranchi(true)}
           onAppliquerTirage={appliquerTirage}
+          onEvenementAccueil={tracerAccueil}
         />
         {applicationTirage && (
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/70 backdrop-blur-sm">
