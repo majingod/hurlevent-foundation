@@ -5368,6 +5368,10 @@ export type Database = {
         Args: { p_montant: number; p_personnage_id: string; p_raison?: string }
         Returns: Json
       }
+      enregistrer_accueil_generateur: {
+        Args: { p_evenement: string; p_personnage_id: string }
+        Returns: Json
+      }
       enregistrer_generation: {
         Args: {
           p_composition: Json
