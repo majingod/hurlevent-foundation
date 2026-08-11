@@ -725,8 +725,9 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
       accueilFranchi,
       modeAdmin,
       modeCampagne,
-      reprise: !!personnageIdParUrl,
       etape,
+      // [s394b] Absence de donnée = portes FERMÉES (jamais l'inverse).
+      etapeServeur: personnage?.etape_creation ?? 99,
       xpDepense,
     })
   ) {
@@ -857,7 +858,7 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   // [s368 #3] « Tu pourras revenir ici à tout moment » — la promesse de
   // l'accueil. Le retour est offert EXACTEMENT quand l'accueil se
   // ré-afficherait à un rechargement (même fonction, accueilFranchi remis à
-  // faux) : jamais en admin/campagne/reprise, jamais passé l'étape 1.
+  // faux) : jamais en admin/campagne, jamais passé l'étape 1.
   // [s375-v2 défaut 1c] Le commentaire d'origine disait « donc jamais sur un
   // personnage avancé qu'un rejeu pourrait écraser » : la prémisse est tombée
   // avec le générateur (piège C88). Un perso GÉNÉRÉ est avancé — achats en
@@ -871,8 +872,9 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
       accueilFranchi: false,
       modeAdmin,
       modeCampagne,
-      reprise: !!personnageIdParUrl,
       etape,
+      // [s394b] Absence de donnée = portes FERMÉES (jamais l'inverse).
+      etapeServeur: personnage?.etape_creation ?? 99,
       xpDepense,
     });
 

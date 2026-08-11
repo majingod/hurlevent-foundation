@@ -14,8 +14,8 @@ const BASE = {
   accueilFranchi: false,
   modeAdmin: false,
   modeCampagne: false,
-  reprise: false,
   etape: 1,
+  etapeServeur: 1,
   // [s375-v2] Champ REQUIS depuis le défaut 1c — un démarrage à zéro n'a
   // rien dépensé. Voir le cas dédié plus bas.
   xpDepense: 0,
@@ -34,8 +34,27 @@ describe("doitMontrerAccueil", () => {
     expect(doitMontrerAccueil({ ...BASE, accueilFranchi: true })).toBe(false);
   });
 
-  it("jamais en reprise ?id= (tableau de bord)", () => {
-    expect(doitMontrerAccueil({ ...BASE, reprise: true })).toBe(false);
+  // [s394b] Le cœur du lot : une reprise ?id= d'un brouillon vierge (rien
+  // reçu, étape serveur ≤ 1) remontre les portes. C'est exactement le cas
+  // qui rendait `false` avant ce lot.
+  it("reprise ?id= d'un brouillon vierge : les portes se remontrent", () => {
+    expect(
+      doitMontrerAccueil({ ...BASE, etapeServeur: 1, xpDepense: 0 })
+    ).toBe(true);
+  });
+
+  // [s394b] Test jumeau — face négative n°1 : un brouillon avancé sans nom
+  // est ramené à l'étape 1 AFFICHÉE (règle `sansNomInitial`), mais son étape
+  // SERVEUR dit qu'il a déjà une race posée. Sans ce cas, la face positive
+  // ci-dessus serait verte sur une fonction qui ignore etapeServeur.
+  it("jamais sur un brouillon avancé sans nom (étape serveur > 1, étape 1 affichée)", () => {
+    expect(doitMontrerAccueil({ ...BASE, etapeServeur: 8 })).toBe(false);
+  });
+
+  // [s394b] Face négative n°2 : un personnage finalisé repris en
+  // remodelage repart lui aussi de l'étape 1 affichée.
+  it("jamais sur un personnage finalisé repris en remodelage", () => {
+    expect(doitMontrerAccueil({ ...BASE, etapeServeur: 11 })).toBe(false);
   });
 
   it("jamais en mode admin ni en mode campagne", () => {
