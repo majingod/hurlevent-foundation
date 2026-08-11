@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { libelleCompetenceAvecChoix } from "@/lib/libelleCompetenceAvecChoix";
 
 /* ===========================================================================
  * FILTRE ADMIN PERSONNAGES — PR2 (s116)
@@ -23,6 +24,12 @@ interface NomNiveau {
 }
 interface NomSeul {
   nom: string;
+}
+
+interface ChoixCompetenceRow {
+  personnage_id: string;
+  competence_nom: string;
+  choix: string[] | null;
 }
 
 interface PersoComplet {
@@ -118,7 +125,26 @@ const AdminPersonnages = () => {
     },
   });
 
+  const { data: choixCompetences } = useQuery({
+    queryKey: ["admin-choix-competences"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vue_personnages_choix_competences")
+        .select("*");
+      return (data ?? []) as unknown as ChoixCompetenceRow[];
+    },
+  });
+
   const persos = personnages ?? [];
+
+  // Map "personnage_id|competence_nom" -> choix résolus (langue/religion/texte).
+  const choixMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const row of choixCompetences ?? []) {
+      m.set(`${row.personnage_id}|${row.competence_nom}`, row.choix ?? []);
+    }
+    return m;
+  }, [choixCompetences]);
 
   // ---- listes de valeurs dérivées du jeu de données chargé ----
   const valeurs = useMemo(() => {
@@ -256,7 +282,9 @@ const AdminPersonnages = () => {
       p.classe_nom ?? "",
       String(p.niveau ?? 1),
       asArrNom(p.traits_raciaux).map((t) => t.nom).join(" | "),
-      asArrNiv(p.competences).map((c) => `${c.nom} ${c.niveau ?? ""}`.trim()).join(" | "),
+      asArrNiv(p.competences)
+        .map((c) => libelleCompetenceAvecChoix(c.nom, c.niveau ?? null, choixMap.get(`${p.id}|${c.nom}`)))
+        .join(" | "),
       asArrNiv(p.sorts).map((s) => `${s.nom} ${s.niveau ?? ""}`.trim()).join(" | "),
       asArrNiv(p.prieres).map((x) => `${x.nom} ${x.niveau ?? ""}`.trim()).join(" | "),
       asArrNom(p.assemblages).map((a) => a.nom).join(" | "),
@@ -299,9 +327,14 @@ const AdminPersonnages = () => {
     const traits = asArrNom(p.traits_raciaux).map((t) =>
       tg(`t-${t.nom}`, `⬨ ${t.nom}`, isMatchTag("trait", t.nom)),
     );
-    const comps = asArrNiv(p.competences).map((c) =>
-      tg(`c-${c.nom}`, `${c.nom} ${c.niveau ?? ""}`.trim(), isMatchTag("comp", c.nom)),
-    );
+    const comps = asArrNiv(p.competences).map((c) => {
+      const gold = isMatchTag("comp", c.nom);
+      // D-Ⓑ : seul le badge de la compétence FILTRÉE (doré) porte ses choix.
+      const label = gold
+        ? libelleCompetenceAvecChoix(c.nom, c.niveau ?? null, choixMap.get(`${p.id}|${c.nom}`))
+        : `${c.nom} ${c.niveau ?? ""}`.trim();
+      return tg(`c-${c.nom}`, label, gold);
+    });
     const sorts = asArrNiv(p.sorts).map((s) =>
       tg(`s-${s.nom}`, `✦ ${s.nom} ${s.niveau ?? ""}`.trim(), isMatchTag("sort", s.nom)),
     );
@@ -611,7 +644,7 @@ const AdminPersonnages = () => {
                 <td>{asArrNom(p.traits_raciaux).map((t) => t.nom).join(", ")}</td>
                 <td>
                   {asArrNiv(p.competences)
-                    .map((c) => `${c.nom} ${c.niveau ?? ""}`.trim())
+                    .map((c) => libelleCompetenceAvecChoix(c.nom, c.niveau ?? null, choixMap.get(`${p.id}|${c.nom}`)))
                     .join(", ")}
                 </td>
                 <td>
