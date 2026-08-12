@@ -63,3 +63,32 @@ export function doitMontrerAccueil(c: ContexteAccueil): boolean {
     c.xpDepense === 0
   );
 }
+
+export interface ContexteSortieTirage {
+  modeAdmin: boolean;
+  modeCampagne: boolean;
+  modeVisiteur: boolean;
+  /** Le personnage n'a pas de nom (D43). */
+  sansNom: boolean;
+  /** `personnages.etape_creation` LU EN BASE. Absent ⇒ passe 0 (fail-closed). */
+  etapeServeur: number;
+  /** XP déjà dépensée. 0 ⇒ ce n'est pas un tirage appliqué. */
+  xpDepense: number;
+}
+
+/**
+ * ⭐ Le bouton « Repartir d'un autre tirage » n'est offert QUE sur l'état exact du
+ * cul-de-sac : un personnage GÉNÉRÉ, jamais nommé, dont les portes ne reviendront pas.
+ * ⛔ C120 : on mesure ce que le personnage PORTE, jamais par où il est arrivé.
+ * ⛔ Fail-closed : une donnée manquante FERME le bouton.
+ */
+export function doitOffrirAutreTirage(c: ContexteSortieTirage): boolean {
+  return (
+    !c.modeAdmin &&
+    !c.modeCampagne &&
+    !c.modeVisiteur &&
+    c.sansNom &&
+    c.etapeServeur >= 5 &&
+    c.xpDepense > 0
+  );
+}

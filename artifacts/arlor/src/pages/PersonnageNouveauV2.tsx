@@ -45,7 +45,10 @@ import DrawerAjusterXp from "@/components/createur/DrawerAjusterXp";
 import { useEtapesApplicables } from "@/components/createur/useEtapesApplicables";
 import Generateur from "@/components/createur/generateur/Generateur";
 import { GENERATEUR_ACTIF } from "@/components/createur/generateur/config";
-import { doitMontrerAccueil } from "@/components/createur/generateur/decisionAccueil";
+import {
+  doitMontrerAccueil,
+  doitOffrirAutreTirage,
+} from "@/components/createur/generateur/decisionAccueil";
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
 import Etape2_V2 from "@/components/createur/etapes/Etape2_V2";
@@ -332,6 +335,48 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     setEtape(1);
     setEtapeCibleInitiale(1);
     setPersonnageId(personnage_id);
+  };
+
+  // s396 — « Repartir d'un autre tirage » : cul-de-sac d'un tirage 🎲/🧭 jamais
+  // nommé (doitOffrirAutreTirage). Jumelle de `recommencerVisiteur` : supprime
+  // le personnage (C98 : PAS FluxSuppressionCimetiere, sa phrase de stèle est
+  // un signal faux pour un tirage jamais joué) puis redémarre un brouillon
+  // vierge, portes rouvertes (`setAccueilFranchi(false)`).
+  const repartirDUnAutreTirage = async () => {
+    if (!personnageId) return;
+    const { data, error } = await supabase.rpc("creer_steles_et_supprimer", {
+      p_cible: "personnage",
+      p_id_cible: personnageId,
+      p_demandes: [],
+    });
+    const payload = (data ?? {}) as Record<string, any>;
+    if (error || payload.succes !== true) {
+      toast.error(
+        error?.message ??
+          (payload.erreurs?.[0]?.message as string | undefined) ??
+          "La suppression a échoué.",
+      );
+      return;
+    }
+
+    const { data: dataNouveau, error: erreurNouveau } =
+      await clientActif.demarrerCreationPersonnage({ p_profil_id: joueurId! });
+    const payloadNouveau = (dataNouveau ?? {}) as Record<string, any>;
+    const nouvel_id = payloadNouveau.donnees?.personnage_id as string | undefined;
+    if (erreurNouveau || payloadNouveau.succes !== true || !nouvel_id) {
+      toast.error(
+        erreurNouveau?.message ??
+          (payloadNouveau.erreurs?.[0]?.message as string | undefined) ??
+          "Impossible de redémarrer la création.",
+      );
+      return;
+    }
+
+    setEtapeInitialisee(false);
+    setEtape(1);
+    setEtapeCibleInitiale(1);
+    setPersonnageId(nouvel_id);
+    setAccueilFranchi(false);
   };
 
   // Redirect automatique : si le personnage est finalisé (etape_creation > TOTAL_STEPS),
@@ -1032,6 +1077,65 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
             Donne-lui un nom ci-dessous : toutes les étapes se
             déverrouilleront et tu pourras te promener librement entre elles
             pour l'ajuster.
+            {/* s396 — sortie du cul-de-sac : offert UNIQUEMENT sur l'état exact
+                du tirage jamais nommé (doitOffrirAutreTirage, C120/C101). Le
+                bouton reste discret (bordure seule) : le geste attendu reste
+                « donne-lui un nom ». */}
+            {doitOffrirAutreTirage({
+              modeAdmin,
+              modeCampagne,
+              modeVisiteur,
+              sansNom,
+              etapeServeur: personnage?.etape_creation ?? 0,
+              xpDepense,
+            }) && (
+              <div className="mt-3 border-t border-gold/20 pt-3">
+                <p className="mb-2 text-xs text-white/60">
+                  Ce tirage ne te plaît pas ?
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-white/20 bg-transparent text-white/85 hover:bg-white/10 hover:text-white"
+                    >
+                      🎲 Repartir d'un autre tirage
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Repartir d'un autre tirage ?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-2 text-sm">
+                          <p>
+                            Ce personnage sera supprimé et tu reviendras au
+                            choix des trois chemins.
+                          </p>
+                          <p>
+                            Il n'a pas encore de nom : c'est le tirage seul
+                            qui disparaît.
+                          </p>
+                          <p>Cette action est irréversible.</p>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          void repartirDUnAutreTirage();
+                        }}
+                      >
+                        Supprimer et repartir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
           </div>
         )}
 

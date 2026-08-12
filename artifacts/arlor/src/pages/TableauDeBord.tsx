@@ -470,7 +470,7 @@ const TableauDeBord = () => {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
-                    <CardTitle className="text-2xl font-heading text-gold">{p.nom}</CardTitle>
+                    <CardTitle className="text-2xl font-heading text-gold">{p.nom ?? "Sans nom"}</CardTitle>
                     {p.etat === "bloque" ? (
                       <Badge variant="outline" className="gap-1 border-white/25 bg-white/10 text-white/60">
                         <Ban className="h-3 w-3" /> Bloqué · lecture seule
@@ -640,7 +640,7 @@ const TableauDeBord = () => {
             <FluxSuppressionCimetiere
               cible="personnage"
               idCible={personnageASupprimer.id}
-              titre={`Supprimer ${personnageASupprimer.nom}`}
+              titre={personnageASupprimer.nom ? `Supprimer ${personnageASupprimer.nom}` : "Supprimer ce brouillon"}
               onAnnuler={() => setPersonnageASupprimer(null)}
               onSuccess={onSuppressionPersonnageReussie}
             />
