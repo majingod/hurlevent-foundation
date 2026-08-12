@@ -92,3 +92,26 @@ export function doitOffrirAutreTirage(c: ContexteSortieTirage): boolean {
     c.xpDepense > 0
   );
 }
+
+export interface ReponseDemarrage {
+  succes?: boolean;
+  erreurs?: { code?: string; message?: string }[] | null;
+  donnees?: { personnage_id?: string } | null;
+}
+
+/**
+ * ⭐ s396-bis — l'id du brouillon sur lequel atterrir après avoir supprimé le
+ * personnage courant. Deux cas produisent un id : le démarrage a réussi, OU le
+ * serveur a refusé avec `brouillon_existant` — il renvoie alors l'id du brouillon
+ * qui reste, et c'est là qu'il faut aller.
+ * ⛔ Fail-closed : tout autre refus, ou un refus sans id, rend `null`.
+ */
+export function idBrouillonAReprendre(
+  r: ReponseDemarrage | null | undefined,
+): string | null {
+  const id = r?.donnees?.personnage_id;
+  if (!id) return null;
+  if (r?.succes === true) return id;
+  if (r?.erreurs?.[0]?.code === "brouillon_existant") return id;
+  return null;
+}

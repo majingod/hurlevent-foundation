@@ -5,7 +5,11 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { doitMontrerAccueil, doitOffrirAutreTirage } from "./decisionAccueil";
+import {
+  doitMontrerAccueil,
+  doitOffrirAutreTirage,
+  idBrouillonAReprendre,
+} from "./decisionAccueil";
 import { ordonnerRaces, raceDemandeApprobation } from "./ordreRaces";
 import { PORTES } from "./portes";
 
@@ -123,6 +127,58 @@ describe("doitOffrirAutreTirage", () => {
   // Fail-closed : la valeur passée en cas d'absence de donnée serveur.
   it("jamais quand etapeServeur vaut 0 (fail-closed)", () => {
     expect(doitOffrirAutreTirage({ ...BASE_SORTIE, etapeServeur: 0 })).toBe(false);
+  });
+});
+
+// [s396-bis] idBrouillonAReprendre — l'id sur lequel atterrir après
+// suppression : le démarrage a réussi, OU le serveur a refusé avec
+// `brouillon_existant` (il renvoie alors l'id du brouillon qui reste).
+// ⛔ Fail-closed : aucun autre code d'erreur ne doit rendre un id.
+describe("idBrouillonAReprendre", () => {
+  it("succes: true + id → rend l'id", () => {
+    expect(
+      idBrouillonAReprendre({ succes: true, donnees: { personnage_id: "abc" } }),
+    ).toBe("abc");
+  });
+
+  it("succes: false, code brouillon_existant, id présent → rend l'id", () => {
+    expect(
+      idBrouillonAReprendre({
+        succes: false,
+        erreurs: [{ code: "brouillon_existant" }],
+        donnees: { personnage_id: "abc" },
+      }),
+    ).toBe("abc");
+  });
+
+  it("succes: false, code brouillon_existant, sans id → null", () => {
+    expect(
+      idBrouillonAReprendre({
+        succes: false,
+        erreurs: [{ code: "brouillon_existant" }],
+        donnees: {},
+      }),
+    ).toBeNull();
+  });
+
+  // Le cas qui prouve que le helper n'est pas permissif.
+  it("succes: false, code profil_introuvable, id présent → null", () => {
+    expect(
+      idBrouillonAReprendre({
+        succes: false,
+        erreurs: [{ code: "profil_introuvable" }],
+        donnees: { personnage_id: "abc" },
+      }),
+    ).toBeNull();
+  });
+
+  it("payload vide → null", () => {
+    expect(idBrouillonAReprendre({})).toBeNull();
+  });
+
+  it("null / undefined → null", () => {
+    expect(idBrouillonAReprendre(null)).toBeNull();
+    expect(idBrouillonAReprendre(undefined)).toBeNull();
   });
 });
 

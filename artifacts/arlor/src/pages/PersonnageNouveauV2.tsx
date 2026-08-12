@@ -48,6 +48,8 @@ import { GENERATEUR_ACTIF } from "@/components/createur/generateur/config";
 import {
   doitMontrerAccueil,
   doitOffrirAutreTirage,
+  idBrouillonAReprendre,
+  type ReponseDemarrage,
 } from "@/components/createur/generateur/decisionAccueil";
 
 import Etape1_V2 from "@/components/createur/etapes/Etape1_V2";
@@ -362,14 +364,23 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     const { data: dataNouveau, error: erreurNouveau } =
       await clientActif.demarrerCreationPersonnage({ p_profil_id: joueurId! });
     const payloadNouveau = (dataNouveau ?? {}) as Record<string, any>;
-    const nouvel_id = payloadNouveau.donnees?.personnage_id as string | undefined;
-    if (erreurNouveau || payloadNouveau.succes !== true || !nouvel_id) {
+    // s396-bis : la RPC refuse `brouillon_existant` s'il reste un autre
+    // brouillon pour ce profil — elle renvoie alors son id, et c'est là qu'il
+    // faut basculer plutôt que de rester sur le personnage qu'on vient de
+    // supprimer.
+    const nouvel_id = idBrouillonAReprendre(payloadNouveau as ReponseDemarrage);
+    if (erreurNouveau || !nouvel_id) {
       toast.error(
         erreurNouveau?.message ??
           (payloadNouveau.erreurs?.[0]?.message as string | undefined) ??
           "Impossible de redémarrer la création.",
       );
       return;
+    }
+    if (payloadNouveau.succes !== true) {
+      toast.info(
+        "Tu avais déjà un autre personnage en cours : on y retourne.",
+      );
     }
 
     setEtapeInitialisee(false);
