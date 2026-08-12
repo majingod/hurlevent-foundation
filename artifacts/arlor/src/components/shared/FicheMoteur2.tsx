@@ -107,6 +107,22 @@ function normaliserListe(val: any): any[] {
   return [];
 }
 
+// Compose un gabarit "{colonne} texte {colonne}" à partir des colonnes d'une ligne
+// de lookup (ex. reparations_forge). Rend `null` si une seule colonne citée est
+// null/undefined/absente — jamais la chaîne "null" ou "undefined" au joueur.
+export function composerGabarit(gabarit: string, row: Record<string, unknown>): string | null {
+  let manque = false;
+  const rendu = gabarit.replace(/\{([^}]+)\}/g, (_match, cle) => {
+    const val = row[cle];
+    if (val === null || val === undefined) {
+      manque = true;
+      return "";
+    }
+    return String(val);
+  });
+  return manque ? null : rendu;
+}
+
 // --- Tokens visuels partagés (mêmes idiomes que v1). ---
 const LabelOr = ({ children }: { children: React.ReactNode }) => (
   <p className="text-xs font-semibold mb-2 tracking-wider" style={{ color: "#c9a84c", fontVariant: "small-caps" }}>{children}</p>
@@ -461,10 +477,20 @@ export function FicheMoteur2({ schema, entite, densite, mode, competencesParId, 
             if (!aValeur(id)) return null;
             const row = (lookups?.[rel.lookup] ?? []).find((r: any) => r.id === id);
             if (!row) return null;
+            const principal = rel.gabarit ? composerGabarit(rel.gabarit, row) : null;
+            const rare = rel.gabarit_rare ? composerGabarit(rel.gabarit_rare, row) : null;
             return (
-              <div key={champ.cle} className="flex items-baseline gap-2 text-sm text-foreground/90">
-                <span className="text-muted-foreground">{champ.titre} :</span>
-                <span className="font-semibold text-gold">{String(row[rel.affiche])}</span>
+              <div key={champ.cle} className="grid gap-1">
+                <div className="flex items-baseline gap-2 text-sm text-foreground/90">
+                  <span className="text-muted-foreground">{champ.titre} :</span>
+                  <span className="font-semibold text-gold">{principal ?? String(row[rel.affiche])}</span>
+                </div>
+                {rare && (
+                  <div className="flex items-baseline gap-2 text-sm text-foreground/90">
+                    <span className="text-muted-foreground">{rel.titre_rare ?? "Rare"} :</span>
+                    <span className="font-semibold text-gold">{rare}</span>
+                  </div>
+                )}
               </div>
             );
           }
