@@ -296,22 +296,19 @@ const Generateur = ({
             nommée) — le joueur ne remonte plus vérifier ce qu'il a posé. */}
         {!surAccueil && (
           <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-2.5 px-4 pb-2 text-[11px] text-white/40">
+            {/* [s397] Le retour dit OÙ il mène et y va d'un geste. Avant, il
+                remontait d'un cran sans le dire : depuis la fiche 🧭 il fallait
+                3 gestes pour revoir les portes, et il doublonnait « ← Ajuster
+                mes choix » (C98). Le pas-à-pas reste assuré par le fil et par
+                les boutons propres à chaque fiche.
+                REPLI D'UN GESTE : remettre le ternaire sur `ecran` et le
+                libellé « ← Retour ». */}
             <button
               type="button"
-              onClick={() =>
-                setEcran(
-                  ecran === "race"
-                    ? "inventaire"
-                    : ecran === "boussole"
-                      ? "race"
-                      : ecran === "ficheChoix"
-                        ? "boussole"
-                        : "accueil"
-                )
-              }
+              onClick={() => setEcran("accueil")}
               className="rounded border border-white/15 px-2.5 py-0.5 text-xs text-white/80 hover:border-gold/40"
             >
-              ← Retour
+              ← Les trois chemins
             </button>
             {!surTirage && (
               <>
