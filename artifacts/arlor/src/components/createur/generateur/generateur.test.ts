@@ -5,7 +5,11 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { doitMontrerAccueil } from "./decisionAccueil";
+import {
+  doitMontrerAccueil,
+  doitOffrirAutreTirage,
+  idBrouillonAReprendre,
+} from "./decisionAccueil";
 import { ordonnerRaces, raceDemandeApprobation } from "./ordreRaces";
 import { PORTES } from "./portes";
 
@@ -19,6 +23,17 @@ const BASE = {
   // [s375-v2] Champ REQUIS depuis le défaut 1c — un démarrage à zéro n'a
   // rien dépensé. Voir le cas dédié plus bas.
   xpDepense: 0,
+};
+
+// [s396] État exact du cul-de-sac : personnage GÉNÉRÉ (75 XP dépensés,
+// etape_creation serveur = 10), jamais nommé.
+const BASE_SORTIE = {
+  modeAdmin: false,
+  modeCampagne: false,
+  modeVisiteur: false,
+  sansNom: true,
+  etapeServeur: 10,
+  xpDepense: 75,
 };
 
 describe("doitMontrerAccueil", () => {
@@ -80,6 +95,90 @@ describe("doitMontrerAccueil", () => {
     ).toBe(false);
     // Et le critère ne mord PAS sur un démarrage à zéro (non-régression).
     expect(doitMontrerAccueil({ ...BASE, xpDepense: 0 })).toBe(true);
+  });
+});
+
+// [s396] doitOffrirAutreTirage — bouton « Repartir d'un autre tirage » :
+// n'est offert QUE sur l'état exact du cul-de-sac (C120 : ce que le
+// personnage PORTE, jamais par où il est arrivé ; fail-closed sur absence).
+describe("doitOffrirAutreTirage", () => {
+  it("s'affiche sur l'état exact du cul-de-sac (sansNom, étape serveur 10, 75 XP)", () => {
+    expect(doitOffrirAutreTirage(BASE_SORTIE)).toBe(true);
+  });
+
+  it("jamais si aucun XP dépensé (brouillon vierge : les portes reviennent déjà, D58)", () => {
+    expect(doitOffrirAutreTirage({ ...BASE_SORTIE, xpDepense: 0 })).toBe(false);
+  });
+
+  it("jamais sur un brouillon à peine commencé (étape serveur 1)", () => {
+    expect(doitOffrirAutreTirage({ ...BASE_SORTIE, etapeServeur: 1 })).toBe(false);
+  });
+
+  it("jamais si le personnage a un nom", () => {
+    expect(doitOffrirAutreTirage({ ...BASE_SORTIE, sansNom: false })).toBe(false);
+  });
+
+  it("jamais en mode admin, campagne, ou visiteur", () => {
+    expect(doitOffrirAutreTirage({ ...BASE_SORTIE, modeAdmin: true })).toBe(false);
+    expect(doitOffrirAutreTirage({ ...BASE_SORTIE, modeCampagne: true })).toBe(false);
+    expect(doitOffrirAutreTirage({ ...BASE_SORTIE, modeVisiteur: true })).toBe(false);
+  });
+
+  // Fail-closed : la valeur passée en cas d'absence de donnée serveur.
+  it("jamais quand etapeServeur vaut 0 (fail-closed)", () => {
+    expect(doitOffrirAutreTirage({ ...BASE_SORTIE, etapeServeur: 0 })).toBe(false);
+  });
+});
+
+// [s396-bis] idBrouillonAReprendre — l'id sur lequel atterrir après
+// suppression : le démarrage a réussi, OU le serveur a refusé avec
+// `brouillon_existant` (il renvoie alors l'id du brouillon qui reste).
+// ⛔ Fail-closed : aucun autre code d'erreur ne doit rendre un id.
+describe("idBrouillonAReprendre", () => {
+  it("succes: true + id → rend l'id", () => {
+    expect(
+      idBrouillonAReprendre({ succes: true, donnees: { personnage_id: "abc" } }),
+    ).toBe("abc");
+  });
+
+  it("succes: false, code brouillon_existant, id présent → rend l'id", () => {
+    expect(
+      idBrouillonAReprendre({
+        succes: false,
+        erreurs: [{ code: "brouillon_existant" }],
+        donnees: { personnage_id: "abc" },
+      }),
+    ).toBe("abc");
+  });
+
+  it("succes: false, code brouillon_existant, sans id → null", () => {
+    expect(
+      idBrouillonAReprendre({
+        succes: false,
+        erreurs: [{ code: "brouillon_existant" }],
+        donnees: {},
+      }),
+    ).toBeNull();
+  });
+
+  // Le cas qui prouve que le helper n'est pas permissif.
+  it("succes: false, code profil_introuvable, id présent → null", () => {
+    expect(
+      idBrouillonAReprendre({
+        succes: false,
+        erreurs: [{ code: "profil_introuvable" }],
+        donnees: { personnage_id: "abc" },
+      }),
+    ).toBeNull();
+  });
+
+  it("payload vide → null", () => {
+    expect(idBrouillonAReprendre({})).toBeNull();
+  });
+
+  it("null / undefined → null", () => {
+    expect(idBrouillonAReprendre(null)).toBeNull();
+    expect(idBrouillonAReprendre(undefined)).toBeNull();
   });
 });
 

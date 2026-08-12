@@ -33,6 +33,30 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "L'Encyclopédie dit ce que coûte une réparation",
+    description:
+      "La fiche d'un objet de forge répétait seulement le nom de sa réparation. Elle indique maintenant le temps et les matériaux qu'il faut pour la faire — et, quand la taille change le prix, chaque bouclier a désormais son propre coût.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "Un tirage qui ne te plaît pas ne t'enferme plus",
+    description:
+      "Après un tirage 🎲 ou 🧭, ton personnage porte déjà ses achats mais pas encore de nom, et les trois chemins ne revenaient plus. Un bouton « Repartir d'un autre tirage » te ramène maintenant au choix de départ, en un geste.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
+    titre: "Tes brouillons sans nom s'affichent enfin",
+    description:
+      "Un personnage commencé mais pas encore nommé apparaissait sans titre sur ton tableau de bord. Il s'affiche désormais « Sans nom », pour que tu le retrouves.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Reprendre un personnage à peine commencé te remontre les 3 chemins",
     description:
       "Si tu quittais juste après avoir cliqué « Nouveau personnage », ton brouillon vide te ramenait droit dans le créateur, sans repasser par les portes. Maintenant, tant que ton personnage n'a rien reçu, le reprendre te repose la question : Guide-moi, Surprends-moi, ou Je bâtis moi-même.",

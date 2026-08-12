@@ -63,3 +63,55 @@ export function doitMontrerAccueil(c: ContexteAccueil): boolean {
     c.xpDepense === 0
   );
 }
+
+export interface ContexteSortieTirage {
+  modeAdmin: boolean;
+  modeCampagne: boolean;
+  modeVisiteur: boolean;
+  /** Le personnage n'a pas de nom (D43). */
+  sansNom: boolean;
+  /** `personnages.etape_creation` LU EN BASE. Absent ⇒ passe 0 (fail-closed). */
+  etapeServeur: number;
+  /** XP déjà dépensée. 0 ⇒ ce n'est pas un tirage appliqué. */
+  xpDepense: number;
+}
+
+/**
+ * ⭐ Le bouton « Repartir d'un autre tirage » n'est offert QUE sur l'état exact du
+ * cul-de-sac : un personnage GÉNÉRÉ, jamais nommé, dont les portes ne reviendront pas.
+ * ⛔ C120 : on mesure ce que le personnage PORTE, jamais par où il est arrivé.
+ * ⛔ Fail-closed : une donnée manquante FERME le bouton.
+ */
+export function doitOffrirAutreTirage(c: ContexteSortieTirage): boolean {
+  return (
+    !c.modeAdmin &&
+    !c.modeCampagne &&
+    !c.modeVisiteur &&
+    c.sansNom &&
+    c.etapeServeur >= 5 &&
+    c.xpDepense > 0
+  );
+}
+
+export interface ReponseDemarrage {
+  succes?: boolean;
+  erreurs?: { code?: string; message?: string }[] | null;
+  donnees?: { personnage_id?: string } | null;
+}
+
+/**
+ * ⭐ s396-bis — l'id du brouillon sur lequel atterrir après avoir supprimé le
+ * personnage courant. Deux cas produisent un id : le démarrage a réussi, OU le
+ * serveur a refusé avec `brouillon_existant` — il renvoie alors l'id du brouillon
+ * qui reste, et c'est là qu'il faut aller.
+ * ⛔ Fail-closed : tout autre refus, ou un refus sans id, rend `null`.
+ */
+export function idBrouillonAReprendre(
+  r: ReponseDemarrage | null | undefined,
+): string | null {
+  const id = r?.donnees?.personnage_id;
+  if (!id) return null;
+  if (r?.succes === true) return id;
+  if (r?.erreurs?.[0]?.code === "brouillon_existant") return id;
+  return null;
+}
