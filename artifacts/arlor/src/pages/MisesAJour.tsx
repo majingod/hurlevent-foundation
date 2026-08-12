@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Revenir aux trois chemins ne prend plus qu'un geste",
+    description:
+      "Dans le générateur, le bouton de retour disait seulement « Retour » et te faisait remonter une étape à la fois : depuis la fiche, il fallait trois gestes pour revoir Guide-moi, Surprends-moi et Je bâtis moi-même. Il dit maintenant où il mène — « Les trois chemins » — et t'y ramène directement, depuis n'importe quel écran.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "L'Encyclopédie dit ce que coûte une réparation",
     description:
       "La fiche d'un objet de forge répétait seulement le nom de sa réparation. Elle indique maintenant le temps et les matériaux qu'il faut pour la faire — et, quand la taille change le prix, chaque bouclier a désormais son propre coût.",
