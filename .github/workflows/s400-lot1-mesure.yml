@@ -1,0 +1,87 @@
+# s400 lot ①-C — MESURE sur runner GitHub (réseau complet), JETABLE.
+# À SUPPRIMER avant tout merge vers main. Ne tourne que sur sa propre branche.
+# La clé ci-dessous est la clé PUBLIABLE Supabase — déjà publique (bundle navigateur).
+name: s400-lot1-mesure
+on:
+  push:
+    branches: [s400/lot1-mesure-snapshot]
+  # Poignée manuelle (leçon s365 : une run en startup failure n'offre aucun re-run)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  mesure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Setup REPRIS AU MOT de tests.yml (prouvé vert sur ce dépôt, pnpm v10
+      # honore onlyBuiltDependencies — le piège C121 n'existe que sous v11)
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Gate 0 — empreinte de la capture committée
+        run: |
+          cd artifacts/arlor/src/data
+          echo "attendu : 458579af7b7a3ccdbd56cb2339f7a32a · 1278627 octets"
+          md5sum snapshotVisiteur.json && stat -c%s snapshotVisiteur.json
+          test "$(md5sum snapshotVisiteur.json | cut -d' ' -f1)" = "458579af7b7a3ccdbd56cb2339f7a32a"
+          test "$(stat -c%s snapshotVisiteur.json)" = "1278627"
+      - name: RUN A — typecheck + suite sur la capture committée
+        run: |
+          pnpm --dir artifacts/arlor run typecheck
+          pnpm --dir artifacts/arlor exec vitest run
+      - name: Régénération — SANS --prebuild (échec bruyant voulu)
+        env:
+          VITE_SUPABASE_URL: https://dezocltwpuhbvpxwcbdy.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_qWDXeS5x_OHUQKgpy7Pb2g_gylCHDpP
+        run: |
+          cd artifacts/arlor
+          node scripts/snapshot-visiteur.mjs
+      - name: Gates au chiffre exact — capture régénérée
+        run: |
+          cat > /tmp/gate_snapshot.js << 'GATE'
+          const s = require(process.argv[2]);
+          const att = {"assemblages_runes":15,"bestiaire":6,"categories_creatures":12,"classes":4,"competences":91,"effets_combat":33,"familles_criminelles":6,"fiches_listes":14,"fiches_schemas":14,"ingredients_alchimiques":30,"langues":11,"lore":24,"objets_forge":20,"objets_generateur":31,"objets_joaillerie":6,"objets_requis":37,"parametres_jeu":1,"pieges":27,"prieres":121,"race_traits":50,"races":11,"recettes_alchimie":40,"religions":15,"reparations_forge":12,"sections_regles":52,"sorts":136,"traits_raciaux":20,"vue_competences_encyclopedie":91};
+          const t = Object.keys(s.tables).sort();
+          const err = [];
+          if (t.length !== 28) err.push(`nb tables=${t.length}, attendu 28`);
+          for (const [k, n] of Object.entries(att)) {
+            if (!s.tables[k]) { err.push(`table absente: ${k}`); continue; }
+            if (s.tables[k].length !== n) err.push(`${k}: ${s.tables[k].length} lignes, attendu ${n}`);
+            if (s.manifest.comptes[k] !== s.tables[k].length) err.push(`${k}: manifest.comptes incoherent`);
+          }
+          for (const k of t) if (!(k in att)) err.push(`table inattendue: ${k}`);
+          for (const k of ['races','sorts','classes','prieres'])
+            if (s.tables[k] && s.tables[k][0] && 'description_courte' in s.tables[k][0]) err.push(`${k}: description_courte encore presente`);
+          const comp = s.tables.competences || [];
+          if (!comp[0] || !('exige_ps' in comp[0])) err.push('competences: exige_ps ABSENTE');
+          else { const n = comp.filter(c => c.exige_ps).length; if (n !== 14) err.push(`exige_ps a true: ${n}, attendu 14`); }
+          const pj = s.tables.parametres_jeu;
+          if (!pj || !pj[0] || !('cgu_version_en_vigueur' in pj[0])) err.push('parametres_jeu: cgu_version_en_vigueur ABSENTE');
+          if (err.length) { console.error('GATES ROUGES (' + err.length + ') :\n' + err.join('\n')); process.exit(1); }
+          console.log('GATES VERTES — 28 tables, comptes exacts, colonnes conformes');
+          GATE
+          node /tmp/gate_snapshot.js "$GITHUB_WORKSPACE/artifacts/arlor/src/data/snapshotVisiteur.json"
+      - name: RUN B — typecheck + suite sur la capture fraîche
+        run: |
+          pnpm --dir artifacts/arlor run typecheck
+          pnpm --dir artifacts/arlor exec vitest run
+      - name: Empreinte finale + commit sur la branche (uniquement si tout est vert)
+        run: |
+          cd artifacts/arlor/src/data
+          echo "=== capture fraîche ==="
+          md5sum snapshotVisiteur.json && stat -c%s snapshotVisiteur.json && wc -l snapshotVisiteur.json
+          cd "$GITHUB_WORKSPACE"
+          # seul fichier modifié attendu : la capture — sinon on refuse de committer
+          test -z "$(git status --porcelain | grep -v 'artifacts/arlor/src/data/snapshotVisiteur.json')"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add artifacts/arlor/src/data/snapshotVisiteur.json
+          git commit -m "s400: recapture snapshotVisiteur 19→28 tables (workflow s400-lot1, gates au chiffre exact)"
+          git push origin HEAD:s400/lot1-mesure-snapshot
+          # NB : push par GITHUB_TOKEN => ne redéclenche PAS le workflow (anti-boucle GitHub)
