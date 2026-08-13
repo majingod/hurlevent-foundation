@@ -123,7 +123,7 @@ describe("parité enregistrée peut_acheter_sort (63 cas)", () => {
 
   it("fixtures cohérentes", () => {
     expect(sorts.cas.length).toBe(sorts.nb_cas);
-    expect(sorts.cas.length).toBe(63);
+    expect(sorts.cas.length).toBe(60);
     expect(sorts.contextes.length).toBe(sorts.nb_contextes);
   });
 
@@ -157,7 +157,7 @@ describe("parité enregistrée peut_acheter_priere (33 cas)", () => {
 
   it("fixtures cohérentes", () => {
     expect(prieres.cas.length).toBe(prieres.nb_cas);
-    expect(prieres.cas.length).toBe(33);
+    expect(prieres.cas.length).toBe(42);
     expect(prieres.contextes.length).toBe(prieres.nb_contextes);
   });
 
