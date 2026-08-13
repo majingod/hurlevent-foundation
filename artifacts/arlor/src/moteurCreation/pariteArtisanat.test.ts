@@ -83,7 +83,7 @@ describe("parité enregistrée peut_acheter_piege (7 cas)", () => {
   );
   it("fixtures cohérentes", () => {
     expect(pieges.cas.length).toBe(pieges.nb_cas);
-    expect(pieges.cas.length).toBe(7);
+    expect(pieges.cas.length).toBe(9);
     expect(pieges.contextes.length).toBe(pieges.nb_contextes);
   });
   pieges.cas.forEach((cas, i) => {
@@ -137,7 +137,7 @@ describe("parité enregistrée peut_acheter_recette (13 cas)", () => {
   );
   it("fixtures cohérentes", () => {
     expect(recettes.cas.length).toBe(recettes.nb_cas);
-    expect(recettes.cas.length).toBe(13);
+    expect(recettes.cas.length).toBe(12);
     expect(recettes.contextes.length).toBe(recettes.nb_contextes);
   });
   recettes.cas.forEach((cas, i) => {
@@ -192,7 +192,7 @@ describe("parité enregistrée peut_acheter_assemblage (10 cas)", () => {
   );
   it("fixtures cohérentes", () => {
     expect(assemblages.cas.length).toBe(assemblages.nb_cas);
-    expect(assemblages.cas.length).toBe(10);
+    expect(assemblages.cas.length).toBe(9);
     expect(assemblages.contextes.length).toBe(assemblages.nb_contextes);
   });
   assemblages.cas.forEach((cas, i) => {

@@ -1,11 +1,18 @@
 /**
  * PARITÉ ENREGISTRÉE — le moteur client doit reproduire, AU CARACTÈRE PRÈS,
- * les 88 verdicts de `public.peut_acheter_competence` capturés en prod sur de
- * vrais personnages éditables (fixtures figées, anonymisées).
+ * les 110 verdicts de `public.peut_acheter_competence` capturés en prod sur les
+ * fiches du profil de test ZZ-Fixtures (fixtures figées, aucun joueur réel).
  *
  * 100 % hors ligne : aucune requête réseau. Le client lit le snapshot bundlé
- * (src/data/snapshotVisiteur.json) — le même contenu que la RPC serveur voit
- * (SECURITY INVOKER), d'où la parité stricte.
+ * (src/data/snapshotVisiteur.json).
+ *
+ * ⚠️ CE SNAPSHOT N'EST PAS LA BASE, et cette nuance a coûté six semaines de vert
+ * à vide (s399). Il a été capturé le 2026-07-03 ; il porte désormais
+ * `competences.exige_ps`, posée par le patch de s399 — sans quoi la garde
+ * d'inaptitude de `gatesCompetences.ts:44` était INERTE ici et 21 divergences
+ * dormaient. Il lui manque encore 9 tables et `parametres_jeu.
+ * cgu_version_en_vigueur` : voir [SNAPSHOT-COMMITTE-PERIME]. ⛔ Ne jamais écrire
+ * que ce fichier dit « le même contenu que la RPC » — mesurer avant d'affirmer.
  *
  * Règle d'or : on NE corrige PAS le serveur, on le REPRODUIT — y compris ses
  * pièges connus (ex. « Vous devez d'abord acquérir le niveau 4 » non plafonné,
@@ -105,7 +112,7 @@ function toDemande(cas: FixtureCas): DemandeAchatCompetence {
 describe("parité enregistrée peut_acheter_competence (88 cas)", () => {
   it("les fixtures sont cohérentes (nb_cas === cas.length === 88)", () => {
     expect(data.cas.length).toBe(data.nb_cas);
-    expect(data.cas.length).toBe(88);
+    expect(data.cas.length).toBe(110);
     expect(data.contextes.length).toBe(data.nb_contextes);
   });
 

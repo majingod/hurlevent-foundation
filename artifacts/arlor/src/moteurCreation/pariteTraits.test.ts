@@ -60,7 +60,7 @@ describe("parité enregistrée peut_acheter_trait_racial (18 cas)", () => {
 
   it("fixtures cohérentes", () => {
     expect(data.cas.length).toBe(data.nb_cas);
-    expect(data.cas.length).toBe(18);
+    expect(data.cas.length).toBe(21);
     expect(data.contextes.length).toBe(data.nb_contextes);
   });
 

@@ -91,18 +91,28 @@ function snapshotActif(): typeof snapshotJsonImporte {
 
 export function getCompetence(id: string): Competence | undefined {
   // ⚠️ DOUBLE ASSERTION VOULUE ([SNAPSHOT-COMMIT-STUB], élargi s370).
-  // Le JSON COMMITTÉ est un instantané DATÉ : il a été capturé avant la
-  // colonne `competences.exige_ps` (s369) et ne la porte donc pas, alors que
-  // le type généré l'exige. Le snapshot SERVI est régénéré au build par
-  // `scripts/snapshot-visiteur.mjs` (RPC `snapshot_visiteur`, qui fait
-  // `to_jsonb(x)` sur la ligne entière) — mesuré le 2026-07-30 : 91/91 lignes
-  // portent la clé, 14 à `true`. La forme du build fait donc autorité.
+  // Le JSON COMMITTÉ est un instantané DATÉ (2026-07-03). Le snapshot SERVI est
+  // régénéré au build par `scripts/snapshot-visiteur.mjs --prebuild` (RPC
+  // `snapshot_visiteur`, `to_jsonb(x)` sur la ligne entière) : la forme du build
+  // fait autorité, et le log de build l'atteste déploiement par déploiement.
   //
-  // CONSÉQUENCE À CONNAÎTRE, pas un détail : tant que le JSON committé n'est
-  // pas recapturé, `exige_ps` vaut `undefined` en DEV et dans tout test qui
-  // lit le singleton — la garde d'inaptitude y est donc INERTE (elle échoue
-  // « ouvert », comme avant s369, jamais en erreur). Les tests de garde
-  // injectent pour cette raison un snapshot via `__SNAPSHOT_HORS_LIGNE__`.
+  // ⭐ s399 — `exige_ps` EST DÉSORMAIS PORTÉE PAR LE FICHIER COMMITTÉ (91/91
+  // lignes, 14 à `true`). Elle manquait depuis s369, et cette absence rendait la
+  // garde d'inaptitude de `gatesCompetences.ts:44` INERTE en DEV et dans tout
+  // test lisant ce singleton — elle échouait « ouvert », jamais en erreur. Deux
+  // exécutions à une seule variable l'ont montré : 21 divergences de parité
+  // avant la pose des clés, 0 après, sans qu'une ligne de garde ait bougé.
+  //
+  // ⛔ CE N'EST PAS UNE COPIE DE LA BASE. Il lui manque encore 9 tables
+  // (bestiaire, effets_combat, fiches_listes, fiches_schemas, lore,
+  // objets_generateur, objets_requis, sections_regles,
+  // vue_competences_encyclopedie) et `parametres_jeu.cgu_version_en_vigueur`.
+  // `objets_requis` à 0 ligne garde donc son effet connu : les exigences de
+  // costume sont inertes en local. Item : [SNAPSHOT-COMMITTE-PERIME].
+  //
+  // ⚠️ Le repli du prebuild est TOLÉRANT À LA PANNE (fallback silencieux, exit 0)
+  // : c'est pour cela que le fichier committé doit rester honnête, et pas
+  // seulement le fichier servi.
   const competences = snapshotActif().tables
     .competences as unknown as Competence[];
   return competences.find((c) => c.id === id);
