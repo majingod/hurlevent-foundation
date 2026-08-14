@@ -51,12 +51,13 @@ export interface SnapshotVisiteur {
     reparations_forge: ReparationForge[];
     ingredients_alchimiques: IngredientAlchimique[];
     // Lot 0 générateur (s347) : carte équipement ↔ compétences/races —
-    // optionnelles tant que le JSON committé n'a pas été régénéré.
+    // optionnelles dans le TYPE uniquement (défense : les tests injectent des
+    // snapshots partiels) ; présentes dans la capture committée depuis s400.
     objets_generateur?: ObjetGenerateur[];
     objets_requis?: ObjetRequis[];
-    // Extension hors-ligne (lot A0, s312) : optionnelles tant que le JSON
-    // committé reste en 18 clés — présentes dès qu'un prebuild/refresh
-    // régénère le snapshot à 25 clés.
+    // Extension hors-ligne (lot A0, s312) : optionnelles dans le TYPE
+    // uniquement (défense/injections de test) — présentes dans la capture
+    // committée (28 clés) depuis la recapture s400.
     sections_regles?: SectionRegle[];
     effets_combat?: EffetCombat[];
     bestiaire?: Creature[];

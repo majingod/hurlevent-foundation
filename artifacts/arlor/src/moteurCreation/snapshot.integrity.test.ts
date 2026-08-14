@@ -23,9 +23,9 @@ const PLANCHERS: Record<string, number> = {
   prieres: 50,
 };
 
-// Extension hors-ligne (lot A0, s312) : 7 clés optionnelles tant que le JSON
-// committé reste en 18 clés (races/classes/.../parametres_jeu). Dès qu'un
-// prebuild/refresh régénère le snapshot à 25 clés, ces garde-fous s'activent.
+// Extension hors-ligne (lot A0, s312) : les 7 clés sont PRÉSENTES dans la
+// capture committée depuis la recapture s400 (28 clés). Gardes ACTIVES en
+// permanence — une clé qui disparaît ROUGIT (les early-returns sont retirés).
 const CLES_HORS_LIGNE = [
   "sections_regles",
   "effets_combat",
@@ -97,16 +97,12 @@ describe("snapshot visiteur — intégrité anti-stub", () => {
     }
   });
 
-  it("extension hors-ligne (25 clés) : si une clé est présente, les 7 le sont et respectent leurs planchers", () => {
-    const presentes = CLES_HORS_LIGNE.filter((c) => c in tables);
-
-    if (presentes.length === 0) {
-      // JSON committé à 18 clés : rien à vérifier, le garde-fou reste inactif.
-      return;
-    }
-
+  it("extension hors-ligne : les 7 clés sont présentes et respectent leurs planchers", () => {
+    // [s400] Garde ACTIVE en permanence : plus d'early-return d'attente.
+    // Avant la recapture, ce test retournait tôt — VERT À VIDE pendant que
+    // la capture restait 6 semaines en arrière (C133).
     for (const cle of CLES_HORS_LIGNE) {
-      expect(tables, `clé « ${cle} » manquante alors que « ${presentes[0]} » est présente`).toHaveProperty(cle);
+      expect(tables, `clé « ${cle} » absente du snapshot committé (28 clés attendues depuis s400)`).toHaveProperty(cle);
     }
     for (const cle of CLES_HORS_LIGNE) {
       const n = (tables[cle] ?? []).length;
@@ -118,16 +114,9 @@ describe("snapshot visiteur — intégrité anti-stub", () => {
 
   it("carte équipement (lot 0 générateur, s347) : les 2 clés vont ensemble et respectent leurs planchers", () => {
     const CLES_GENERATEUR = ["objets_generateur", "objets_requis"] as const;
-    const presentes = CLES_GENERATEUR.filter((c) => c in tables);
-
-    if (presentes.length === 0) {
-      // JSON committé antérieur au lot 0 : garde-fou inactif jusqu'au
-      // prochain refresh/prebuild du snapshot.
-      return;
-    }
-
+    // [s400] Garde ACTIVE en permanence (early-return d'attente retiré).
     for (const cle of CLES_GENERATEUR) {
-      expect(tables, `clé « ${cle} » manquante alors que « ${presentes[0]} » est présente`).toHaveProperty(cle);
+      expect(tables, `clé « ${cle} » absente du snapshot committé (28 clés attendues depuis s400)`).toHaveProperty(cle);
     }
     // Planchers de réalité : 31 objets et 37 exigences seedés en prod (s347).
     expect((tables.objets_generateur ?? []).length).toBeGreaterThanOrEqual(25);

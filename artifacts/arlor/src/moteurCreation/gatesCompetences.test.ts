@@ -432,13 +432,12 @@ describe("peutAcheterCompetence — branches principales", () => {
  * [INAPTE-MAGIE-MODELE-INSTANCE] volet 4 (s370) — miroir de l'ENVELOPPE
  * serveur `peut_acheter_competence` (s369, Gotcha C80).
  *
- * ⚠️ POURQUOI ON INJECTE UN SNAPSHOT : le JSON committé a été capturé AVANT
- * la colonne `competences.exige_ps` et ne la porte pas ([SNAPSHOT-COMMIT-STUB]).
- * Sans injection, `exige_ps` vaudrait `undefined` partout et ces tests
- * seraient VERTS À VIDE — ils passeraient sans jamais exercer la garde.
- * L'injection reproduit donc le snapshot RÉELLEMENT servi en prod, où la RPC
- * `snapshot_visiteur` rend la ligne entière (mesuré 2026-07-30 : 91/91 lignes
- * portent la clé, 14 à `true`).
+ * ⚠️ POURQUOI ON INJECTE UN SNAPSHOT : pour CONTRÔLER LA VARIABLE — dans le
+ * snapshot injecté, SEULE `NOM_A_PS` exige des PS, quel que soit l'état de la
+ * capture committée. (Historique : avant s399 la capture ne portait pas
+ * `exige_ps` du tout — vert à vide fermé par
+ * [BANC-PARITE-VERT-A-VIDE-INAPTITUDE] ; depuis la recapture s400 elle porte
+ * les 28 clés, dont exige_ps 14/91, comme la RPC `snapshot_visiteur` en prod.)
  */
 describe("Inapte à la magie × compétence à PS (volet 4)", () => {
   const CLE = "__SNAPSHOT_HORS_LIGNE__";

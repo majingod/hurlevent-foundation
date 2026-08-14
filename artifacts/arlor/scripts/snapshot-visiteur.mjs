@@ -193,7 +193,7 @@ async function exportSnapshot() {
     return fail(`garde-fous anti-stub : ${violations.length} violation(s), aucun fichier écrit`);
   }
 
-  console.log('\n✅ Garde-fous anti-stub : OK (25 clés, aucune table vide, planchers respectés, ids races = UUID).');
+  console.log(`\n✅ Garde-fous anti-stub : OK (${TABLES_ATTENDUES.length} clés, aucune table vide, planchers respectés, ids races = UUID).`);
 
   // ============================================================
   // Écriture atomique du fichier JSON (pretty 2 espaces)
