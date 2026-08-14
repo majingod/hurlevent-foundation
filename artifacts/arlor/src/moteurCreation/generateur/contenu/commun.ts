@@ -209,18 +209,38 @@ export const et = (label: string, achats: () => Achat[]): EtapePond => ({
 /**
  * Les compétences qui coûtent ou donnent des POINTS DE SPIRITUALITÉ.
  *
- * La référence en compte « cinq » en comptant `Développement Spirituel` et
- * sa version Supérieure comme UNE famille ; le code doit nommer les deux,
- * ce sont deux lignes distinctes du catalogue (mesuré : la base refuse
- * bien les deux).
+ * ⭐⭐ [s402] L'AUTORITÉ EST `competences.exige_ps`, PAS LA RÉFÉRENCE.
+ * Cette liste tenait « cinq familles » de la référence v4 §2.2 et n'en
+ * nommait que **6** ; la base en marque **10** (14 lignes). C'est le MÊME
+ * verbe des deux côtés — « refuser ce lot à un inapte » : `gatesCompetences`
+ * refuse sur `exige_ps`, et le serveur aussi. Une liste plus courte laissait
+ * donc le générateur composer une fiche que le créateur refuse ensuite.
+ *
+ * ⚠️ Les 4 noms ajoutés ne changent RIEN à ce qui est produit aujourd'hui
+ * (mesuré s402, sonde jetable : mêmes 46 noms sur 24 compositions d'inapte,
+ * mêmes 53 sur 30 de aptes) — deux d'entre eux étaient déjà couverts par le
+ * TYPE d'achat (`exigeDesPS` attrape `sort`/`priere`/`sortAuChoix`/
+ * `priereAuChoix`), et les deux autres ne sont atteignables que par des rôles
+ * qu'`archetypeDemandeDesPS` refuse déjà. Ce lot ferme un trou À VENIR :
+ * le jour où un rôle NON caster émettra `comp("Bâton de Sorcier")` ou
+ * `comp("Frénésie magique")`, aucun type ne le rattraperait et rien ne
+ * rougirait (motif C70).
+ *
+ * ⛔ NE PAS LA MODIFIER À LA MAIN : `generateur.exigePS.attestation.test.ts`
+ * la compare au jeu de noms de la capture visiteur. La faire diverger rougit.
+ * ⛔ NE PAS LA CONFONDRE avec `COMPETENCES_QUI_CONSOMMENT_DES_PS` (C75).
  */
 export const COMPETENCES_A_PS: readonly string[] = [
   "Acquisition de Cercle",
   "Acquisition de Domaine",
+  "Acquisition de Prière",
+  "Acquisition de Sort",
+  "Assemblage de Runes",
+  "Bâton de Sorcier",
+  "Canalisation",
   "Développement Spirituel",
   "Développement Spirituel Supérieur",
-  "Canalisation",
-  "Assemblage de Runes",
+  "Frénésie magique",
 ];
 
 export const estCompetenceAPS = (nom: string): boolean =>
