@@ -23,3 +23,14 @@ jobs:
       # exprès : le status check requis du ruleset le couvre sans geste UI.
       - run: pnpm --dir artifacts/arlor run typecheck
       - run: pnpm --dir artifacts/arlor exec vitest run
+      # Dérive de la capture visiteur (s401). DERNIÈRE étape du job, et dans le
+      # MÊME job « vitest » exprès, pour la même raison que le typecheck : le
+      # status check requis du ruleset le couvre sans geste UI. Placée après
+      # vitest pour qu'une panne réseau ne masque jamais un échec de test.
+      # Sortie 1 = dérive mesurée · 2 = base injoignable (⛔ jamais vert à vide).
+      # ⛔ AUCUNE clé en dur ici : le secret de dépôt VITE_SUPABASE_PUBLISHABLE_KEY
+      # est la seule source. S'il manque, l'étape sort en 2 et NOMME le geste —
+      # elle ne se tait jamais.
+      - run: node artifacts/arlor/scripts/verifier-derive-snapshot.mjs
+        env:
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
