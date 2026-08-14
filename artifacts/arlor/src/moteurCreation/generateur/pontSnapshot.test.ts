@@ -25,9 +25,9 @@ import {
 import { tirerPersonnage } from "./resoudre";
 
 const base = snapshotJson as unknown as SnapshotVisiteur;
-/** Le snapshot committé N'A PAS la carte (dette [SNAPSHOT-COMMIT-STUB]) :
- *  on l'injecte depuis la fixture monde (capture MCP prod s362, identique
- *  à la prod du jour — 0 migration sur objets_requis depuis). */
+/** [s400] La carte vient de la FIXTURE monde (capture MCP prod s362) pour
+ *  ÉPINGLER les tirages sur des données fixes, indépendantes des recaptures
+ *  (le snapshot committé porte la carte depuis la recapture 28 clés). */
 const avecCarte: SnapshotVisiteur = {
   ...base,
   tables: {
@@ -35,6 +35,13 @@ const avecCarte: SnapshotVisiteur = {
     objets_requis: (fxMonde as { objets_requis: unknown[] }).objets_requis,
   },
 };
+/** [s400] L'absence se CONSTRUIT (clone sans la clé), elle ne s'hérite plus
+ *  d'une capture périmée (C133/s359). */
+const sansCarte: SnapshotVisiteur = {
+  ...base,
+  tables: { ...base.tables },
+};
+delete (sansCarte.tables as { objets_requis?: unknown[] }).objets_requis;
 
 type LigneBrute = {
   nom: string;
@@ -125,9 +132,9 @@ describe("pont — magie de niveau 1", () => {
 });
 
 describe("pont — garde carte d'équipement", () => {
-  it("REFUSE le snapshot committé (objets_requis absent) avec un message en clair", () => {
-    expect(() => depsDepuisSnapshot(base)).toThrow(ErreurPontSnapshot);
-    expect(() => depsDepuisSnapshot(base)).toThrow(/objets_requis/);
+  it("REFUSE un snapshot sans objets_requis (absence construite) avec un message en clair", () => {
+    expect(() => depsDepuisSnapshot(sansCarte)).toThrow(ErreurPontSnapshot);
+    expect(() => depsDepuisSnapshot(sansCarte)).toThrow(/objets_requis/);
   });
 
   it("CONTRAIRE : avec la carte, le pont construit", () => {

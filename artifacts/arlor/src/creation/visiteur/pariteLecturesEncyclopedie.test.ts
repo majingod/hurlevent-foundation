@@ -5,9 +5,9 @@
  * doit reproduire le contrat de son SELECT serveur (FILTRE / TRI / PROJECTION),
  * attesté contre le snapshot, sans réseau.
  *
- * ⚠️ Le snapshot COMMITTÉ n'a que 19 clés : sections_regles, effets_combat,
- * bestiaire, lore, fiches_schemas, fiches_listes et vue_competences_encyclopedie
- * sont absentes (générées au prebuild de déploiement uniquement). Pour ces 7
+ * ⚠️ [s400] Le snapshot COMMITTÉ porte les 28 clés depuis la recapture (les
+ * 7 tables hors-ligne comprises) ; la mini-fixture reste : elle ÉPINGLE les
+ * attentes sur des données fixes, indépendantes des recaptures. Pour ces 7
  * tables, on injecte une MINI-FIXTURE (lignes minimales, schéma fidèle sur les
  * colonnes touchées par la logique : categorie/nom/ordre/est_actif) via le
  * mécanisme documenté `__SNAPSHOT_HORS_LIGNE__` de snapshotActif(). Les 11
@@ -216,16 +216,38 @@ describe("lectures annexes (snapshot committé)", () => {
     }
   });
 
-  it("clés absentes sans fixture → tableaux vides, pas de crash", async () => {
-    // Sans __SNAPSHOT_HORS_LIGNE__, le snapshot committé n'a pas ces clés.
-    const sections = await clientVisiteur.lireSectionsRegles(["combat"]);
-    expect(sections.error).toBeNull();
-    expect(sections.data).toEqual([]);
-    const effets = await clientVisiteur.lireEffetsCombat();
-    expect(effets.error).toBeNull();
-    expect(effets.data).toEqual([]);
-    const schema = await clientVisiteur.lireFicheSchemaChampsV2("bestiaire");
-    expect(schema.error).toBeNull();
-    expect(schema.data).toBeNull();
+  it("clés absentes (absence construite) → tableaux vides, pas de crash", async () => {
+    // [s400] L'absence se CONSTRUIT : clone du snapshot réel SANS les clés
+    // hors-ligne, injecté via __SNAPSHOT_HORS_LIGNE__ (remplacement complet).
+    // Avant la recapture, l'absence était héritée de la capture périmée —
+    // un test qui dépendait de la péremption (C133/s359).
+    const complet = getSnapshot() as unknown as {
+      manifest: unknown;
+      tables: Record<string, unknown>;
+    };
+    const tablesReduites: Record<string, unknown> = { ...complet.tables };
+    for (const cle of [
+      "sections_regles", "effets_combat", "bestiaire", "lore",
+      "fiches_schemas", "fiches_listes", "vue_competences_encyclopedie",
+    ]) {
+      delete tablesReduites[cle];
+    }
+    (globalThis as Record<string, unknown>).__SNAPSHOT_HORS_LIGNE__ = {
+      manifest: complet.manifest,
+      tables: tablesReduites,
+    };
+    try {
+      const sections = await clientVisiteur.lireSectionsRegles(["combat"]);
+      expect(sections.error).toBeNull();
+      expect(sections.data).toEqual([]);
+      const effets = await clientVisiteur.lireEffetsCombat();
+      expect(effets.error).toBeNull();
+      expect(effets.data).toEqual([]);
+      const schema = await clientVisiteur.lireFicheSchemaChampsV2("bestiaire");
+      expect(schema.error).toBeNull();
+      expect(schema.data).toBeNull();
+    } finally {
+      delete (globalThis as Record<string, unknown>).__SNAPSHOT_HORS_LIGNE__;
+    }
   });
 });
