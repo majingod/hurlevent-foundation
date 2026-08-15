@@ -19,6 +19,11 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import type { InscriptionController } from "@/hooks/useInscriptionEvenements";
+import {
+  estNomPlaceholder,
+  TEXTE_INSCRIPTION_SANS_NOM,
+  LIBELLE_LIEN_NOMMER,
+} from "@/lib/nomPersonnage";
 
 /**
  * Modales partagées du flux d'inscription : choix du personnage + confirmation
@@ -26,6 +31,13 @@ import type { InscriptionController } from "@/hooks/useInscriptionEvenements";
  * surface (page Événements, tableau de bord).
  */
 export const ModalesInscription = ({ ctrl }: { ctrl: InscriptionController }) => {
+  // s403 — un personnage sans nom (null ou « ... ») reste inscriptible : on le
+  // DIT et on donne le chemin, on ne bloque pas. Le filet côté orga est le badge
+  // « Sans nom » de la liste des inscrits (AdminEvenements). Le CHECK n'est pas
+  // durci : il frapperait des fiches déjà créées.
+  const personnageChoisi = ctrl.personnages.find((p) => p.id === ctrl.selectedPersonnage);
+  const choisiSansNom = !!personnageChoisi && estNomPlaceholder(personnageChoisi.nom);
+
   return (
     <>
       {/* ── Modale d'inscription ── */}
@@ -66,6 +78,21 @@ export const ModalesInscription = ({ ctrl }: { ctrl: InscriptionController }) =>
                   </button>
                 ))}
               </div>
+              {choisiSansNom && personnageChoisi && (
+                <p
+                  data-testid="inscription-sans-nom"
+                  className="-mt-2 mb-2 rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground"
+                >
+                  {TEXTE_INSCRIPTION_SANS_NOM}{" "}
+                  <Link
+                    to={`/personnage/nouveau?id=${personnageChoisi.id}`}
+                    onClick={() => ctrl.setModalOpen(false)}
+                    className="font-medium text-gold-accent underline underline-offset-2"
+                  >
+                    {LIBELLE_LIEN_NOMMER}
+                  </Link>
+                </p>
+              )}
               <DialogFooter>
                 <Button
                   disabled={ctrl.submitting || !ctrl.selectedPersonnage}
