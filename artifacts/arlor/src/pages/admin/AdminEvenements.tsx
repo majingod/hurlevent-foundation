@@ -63,6 +63,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { TYPE_EVENEMENT_LABELS } from "@/constants/labels";
+import { estNomPlaceholder, BADGE_SANS_NOM } from "@/lib/nomPersonnage";
 
 // ============================================================================
 // Types & helpers
@@ -778,7 +779,16 @@ const InscriptionsList = ({ eventId }: { eventId: string }) => {
             className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-2 py-1.5"
           >
             <div className="min-w-0 flex-1">
-              <p className="text-sm truncate">{insc.personnage_nom ?? "Sans nom"}</p>
+              <p className="flex items-center gap-1.5 text-sm">
+                <span className="truncate">{insc.personnage_nom ?? BADGE_SANS_NOM}</span>
+                {/* s403 — « ... » passait pour l'ellipse du `truncate` : le badge
+                    nomme la chose, pour null COMME pour un nom sans lettre. */}
+                {estNomPlaceholder(insc.personnage_nom) && (
+                  <Badge variant="outline" className="shrink-0 border-gold/40 bg-gold/10 text-[10px] text-gold-accent">
+                    {BADGE_SANS_NOM}
+                  </Badge>
+                )}
+              </p>
               {insc.joueur_nom && (
                 <p className="text-xs text-muted-foreground truncate">
                   {insc.joueur_nom}

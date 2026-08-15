@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "S'inscrire avec un personnage sans nom te le dit",
+    description:
+      "Quand tu choisis, pour un événement, un personnage qui n'a pas encore de nom (ou qui s'appelle « ... »), la fenêtre d'inscription te le dit et t'offre un lien vers le créateur pour le nommer. Rien ne bloque : sur le terrain, l'orga imprime les fiches avec le nom, c'est tout ce que ça change.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Revenir aux trois chemins ne prend plus qu'un geste",
     description:
       "Dans le générateur, le bouton de retour disait seulement « Retour » et te faisait remonter une étape à la fois : depuis la fiche, il fallait trois gestes pour revoir Guide-moi, Surprends-moi et Je bâtis moi-même. Il dit maintenant où il mène — « Les trois chemins » — et t'y ramène directement, depuis n'importe quel écran.",
