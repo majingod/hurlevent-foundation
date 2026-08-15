@@ -36,7 +36,7 @@ const TOUS: ContenuClasse[] = [
 ];
 
 describe("liste des compétences à PS", () => {
-  it("couvre les cinq familles de la référence v4 §2.2", () => {
+  it("couvre les cinq familles de la référence v4 §2.2, ET les 10 noms de la base", () => {
     for (const nom of [
       "Acquisition de Cercle",
       "Acquisition de Domaine",
@@ -49,7 +49,13 @@ describe("liste des compétences à PS", () => {
     // La version Supérieure est nommée séparément : c'est une autre ligne
     // du catalogue, la base refuse bien les deux.
     expect(estCompetenceAPS("Développement Spirituel Supérieur")).toBe(true);
-    expect(COMPETENCES_A_PS).toHaveLength(6);
+    // ⭐ [s402] MIROIR DE TAILLE (C130), pas une garde anti-stub : il se
+    // resynchronise sur la base. La référence v4 §2.2 comptait « cinq
+    // familles » → 6 lignes ; `competences.exige_ps` en marque 10, et c'est
+    // elle qui fait foi (même verbe : refuser le lot à un inapte).
+    // ⛔ La VRAIE garde de cette liste vit dans
+    // `generateur.exigePS.attestation.test.ts`, qui la compare à la capture.
+    expect(COMPETENCES_A_PS).toHaveLength(10);
   });
 
   it("ne mord pas sur une compétence martiale", () => {
