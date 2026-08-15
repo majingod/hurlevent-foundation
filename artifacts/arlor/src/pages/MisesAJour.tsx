@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Quand une inscription est refusée, tu sais pourquoi",
+    description:
+      "Avant, un refus du serveur affichait seulement « Erreur lors de l'inscription. ». Maintenant une fenêtre te dit la raison — par exemple si ta demande de race (Chiméride, Non-Race) attend encore son approbation — et, quand il y a quelque chose à faire, un bouton t'amène directement au créateur de personnage. Même chose pour la désinscription pendant la fenêtre de gel.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "S'inscrire avec un personnage sans nom te le dit",
     description:
       "Quand tu choisis, pour un événement, un personnage qui n'a pas encore de nom (ou qui s'appelle « ... »), la fenêtre d'inscription te le dit et t'offre un lien vers le créateur pour le nommer. Rien ne bloque : sur le terrain, l'orga imprime les fiches avec le nom, c'est tout ce que ça change.",
