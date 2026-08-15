@@ -9,6 +9,7 @@ import type {
   EvenementPublie,
   StatutInscription,
 } from "@/components/evenements/CarteEvenementJoueur";
+import type { RefusServeur } from "@/lib/refusInscription";
 
 interface Personnage {
   id: string;
@@ -40,6 +41,9 @@ export interface InscriptionController {
   fermerDesinscription: () => void;
   desinscribing: boolean;
   confirmerDesinscription: () => Promise<void>;
+  // s404 — refus serveur affiché en fenêtre (jamais un toast), message verbatim
+  refusServeur: RefusServeur | null;
+  fermerRefus: () => void;
 }
 
 /**
@@ -62,6 +66,11 @@ export const useInscriptionEvenements = (): InscriptionController => {
   const [desinscrireEvent, setDesinscrireEvent] = useState<EvenementPublie | null>(null);
   const [desinscrireIds, setDesinscrireIds] = useState<string[]>([]);
   const [desinscribing, setDesinscribing] = useState(false);
+
+  // s404 — [INSCRIPTION-REFUS-MUET] : le message d'un refus serveur (trigger de
+  // race, gel de désinscription, …) n'est plus avalé par un toast générique.
+  const [refusServeur, setRefusServeur] = useState<RefusServeur | null>(null);
+  const fermerRefus = () => setRefusServeur(null);
 
   const { data: inscriptions = [] } = useQuery({
     queryKey: ["mes-inscriptions", joueurId],
@@ -165,7 +174,12 @@ export const useInscriptionEvenements = (): InscriptionController => {
         queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", joueurId] });
         setModalOpen(false);
       } else {
-        toast.error("Erreur lors de l'inscription.");
+        // s404 — le message du serveur, mot pour mot, dans une fenêtre.
+        setRefusServeur({
+          verbe: "inscription",
+          code: error.code ?? null,
+          message: error.message,
+        });
       }
     } else {
       toast.success("Inscription envoyée ! En attente de confirmation.");
@@ -194,7 +208,12 @@ export const useInscriptionEvenements = (): InscriptionController => {
       .in("id", desinscrireIds);
     setDesinscribing(false);
     if (error) {
-      toast.error("Erreur lors de la désinscription.");
+      // s404 — le gel de désinscription (et tout autre refus) se lit désormais.
+      setRefusServeur({
+        verbe: "desinscription",
+        code: error.code ?? null,
+        message: error.message,
+      });
     } else {
       toast.success("Désinscription effectuée.");
       queryClient.invalidateQueries({ queryKey: ["mes-inscriptions", joueurId] });
@@ -221,5 +240,7 @@ export const useInscriptionEvenements = (): InscriptionController => {
     fermerDesinscription,
     desinscribing,
     confirmerDesinscription,
+    refusServeur,
+    fermerRefus,
   };
 };
