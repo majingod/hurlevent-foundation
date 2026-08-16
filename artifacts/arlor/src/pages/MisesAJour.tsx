@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "La Forge des noms : huit propositions accordées à ta race",
+    description:
+      "Sous le champ « Nom du personnage », le bouton « 🔥 Propose-moi des noms » ouvre la Forge. Choisis la sonorité — masculine, féminine ou autre —, ajoute un nom de famille si tu veux, et huit propositions se présentent ; touches-en une, elle remplit le champ. Si ton personnage n'a pas encore de race, celle que tu choisis dans la Forge est présélectionnée à l'étape suivante — tu restes libre d'en changer.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Sur téléphone, les fenêtres ne débordent plus de l'écran",
     description:
       "Une fenêtre au titre long pouvait dépasser le bord droit de l'écran sur mobile : titre coupé, bouton à moitié caché. Le titre passe maintenant à la ligne et la fenêtre reste entière, partout dans l'application.",
