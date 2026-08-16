@@ -33,6 +33,14 @@ const JALONS: Jalon[] = [
   {
     statut: "fait",
     periode: "Août 2026",
+    titre: "Sur téléphone, les fenêtres ne débordent plus de l'écran",
+    description:
+      "Une fenêtre au titre long pouvait dépasser le bord droit de l'écran sur mobile : titre coupé, bouton à moitié caché. Le titre passe maintenant à la ligne et la fenêtre reste entière, partout dans l'application.",
+  },
+
+  {
+    statut: "fait",
+    periode: "Août 2026",
     titre: "Quand une inscription est refusée, tu sais pourquoi",
     description:
       "Avant, un refus du serveur affichait seulement « Erreur lors de l'inscription. ». Maintenant une fenêtre te dit la raison — par exemple si ta demande de race (Chiméride, Non-Race) attend encore son approbation — et, quand il y a quelque chose à faire, un bouton t'amène directement au créateur de personnage. Même chose pour la désinscription pendant la fenêtre de gel.",
