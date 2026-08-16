@@ -25,6 +25,12 @@ import IntroEtape, { IntroEtapeItem } from "@/components/createur/aide/IntroEtap
 import SectionCard from "@/components/createur/aide/SectionCard";
 import { BadgeFige, BadgeModifiable } from "@/components/createur/aide/BadgesCampagne";
 import type { EtapeProps } from "@/pages/PersonnageNouveauV2";
+import ForgeNomsDialog from "@/components/createur/forgeNoms/ForgeNomsDialog";
+import {
+  TEXTES as TEXTES_FORGE,
+  raceForgeDepuisNom,
+} from "@/components/createur/forgeNoms/logique";
+import type { SousTypeChimeride } from "@/components/createur/forgeNoms/noms";
 
 // =========================================================================
 // CONSTANTES DE CALCUL XP/NIVEAU — RATTRAPAGE (pré-plateforme)
@@ -87,7 +93,16 @@ const Etape1_V2 = ({
   onXpGainChange,
   modeCampagne = false,
   rattrapageFige = false,
-}: EtapeProps & { modeCampagne?: boolean; rattrapageFige?: boolean }) => {
+  onRaceForgee,
+}: EtapeProps & {
+  modeCampagne?: boolean;
+  rattrapageFige?: boolean;
+  /**
+   * [s406] La Forge des noms a servi sur un personnage SANS race : remonte le
+   * NOM de la race choisie (présélection d'écran pour l'étape 2, rien d'écrit).
+   */
+  onRaceForgee?: (raceNom: string) => void;
+}) => {
   // Compteurs de rattrapage figés en campagne OU dès qu'inscrit à un événement.
   const compteursFiges = modeCampagne || rattrapageFige;
   const [submitting, setSubmitting] = useState(false);
@@ -106,6 +121,10 @@ const Etape1_V2 = ({
   // Sert à ne remonter au header que la portion NON sauvegardée (évite le double-compte).
   const [gainSauvegarde, setGainSauvegarde] = useState(0);
   const [religionManuelOpen, setReligionManuelOpen] = useState(false);
+  // [s406] La Forge des noms — un SEUL point d'accès (décision Ⓐ s405), sous
+  // le champ nom, visible ssi le nom est éditable (il se fige à la première
+  // présence en jeu = mode campagne). Rien ne s'écrit depuis la Forge.
+  const [forgeOuverte, setForgeOuverte] = useState(false);
 
   // Autosave brouillon (anti-perte sur reload / SW autoUpdate) : ne pas
   // déclencher avant le 1er chargement (reset), sinon on écraserait la DB
@@ -119,6 +138,7 @@ const Etape1_V2 = ({
     control,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<Etape1Form>({
     defaultValues: {
@@ -160,6 +180,35 @@ const Etape1_V2 = ({
       return data ?? [];
     },
   });
+
+  // [s406] Race du personnage : la Forge des noms la SUIT quand elle existe
+  // (contrat Fred s405). Le catalogue (clé partagée avec l'étape 2) résout
+  // race_id → nom. Inutile quand le nom est figé : pas de bouton.
+  const { data: persoRace } = useQuery({
+    queryKey: ["v2-forge-race", personnageId],
+    enabled: !modeCampagne,
+    queryFn: async () => {
+      const { data, error } = await clientActif.lirePersonnageRace(personnageId);
+      if (error) throw error;
+      return data;
+    },
+  });
+  const { data: racesCatalogue = [] } = useQuery({
+    queryKey: ["v2-races"],
+    enabled: !modeCampagne,
+    queryFn: async () => {
+      const { data, error } = await clientActif.lireRaces();
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const raceNomPerso =
+    (racesCatalogue as { id: string; nom: string }[]).find(
+      (r) => r.id === ((persoRace?.race_id as string | null) ?? null),
+    )?.nom ?? null;
+  const raceFigeeForge = raceForgeDepuisNom(raceNomPerso);
+  const sousTypeFigeForge =
+    ((persoRace?.sous_type_chimeride ?? null) as SousTypeChimeride | null);
 
   // Pré-remplir avec les valeurs déjà sauvegardées sur le brouillon
   useEffect(() => {
@@ -425,10 +474,39 @@ const Etape1_V2 = ({
             className={champClass(modeCampagne, false)}
           />
           {!modeCampagne && (
-            <p className="flex items-center gap-1.5 text-[11.5px] text-[hsl(38_80%_60%)]">
-              <AlertTriangle className="h-3 w-3 shrink-0" />
-              Le nom se fixe à ta première présence en jeu.
-            </p>
+            <>
+              <p className="flex items-center gap-1.5 text-[11.5px] text-[hsl(38_80%_60%)]">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                Le nom se fixe à ta première présence en jeu.
+              </p>
+              {/* [s406] Un seul point d'accès à la Forge (décision Ⓐ s405). */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForgeOuverte(true)}
+                className="border-gold/60 bg-gold/10 text-gold hover:bg-gold/20 hover:text-gold"
+              >
+                {TEXTES_FORGE.bouton}
+              </Button>
+              <ForgeNomsDialog
+                ouvert={forgeOuverte}
+                onOuvertChange={setForgeOuverte}
+                raceFigee={raceFigeeForge}
+                sousTypeFige={sousTypeFigeForge}
+                onChoisir={(nom, raceNom) => {
+                  // Remplit le champ ; l'autosave brouillon (watch débouncé)
+                  // part tout seul, comme pour une frappe au clavier.
+                  setValue("nom", nom, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  // Personnage SANS race : la race de la Forge devient une
+                  // présélection d'ÉCRAN pour l'étape 2 (rien d'écrit).
+                  if (!raceNomPerso) onRaceForgee?.(raceNom);
+                }}
+              />
+            </>
           )}
           {errors.nom && (
             <p className="text-xs text-red-400">Le nom est requis.</p>

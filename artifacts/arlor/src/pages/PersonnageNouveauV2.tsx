@@ -145,6 +145,12 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
   const [etape, setEtape] = useState<number>(1);
   const [xpDeltaCourant, setXpDeltaCourant] = useState<number>(0);
   const [xpGainCourant, setXpGainCourant] = useState<number>(0);
+  // [s406] Race choisie dans la Forge des noms (étape 1) quand le personnage
+  // n'en a pas encore : PRÉSÉLECTION d'écran pour l'étape 2 — rien d'écrit,
+  // la validation de l'étape 2 reste souveraine (contrat Fred s405).
+  const [raceForgePreselection, setRaceForgePreselection] = useState<
+    string | null
+  >(null);
   const [demarrage, setDemarrage] = useState(true);
   const [erreurDemarrage, setErreurDemarrage] = useState<string | null>(null);
   const [xpDrawerOpen, setXpDrawerOpen] = useState(false);
@@ -1159,12 +1165,14 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
               onXpGainChange={setXpGainCourant}
               modeCampagne={modeCampagne}
               rattrapageFige={rattrapageFige}
+              onRaceForgee={setRaceForgePreselection}
             />
           )}
           {(etape === 2 || etape === 3) && (
             <Etape2_V2
               personnageId={personnageId}
               xpDisponible={xpDisponible}
+              racePreselectionnee={raceForgePreselection}
               onSuccess={handleEtapeSuccess}
               onPrevious={handlePrevious}
               onXpDeltaChange={setXpDeltaCourant}

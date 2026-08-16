@@ -47,6 +47,13 @@ const NON_RACES_ID = "4d7e2226-76cb-4b94-9df4-b8f12ff486e1";
 
 interface Etape2Props extends EtapeProps {
   xpDisponible?: number;
+  /**
+   * [s406] Présélection venue de la Forge des noms (étape 1) : le NOM de la
+   * race (byte-exact avec races.nom). État d'ÉCRAN seulement (contrat Fred
+   * s405) — ne s'applique que si le personnage n'a aucune race, une seule
+   * fois, et la validation de l'étape 2 reste souveraine.
+   */
+  racePreselectionnee?: string | null;
 }
 
 interface Race {
@@ -86,6 +93,7 @@ const Etape2_V2 = ({
   onXpDeltaChange,
   onXpGainChange,
   xpDisponible = 0,
+  racePreselectionnee = null,
 }: Etape2Props) => {
   const [submitting, setSubmitting] = useState(false);
   const { mode, toggleMode } = useModeAffichage();
@@ -278,6 +286,22 @@ const Etape2_V2 = ({
     setAchetes(new Set());
     setRacesOuvertes(new Set([id])); // ouvrir la carte choisie (mono-ouverture)
   };
+
+  // [s406] Présélection venue de la Forge des noms — comme si le joueur avait
+  // touché la pastille (pickRace), UNE seule fois, et SEULEMENT si le
+  // personnage n'a ni race persistée ni race déjà cochée. Fail-closed : nom
+  // inconnu du catalogue → rien. La validation de l'étape reste souveraine.
+  const preselectionFaite = useRef(false);
+  useEffect(() => {
+    if (!racePreselectionnee || preselectionFaite.current) return;
+    if (!initFait.current || !perso) return;
+    if (raceId !== null || ((perso.race_id as string | null) ?? null) !== null)
+      return;
+    const cible = races.find((r) => r.nom === racePreselectionnee);
+    if (!cible) return;
+    preselectionFaite.current = true;
+    pickRace(cible.id);
+  }, [racePreselectionnee, races, raceId, perso]);
 
   const choisirSousType = (st: "carnivore" | "herbivore") => {
     setSousType(st);
