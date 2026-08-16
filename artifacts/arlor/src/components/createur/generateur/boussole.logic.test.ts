@@ -486,6 +486,15 @@ describe("🧭 escalier — s385 : la carte d'usage dit vrai (C108)", () => {
     });
   });
 
+  describe("« Fortuné » est inconditionnel — le jumeau verbatim manquant de #762 (C101, dette s385)", () => {
+    it("sans aucune compétence, la phrase s'affiche, mot pour mot", () => {
+      const ctx = contexteUsageTraits([], false);
+      expect(texteUsageTrait("Fortuné", ctx)).toBe(
+        "Le seul trait qui te sert quel que soit ton personnage."
+      );
+    });
+  });
+
   describe("⭐ le TEST JUMEAU — plus de repli menteur, et la répartition exacte", () => {
     const racesJouables = monde.races.filter((r) => r.est_jouable);
     const traitsAtteignables = new Map<string, string>();
