@@ -99,9 +99,13 @@ const Etape1_V2 = ({
   rattrapageFige?: boolean;
   /**
    * [s406] La Forge des noms a servi sur un personnage SANS race : remonte le
-   * NOM de la race choisie (présélection d'écran pour l'étape 2, rien d'écrit).
+   * NOM de la race choisie et, pour un Chiméride, le sous-type affiché par la
+   * Forge (présélection d'écran pour l'étape 2, rien d'écrit).
    */
-  onRaceForgee?: (raceNom: string) => void;
+  onRaceForgee?: (
+    raceNom: string,
+    sousType: SousTypeChimeride | null,
+  ) => void;
 }) => {
   // Compteurs de rattrapage figés en campagne OU dès qu'inscrit à un événement.
   const compteursFiges = modeCampagne || rattrapageFige;
@@ -494,16 +498,17 @@ const Etape1_V2 = ({
                 onOuvertChange={setForgeOuverte}
                 raceFigee={raceFigeeForge}
                 sousTypeFige={sousTypeFigeForge}
-                onChoisir={(nom, raceNom) => {
+                onChoisir={(nom, raceNom, sousType) => {
                   // Remplit le champ ; l'autosave brouillon (watch débouncé)
                   // part tout seul, comme pour une frappe au clavier.
                   setValue("nom", nom, {
                     shouldDirty: true,
                     shouldValidate: true,
                   });
-                  // Personnage SANS race : la race de la Forge devient une
-                  // présélection d'ÉCRAN pour l'étape 2 (rien d'écrit).
-                  if (!raceNomPerso) onRaceForgee?.(raceNom);
+                  // Personnage SANS race : la race de la Forge (et son
+                  // sous-type Chiméride) devient une présélection d'ÉCRAN
+                  // pour l'étape 2 (rien d'écrit).
+                  if (!raceNomPerso) onRaceForgee?.(raceNom, sousType);
                 }}
               />
             </>

@@ -54,6 +54,11 @@ interface Etape2Props extends EtapeProps {
    * fois, et la validation de l'étape 2 reste souveraine.
    */
   racePreselectionnee?: string | null;
+  /**
+   * [s406] Sous-type Chiméride affiché par la Forge au moment du choix du
+   * nom — suit racePreselectionnee, mêmes règles (écran seulement).
+   */
+  sousTypePreselectionne?: "carnivore" | "herbivore" | null;
 }
 
 interface Race {
@@ -94,6 +99,7 @@ const Etape2_V2 = ({
   onXpGainChange,
   xpDisponible = 0,
   racePreselectionnee = null,
+  sousTypePreselectionne = null,
 }: Etape2Props) => {
   const [submitting, setSubmitting] = useState(false);
   const { mode, toggleMode } = useModeAffichage();
@@ -301,7 +307,14 @@ const Etape2_V2 = ({
     if (!cible) return;
     preselectionFaite.current = true;
     pickRace(cible.id);
-  }, [racePreselectionnee, races, raceId, perso]);
+    // Le sous-type choisi dans la Forge suit la race — Chiméride seulement,
+    // par le même geste que le clic joueur (pickRace vient de le remettre à
+    // null, choisirSousType le repose et repart les traits à zéro, déjà
+    // vides ici). Fail-closed : pas de sous-type ou autre race → rien.
+    if (sousTypePreselectionne && cible.nom === "Chiméride") {
+      choisirSousType(sousTypePreselectionne);
+    }
+  }, [racePreselectionnee, sousTypePreselectionne, races, raceId, perso]);
 
   const choisirSousType = (st: "carnivore" | "herbivore") => {
     setSousType(st);

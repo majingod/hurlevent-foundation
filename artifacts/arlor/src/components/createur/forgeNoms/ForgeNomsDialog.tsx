@@ -41,8 +41,16 @@ interface ForgeNomsDialogProps {
   raceFigee?: RaceForgeId | null;
   /** Sous-type Chiméride déjà posé sur le personnage. */
   sousTypeFige?: SousTypeChimeride | null;
-  /** Un nom touché : `raceNom` est le label (byte-exact avec races.nom). */
-  onChoisir: (nom: string, raceNom: string) => void;
+  /**
+   * Un nom touché : `raceNom` est le label (byte-exact avec races.nom) ;
+   * `sousType` est le sous-type Chiméride affiché par la Forge (null pour
+   * toute autre race) — il suit le nom pour la présélection de l'étape 2.
+   */
+  onChoisir: (
+    nom: string,
+    raceNom: string,
+    sousType: SousTypeChimeride | null,
+  ) => void;
 }
 
 const ForgeNomsDialog = ({
@@ -76,7 +84,7 @@ const ForgeNomsDialog = ({
     setNoms(forgerNoms({ race, sexe, sousType, avecFamille }));
 
   const toucher = (nom: string) => {
-    onChoisir(nom, race.label);
+    onChoisir(nom, race.label, raceId === "chimeride" ? sousType : null);
     onOuvertChange(false);
   };
 
