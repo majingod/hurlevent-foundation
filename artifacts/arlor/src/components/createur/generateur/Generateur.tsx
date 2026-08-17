@@ -34,6 +34,11 @@ import { getSnapshot } from "@/moteurCreation/snapshot";
 import AccueilPortes, { type PorteAffichee } from "./AccueilPortes";
 import EcranBoussole from "./EcranBoussole";
 import { PARCOURS_VIDE, type ParcoursBoussole } from "./boussole.logic";
+import {
+  restaurerDepuisNavigateur,
+  sauverEtatBoussole,
+  type EtatBoussole,
+} from "./parcoursPersistance";
 import EcranInventaire, { CaseInventaire, TITRES_GROUPES } from "./EcranInventaire";
 import EcranRace from "./EcranRace";
 import FicheTirage from "./FicheTirage";
@@ -113,6 +118,13 @@ interface GenerateurProps {
   }) => void;
   /** [s394] Trace d'accueil — fire-and-forget chez l'appelant, jamais bloquant. */
   onEvenementAccueil?: (evenement: EvenementAccueil) => void;
+  /**
+   * ⭐ [D62 s407] Clé `sessionStorage` des réponses 🧭 (inventaire, race,
+   * escalier) — voir `parcoursPersistance.ts`. Absente = pas de persistance
+   * (comportement d'avant D62). Le PARENT la purge au succès d'application :
+   * un parcours appliqué est consommé.
+   */
+  clePersistance?: string;
 }
 
 const Generateur = ({
@@ -120,10 +132,28 @@ const Generateur = ({
   onBatirMoiMeme,
   onAppliquerTirage,
   onEvenementAccueil,
+  clePersistance,
 }: GenerateurProps) => {
   const [ecran, setEcran] = useState<EcranGenerateur>("accueil");
-  const [inventaire, setInventaire] = useState<ReadonlySet<string>>(new Set());
-  const [raceRetenueId, setRaceRetenueId] = useState<string | null>(null);
+  /** ⭐ [D62 s407] Les réponses 🧭 restaurées du navigateur — UNE fois, au
+   *  montage, fail-closed champ par champ (`parcoursPersistance.ts`, les
+   *  mêmes gardes que l'escalier). Sans clé, sans trace, ou si le pont
+   *  snapshot lève : tout vide, exactement l'écran d'avant D62.
+   *  ⛔ L'écran courant n'est jamais restauré : les trois chemins se
+   *  remontrent toujours (D58). */
+  const [etatRestaure] = useState<EtatBoussole>(() =>
+    restaurerDepuisNavigateur(
+      clePersistance,
+      () => depsDepuisSnapshot(getSnapshot()),
+      () => new Set(objetsGenerateur().map((o) => o.id))
+    )
+  );
+  const [inventaire, setInventaire] = useState<ReadonlySet<string>>(
+    etatRestaure.inventaire
+  );
+  const [raceRetenueId, setRaceRetenueId] = useState<string | null>(
+    etatRestaure.raceId
+  );
   const [sacOuvert, setSacOuvert] = useState(false);
   const [resultat, setResultat] = useState<ResultatAffiche | null>(null);
   const [erreurPont, setErreurPont] = useState<string | null>(null);
@@ -133,7 +163,9 @@ const Generateur = ({
    *  `EcranBoussole`, et le joueur doit retrouver ses réponses intactes
    *  (même maison que l'inventaire et la race — mesuré : l'écran les
    *  perdait toutes en revenant de la fiche). */
-  const [parcours, setParcours] = useState<ParcoursBoussole>(PARCOURS_VIDE);
+  const [parcours, setParcours] = useState<ParcoursBoussole>(
+    etatRestaure.parcours
+  );
 
   /** [s394] Le composant n'est monté par son parent QUE quand l'accueil doit
    *  s'afficher : le montage EST l'affichage. ⚠️ C88 : ne pas cler l'effet sur
@@ -146,6 +178,21 @@ const Generateur = ({
     onEvenementAccueil?.("portes_vues");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** ⭐ [D62 s407] Chaque pas du joueur survit au démontage — écrit dans le
+   *  navigateur à chaque changement, jamais bloquant, rien au serveur
+   *  (Loi 25). Un effet sur l'ÉTAT attrape tous les chemins de mutation
+   *  (`setParcours` de l'escalier, reset de `choisirRace`, cases de
+   *  l'inventaire) sans en câbler aucun. ⛔ `ecran` n'y est pas : les trois
+   *  chemins se remontrent toujours (D58). */
+  useEffect(() => {
+    if (!clePersistance) return;
+    sauverEtatBoussole(clePersistance, {
+      inventaire,
+      raceId: raceRetenueId,
+      parcours,
+    });
+  }, [clePersistance, inventaire, raceRetenueId, parcours]);
 
   /** Dépendances du résolveur — construites UNE fois, au premier besoin
    *  (🎲 comme escalier 🧭). Lève `ErreurPontSnapshot` si le snapshot ne
