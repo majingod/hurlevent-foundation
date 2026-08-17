@@ -44,6 +44,10 @@ import StepperEtapes, { type EtapeDef } from "@/components/createur/StepperEtape
 import DrawerAjusterXp from "@/components/createur/DrawerAjusterXp";
 import { useEtapesApplicables } from "@/components/createur/useEtapesApplicables";
 import Generateur from "@/components/createur/generateur/Generateur";
+import {
+  cleEtatBoussole,
+  purgerEtatBoussole,
+} from "@/components/createur/generateur/parcoursPersistance";
 import { GENERATEUR_ACTIF } from "@/components/createur/generateur/config";
 import {
   doitMontrerAccueil,
@@ -800,6 +804,12 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
     // `brouillon_existant` sinon), via les vraies portes `ClientCreation`.
     // La PRÉSENCE de ce prop allume la porte 🎲 (décision 28/33) — le double
     // gate tient : sans `GENERATEUR_ACTIF`, ce bloc n'est jamais rendu.
+    // ⭐ [D62 s407] La clé des réponses 🧭 de CE personnage (`visiteur` sans
+    // personnage) — passée au générateur, purgée ci-dessous au succès d'une
+    // application (un parcours appliqué est consommé). « Je bâtis moi-même »
+    // ne purge PAS : tant que le brouillon est vierge, les trois chemins se
+    // remontrent (D58) et le joueur retrouve ses réponses.
+    const cleBoussole = cleEtatBoussole(personnageId);
     const appliquerTirage = async (resultat: {
       tirage: TiragePersonnage;
       composition: CompositionOk;
@@ -871,6 +881,9 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
               }
             });
         }
+        // ⭐ [D62 s407] Le parcours 🧭 est CONSOMMÉ — sa trace navigateur
+        // se purge, sinon un futur brouillon vierge la restaurerait.
+        purgerEtatBoussole(cleBoussole);
         setAccueilFranchi(true); // → wizard, étape 1 : le joueur nomme son perso
       } catch (e) {
         // `ErreurConversionTirage` (snapshot inutilisable) ou panne réseau
@@ -908,6 +921,7 @@ const PersonnageNouveauV2 = ({ modeVisiteur = false }: PersonnageNouveauV2Props 
           onBatirMoiMeme={() => setAccueilFranchi(true)}
           onAppliquerTirage={appliquerTirage}
           onEvenementAccueil={tracerAccueil}
+          clePersistance={cleBoussole}
         />
         {applicationTirage && (
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/70 backdrop-blur-sm">
