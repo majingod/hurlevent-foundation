@@ -8,6 +8,11 @@ Ce monorepo utilise **pnpm exclusivement**. Le `pnpm-workspace.yaml` définit le
 workspaces (`artifacts/*`, `lib/*`, `lib/integrations/*`, `scripts`) et un
 `catalog:` partagé qui ne fonctionne qu'avec pnpm.
 
+La version est épinglée par `packageManager` dans `package.json` racine ; pnpm
+s'y aligne seul. Si `pnpm-workspace.yaml` se retrouve avec un placeholder
+`esbuild: set this to true or false`, c'est qu'une mauvaise version de pnpm a
+tourné : ne pas committer, relancer avec la version épinglée.
+
 **Ne jamais utiliser :**
 - `bun install` — bun ne résout pas correctement le `catalog:` du workspace et
   reste muet pendant plusieurs minutes sur ce repo (problème reproduit).
@@ -58,4 +63,10 @@ passer une régression typecheck.
 
 ```bash
 pnpm --filter @workspace/arlor dev
+```
+
+### Lint
+
+```bash
+pnpm --filter @workspace/arlor lint
 ```

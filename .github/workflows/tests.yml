@@ -22,6 +22,10 @@ jobs:
       # Typecheck AVANT vitest (échec rapide). Dans le MÊME job « vitest »
       # exprès : le status check requis du ruleset le couvre sans geste UI.
       - run: pnpm --dir artifacts/arlor run typecheck
+      - run: pnpm --dir artifacts/arlor run lint
+      # Build hermétique (pas de prebuild réseau, pas de hors-ligne) : prouve que le
+      # graphe d'imports compile. Vercel reste le seul à faire le build complet.
+      - run: pnpm --dir artifacts/arlor exec vite build --config vite.config.ts
       - run: pnpm --dir artifacts/arlor exec vitest run
       # Dérive de la capture visiteur (s401). DERNIÈRE étape du job, et dans le
       # MÊME job « vitest » exprès, pour la même raison que le typecheck : le
