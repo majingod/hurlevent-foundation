@@ -1,5 +1,16 @@
 import { QueryClient, onlineManager } from "@tanstack/react-query";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// s409 : queryClientVisiteur importe désormais src/lib/filet (signalerErreur
+// dans les onError), qui importe le client supabase réel — lequel instancie
+// `createClient` à l'init du module (lecture de `localStorage`, absent en env
+// de test node). Même neutralisation que clientActif.test.ts : on teste le
+// networkMode « always », pas le passe-plat supabase.
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { rpc: () => ({ catch: () => {} }) },
+  setModeStaff: () => {},
+  setProfilActifHeader: () => {},
+}));
 
 import { queryClientVisiteur } from "./queryClientVisiteur";
 

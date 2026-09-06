@@ -25,7 +25,7 @@ export default function PwaAutoUpdater() {
       if (!registration) return;
       registrationRef.current = registration;
       setInterval(() => {
-        registration.update().catch(() => {});
+        registration.update().catch(() => {}); // hors-ligne ou SW absent : silence voulu, on retentera au prochain tick
       }, 15 * 60 * 1000);
     },
   });
@@ -48,7 +48,7 @@ export default function PwaAutoUpdater() {
     const id = setInterval(checkVersion, 15 * 60 * 1000);
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      registrationRef.current?.update().catch(() => {});
+      registrationRef.current?.update().catch(() => {}); // hors-ligne ou SW absent : silence voulu, on retentera au prochain tick
       checkVersion();
     };
     document.addEventListener("visibilitychange", onVisible);
