@@ -1,5 +1,6 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { signalerErreur } from "@/lib/filet";
 
 /**
  * BUG s312-1 — QueryClient dédié au mode visiteur (route /visiteur).
@@ -28,6 +29,7 @@ export const queryClientVisiteur = new QueryClient({
       if (query.meta?.skipGlobalErrorToast === true) return;
       toast.error(`Erreur de chargement: ${error.message}`);
       console.error("[Query Error]", query.queryKey, error);
+      signalerErreur(error);
     },
   }),
   mutationCache: new MutationCache({
@@ -35,6 +37,7 @@ export const queryClientVisiteur = new QueryClient({
       if (mutation.meta?.skipGlobalErrorToast === true) return;
       toast.error(`Erreur: ${error.message}`);
       console.error("[Mutation Error]", mutation.options.mutationKey, error);
+      signalerErreur(error);
     },
   }),
 });

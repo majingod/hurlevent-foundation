@@ -14,6 +14,7 @@ import CguGate from "@/components/CguGate";
 import Footer from "@/components/Footer";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PwaAutoUpdater from "@/components/PwaAutoUpdater";
+import { signalerErreur } from "@/lib/filet";
 
 // Pages publiques
 import Accueil from "@/pages/Accueil";
@@ -56,6 +57,7 @@ const queryClient = new QueryClient({
       if (query.meta?.skipGlobalErrorToast === true) return;
       toast.error(`Erreur de chargement: ${error.message}`);
       console.error('[Query Error]', query.queryKey, error);
+      signalerErreur(error);
     },
   }),
   mutationCache: new MutationCache({
@@ -63,6 +65,7 @@ const queryClient = new QueryClient({
       if (mutation.meta?.skipGlobalErrorToast === true) return;
       toast.error(`Erreur: ${error.message}`);
       console.error('[Mutation Error]', mutation.options.mutationKey, error);
+      signalerErreur(error);
     },
   }),
 });

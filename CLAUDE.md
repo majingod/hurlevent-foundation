@@ -5,7 +5,7 @@
 ### Gestionnaire de paquets : pnpm uniquement
 
 Ce monorepo utilise **pnpm exclusivement**. Le `pnpm-workspace.yaml` définit les
-workspaces (`artifacts/*`, `lib/*`, `lib/integrations/*`, `scripts`) et un
+workspaces (`artifacts/*`) et un
 `catalog:` partagé qui ne fonctionne qu'avec pnpm.
 
 La version est épinglée par `packageManager` dans `package.json` racine ; pnpm

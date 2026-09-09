@@ -1,0 +1,21 @@
+name: sante
+# s409 · D66 — surveillance quotidienne, PAS une garde de merge (C141). Ce
+# workflow est neuf, séparé de `tests.yml`, et n'est délibérément PAS un
+# status check requis : il alerte sur une dérive en prod, il ne bloque aucune PR.
+on:
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+jobs:
+  sante-publique:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Une seule étape utile : sante_publique() ne dépend d'aucune
+      # dépendance npm (fetch natif) — pas d'install ici.
+      - run: node artifacts/arlor/scripts/verifier-sante.mjs
+        env:
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
