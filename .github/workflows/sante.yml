@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: '0 11 * * *'
   workflow_dispatch:
+
+# Le GITHUB_TOKEN de ce workflow ne sert à rien (aucune écriture, aucun appel
+# à l'API GitHub) : on le réduit au strict minimum du checkout.
+permissions:
+  contents: read
 jobs:
   sante-publique:
     runs-on: ubuntu-latest

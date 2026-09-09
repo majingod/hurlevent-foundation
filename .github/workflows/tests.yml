@@ -6,6 +6,11 @@ on:
   # Lancement MANUEL (bouton « Run workflow ») — installé s365 : une run en
   # startup failure n'offre aucun re-run, il fallait une poignée.
   workflow_dispatch:
+
+# Le GITHUB_TOKEN de ce workflow ne sert à rien (aucune écriture, aucun appel
+# à l'API GitHub) : on le réduit au strict minimum du checkout.
+permissions:
+  contents: read
 jobs:
   vitest:
     runs-on: ubuntu-latest
